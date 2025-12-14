@@ -113,3 +113,22 @@ tasks:
     desc: Format code
     cmds:
       - go fmt ./...
+
+  release:
+    desc: "Create a new release (usage: task release -- v0.1.0)"
+    cmds:
+      - |
+        VERSION="{{.CLI_ARGS}}"
+        if [ -z "$VERSION" ]; then
+          echo "Usage: task release -- v0.x.x"
+          exit 1
+        fi
+        if ! echo "$VERSION" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+          echo "Error: Version must be in format v0.x.x (e.g., v0.1.0)"
+          exit 1
+        fi
+        echo "Creating release $VERSION..."
+        git tag -a "$VERSION" -m "Release $VERSION"
+        git push origin "$VERSION"
+        echo "Release $VERSION created and pushed!"
+        echo "GitHub Actions will build and publish the release."
