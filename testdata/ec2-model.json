@@ -1,0 +1,82 @@
+{
+  "smithy": "2.0",
+  "metadata": {},
+  "shapes": {
+    "com.amazonaws.ec2#AmazonEC2": {
+      "type": "service",
+      "version": "2016-11-15",
+      "operations": [],
+      "resources": [
+        {"target": "com.amazonaws.ec2#InstanceResource"},
+        {"target": "com.amazonaws.ec2#VolumeResource"},
+        {"target": "com.amazonaws.ec2#SecurityGroupResource"}
+      ]
+    },
+    "com.amazonaws.ec2#InstanceResource": {
+      "type": "resource",
+      "identifiers": {
+        "instanceId": {"target": "com.amazonaws.ec2#String"}
+      },
+      "read": {"target": "com.amazonaws.ec2#DescribeInstances"},
+      "list": {"target": "com.amazonaws.ec2#DescribeInstances"},
+      "delete": {"target": "com.amazonaws.ec2#TerminateInstances"}
+    },
+    "com.amazonaws.ec2#VolumeResource": {
+      "type": "resource",
+      "identifiers": {
+        "volumeId": {"target": "com.amazonaws.ec2#String"}
+      },
+      "read": {"target": "com.amazonaws.ec2#DescribeVolumes"},
+      "list": {"target": "com.amazonaws.ec2#DescribeVolumes"},
+      "delete": {"target": "com.amazonaws.ec2#DeleteVolume"}
+    },
+    "com.amazonaws.ec2#SecurityGroupResource": {
+      "type": "resource",
+      "identifiers": {
+        "groupId": {"target": "com.amazonaws.ec2#String"}
+      },
+      "read": {"target": "com.amazonaws.ec2#DescribeSecurityGroups"},
+      "list": {"target": "com.amazonaws.ec2#DescribeSecurityGroups"},
+      "delete": {"target": "com.amazonaws.ec2#DeleteSecurityGroup"}
+    },
+    "com.amazonaws.ec2#DescribeInstances": {
+      "type": "operation",
+      "traits": {
+        "smithy.api#paginated": {
+          "inputToken": "NextToken",
+          "outputToken": "NextToken"
+        }
+      }
+    },
+    "com.amazonaws.ec2#DescribeVolumes": {
+      "type": "operation",
+      "traits": {
+        "smithy.api#paginated": {
+          "inputToken": "NextToken",
+          "outputToken": "NextToken"
+        }
+      }
+    },
+    "com.amazonaws.ec2#DescribeSecurityGroups": {
+      "type": "operation",
+      "traits": {
+        "smithy.api#paginated": {
+          "inputToken": "NextToken",
+          "outputToken": "NextToken"
+        }
+      }
+    },
+    "com.amazonaws.ec2#TerminateInstances": {
+      "type": "operation"
+    },
+    "com.amazonaws.ec2#DeleteVolume": {
+      "type": "operation"
+    },
+    "com.amazonaws.ec2#DeleteSecurityGroup": {
+      "type": "operation"
+    },
+    "com.amazonaws.ec2#String": {
+      "type": "string"
+    }
+  }
+}

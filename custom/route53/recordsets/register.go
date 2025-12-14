@@ -1,0 +1,20 @@
+package recordsets
+
+import (
+	"context"
+
+	"github.com/clawscli/claws/internal/dao"
+	"github.com/clawscli/claws/internal/registry"
+	"github.com/clawscli/claws/internal/render"
+)
+
+func init() {
+	registry.Global.RegisterCustom("route53", "record-sets", registry.Entry{
+		DAOFactory: func(ctx context.Context) (dao.DAO, error) {
+			return NewRecordSetDAO(ctx)
+		},
+		RendererFactory: func() render.Renderer {
+			return NewRecordSetRenderer()
+		},
+	})
+}
