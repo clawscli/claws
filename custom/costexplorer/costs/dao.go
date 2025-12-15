@@ -1,0 +1,166 @@
+package costs
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/aws/aws-sdk-go-v2/service/costexplorer"
+	"github.com/aws/aws-sdk-go-v2/service/costexplorer/types"
+	appaws "github.com/clawscli/claws/internal/aws"
+	"github.com/clawscli/claws/internal/dao"
+)
+
+// CostDAO provides data access for AWS Cost Explorer.
+type CostDAO struct {
+	dao.BaseDAO
+	client *costexplorer.Client
+}
+
+// NewCostDAO creates a new CostDAO.
+func NewCostDAO(ctx context.Context) (dao.DAO, error) {
+	cfg, err := appaws.NewConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &CostDAO{
+		BaseDAO: dao.NewBaseDAO("cost-explorer", "costs"),
+		client:  costexplorer.NewFromConfig(cfg),
+	}, nil
+}
+
+// List returns costs grouped by service for the current month.
+func (d *CostDAO) List(ctx context.Context) ([]dao.Resource, error) {
+	// Get current month's date range
+	now := time.Now()
+	startOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+	endOfMonth := startOfMonth.AddDate(0, 1, 0)
+
+	start := startOfMonth.Format("2006-01-02")
+	end := endOfMonth.Format("2006-01-02")
+
+	output, err := d.client.GetCostAndUsage(ctx, &costexplorer.GetCostAndUsageInput{
+		TimePeriod: &types.DateInterval{
+			Start: &start,
+			End:   &end,
+		},
+		Granularity: types.GranularityMonthly,
+		Metrics:     []string{"UnblendedCost", "UsageQuantity"},
+		GroupBy: []types.GroupDefinition{
+			{
+				Type: types.GroupDefinitionTypeDimension,
+				Key:  appaws.StringPtr("SERVICE"),
+			},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("get cost and usage: %w", err)
+	}
+
+	var resources []dao.Resource
+	for _, result := range output.ResultsByTime {
+		for _, group := range result.Groups {
+			if len(group.Keys) > 0 {
+				resources = append(resources, NewCostResource(group, start, end))
+			}
+		}
+	}
+	return resources, nil
+}
+
+// Get returns cost for a specific service.
+func (d *CostDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
+	// Get current month's date range
+	now := time.Now()
+	startOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+	endOfMonth := startOfMonth.AddDate(0, 1, 0)
+
+	start := startOfMonth.Format("2006-01-02")
+	end := endOfMonth.Format("2006-01-02")
+
+	output, err := d.client.GetCostAndUsage(ctx, &costexplorer.GetCostAndUsageInput{
+		TimePeriod: &types.DateInterval{
+			Start: &start,
+			End:   &end,
+		},
+		Granularity: types.GranularityMonthly,
+		Metrics:     []string{"UnblendedCost", "UsageQuantity"},
+		Filter: &types.Expression{
+			Dimensions: &types.DimensionValues{
+				Key:    types.DimensionService,
+				Values: []string{id},
+			},
+		},
+		GroupBy: []types.GroupDefinition{
+			{
+				Type: types.GroupDefinitionTypeDimension,
+				Key:  appaws.StringPtr("SERVICE"),
+			},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("get cost for service %s: %w", id, err)
+	}
+
+	for _, result := range output.ResultsByTime {
+		for _, group := range result.Groups {
+			if len(group.Keys) > 0 && group.Keys[0] == id {
+				return NewCostResource(group, start, end), nil
+			}
+		}
+	}
+	return nil, fmt.Errorf("cost data not found for service: %s", id)
+}
+
+// Delete is not supported for cost data.
+func (d *CostDAO) Delete(ctx context.Context, id string) error {
+	return fmt.Errorf("delete not supported for cost data")
+}
+
+// CostResource wraps AWS cost data for a service.
+type CostResource struct {
+	dao.BaseResource
+	ServiceName   string
+	Cost          string
+	CostUnit      string
+	UsageQuantity string
+	UsageUnit     string
+	StartDate     string
+	EndDate       string
+}
+
+// NewCostResource creates a new CostResource.
+func NewCostResource(group types.Group, start, end string) *CostResource {
+	serviceName := ""
+	if len(group.Keys) > 0 {
+		serviceName = group.Keys[0]
+	}
+
+	cost := ""
+	costUnit := ""
+	usageQty := ""
+	usageUnit := ""
+
+	if m, ok := group.Metrics["UnblendedCost"]; ok {
+		cost = appaws.Str(m.Amount)
+		costUnit = appaws.Str(m.Unit)
+	}
+	if m, ok := group.Metrics["UsageQuantity"]; ok {
+		usageQty = appaws.Str(m.Amount)
+		usageUnit = appaws.Str(m.Unit)
+	}
+
+	return &CostResource{
+		BaseResource: dao.BaseResource{
+			ID:  serviceName,
+			ARN: fmt.Sprintf("cost-explorer::%s", serviceName),
+		},
+		ServiceName:   serviceName,
+		Cost:          cost,
+		CostUnit:      costUnit,
+		UsageQuantity: usageQty,
+		UsageUnit:     usageUnit,
+		StartDate:     start,
+		EndDate:       end,
+	}
+}

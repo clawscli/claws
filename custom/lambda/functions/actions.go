@@ -1,0 +1,167 @@
+package functions
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+
+	"github.com/aws/aws-sdk-go-v2/service/lambda"
+	lambdatypes "github.com/aws/aws-sdk-go-v2/service/lambda/types"
+	"github.com/clawscli/claws/internal/action"
+	appaws "github.com/clawscli/claws/internal/aws"
+	"github.com/clawscli/claws/internal/dao"
+)
+
+func init() {
+	// Register actions for Lambda functions
+	action.Global.Register("lambda", "functions", []action.Action{
+		{
+			Name:      "Invoke",
+			Shortcut:  "i",
+			Type:      action.ActionTypeAPI,
+			Operation: "InvokeFunction",
+			Confirm:   true,
+			Dangerous: false,
+		},
+		{
+			Name:      "Invoke (Dry Run)",
+			Shortcut:  "I",
+			Type:      action.ActionTypeAPI,
+			Operation: "InvokeFunctionDryRun",
+			Confirm:   false,
+			Dangerous: false,
+		},
+		{
+			Name:      "Delete",
+			Shortcut:  "D",
+			Type:      action.ActionTypeAPI,
+			Operation: "DeleteFunction",
+			Confirm:   true,
+			Dangerous: true,
+		},
+	})
+
+	// Register executor
+	action.RegisterExecutor("lambda", "functions", ExecuteFunctionAction)
+}
+
+// ExecuteFunctionAction executes an action on a Lambda function
+func ExecuteFunctionAction(ctx context.Context, act action.Action, resource dao.Resource) action.ActionResult {
+	switch act.Operation {
+	case "InvokeFunction":
+		return executeInvoke(ctx, resource, false)
+	case "InvokeFunctionDryRun":
+		return executeInvoke(ctx, resource, true)
+	case "DeleteFunction":
+		return executeDeleteFunction(ctx, resource)
+	default:
+		return action.UnknownOperationResult(act.Operation)
+	}
+}
+
+func getLambdaClient(ctx context.Context) (*lambda.Client, error) {
+	cfg, err := appaws.NewConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return lambda.NewFromConfig(cfg), nil
+}
+
+func executeInvoke(ctx context.Context, resource dao.Resource, dryRun bool) action.ActionResult {
+	fn, ok := resource.(*FunctionResource)
+	if !ok {
+		return action.InvalidResourceResult()
+	}
+
+	client, err := getLambdaClient(ctx)
+	if err != nil {
+		return action.ActionResult{Success: false, Error: err}
+	}
+
+	functionName := fn.GetName()
+
+	// Use empty JSON object as test payload
+	payload := []byte("{}")
+
+	input := &lambda.InvokeInput{
+		FunctionName: &functionName,
+		Payload:      payload,
+	}
+
+	if dryRun {
+		input.InvocationType = lambdatypes.InvocationTypeDryRun
+	} else {
+		input.InvocationType = lambdatypes.InvocationTypeRequestResponse
+	}
+
+	output, err := client.Invoke(ctx, input)
+	if err != nil {
+		return action.ActionResult{Success: false, Error: fmt.Errorf("invoke function: %w", err)}
+	}
+
+	if dryRun {
+		return action.ActionResult{
+			Success: true,
+			Message: fmt.Sprintf("Dry run successful for %s (Status: %d)", functionName, output.StatusCode),
+		}
+	}
+
+	// Parse response
+	statusCode := output.StatusCode
+	var responsePreview string
+
+	if len(output.Payload) > 0 {
+		// Try to pretty-print JSON response
+		var result any
+		if err := json.Unmarshal(output.Payload, &result); err == nil {
+			if len(output.Payload) > 100 {
+				responsePreview = string(output.Payload[:100]) + "..."
+			} else {
+				responsePreview = string(output.Payload)
+			}
+		} else {
+			responsePreview = string(output.Payload)
+		}
+	}
+
+	// Check for function error
+	if output.FunctionError != nil && *output.FunctionError != "" {
+		return action.ActionResult{
+			Success: false,
+			Error:   fmt.Errorf("function error: %s - %s", *output.FunctionError, responsePreview),
+		}
+	}
+
+	return action.ActionResult{
+		Success: true,
+		Message: fmt.Sprintf("Invoked %s (Status: %d) Response: %s", functionName, statusCode, responsePreview),
+	}
+}
+
+func executeDeleteFunction(ctx context.Context, resource dao.Resource) action.ActionResult {
+	fn, ok := resource.(*FunctionResource)
+	if !ok {
+		return action.InvalidResourceResult()
+	}
+
+	client, err := getLambdaClient(ctx)
+	if err != nil {
+		return action.ActionResult{Success: false, Error: err}
+	}
+
+	functionName := fn.GetName()
+
+	input := &lambda.DeleteFunctionInput{
+		FunctionName: &functionName,
+	}
+
+	_, err = client.DeleteFunction(ctx, input)
+	if err != nil {
+		return action.ActionResult{Success: false, Error: fmt.Errorf("delete function: %w", err)}
+	}
+
+	return action.ActionResult{
+		Success: true,
+		Message: fmt.Sprintf("Deleted function %s", functionName),
+	}
+}

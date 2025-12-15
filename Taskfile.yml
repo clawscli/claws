@@ -1,0 +1,134 @@
+version: '3'
+
+vars:
+  LOCALSTACK_CONTAINER: claws-localstack
+
+tasks:
+  build:
+    desc: Build the claws binary
+    cmds:
+      - go build -o claws ./cmd/claws
+
+  run:
+    desc: Run claws
+    deps: [build]
+    cmds:
+      - ./claws
+
+  test:
+    desc: Run all tests
+    cmds:
+      - go test ./...
+
+  test-cover:
+    desc: Run tests with coverage report
+    cmds:
+      - go test ./... -cover -coverprofile=coverage.out
+      - go tool cover -func=coverage.out | tail -1
+
+  # LocalStack tasks
+  localstack:start:
+    desc: Start LocalStack container
+    cmds:
+      - |
+        if docker ps -a --format '{{.Names}}' | grep -q "^{{.LOCALSTACK_CONTAINER}}$"; then
+          docker start {{.LOCALSTACK_CONTAINER}}
+        else
+          docker run -d --name {{.LOCALSTACK_CONTAINER}} -p 4566:4566 localstack/localstack
+        fi
+      - echo "Waiting for LocalStack to be ready..."
+      - sleep 3
+      - echo "LocalStack started at http://localhost:4566"
+
+  localstack:stop:
+    desc: Stop LocalStack container
+    cmds:
+      - docker stop {{.LOCALSTACK_CONTAINER}} || true
+
+  localstack:clean:
+    desc: Remove LocalStack container
+    cmds:
+      - docker rm -f {{.LOCALSTACK_CONTAINER}} || true
+
+  localstack:logs:
+    desc: Show LocalStack logs
+    cmds:
+      - docker logs -f {{.LOCALSTACK_CONTAINER}}
+
+  localstack:setup:
+    desc: Create test resources in LocalStack
+    cmds:
+      - |
+        export AWS_ENDPOINT_URL=http://localhost:4566
+        export AWS_ACCESS_KEY_ID=test
+        export AWS_SECRET_ACCESS_KEY=test
+        export AWS_DEFAULT_REGION=us-east-1
+
+        echo "Creating S3 bucket..."
+        aws s3 mb s3://test-bucket 2>/dev/null || true
+
+        echo "Creating VPC..."
+        VPC_ID=$(aws ec2 create-vpc --cidr-block 10.0.0.0/16 --query 'Vpc.VpcId' --output text 2>/dev/null || echo "")
+        if [ -n "$VPC_ID" ]; then
+          aws ec2 create-tags --resources $VPC_ID --tags Key=Name,Value=test-vpc
+          echo "Created VPC: $VPC_ID"
+        fi
+
+        echo "Creating Security Group..."
+        SG_ID=$(aws ec2 create-security-group --group-name test-sg --description "Test SG" --vpc-id $VPC_ID --query 'GroupId' --output text 2>/dev/null || echo "")
+        if [ -n "$SG_ID" ]; then
+          echo "Created Security Group: $SG_ID"
+        fi
+
+        echo "LocalStack test resources created!"
+
+  test-localstack:
+    desc: Run integration tests with LocalStack
+    deps: [localstack:start]
+    env:
+      AWS_ENDPOINT_URL: http://localhost:4566
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: us-east-1
+    cmds:
+      - go test -v ./... -tags=integration -timeout 60s
+
+  test-pty:
+    desc: Run PTY test (TUI test in headless environment)
+    cmds:
+      - go test -v ./internal/app/ -run TestPTY -timeout 60s
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - rm -f claws
+      - rm -f coverage.out
+
+  lint:
+    desc: Run linters
+    cmds:
+      - go vet ./...
+
+  fmt:
+    desc: Format code
+    cmds:
+      - go fmt ./...
+
+  release:
+    desc: "Create a new release (usage: task release -- v0.1.0)"
+    cmds:
+      - |
+        VERSION="{{.CLI_ARGS}}"
+        if [ -z "$VERSION" ]; then
+          echo "Usage: task release -- v0.x.x"
+          exit 1
+        fi
+        if ! echo "$VERSION" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+          echo "Error: Version must be in format v0.x.x (e.g., v0.1.0)"
+          exit 1
+        fi
+        echo "Creating release $VERSION..."
+        git tag -a "$VERSION" -m "Release $VERSION"
+        git push origin "$VERSION"
+        echo "Release $VERSION created and pushed!"
+        echo "GitHub Actions will build and publish the release."
