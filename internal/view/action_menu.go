@@ -161,7 +161,12 @@ func (m *ActionMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *ActionMenu) executeAction(act action.Action) (tea.Model, tea.Cmd) {
 	if act.Type == action.ActionTypeExec {
 		// For exec actions, use tea.Exec to suspend bubbletea
-		execCmd := action.ExpandVariables(act.Command, m.resource)
+		execCmd, err := action.ExpandVariables(act.Command, m.resource)
+		if err != nil {
+			return m, func() tea.Msg {
+				return execResultMsg{success: false, err: err}
+			}
+		}
 		exec := &action.ExecWithHeader{
 			Command:  execCmd,
 			Resource: m.resource,

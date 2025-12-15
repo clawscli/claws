@@ -85,7 +85,10 @@ func TestExpandVariables(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := ExpandVariables(tt.cmd, resource)
+			result, err := ExpandVariables(tt.cmd, resource)
+			if err != nil {
+				t.Errorf("ExpandVariables(%q) returned unexpected error: %v", tt.cmd, err)
+			}
 			if result != tt.expected {
 				t.Errorf("ExpandVariables(%q) = %q, want %q", tt.cmd, result, tt.expected)
 			}
@@ -106,9 +109,112 @@ func TestExpandVariables_WithPrivateIP(t *testing.T) {
 	cmd := "ssh ec2-user@${PRIVATE_IP}"
 	expected := "ssh ec2-user@10.0.1.100"
 
-	result := ExpandVariables(cmd, resource)
+	result, err := ExpandVariables(cmd, resource)
+	if err != nil {
+		t.Errorf("ExpandVariables(%q) returned unexpected error: %v", cmd, err)
+	}
 	if result != expected {
 		t.Errorf("ExpandVariables(%q) = %q, want %q", cmd, result, expected)
+	}
+}
+
+func TestExpandVariables_UnsafeCharacters(t *testing.T) {
+	tests := []struct {
+		name     string
+		resource *mockResource
+		cmd      string
+		wantErr  bool
+	}{
+		{
+			name:     "semicolon in ID",
+			resource: &mockResource{id: "test; rm -rf /"},
+			cmd:      "echo ${ID}",
+			wantErr:  true,
+		},
+		{
+			name:     "pipe in name",
+			resource: &mockResource{name: "test | cat /etc/passwd"},
+			cmd:      "echo ${NAME}",
+			wantErr:  true,
+		},
+		{
+			name:     "ampersand in ID",
+			resource: &mockResource{id: "test && whoami"},
+			cmd:      "echo ${ID}",
+			wantErr:  true,
+		},
+		{
+			name:     "dollar sign in ID",
+			resource: &mockResource{id: "test$HOME"},
+			cmd:      "echo ${ID}",
+			wantErr:  true,
+		},
+		{
+			name:     "backtick in ID",
+			resource: &mockResource{id: "test`whoami`"},
+			cmd:      "echo ${ID}",
+			wantErr:  true,
+		},
+		{
+			name:     "newline in ID",
+			resource: &mockResource{id: "test\nrm -rf /"},
+			cmd:      "echo ${ID}",
+			wantErr:  true,
+		},
+		{
+			name:     "safe characters",
+			resource: &mockResource{id: "i-1234567890abcdef0", name: "my-instance_01"},
+			cmd:      "echo ${ID} ${NAME}",
+			wantErr:  false,
+		},
+		{
+			name:     "unsafe in unused variable",
+			resource: &mockResource{id: "safe-id", name: "bad; rm"},
+			cmd:      "echo ${ID}",
+			wantErr:  false, // NAME is not used in cmd
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := ExpandVariables(tt.cmd, tt.resource)
+			if tt.wantErr && err == nil {
+				t.Error("ExpandVariables() expected error but got nil")
+			}
+			if !tt.wantErr && err != nil {
+				t.Errorf("ExpandVariables() unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+func TestContainsShellMetachar(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected bool
+	}{
+		{"hello", false},
+		{"hello-world_123", false},
+		{"arn:aws:s3:::bucket", false},
+		{"test;rm", true},
+		{"test|cat", true},
+		{"test&bg", true},
+		{"test$var", true},
+		{"test`cmd`", true},
+		{"test(group)", true},
+		{"test{brace}", true},
+		{"test<in", true},
+		{"test>out", true},
+		{"test\ncmd", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			result := containsShellMetachar(tt.input)
+			if result != tt.expected {
+				t.Errorf("containsShellMetachar(%q) = %v, want %v", tt.input, result, tt.expected)
+			}
+		})
 	}
 }
 

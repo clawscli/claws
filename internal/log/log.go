@@ -38,7 +38,7 @@ func Enable(w io.Writer) {
 // EnableFile enables logging to a file at the specified path.
 // Creates the file if it doesn't exist.
 func EnableFile(path string) error {
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
 	}

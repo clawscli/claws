@@ -147,7 +147,10 @@ func ExecuteWithDAO(ctx context.Context, action Action, resource dao.Resource, s
 }
 
 func executeExec(ctx context.Context, action Action, resource dao.Resource) ActionResult {
-	cmd := ExpandVariables(action.Command, resource)
+	cmd, err := ExpandVariables(action.Command, resource)
+	if err != nil {
+		return ActionResult{Success: false, Error: err}
+	}
 	if cmd == "" {
 		return ActionResult{Success: false, Error: ErrEmptyCommand}
 	}
@@ -159,7 +162,7 @@ func executeExec(ctx context.Context, action Action, resource dao.Resource) Acti
 	execCmd.Stdout = os.Stdout
 	execCmd.Stderr = os.Stderr
 
-	err := execCmd.Run()
+	err = execCmd.Run()
 	if err != nil {
 		return ActionResult{Success: false, Error: err}
 	}
@@ -191,6 +194,9 @@ type (
 	}
 )
 
+// ErrUnsafeValue is returned when a variable value contains shell metacharacters
+var ErrUnsafeValue = errors.New("variable value contains unsafe characters")
+
 // ExpandVariables replaces variables in command strings with resource values.
 // Standard variables: ${ID}, ${NAME}, ${ARN}, ${INSTANCE_ID}, ${BUCKET}
 // Optional variables (if resource implements the interface):
@@ -198,7 +204,9 @@ type (
 //   - ${CLUSTER} - ClusterArnProvider
 //   - ${CONTAINER} - ContainerNameProvider
 //   - ${LOG_GROUP} - LogGroupNameProvider
-func ExpandVariables(cmd string, resource dao.Resource) string {
+//
+// Returns an error if any value contains shell metacharacters.
+func ExpandVariables(cmd string, resource dao.Resource) (string, error) {
 	replacements := map[string]string{
 		"${ID}":          resource.GetID(),
 		"${NAME}":        resource.GetName(),
@@ -221,11 +229,31 @@ func ExpandVariables(cmd string, resource dao.Resource) string {
 		replacements["${LOG_GROUP}"] = p.LogGroupName()
 	}
 
+	// Check for unsafe characters in values that will be substituted
+	for k, v := range replacements {
+		if strings.Contains(cmd, k) && containsShellMetachar(v) {
+			return "", fmt.Errorf("%w: %s contains shell metacharacters", ErrUnsafeValue, k)
+		}
+	}
+
 	result := cmd
 	for k, v := range replacements {
 		result = strings.ReplaceAll(result, k, v)
 	}
-	return result
+	return result, nil
+}
+
+// containsShellMetachar checks if a string contains shell metacharacters
+// that could be used for command injection.
+func containsShellMetachar(s string) bool {
+	// Check for characters that have special meaning in shell
+	for _, c := range s {
+		switch c {
+		case ';', '|', '&', '$', '`', '(', ')', '{', '}', '<', '>', '\n', '\r':
+			return true
+		}
+	}
+	return false
 }
 
 // Global is the default global action registry
