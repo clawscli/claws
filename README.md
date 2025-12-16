@@ -31,6 +31,28 @@ brew tap clawscli/tap
 brew install --cask claws
 ```
 
+### Download Binary
+
+Download from [GitHub Releases](https://github.com/clawscli/claws/releases/latest):
+
+```bash
+# macOS (Apple Silicon)
+curl -Lo claws.tar.gz https://github.com/clawscli/claws/releases/latest/download/claws-darwin-arm64.tar.gz
+tar xzf claws.tar.gz && mv claws /usr/local/bin/
+
+# macOS (Intel)
+curl -Lo claws.tar.gz https://github.com/clawscli/claws/releases/latest/download/claws-darwin-amd64.tar.gz
+tar xzf claws.tar.gz && mv claws /usr/local/bin/
+
+# Linux (x86_64)
+curl -Lo claws.tar.gz https://github.com/clawscli/claws/releases/latest/download/claws-linux-amd64.tar.gz
+tar xzf claws.tar.gz && sudo mv claws /usr/local/bin/
+
+# Linux (ARM64)
+curl -Lo claws.tar.gz https://github.com/clawscli/claws/releases/latest/download/claws-linux-arm64.tar.gz
+tar xzf claws.tar.gz && sudo mv claws /usr/local/bin/
+```
+
 ### Go Install
 
 ```bash
