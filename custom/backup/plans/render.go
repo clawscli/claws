@@ -192,7 +192,11 @@ func (r *BackupPlanRenderer) Navigations(resource dao.Resource) []render.Navigat
 
 	return []render.Navigation{
 		{
-			Key: "o", Label: "Jobs", Service: "backup", Resource: "jobs",
+			Key: "b", Label: "Jobs", Service: "backup", Resource: "backup-jobs",
+			FilterField: "BackupPlanId", FilterValue: plan.PlanId(),
+		},
+		{
+			Key: "s", Label: "Selections", Service: "backup", Resource: "selections",
 			FilterField: "BackupPlanId", FilterValue: plan.PlanId(),
 		},
 	}

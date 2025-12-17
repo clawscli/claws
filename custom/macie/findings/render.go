@@ -107,7 +107,7 @@ func (r *FindingRenderer) RenderDetail(resource dao.Resource) string {
 			d.Field("Object Path", finding.ObjectPath())
 		}
 		if finding.ObjectSize() > 0 {
-			d.Field("Object Size", formatBytes(finding.ObjectSize()))
+			d.Field("Object Size", render.FormatSize(finding.ObjectSize()))
 		}
 		if finding.ObjectStorageClass() != "" {
 			d.Field("Storage Class", finding.ObjectStorageClass())
@@ -134,26 +134,6 @@ func (r *FindingRenderer) RenderDetail(resource dao.Resource) string {
 	}
 
 	return d.String()
-}
-
-// formatBytes formats bytes to human-readable format.
-func formatBytes(bytes int64) string {
-	const (
-		KB = 1024
-		MB = KB * 1024
-		GB = MB * 1024
-	)
-
-	switch {
-	case bytes >= GB:
-		return fmt.Sprintf("%.2f GB", float64(bytes)/float64(GB))
-	case bytes >= MB:
-		return fmt.Sprintf("%.2f MB", float64(bytes)/float64(MB))
-	case bytes >= KB:
-		return fmt.Sprintf("%.2f KB", float64(bytes)/float64(KB))
-	default:
-		return fmt.Sprintf("%d B", bytes)
-	}
 }
 
 // RenderSummary renders summary fields for a finding.

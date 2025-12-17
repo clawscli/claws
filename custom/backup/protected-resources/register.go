@@ -1,4 +1,4 @@
-package jobs
+package protectedresources
 
 import (
 	"context"
@@ -9,12 +9,12 @@ import (
 )
 
 func init() {
-	registry.Global.RegisterCustom("backup", "jobs", registry.Entry{
+	registry.Global.RegisterCustom("backup", "protected-resources", registry.Entry{
 		DAOFactory: func(ctx context.Context) (dao.DAO, error) {
-			return NewJobDAO(ctx)
+			return NewProtectedResourceDAO(ctx)
 		},
 		RendererFactory: func() render.Renderer {
-			return NewJobRenderer()
+			return NewProtectedResourceRenderer()
 		},
 	})
 }

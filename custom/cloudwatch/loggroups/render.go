@@ -35,30 +35,9 @@ func NewLogGroupRenderer() render.Renderer {
 
 func getSize(r dao.Resource) string {
 	if lg, ok := r.(*LogGroupResource); ok {
-		bytes := lg.StoredBytes()
-		return formatBytes(bytes)
+		return render.FormatSize(lg.StoredBytes())
 	}
 	return "-"
-}
-
-func formatBytes(bytes int64) string {
-	if bytes == 0 {
-		return "0 B"
-	}
-
-	const unit = 1024
-	if bytes < unit {
-		return fmt.Sprintf("%d B", bytes)
-	}
-
-	div, exp := int64(unit), 0
-	for n := bytes / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
-	}
-
-	units := []string{"KB", "MB", "GB", "TB", "PB"}
-	return fmt.Sprintf("%.1f %s", float64(bytes)/float64(div), units[exp])
 }
 
 func getRetention(r dao.Resource) string {
@@ -115,7 +94,7 @@ func (r *LogGroupRenderer) RenderDetail(resource dao.Resource) string {
 
 	// Storage
 	d.Section("Storage")
-	d.Field("Stored Bytes", formatBytes(lg.StoredBytes()))
+	d.Field("Stored Bytes", render.FormatSize(lg.StoredBytes()))
 
 	retention := lg.RetentionDays()
 	if retention == 0 {
@@ -167,7 +146,7 @@ func (r *LogGroupRenderer) RenderSummary(resource dao.Resource) []render.Summary
 	fields := []render.SummaryField{
 		{Label: "Log Group", Value: lg.LogGroupName()},
 		{Label: "ARN", Value: lg.GetARN()},
-		{Label: "Size", Value: formatBytes(lg.StoredBytes())},
+		{Label: "Size", Value: render.FormatSize(lg.StoredBytes())},
 	}
 
 	retention := lg.RetentionDays()

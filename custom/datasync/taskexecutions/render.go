@@ -78,16 +78,16 @@ func (r *TaskExecutionRenderer) RenderDetail(resource dao.Resource) string {
 	// Byte Statistics
 	d.Section("Byte Statistics")
 	if exec.BytesTransferred > 0 {
-		d.Field("Bytes Transferred", formatBytes(exec.BytesTransferred))
+		d.Field("Bytes Transferred", render.FormatSize(exec.BytesTransferred))
 	}
 	if exec.BytesWritten > 0 {
-		d.Field("Bytes Written", formatBytes(exec.BytesWritten))
+		d.Field("Bytes Written", render.FormatSize(exec.BytesWritten))
 	}
 	if exec.GetBytesCompressed() > 0 {
-		d.Field("Bytes Compressed", formatBytes(exec.GetBytesCompressed()))
+		d.Field("Bytes Compressed", render.FormatSize(exec.GetBytesCompressed()))
 	}
 	if exec.EstimatedBytes > 0 {
-		d.Field("Estimated Bytes", formatBytes(exec.EstimatedBytes))
+		d.Field("Estimated Bytes", render.FormatSize(exec.EstimatedBytes))
 	}
 
 	// Result
@@ -114,29 +114,6 @@ func (r *TaskExecutionRenderer) RenderDetail(resource dao.Resource) string {
 	}
 
 	return d.String()
-}
-
-// formatBytes formats bytes to human-readable format.
-func formatBytes(bytes int64) string {
-	const (
-		KB = 1024
-		MB = KB * 1024
-		GB = MB * 1024
-		TB = GB * 1024
-	)
-
-	switch {
-	case bytes >= TB:
-		return fmt.Sprintf("%.2f TB", float64(bytes)/float64(TB))
-	case bytes >= GB:
-		return fmt.Sprintf("%.2f GB", float64(bytes)/float64(GB))
-	case bytes >= MB:
-		return fmt.Sprintf("%.2f MB", float64(bytes)/float64(MB))
-	case bytes >= KB:
-		return fmt.Sprintf("%.2f KB", float64(bytes)/float64(KB))
-	default:
-		return fmt.Sprintf("%d B", bytes)
-	}
 }
 
 // RenderSummary renders summary fields for a task execution.

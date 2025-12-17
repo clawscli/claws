@@ -52,30 +52,7 @@ func getSize(r dao.Resource) string {
 	if !ok {
 		return ""
 	}
-	return formatBytes(bucket.SizeInBytes())
-}
-
-// formatBytes formats bytes to human-readable format.
-func formatBytes(bytes int64) string {
-	const (
-		KB = 1024
-		MB = KB * 1024
-		GB = MB * 1024
-		TB = GB * 1024
-	)
-
-	switch {
-	case bytes >= TB:
-		return fmt.Sprintf("%.2f TB", float64(bytes)/float64(TB))
-	case bytes >= GB:
-		return fmt.Sprintf("%.2f GB", float64(bytes)/float64(GB))
-	case bytes >= MB:
-		return fmt.Sprintf("%.2f MB", float64(bytes)/float64(MB))
-	case bytes >= KB:
-		return fmt.Sprintf("%.2f KB", float64(bytes)/float64(KB))
-	default:
-		return fmt.Sprintf("%d B", bytes)
-	}
+	return render.FormatSize(bucket.SizeInBytes())
 }
 
 // RenderDetail renders the detail view for a bucket.
@@ -99,7 +76,7 @@ func (r *BucketRenderer) RenderDetail(resource dao.Resource) string {
 	// Statistics
 	d.Section("Statistics")
 	d.Field("Classifiable Objects", fmt.Sprintf("%d", bucket.ClassifiableObjectCount()))
-	d.Field("Size", formatBytes(bucket.SizeInBytes()))
+	d.Field("Size", render.FormatSize(bucket.SizeInBytes()))
 
 	return d.String()
 }
@@ -114,7 +91,7 @@ func (r *BucketRenderer) RenderSummary(resource dao.Resource) []render.SummaryFi
 	return []render.SummaryField{
 		{Label: "Bucket Name", Value: bucket.Name()},
 		{Label: "Region", Value: bucket.Region()},
-		{Label: "Size", Value: formatBytes(bucket.SizeInBytes())},
+		{Label: "Size", Value: render.FormatSize(bucket.SizeInBytes())},
 	}
 }
 

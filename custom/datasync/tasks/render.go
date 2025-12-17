@@ -1,31 +1,9 @@
 package tasks
 
 import (
-	"fmt"
-
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/render"
 )
-
-// formatBytes formats bytes to human-readable format.
-func formatBytes(bytes int64) string {
-	const (
-		KB = 1024
-		MB = KB * 1024
-		GB = MB * 1024
-	)
-
-	switch {
-	case bytes >= GB:
-		return fmt.Sprintf("%.2f GB", float64(bytes)/float64(GB))
-	case bytes >= MB:
-		return fmt.Sprintf("%.2f MB", float64(bytes)/float64(MB))
-	case bytes >= KB:
-		return fmt.Sprintf("%.2f KB", float64(bytes)/float64(KB))
-	default:
-		return fmt.Sprintf("%d B", bytes)
-	}
-}
 
 // TaskRenderer renders DataSync tasks.
 // Ensure TaskRenderer implements render.Navigator
@@ -135,7 +113,7 @@ func (r *TaskRenderer) RenderDetail(resource dao.Resource) string {
 			d.Field("POSIX Permissions", string(opts.PosixPermissions))
 		}
 		if opts.BytesPerSecond != nil && *opts.BytesPerSecond > 0 {
-			d.Field("Bandwidth Limit", formatBytes(*opts.BytesPerSecond)+"/s")
+			d.Field("Bandwidth Limit", render.FormatSize(*opts.BytesPerSecond)+"/s")
 		}
 		if opts.TaskQueueing != "" {
 			d.Field("Task Queueing", string(opts.TaskQueueing))

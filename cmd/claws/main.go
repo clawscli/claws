@@ -166,8 +166,14 @@ import (
 	_ "github.com/clawscli/claws/custom/codepipeline/pipelines"
 
 	// AWS Backup
-	_ "github.com/clawscli/claws/custom/backup/jobs"
+	_ "github.com/clawscli/claws/custom/backup/backup-jobs"
+	_ "github.com/clawscli/claws/custom/backup/copy-jobs"
 	_ "github.com/clawscli/claws/custom/backup/plans"
+	_ "github.com/clawscli/claws/custom/backup/protected-resources"
+	_ "github.com/clawscli/claws/custom/backup/recovery-points"
+	_ "github.com/clawscli/claws/custom/backup/restore-jobs"
+	_ "github.com/clawscli/claws/custom/backup/selections"
+	_ "github.com/clawscli/claws/custom/backup/vaults"
 
 	// WAF
 	_ "github.com/clawscli/claws/custom/wafv2/webacls"
