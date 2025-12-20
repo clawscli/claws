@@ -717,3 +717,210 @@ func TestSetAWSEnv(t *testing.T) {
 		})
 	}
 }
+
+func TestReadOnlyEnforcement_ExecuteWithDAO(t *testing.T) {
+	t.Run("read-only blocks non-allowlisted API action", func(t *testing.T) {
+		// Enable read-only mode
+		config.Global().SetReadOnly(true)
+		defer config.Global().SetReadOnly(false)
+
+		action := Action{
+			Name:      "Terminate",
+			Type:      ActionTypeAPI,
+			Operation: "TerminateInstances", // Not in ReadOnlyAllowlist
+		}
+
+		result := ExecuteWithDAO(context.Background(), action, &mockResource{id: "i-123"}, "ec2", "instances")
+
+		if result.Success {
+			t.Error("read-only should block non-allowlisted API action")
+		}
+		if result.Error != ErrReadOnlyDenied {
+			t.Errorf("Error = %v, want %v", result.Error, ErrReadOnlyDenied)
+		}
+	})
+
+	t.Run("read-only allows allowlisted API action", func(t *testing.T) {
+		// Enable read-only mode
+		config.Global().SetReadOnly(true)
+		defer config.Global().SetReadOnly(false)
+
+		// Register a test executor
+		Global.RegisterExecutor("test", "readonly", func(ctx context.Context, action Action, resource dao.Resource) ActionResult {
+			return ActionResult{Success: true, Message: "executed"}
+		})
+
+		action := Action{
+			Name:      "SwitchProfile",
+			Type:      ActionTypeAPI,
+			Operation: "SwitchProfile", // In ReadOnlyAllowlist
+		}
+
+		result := ExecuteWithDAO(context.Background(), action, &mockResource{id: "test"}, "test", "readonly")
+
+		if !result.Success {
+			t.Errorf("read-only should allow allowlisted API action, got error: %v", result.Error)
+		}
+	})
+
+	t.Run("read-only blocks non-allowlisted exec action", func(t *testing.T) {
+		// Enable read-only mode
+		config.Global().SetReadOnly(true)
+		defer config.Global().SetReadOnly(false)
+
+		action := Action{
+			Name:    "SSM Session",
+			Type:    ActionTypeExec,
+			Command: "aws ssm start-session --target ${ID}", // Not in ReadOnlyExecAllowlist
+		}
+
+		result := ExecuteWithDAO(context.Background(), action, &mockResource{id: "i-123"}, "ec2", "instances")
+
+		if result.Success {
+			t.Error("read-only should block non-allowlisted exec action")
+		}
+		if result.Error != ErrReadOnlyDenied {
+			t.Errorf("Error = %v, want %v", result.Error, ErrReadOnlyDenied)
+		}
+	})
+
+	t.Run("read-only allows allowlisted exec action", func(t *testing.T) {
+		// Enable read-only mode
+		config.Global().SetReadOnly(true)
+		defer config.Global().SetReadOnly(false)
+
+		action := Action{
+			Name:    ActionNameSSOLogin,
+			Type:    ActionTypeExec,
+			Command: "echo test", // Use harmless command for test
+		}
+
+		result := ExecuteWithDAO(context.Background(), action, &mockResource{id: "test"}, "local", "profile")
+
+		// Should pass read-only gate (but may fail later for other reasons)
+		if result.Error == ErrReadOnlyDenied {
+			t.Error("read-only should not block allowlisted exec action")
+		}
+	})
+
+	t.Run("read-only always allows view actions", func(t *testing.T) {
+		// Enable read-only mode
+		config.Global().SetReadOnly(true)
+		defer config.Global().SetReadOnly(false)
+
+		action := Action{
+			Name:   "View Details",
+			Type:   ActionTypeView,
+			Target: "ec2/instances",
+		}
+
+		result := ExecuteWithDAO(context.Background(), action, &mockResource{id: "test"}, "ec2", "instances")
+
+		// View actions are always allowed - should not return ErrReadOnlyDenied
+		if result.Error == ErrReadOnlyDenied {
+			t.Error("read-only should not block view actions")
+		}
+	})
+
+	t.Run("non-read-only allows all actions", func(t *testing.T) {
+		// Ensure read-only mode is disabled
+		config.Global().SetReadOnly(false)
+
+		// Register a test executor
+		Global.RegisterExecutor("test", "nonreadonly", func(ctx context.Context, action Action, resource dao.Resource) ActionResult {
+			return ActionResult{Success: true, Message: "executed"}
+		})
+
+		action := Action{
+			Name:      "Terminate",
+			Type:      ActionTypeAPI,
+			Operation: "TerminateInstances", // Not in ReadOnlyAllowlist
+		}
+
+		result := ExecuteWithDAO(context.Background(), action, &mockResource{id: "test"}, "test", "nonreadonly")
+
+		if !result.Success {
+			t.Errorf("non-read-only should allow all actions, got error: %v", result.Error)
+		}
+	})
+}
+
+func TestReadOnlyEnforcement_SimpleExec(t *testing.T) {
+	t.Run("read-only blocks non-allowlisted exec", func(t *testing.T) {
+		// Enable read-only mode
+		config.Global().SetReadOnly(true)
+		defer config.Global().SetReadOnly(false)
+
+		exec := &SimpleExec{
+			Command:    "echo test",
+			ActionName: "SSM Session", // Not in ReadOnlyExecAllowlist
+		}
+
+		err := exec.Run()
+
+		if err != ErrReadOnlyDenied {
+			t.Errorf("Error = %v, want %v", err, ErrReadOnlyDenied)
+		}
+	})
+
+	t.Run("read-only allows allowlisted exec", func(t *testing.T) {
+		// Enable read-only mode
+		config.Global().SetReadOnly(true)
+		defer config.Global().SetReadOnly(false)
+
+		exec := &SimpleExec{
+			Command:    "echo test",
+			ActionName: ActionNameLogin, // In ReadOnlyExecAllowlist
+		}
+
+		err := exec.Run()
+
+		// Should not return ErrReadOnlyDenied (may succeed or fail for other reasons)
+		if err == ErrReadOnlyDenied {
+			t.Error("read-only should not block allowlisted exec")
+		}
+	})
+}
+
+func TestReadOnlyEnforcement_ExecWithHeader(t *testing.T) {
+	t.Run("read-only blocks non-allowlisted exec", func(t *testing.T) {
+		// Enable read-only mode
+		config.Global().SetReadOnly(true)
+		defer config.Global().SetReadOnly(false)
+
+		exec := &ExecWithHeader{
+			Command:    "echo test",
+			ActionName: "ECS Exec", // Not in ReadOnlyExecAllowlist
+			Resource:   &mockResource{id: "test", name: "test"},
+			Service:    "ecs",
+			ResType:    "tasks",
+		}
+
+		err := exec.Run()
+
+		if err != ErrReadOnlyDenied {
+			t.Errorf("Error = %v, want %v", err, ErrReadOnlyDenied)
+		}
+	})
+
+	t.Run("read-only allows allowlisted exec", func(t *testing.T) {
+		// Enable read-only mode
+		config.Global().SetReadOnly(true)
+		defer config.Global().SetReadOnly(false)
+
+		exec := &ExecWithHeader{
+			Command:    "echo test",
+			ActionName: ActionNameSSOLogin, // In ReadOnlyExecAllowlist
+			Resource:   &mockResource{id: "test", name: "test"},
+			Service:    "local",
+			ResType:    "profile",
+		}
+
+		err := exec.Run()
+
+		// Should not return ErrReadOnlyDenied (may succeed or fail for other reasons)
+		if err == ErrReadOnlyDenied {
+			t.Error("read-only should not block allowlisted exec")
+		}
+	})
+}

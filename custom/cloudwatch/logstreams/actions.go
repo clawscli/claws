@@ -14,25 +14,22 @@ func init() {
 	// Register actions for CloudWatch Log Streams
 	action.Global.Register("cloudwatch", "log-streams", []action.Action{
 		{
-			Name:      "Tail Logs",
-			Shortcut:  "t",
-			Type:      action.ActionTypeExec,
-			Command:   `aws logs tail "${LOG_GROUP}" --log-stream-names "${NAME}" --since 1h --follow`,
-			Confirm:   false,
+			Name:     action.ActionNameTailLogs,
+			Shortcut: "t",
+			Type:     action.ActionTypeExec,
+			Command:  `aws logs tail "${LOG_GROUP}" --log-stream-names "${NAME}" --since 1h --follow`,
 		},
 		{
-			Name:      "View Recent (1h)",
-			Shortcut:  "1",
-			Type:      action.ActionTypeExec,
-			Command:   `aws logs tail "${LOG_GROUP}" --log-stream-names "${NAME}" --since 1h | less -R`,
-			Confirm:   false,
+			Name:     action.ActionNameViewRecent1h,
+			Shortcut: "1",
+			Type:     action.ActionTypeExec,
+			Command:  `aws logs tail "${LOG_GROUP}" --log-stream-names "${NAME}" --since 1h | less -R`,
 		},
 		{
-			Name:      "View Recent (24h)",
-			Shortcut:  "2",
-			Type:      action.ActionTypeExec,
-			Command:   `aws logs tail "${LOG_GROUP}" --log-stream-names "${NAME}" --since 24h | less -R`,
-			Confirm:   false,
+			Name:     action.ActionNameViewRecent24h,
+			Shortcut: "2",
+			Type:     action.ActionTypeExec,
+			Command:  `aws logs tail "${LOG_GROUP}" --log-stream-names "${NAME}" --since 24h | less -R`,
 		},
 		{
 			Name:      "Delete",

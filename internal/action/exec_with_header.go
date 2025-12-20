@@ -26,7 +26,8 @@ func setAWSEnv(cmd *exec.Cmd) {
 // Implements tea.ExecCommand interface.
 type SimpleExec struct {
 	Command    string
-	SkipAWSEnv bool // If true, don't inject AWS env vars (for commands that need to write to ~/.aws)
+	ActionName string // Action name for read-only allowlist check
+	SkipAWSEnv bool   // If true, don't inject AWS env vars (for commands that need to write to ~/.aws)
 
 	stdin  io.Reader
 	stdout io.Writer
@@ -44,6 +45,11 @@ func (e *SimpleExec) SetStderr(w io.Writer) { e.stderr = w }
 
 // Run executes the command
 func (e *SimpleExec) Run() error {
+	// Read-only enforcement at execution layer
+	if config.Global().ReadOnly() && !ReadOnlyExecAllowlist[e.ActionName] {
+		return ErrReadOnlyDenied
+	}
+
 	if e.Command == "" {
 		return ErrEmptyCommand
 	}
@@ -76,6 +82,7 @@ func (e *SimpleExec) Run() error {
 // Implements tea.ExecCommand interface
 type ExecWithHeader struct {
 	Command    string
+	ActionName string // Action name for read-only allowlist check
 	Resource   dao.Resource
 	Service    string
 	ResType    string
@@ -103,6 +110,11 @@ func (e *ExecWithHeader) SetStderr(w io.Writer) {
 
 // Run executes the command with a fixed header at the top
 func (e *ExecWithHeader) Run() error {
+	// Read-only enforcement at execution layer
+	if config.Global().ReadOnly() && !ReadOnlyExecAllowlist[e.ActionName] {
+		return ErrReadOnlyDenied
+	}
+
 	// Use provided or default stdin/stdout/stderr
 	stdin := e.stdin
 	stdout := e.stdout

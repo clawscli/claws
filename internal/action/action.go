@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/log"
 )
@@ -17,6 +18,7 @@ import (
 var (
 	ErrEmptyCommand        = errors.New("empty command")
 	ErrInvalidResourceType = errors.New("invalid resource type")
+	ErrReadOnlyDenied      = errors.New("action denied in read-only mode")
 )
 
 // UnknownOperationError creates an error for unknown operations
@@ -43,10 +45,15 @@ const (
 	ActionTypeView ActionType = "view" // Navigate to another view
 )
 
-// Profile action names - used by both custom/local/profile and view/action_menu
-// to avoid circular dependencies
+// Action names - used for read-only allowlist and cross-package references
 const (
 	ActionNameSSOLogin = "SSO Login"
+	ActionNameLogin    = "Login" // :login command - console login
+
+	// Read-only safe exec actions (read-only operations)
+	ActionNameTailLogs      = "Tail Logs"
+	ActionNameViewRecent1h  = "View Recent (1h)"
+	ActionNameViewRecent24h = "View Recent (24h)"
 )
 
 // Action defines an action that can be performed on a resource
@@ -113,9 +120,17 @@ var ReadOnlyAllowlist = map[string]bool{
 }
 
 // ReadOnlyExecAllowlist defines exec actions allowed in read-only mode.
-// Auth workflows are allowed; arbitrary shells (ECS Exec, SSM Session) are denied.
+// Auth workflows and read-only operations are allowed.
+// Arbitrary shells (ECS Exec, SSM Session) are denied.
 var ReadOnlyExecAllowlist = map[string]bool{
-	ActionNameSSOLogin: true, // aws sso login - auth workflow
+	// Auth workflows
+	ActionNameSSOLogin: true, // aws sso login
+	ActionNameLogin:    true, // :login command - console login
+
+	// Read-only log viewing
+	ActionNameTailLogs:      true, // aws logs tail --follow
+	ActionNameViewRecent1h:  true, // aws logs tail (1h)
+	ActionNameViewRecent24h: true, // aws logs tail (24h)
 }
 
 // Register registers actions for a resource type.
@@ -158,6 +173,24 @@ func RegisterExecutor(service, resource string, executor ExecutorFunc) {
 // ExecuteWithDAO executes an action with service/resource context for executor lookup
 func ExecuteWithDAO(ctx context.Context, action Action, resource dao.Resource, service, resourceType string) ActionResult {
 	log.Info("executing action", "action", action.Name, "type", action.Type, "service", service, "resourceType", resourceType, "resourceID", resource.GetID())
+
+	// Read-only enforcement at execution layer
+	if config.Global().ReadOnly() {
+		switch action.Type {
+		case ActionTypeView:
+			// always allowed
+		case ActionTypeExec:
+			if !ReadOnlyExecAllowlist[action.Name] {
+				log.Info("read-only denied exec action", "action", action.Name)
+				return ActionResult{Success: false, Error: ErrReadOnlyDenied}
+			}
+		case ActionTypeAPI:
+			if !ReadOnlyAllowlist[action.Operation] {
+				log.Info("read-only denied API action", "operation", action.Operation)
+				return ActionResult{Success: false, Error: ErrReadOnlyDenied}
+			}
+		}
+	}
 
 	var result ActionResult
 	switch action.Type {

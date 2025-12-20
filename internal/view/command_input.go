@@ -214,6 +214,7 @@ func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 		profileName := fmt.Sprintf("claws-%d", time.Now().Unix())
 		exec := &action.SimpleExec{
 			Command:    fmt.Sprintf("aws login --remote --profile %s", profileName),
+			ActionName: action.ActionNameLogin,
 			SkipAWSEnv: true,
 		}
 		return tea.Exec(exec, func(err error) tea.Msg {

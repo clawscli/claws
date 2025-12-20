@@ -203,6 +203,7 @@ func (m *ActionMenu) executeAction(act action.Action) (tea.Model, tea.Cmd) {
 		}
 		exec := &action.ExecWithHeader{
 			Command:    execCmd,
+			ActionName: act.Name,
 			Resource:   m.resource,
 			Service:    m.service,
 			ResType:    m.resType,

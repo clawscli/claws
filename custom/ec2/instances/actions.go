@@ -35,12 +35,13 @@ func init() {
 			Shortcut:  "D",
 			Type:      action.ActionTypeAPI,
 			Operation: "TerminateInstances",
+			Confirm:   true,
 		},
 		{
-			Name:      "SSM Session",
-			Shortcut:  "x",
-			Type:      action.ActionTypeExec,
-			Command:   "aws ssm start-session --target ${ID}",
+			Name:     "SSM Session",
+			Shortcut: "x",
+			Type:     action.ActionTypeExec,
+			Command:  "aws ssm start-session --target ${ID}",
 		},
 	})
 
