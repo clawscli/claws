@@ -84,7 +84,9 @@ func New(ctx context.Context, reg *registry.Registry) *App {
 // Init implements tea.Model
 func (a *App) Init() tea.Cmd {
 	// Initialize AWS context (detect region from IMDS, fetch account ID)
-	_ = aws.InitContext(a.ctx)
+	if err := aws.InitContext(a.ctx); err != nil {
+		config.Global().AddWarning("AWS init failed: " + err.Error())
+	}
 
 	// Show warnings if any
 	if len(config.Global().Warnings()) > 0 {

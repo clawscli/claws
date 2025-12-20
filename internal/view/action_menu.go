@@ -69,8 +69,7 @@ func NewActionMenu(ctx context.Context, resource dao.Resource, service, resType 
 	if config.Global().ReadOnly() {
 		filtered := make([]action.Action, 0, len(actions))
 		for _, act := range actions {
-			if !act.Dangerous && act.Type != action.ActionTypeAPI {
-				// In read-only mode, only allow non-dangerous, non-API actions (like view, exec for SSH)
+			if !act.Dangerous {
 				filtered = append(filtered, act)
 			}
 		}

@@ -56,8 +56,8 @@ func BuildSubprocessEnv(baseEnv []string, sel config.ProfileSelection, region st
 		env = append(env, "AWS_PROFILE="+sel.ProfileName)
 	case config.ModeEnvOnly:
 		// Force CLI to ignore config files, use IMDS/env only
-		env = append(env, "AWS_CONFIG_FILE=/dev/null")
-		env = append(env, "AWS_SHARED_CREDENTIALS_FILE=/dev/null")
+		env = append(env, "AWS_CONFIG_FILE="+os.DevNull)
+		env = append(env, "AWS_SHARED_CREDENTIALS_FILE="+os.DevNull)
 	}
 
 	// Add region if set
