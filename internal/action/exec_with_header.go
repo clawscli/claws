@@ -14,12 +14,33 @@ import (
 	"golang.org/x/term"
 )
 
-// setAWSProfileEnv sets the AWS_PROFILE environment variable on the command
-// if a profile is selected (excluding UseEnvironmentCredentials which uses IMDS/env vars).
+// setAWSProfileEnv configures AWS_PROFILE environment variable on the command.
+// - If a profile is selected: sets AWS_PROFILE to the profile name
+// - If UseEnvironmentCredentials: removes AWS_PROFILE to use IMDS/env vars
+// - Preserves any existing cmd.Env entries
 func setAWSProfileEnv(cmd *exec.Cmd) {
-	if profile := config.Global().Profile(); profile != "" && profile != config.UseEnvironmentCredentials {
-		cmd.Env = append(os.Environ(), "AWS_PROFILE="+profile)
+	profile := config.Global().Profile()
+
+	// Start with existing cmd.Env or os.Environ()
+	baseEnv := cmd.Env
+	if baseEnv == nil {
+		baseEnv = os.Environ()
 	}
+
+	// Filter out existing AWS_PROFILE
+	env := make([]string, 0, len(baseEnv)+1)
+	for _, e := range baseEnv {
+		if !strings.HasPrefix(e, "AWS_PROFILE=") {
+			env = append(env, e)
+		}
+	}
+
+	// Add AWS_PROFILE only if a real profile is selected
+	if profile != "" && profile != config.UseEnvironmentCredentials {
+		env = append(env, "AWS_PROFILE="+profile)
+	}
+
+	cmd.Env = env
 }
 
 // SimpleExec represents a simple exec command without header.

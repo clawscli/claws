@@ -10,13 +10,18 @@ import (
 	"github.com/clawscli/claws/internal/view"
 )
 
+// Operation constants for profile actions
+const (
+	OperationSwitchProfile = "SwitchProfile"
+)
+
 func init() {
 	action.Global.Register("local", "profile", []action.Action{
 		{
 			Name:      "Switch",
 			Shortcut:  "s",
 			Type:      action.ActionTypeAPI,
-			Operation: "SwitchProfile",
+			Operation: OperationSwitchProfile,
 		},
 		{
 			Name:     action.ActionNameSSOLogin,
@@ -31,7 +36,7 @@ func init() {
 
 func executeProfileAction(_ context.Context, act action.Action, resource dao.Resource) action.ActionResult {
 	switch act.Operation {
-	case "SwitchProfile":
+	case OperationSwitchProfile:
 		return executeSwitchProfile(resource)
 	default:
 		return action.UnknownOperationResult(act.Operation)

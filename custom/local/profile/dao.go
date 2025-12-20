@@ -2,7 +2,9 @@ package profile
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -195,7 +197,7 @@ func loadProfiles() (map[string]*ProfileData, error) {
 		return nil, err
 	}
 	cfg, err := ini.Load(configPath)
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		log.Debug("failed to parse aws config", "path", configPath, "error", err)
 	}
 	if err == nil {
@@ -234,7 +236,7 @@ func loadProfiles() (map[string]*ProfileData, error) {
 		return nil, err
 	}
 	creds, err := ini.Load(credPath)
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		log.Debug("failed to parse aws credentials", "path", credPath, "error", err)
 	}
 	if err == nil {
