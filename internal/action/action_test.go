@@ -2,8 +2,11 @@ package action
 
 import (
 	"context"
+	"os/exec"
+	"strings"
 	"testing"
 
+	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/dao"
 )
 
@@ -512,5 +515,180 @@ func TestAction_Struct(t *testing.T) {
 	}
 	if action.Vars["key"] != "value" {
 		t.Errorf("Vars[key] = %q, want %q", action.Vars["key"], "value")
+	}
+}
+
+func TestSetAWSEnv(t *testing.T) {
+	tests := []struct {
+		name          string
+		mode          string // "sdk_default", "env_only", "named_profile"
+		profileName   string
+		region        string
+		baseEnv       []string
+		wantProfile   string // expected AWS_PROFILE value, "" means not set
+		wantNoProfile bool   // true if AWS_PROFILE should be removed
+		wantRegion    string // expected AWS_REGION value, "" means not modified
+		wantDefRegion string // expected AWS_DEFAULT_REGION value
+	}{
+		{
+			name:          "SDKDefault preserves existing AWS_PROFILE",
+			mode:          "sdk_default",
+			region:        "",
+			baseEnv:       []string{"AWS_PROFILE=existing", "PATH=/usr/bin"},
+			wantProfile:   "existing",
+			wantNoProfile: false,
+		},
+		{
+			name:          "SDKDefault with region injects both region vars",
+			mode:          "sdk_default",
+			region:        "us-west-2",
+			baseEnv:       []string{"PATH=/usr/bin"},
+			wantProfile:   "",
+			wantNoProfile: false,
+			wantRegion:    "us-west-2",
+			wantDefRegion: "us-west-2",
+		},
+		{
+			name:          "NamedProfile sets AWS_PROFILE",
+			mode:          "named_profile",
+			profileName:   "myprofile",
+			region:        "",
+			baseEnv:       []string{"PATH=/usr/bin"},
+			wantProfile:   "myprofile",
+			wantNoProfile: false,
+		},
+		{
+			name:          "NamedProfile replaces existing AWS_PROFILE",
+			mode:          "named_profile",
+			profileName:   "newprofile",
+			region:        "",
+			baseEnv:       []string{"AWS_PROFILE=oldprofile", "PATH=/usr/bin"},
+			wantProfile:   "newprofile",
+			wantNoProfile: false,
+		},
+		{
+			name:          "NamedProfile with region sets both",
+			mode:          "named_profile",
+			profileName:   "myprofile",
+			region:        "ap-northeast-1",
+			baseEnv:       []string{"PATH=/usr/bin"},
+			wantProfile:   "myprofile",
+			wantNoProfile: false,
+			wantRegion:    "ap-northeast-1",
+			wantDefRegion: "ap-northeast-1",
+		},
+		{
+			name:          "EnvOnly removes AWS_PROFILE and ignores config files",
+			mode:          "env_only",
+			region:        "",
+			baseEnv:       []string{"AWS_PROFILE=toremove", "PATH=/usr/bin"},
+			wantProfile:   "",
+			wantNoProfile: true,
+		},
+		{
+			name:          "EnvOnly with region removes profile and sets region",
+			mode:          "env_only",
+			region:        "eu-west-1",
+			baseEnv:       []string{"AWS_PROFILE=toremove", "PATH=/usr/bin"},
+			wantProfile:   "",
+			wantNoProfile: true,
+			wantRegion:    "eu-west-1",
+			wantDefRegion: "eu-west-1",
+		},
+		{
+			name:          "EnvOnly sets config file env vars to /dev/null",
+			mode:          "env_only",
+			region:        "",
+			baseEnv:       []string{"PATH=/usr/bin"},
+			wantProfile:   "",
+			wantNoProfile: true,
+		},
+		{
+			name:          "Region replaces existing region vars",
+			mode:          "sdk_default",
+			region:        "sa-east-1",
+			baseEnv:       []string{"AWS_REGION=old", "AWS_DEFAULT_REGION=old", "PATH=/usr/bin"},
+			wantRegion:    "sa-east-1",
+			wantDefRegion: "sa-east-1",
+		},
+		{
+			name:          "Empty region preserves existing region vars",
+			mode:          "sdk_default",
+			region:        "",
+			baseEnv:       []string{"AWS_REGION=existing", "AWS_DEFAULT_REGION=existing", "PATH=/usr/bin"},
+			wantRegion:    "existing",
+			wantDefRegion: "existing",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup global config
+			cfg := config.Global()
+			switch tt.mode {
+			case "sdk_default":
+				cfg.UseSDKDefault()
+			case "env_only":
+				cfg.UseEnvOnly()
+			case "named_profile":
+				cfg.UseProfile(tt.profileName)
+			}
+			cfg.SetRegion(tt.region)
+
+			// Create command with base env
+			cmd := &exec.Cmd{Env: tt.baseEnv}
+
+			// Call setAWSEnv
+			setAWSEnv(cmd)
+
+			// Parse resulting env into map
+			envMap := make(map[string]string)
+			for _, e := range cmd.Env {
+				parts := strings.SplitN(e, "=", 2)
+				if len(parts) == 2 {
+					envMap[parts[0]] = parts[1]
+				}
+			}
+
+			// Check AWS_PROFILE
+			if tt.wantNoProfile {
+				if _, exists := envMap["AWS_PROFILE"]; exists {
+					t.Errorf("AWS_PROFILE should be removed, but found: %s", envMap["AWS_PROFILE"])
+				}
+			} else if tt.wantProfile != "" {
+				if envMap["AWS_PROFILE"] != tt.wantProfile {
+					t.Errorf("AWS_PROFILE = %q, want %q", envMap["AWS_PROFILE"], tt.wantProfile)
+				}
+			}
+
+			// Check AWS_REGION
+			if tt.wantRegion != "" {
+				if envMap["AWS_REGION"] != tt.wantRegion {
+					t.Errorf("AWS_REGION = %q, want %q", envMap["AWS_REGION"], tt.wantRegion)
+				}
+			}
+
+			// Check AWS_DEFAULT_REGION
+			if tt.wantDefRegion != "" {
+				if envMap["AWS_DEFAULT_REGION"] != tt.wantDefRegion {
+					t.Errorf("AWS_DEFAULT_REGION = %q, want %q", envMap["AWS_DEFAULT_REGION"], tt.wantDefRegion)
+				}
+			}
+
+			// Check PATH is preserved
+			if envMap["PATH"] != "/usr/bin" {
+				t.Errorf("PATH should be preserved, got %q", envMap["PATH"])
+			}
+
+			// Check EnvOnly sets config file vars to /dev/null
+			if tt.mode == "env_only" {
+				if envMap["AWS_CONFIG_FILE"] != "/dev/null" {
+					t.Errorf("AWS_CONFIG_FILE = %q, want /dev/null", envMap["AWS_CONFIG_FILE"])
+				}
+				if envMap["AWS_SHARED_CREDENTIALS_FILE"] != "/dev/null" {
+					t.Errorf("AWS_SHARED_CREDENTIALS_FILE = %q, want /dev/null", envMap["AWS_SHARED_CREDENTIALS_FILE"])
+				}
+			}
+		})
 	}
 }

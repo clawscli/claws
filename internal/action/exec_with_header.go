@@ -14,13 +14,21 @@ import (
 	"golang.org/x/term"
 )
 
-// setAWSProfileEnv configures AWS_PROFILE environment variable on the command.
-// Behavior depends on the credential mode:
-//   - SDKDefault: preserve existing AWS_PROFILE (don't modify env)
+// setAWSEnv configures AWS environment variables on the command.
+// Handles both profile selection and region injection.
+//
+// Profile behavior depends on the credential mode:
+//   - SDKDefault: preserve existing AWS_PROFILE (don't modify)
 //   - EnvOnly: remove AWS_PROFILE to force IMDS/env vars
 //   - NamedProfile: set AWS_PROFILE to the profile name
-func setAWSProfileEnv(cmd *exec.Cmd) {
-	sel := config.Global().Selection()
+//
+// Region behavior:
+//   - If region is set in config, inject both AWS_REGION and AWS_DEFAULT_REGION
+//   - If region is empty, don't modify existing region env vars
+func setAWSEnv(cmd *exec.Cmd) {
+	cfg := config.Global()
+	sel := cfg.Selection()
+	region := cfg.Region()
 
 	// Start with existing cmd.Env or os.Environ()
 	baseEnv := cmd.Env
@@ -28,32 +36,53 @@ func setAWSProfileEnv(cmd *exec.Cmd) {
 		baseEnv = os.Environ()
 	}
 
+	// Build filtered env, removing keys we'll set
+	keysToRemove := map[string]bool{}
+
 	switch sel.Mode {
-	case config.ModeSDKDefault:
-		// Preserve existing environment (including any AWS_PROFILE)
-		cmd.Env = baseEnv
-
 	case config.ModeEnvOnly:
-		// Remove AWS_PROFILE to force IMDS/env credentials
-		env := make([]string, 0, len(baseEnv))
-		for _, e := range baseEnv {
-			if !strings.HasPrefix(e, "AWS_PROFILE=") {
-				env = append(env, e)
-			}
-		}
-		cmd.Env = env
-
+		keysToRemove["AWS_PROFILE"] = true
 	case config.ModeNamedProfile:
-		// Replace AWS_PROFILE with the selected profile
-		env := make([]string, 0, len(baseEnv)+1)
-		for _, e := range baseEnv {
-			if !strings.HasPrefix(e, "AWS_PROFILE=") {
-				env = append(env, e)
+		keysToRemove["AWS_PROFILE"] = true
+	}
+
+	if region != "" {
+		keysToRemove["AWS_REGION"] = true
+		keysToRemove["AWS_DEFAULT_REGION"] = true
+	}
+
+	// Filter and rebuild env
+	env := make([]string, 0, len(baseEnv)+3)
+	for _, e := range baseEnv {
+		keep := true
+		for key := range keysToRemove {
+			if strings.HasPrefix(e, key+"=") {
+				keep = false
+				break
 			}
 		}
-		env = append(env, "AWS_PROFILE="+sel.ProfileName)
-		cmd.Env = env
+		if keep {
+			env = append(env, e)
+		}
 	}
+
+	// Add profile-related env vars based on mode
+	switch sel.Mode {
+	case config.ModeNamedProfile:
+		env = append(env, "AWS_PROFILE="+sel.ProfileName)
+	case config.ModeEnvOnly:
+		// Force CLI to ignore config files, use IMDS/env only
+		env = append(env, "AWS_CONFIG_FILE=/dev/null")
+		env = append(env, "AWS_SHARED_CREDENTIALS_FILE=/dev/null")
+	}
+
+	// Add region if set
+	if region != "" {
+		env = append(env, "AWS_REGION="+region)
+		env = append(env, "AWS_DEFAULT_REGION="+region)
+	}
+
+	cmd.Env = env
 }
 
 // SimpleExec represents a simple exec command without header.
@@ -98,7 +127,7 @@ func (e *SimpleExec) Run() error {
 	cmd.Stdin = stdin
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
-	setAWSProfileEnv(cmd)
+	setAWSEnv(cmd)
 
 	return cmd.Run()
 }
@@ -188,7 +217,7 @@ func (e *ExecWithHeader) Run() error {
 	cmd.Stdin = stdin
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
-	setAWSProfileEnv(cmd)
+	setAWSEnv(cmd)
 
 	// Run the command
 	err := cmd.Run()

@@ -174,6 +174,7 @@ func executeExec(ctx context.Context, action Action, resource dao.Resource) Acti
 	execCmd.Stdin = os.Stdin
 	execCmd.Stdout = os.Stdout
 	execCmd.Stderr = os.Stderr
+	setAWSEnv(execCmd)
 
 	err = execCmd.Run()
 	if err != nil {
