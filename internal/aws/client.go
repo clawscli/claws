@@ -12,10 +12,7 @@ import (
 // NewConfig creates a new AWS config with the application's region and profile settings.
 // This is the preferred way to create AWS configs in DAOs.
 func NewConfig(ctx context.Context) (aws.Config, error) {
-	opts := []func(*config.LoadOptions) error{
-		config.WithEC2IMDSRegion(),
-	}
-	opts = append(opts, appconfig.ProfileLoadOptions(appconfig.Global().Profile())...)
+	opts := appconfig.BaseLoadOptions(appconfig.Global().Profile())
 
 	if region := appconfig.Global().Region(); region != "" {
 		opts = append(opts, config.WithRegion(region))
@@ -31,10 +28,8 @@ func NewConfig(ctx context.Context) (aws.Config, error) {
 // NewConfigWithRegion creates a new AWS config with a specific region override.
 // Use this when you need to make API calls to a specific region (e.g., S3 bucket operations).
 func NewConfigWithRegion(ctx context.Context, region string) (aws.Config, error) {
-	opts := []func(*config.LoadOptions) error{
-		config.WithRegion(region),
-	}
-	opts = append(opts, appconfig.ProfileLoadOptions(appconfig.Global().Profile())...)
+	opts := appconfig.BaseLoadOptions(appconfig.Global().Profile())
+	opts = append(opts, config.WithRegion(region))
 
 	cfg, err := config.LoadDefaultConfig(ctx, opts...)
 	if err != nil {

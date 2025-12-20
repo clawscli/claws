@@ -14,6 +14,57 @@ import (
 	"golang.org/x/term"
 )
 
+// SimpleExec represents a simple exec command without header.
+// Implements tea.ExecCommand interface.
+type SimpleExec struct {
+	Command string
+
+	stdin  io.Reader
+	stdout io.Writer
+	stderr io.Writer
+}
+
+// SetStdin sets the stdin for the command
+func (e *SimpleExec) SetStdin(r io.Reader) { e.stdin = r }
+
+// SetStdout sets the stdout for the command
+func (e *SimpleExec) SetStdout(w io.Writer) { e.stdout = w }
+
+// SetStderr sets the stderr for the command
+func (e *SimpleExec) SetStderr(w io.Writer) { e.stderr = w }
+
+// Run executes the command
+func (e *SimpleExec) Run() error {
+	if e.Command == "" {
+		return fmt.Errorf("empty command")
+	}
+
+	stdin := e.stdin
+	stdout := e.stdout
+	stderr := e.stderr
+	if stdin == nil {
+		stdin = os.Stdin
+	}
+	if stdout == nil {
+		stdout = os.Stdout
+	}
+	if stderr == nil {
+		stderr = os.Stderr
+	}
+
+	cmd := exec.Command("/bin/sh", "-c", e.Command)
+	cmd.Stdin = stdin
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+
+	// Set AWS_PROFILE if a profile is selected
+	if profile := config.Global().Profile(); profile != "" && profile != config.UseEnvironmentCredentials {
+		cmd.Env = append(os.Environ(), "AWS_PROFILE="+profile)
+	}
+
+	return cmd.Run()
+}
+
 // ExecWithHeader represents an exec command that should run with a fixed header
 // Implements tea.ExecCommand interface
 type ExecWithHeader struct {
@@ -99,6 +150,12 @@ func (e *ExecWithHeader) Run() error {
 	cmd.Stdin = stdin
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
+
+	// Set AWS_PROFILE environment variable if a profile is selected
+	// (skip for UseEnvironmentCredentials which means use IMDS/env vars)
+	if profile := config.Global().Profile(); profile != "" && profile != config.UseEnvironmentCredentials {
+		cmd.Env = append(os.Environ(), "AWS_PROFILE="+profile)
+	}
 
 	// Run the command
 	err := cmd.Run()

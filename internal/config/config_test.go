@@ -127,3 +127,111 @@ func TestCommonRegions(t *testing.T) {
 		}
 	}
 }
+
+func TestProfileLoadOptions(t *testing.T) {
+	tests := []struct {
+		name        string
+		profile     string
+		wantNil     bool
+		wantLen     int
+		description string
+	}{
+		{
+			name:        "empty profile",
+			profile:     "",
+			wantNil:     true,
+			description: "empty profile should return nil (SDK default behavior)",
+		},
+		{
+			name:        "environment credentials",
+			profile:     UseEnvironmentCredentials,
+			wantLen:     2,
+			description: "UseEnvironmentCredentials should return 2 options (empty config/creds files)",
+		},
+		{
+			name:        "named profile",
+			profile:     "production",
+			wantLen:     1,
+			description: "named profile should return 1 option (WithSharedConfigProfile)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := ProfileLoadOptions(tt.profile)
+			if tt.wantNil {
+				if opts != nil {
+					t.Errorf("ProfileLoadOptions(%q) = %v, want nil", tt.profile, opts)
+				}
+				return
+			}
+			if len(opts) != tt.wantLen {
+				t.Errorf("ProfileLoadOptions(%q) returned %d options, want %d", tt.profile, len(opts), tt.wantLen)
+			}
+		})
+	}
+}
+
+func TestBaseLoadOptions(t *testing.T) {
+	tests := []struct {
+		name    string
+		profile string
+		wantLen int
+	}{
+		{
+			name:    "empty profile",
+			profile: "",
+			wantLen: 1, // just IMDS region
+		},
+		{
+			name:    "environment credentials",
+			profile: UseEnvironmentCredentials,
+			wantLen: 3, // IMDS region + 2 empty file options
+		},
+		{
+			name:    "named profile",
+			profile: "production",
+			wantLen: 2, // IMDS region + profile option
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := BaseLoadOptions(tt.profile)
+			if len(opts) != tt.wantLen {
+				t.Errorf("BaseLoadOptions(%q) returned %d options, want %d", tt.profile, len(opts), tt.wantLen)
+			}
+		})
+	}
+}
+
+func TestConfig_DemoMode(t *testing.T) {
+	cfg := &Config{accountID: "111122223333"}
+
+	// Demo mode disabled - should return real account ID
+	if cfg.AccountID() != "111122223333" {
+		t.Errorf("AccountID() = %q, want %q", cfg.AccountID(), "111122223333")
+	}
+
+	// Enable demo mode
+	cfg.SetDemoMode(true)
+	if !cfg.DemoMode() {
+		t.Error("DemoMode() = false, want true")
+	}
+
+	// Should return masked account ID
+	if cfg.AccountID() != DemoAccountID {
+		t.Errorf("AccountID() = %q, want %q (demo mode)", cfg.AccountID(), DemoAccountID)
+	}
+
+	// MaskAccountID should also mask
+	if cfg.MaskAccountID("999988887777") != DemoAccountID {
+		t.Errorf("MaskAccountID() = %q, want %q", cfg.MaskAccountID("999988887777"), DemoAccountID)
+	}
+
+	// Disable demo mode
+	cfg.SetDemoMode(false)
+	if cfg.AccountID() != "111122223333" {
+		t.Errorf("AccountID() = %q, want %q after disabling demo mode", cfg.AccountID(), "111122223333")
+	}
+}

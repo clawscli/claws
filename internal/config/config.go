@@ -194,8 +194,9 @@ func (c *Config) Init(ctx context.Context) error {
 	return nil
 }
 
-// RefreshAccountID re-fetches the account ID for the current profile
-func (c *Config) RefreshAccountID(ctx context.Context) error {
+// RefreshForProfile re-fetches region and account ID for the current profile.
+// Region is updated from the profile's default region if configured.
+func (c *Config) RefreshForProfile(ctx context.Context) error {
 	c.mu.RLock()
 	profile := c.profile
 	c.mu.RUnlock()
@@ -205,6 +206,14 @@ func (c *Config) RefreshAccountID(ctx context.Context) error {
 		return err
 	}
 
+	// Update region from profile's default (if set)
+	if cfg.Region != "" {
+		c.mu.Lock()
+		c.region = cfg.Region
+		c.mu.Unlock()
+	}
+
+	// Get account ID from STS
 	stsClient := sts.NewFromConfig(cfg)
 	identity, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
 	if err != nil {
@@ -221,6 +230,12 @@ func (c *Config) RefreshAccountID(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// RefreshAccountID re-fetches the account ID for the current profile.
+// Deprecated: Use RefreshForProfile instead to also update region.
+func (c *Config) RefreshAccountID(ctx context.Context) error {
+	return c.RefreshForProfile(ctx)
 }
 
 // checkDependencies checks for required external tools

@@ -47,3 +47,6 @@ claws.log
 
 # lsmcp cache
 .lsmcp/cache
+
+# Node.js
+node_modules/

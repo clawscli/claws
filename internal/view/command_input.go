@@ -2,11 +2,15 @@ package view
 
 import (
 	"context"
+	"fmt"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/clawscli/claws/internal/action"
+	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/registry"
 	"github.com/clawscli/claws/internal/ui"
 )
@@ -202,6 +206,21 @@ func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 		return c.parseSortCommand(input), nil
 	}
 
+	// Handle login command: :login - login via AWS console and get credentials
+	// Creates a temporary profile to avoid polluting existing profiles
+	if input == "login" {
+		profileName := fmt.Sprintf("claws-%d", time.Now().Unix())
+		exec := &action.SimpleExec{Command: fmt.Sprintf("aws login --remote --profile %s", profileName)}
+		return tea.Exec(exec, func(err error) tea.Msg {
+			if err != nil {
+				return nil
+			}
+			// Switch to the new profile
+			config.Global().SetProfile(profileName)
+			return ProfileChangedMsg{Profile: profileName}
+		}), nil
+	}
+
 	// Handle tag command: :tag <filter> - filter current view by tag
 	if input == "tag" || strings.HasPrefix(input, "tag ") {
 		tagFilter := ""
@@ -343,6 +362,11 @@ func (c *CommandInput) GetSuggestions() []string {
 		}
 	} else {
 		// Suggest services and special commands
+		// Add "console" command
+		if strings.HasPrefix("console", input) {
+			suggestions = append(suggestions, "console")
+		}
+
 		// Add "tag" command (current view filter)
 		if strings.HasPrefix("tag", input) && !strings.HasPrefix("tags", input) {
 			suggestions = append(suggestions, "tag")

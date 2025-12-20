@@ -155,20 +155,45 @@ func parseConfigSectionName(sectionName string) (string, bool) {
 	return "", false
 }
 
-// loadProfiles parses ~/.aws/config and ~/.aws/credentials files
-func loadProfiles() (map[string]*ProfileData, error) {
+// getConfigPath returns the path to the AWS config file.
+// Respects AWS_CONFIG_FILE environment variable, falls back to ~/.aws/config.
+func getConfigPath() (string, error) {
+	if path := os.Getenv("AWS_CONFIG_FILE"); path != "" {
+		return path, nil
+	}
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return nil, fmt.Errorf("get home dir: %w", err)
+		return "", fmt.Errorf("get home dir: %w", err)
 	}
+	return filepath.Join(homeDir, ".aws", "config"), nil
+}
 
+// getCredentialsPath returns the path to the AWS credentials file.
+// Respects AWS_SHARED_CREDENTIALS_FILE environment variable, falls back to ~/.aws/credentials.
+func getCredentialsPath() (string, error) {
+	if path := os.Getenv("AWS_SHARED_CREDENTIALS_FILE"); path != "" {
+		return path, nil
+	}
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("get home dir: %w", err)
+	}
+	return filepath.Join(homeDir, ".aws", "credentials"), nil
+}
+
+// loadProfiles parses ~/.aws/config and ~/.aws/credentials files.
+// Respects AWS_CONFIG_FILE and AWS_SHARED_CREDENTIALS_FILE environment variables.
+func loadProfiles() (map[string]*ProfileData, error) {
 	profiles := make(map[string]*ProfileData)
 
 	// Always include default
 	profiles["default"] = &ProfileData{Name: "default"}
 
-	// Parse ~/.aws/config
-	configPath := filepath.Join(homeDir, ".aws", "config")
+	// Parse config file
+	configPath, err := getConfigPath()
+	if err != nil {
+		return nil, err
+	}
 	cfg, err := ini.Load(configPath)
 	if err != nil && !os.IsNotExist(err) {
 		log.Debug("failed to parse aws config", "path", configPath, "error", err)
@@ -203,8 +228,11 @@ func loadProfiles() (map[string]*ProfileData, error) {
 		}
 	}
 
-	// Parse ~/.aws/credentials
-	credPath := filepath.Join(homeDir, ".aws", "credentials")
+	// Parse credentials file
+	credPath, err := getCredentialsPath()
+	if err != nil {
+		return nil, err
+	}
 	creds, err := ini.Load(credPath)
 	if err != nil && !os.IsNotExist(err) {
 		log.Debug("failed to parse aws credentials", "path", credPath, "error", err)

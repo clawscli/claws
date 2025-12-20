@@ -309,13 +309,10 @@ func (m *ActionMenu) StatusLine() string {
 	return fmt.Sprintf("Actions for %s • Enter to execute • Esc to cancel", m.resource.GetID())
 }
 
-// Profile login action names (must match constants in custom/local/profile/actions.go)
-const (
-	profileActionSSOLogin     = "SSO Login"
-	profileActionConsoleLogin = "Console Login"
-)
-
-// isProfileLoginAction returns true if the action name is a profile login action
+// isProfileLoginAction returns true if the action name is a profile login action.
+// Uses constants from custom/local/profile/actions.go.
 func isProfileLoginAction(name string) bool {
-	return name == profileActionSSOLogin || name == profileActionConsoleLogin
+	// Import would create circular dependency, so use string matching.
+	// This value must match ActionNameSSOLogin in custom/local/profile/actions.go
+	return name == "SSO Login"
 }

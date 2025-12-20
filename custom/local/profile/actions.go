@@ -12,8 +12,7 @@ import (
 
 // Action names for profile operations (used by action_menu for post-exec handling)
 const (
-	ActionNameSSOLogin     = "SSO Login"
-	ActionNameConsoleLogin = "Console Login"
+	ActionNameSSOLogin = "SSO Login"
 )
 
 func init() {
@@ -29,12 +28,6 @@ func init() {
 			Shortcut: "l",
 			Type:     action.ActionTypeExec,
 			Command:  "aws sso login --profile ${NAME}",
-		},
-		{
-			Name:     ActionNameConsoleLogin,
-			Shortcut: "c",
-			Type:     action.ActionTypeExec,
-			Command:  "aws login --remote",
 		},
 	})
 
