@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/log"
 	navmsg "github.com/clawscli/claws/internal/msg"
@@ -82,8 +83,8 @@ func New(ctx context.Context, reg *registry.Registry) *App {
 
 // Init implements tea.Model
 func (a *App) Init() tea.Cmd {
-	// Initialize config (detect region from IMDS)
-	_ = config.Global().Init(a.ctx)
+	// Initialize AWS context (detect region from IMDS, fetch account ID)
+	_ = aws.InitContext(a.ctx)
 
 	// Show warnings if any
 	if len(config.Global().Warnings()) > 0 {
@@ -268,7 +269,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case navmsg.ProfileChangedMsg:
 		log.Info("profile changed", "selection", msg.Selection.DisplayName(), "currentView", fmt.Sprintf("%T", a.currentView), "stackDepth", len(a.viewStack))
 		// Refresh region and account ID for the new selection
-		if err := config.Global().RefreshForProfile(a.ctx); err != nil {
+		if err := aws.RefreshContext(a.ctx); err != nil {
 			log.Debug("failed to refresh profile config", "error", err)
 		}
 		// Pop views until we find a refreshable AWS resource view (skip local service views)

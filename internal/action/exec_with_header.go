@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/ui"
@@ -15,74 +16,10 @@ import (
 )
 
 // setAWSEnv configures AWS environment variables on the command.
-// Handles both profile selection and region injection.
-//
-// Profile behavior depends on the credential mode:
-//   - SDKDefault: preserve existing AWS_PROFILE (don't modify)
-//   - EnvOnly: remove AWS_PROFILE to force IMDS/env vars
-//   - NamedProfile: set AWS_PROFILE to the profile name
-//
-// Region behavior:
-//   - If region is set in config, inject both AWS_REGION and AWS_DEFAULT_REGION
-//   - If region is empty, don't modify existing region env vars
+// Delegates to aws.BuildSubprocessEnv for consistent handling.
 func setAWSEnv(cmd *exec.Cmd) {
 	cfg := config.Global()
-	sel := cfg.Selection()
-	region := cfg.Region()
-
-	// Start with existing cmd.Env or os.Environ()
-	baseEnv := cmd.Env
-	if baseEnv == nil {
-		baseEnv = os.Environ()
-	}
-
-	// Build filtered env, removing keys we'll set
-	keysToRemove := map[string]bool{}
-
-	switch sel.Mode {
-	case config.ModeEnvOnly:
-		keysToRemove["AWS_PROFILE"] = true
-	case config.ModeNamedProfile:
-		keysToRemove["AWS_PROFILE"] = true
-	}
-
-	if region != "" {
-		keysToRemove["AWS_REGION"] = true
-		keysToRemove["AWS_DEFAULT_REGION"] = true
-	}
-
-	// Filter and rebuild env
-	env := make([]string, 0, len(baseEnv)+3)
-	for _, e := range baseEnv {
-		keep := true
-		for key := range keysToRemove {
-			if strings.HasPrefix(e, key+"=") {
-				keep = false
-				break
-			}
-		}
-		if keep {
-			env = append(env, e)
-		}
-	}
-
-	// Add profile-related env vars based on mode
-	switch sel.Mode {
-	case config.ModeNamedProfile:
-		env = append(env, "AWS_PROFILE="+sel.ProfileName)
-	case config.ModeEnvOnly:
-		// Force CLI to ignore config files, use IMDS/env only
-		env = append(env, "AWS_CONFIG_FILE=/dev/null")
-		env = append(env, "AWS_SHARED_CREDENTIALS_FILE=/dev/null")
-	}
-
-	// Add region if set
-	if region != "" {
-		env = append(env, "AWS_REGION="+region)
-		env = append(env, "AWS_DEFAULT_REGION="+region)
-	}
-
-	cmd.Env = env
+	cmd.Env = aws.BuildSubprocessEnv(cmd.Env, cfg.Selection(), cfg.Region())
 }
 
 // SimpleExec represents a simple exec command without header.

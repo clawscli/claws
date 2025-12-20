@@ -94,8 +94,8 @@ func TestConfig_Warnings(t *testing.T) {
 	}
 
 	// Add warnings
-	cfg.addWarning("warning 1")
-	cfg.addWarning("warning 2")
+	cfg.AddWarning("warning 1")
+	cfg.AddWarning("warning 2")
 
 	warnings := cfg.Warnings()
 	if len(warnings) != 2 {
@@ -120,60 +120,6 @@ func TestGlobal(t *testing.T) {
 	cfg2 := Global()
 	if cfg != cfg2 {
 		t.Error("Global() should return same instance")
-	}
-}
-
-func TestCommonRegions(t *testing.T) {
-	if len(CommonRegions) == 0 {
-		t.Error("CommonRegions should not be empty")
-	}
-
-	// Check some expected regions are present
-	expectedRegions := []string{"us-east-1", "us-west-2", "eu-west-1", "ap-northeast-1"}
-	for _, expected := range expectedRegions {
-		found := false
-		for _, region := range CommonRegions {
-			if region == expected {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Errorf("CommonRegions should contain %q", expected)
-		}
-	}
-}
-
-func TestSelectionLoadOptions(t *testing.T) {
-	tests := []struct {
-		name    string
-		sel     ProfileSelection
-		wantLen int
-	}{
-		{
-			name:    "SDK default",
-			sel:     SDKDefault(),
-			wantLen: 1, // just IMDS region
-		},
-		{
-			name:    "env only",
-			sel:     EnvOnly(),
-			wantLen: 3, // IMDS region + 2 empty file options
-		},
-		{
-			name:    "named profile",
-			sel:     NamedProfile("production"),
-			wantLen: 2, // IMDS region + profile option
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			opts := SelectionLoadOptions(tt.sel)
-			if len(opts) != tt.wantLen {
-				t.Errorf("SelectionLoadOptions(%v) returned %d options, want %d", tt.sel, len(opts), tt.wantLen)
-			}
-		})
 	}
 }
 

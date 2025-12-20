@@ -6,6 +6,7 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/config"
 	navmsg "github.com/clawscli/claws/internal/msg"
 	"github.com/clawscli/claws/internal/ui"
@@ -57,7 +58,7 @@ func (r *RegionSelector) Init() tea.Cmd {
 }
 
 func (r *RegionSelector) loadRegions() tea.Msg {
-	regions, _ := config.FetchAvailableRegions(r.ctx)
+	regions, _ := aws.FetchAvailableRegions(r.ctx)
 	return regionsLoadedMsg{regions: regions}
 }
 

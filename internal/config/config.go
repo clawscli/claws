@@ -1,37 +1,8 @@
 package config
 
 import (
-	"context"
 	"sync"
-
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/ec2"
-	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
-
-// SelectionLoadOptions returns config load options based on the given ProfileSelection.
-// This centralizes the logic for handling different credential modes:
-//   - ModeSDKDefault: no extra options, let SDK use standard chain
-//   - ModeEnvOnly: ignore ~/.aws files, use IMDS/environment only
-//   - ModeNamedProfile: explicitly use that profile from ~/.aws files
-func SelectionLoadOptions(sel ProfileSelection) []func(*config.LoadOptions) error {
-	opts := []func(*config.LoadOptions) error{
-		config.WithEC2IMDSRegion(),
-	}
-	switch sel.Mode {
-	case ModeEnvOnly:
-		opts = append(opts,
-			config.WithSharedConfigFiles([]string{}),
-			config.WithSharedCredentialsFiles([]string{}),
-		)
-	case ModeNamedProfile:
-		opts = append(opts, config.WithSharedConfigProfile(sel.ProfileName))
-	case ModeSDKDefault:
-		// No extra options - let SDK use standard chain
-	}
-	return opts
-}
 
 // DemoAccountID is the masked account ID shown in demo mode
 const DemoAccountID = "123456789012"
@@ -150,17 +121,6 @@ func (s ProfileSelection) ID() string {
 	}
 }
 
-// fetchAccountID fetches the AWS account ID using STS GetCallerIdentity.
-// Returns empty string on error.
-func fetchAccountID(ctx context.Context, cfg aws.Config) string {
-	stsClient := sts.NewFromConfig(cfg)
-	identity, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
-	if err != nil || identity.Account == nil {
-		return ""
-	}
-	return *identity.Account
-}
-
 // Config holds global application configuration
 type Config struct {
 	mu        sync.RWMutex
@@ -238,6 +198,13 @@ func (c *Config) AccountID() string {
 	return c.accountID
 }
 
+// SetAccountID sets the AWS account ID
+func (c *Config) SetAccountID(id string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.accountID = id
+}
+
 // SetDemoMode enables or disables demo mode
 func (c *Config) SetDemoMode(enabled bool) {
 	c.mu.Lock()
@@ -283,101 +250,9 @@ func (c *Config) SetReadOnly(readOnly bool) {
 	c.readOnly = readOnly
 }
 
-// addWarning adds a warning message
-func (c *Config) addWarning(msg string) {
+// AddWarning adds a warning message
+func (c *Config) AddWarning(msg string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.warnings = append(c.warnings, msg)
-}
-
-// Init initializes the config, detecting region and account ID from environment/IMDS
-func (c *Config) Init(ctx context.Context) error {
-	// Check external dependencies
-	c.checkDependencies()
-
-	c.mu.RLock()
-	sel := c.selection
-	c.mu.RUnlock()
-
-	cfg, err := config.LoadDefaultConfig(ctx, SelectionLoadOptions(sel)...)
-	if err != nil {
-		return err
-	}
-
-	c.mu.Lock()
-	if c.region == "" {
-		c.region = cfg.Region
-	}
-	c.accountID = fetchAccountID(ctx, cfg)
-	c.mu.Unlock()
-
-	return nil
-}
-
-// RefreshForProfile re-fetches region and account ID for the current selection.
-// Region is updated from the profile's default region if configured.
-func (c *Config) RefreshForProfile(ctx context.Context) error {
-	c.mu.RLock()
-	sel := c.selection
-	c.mu.RUnlock()
-
-	cfg, err := config.LoadDefaultConfig(ctx, SelectionLoadOptions(sel)...)
-	if err != nil {
-		return err
-	}
-
-	c.mu.Lock()
-	// Update region from profile's default (if set)
-	if cfg.Region != "" {
-		c.region = cfg.Region
-	}
-	c.accountID = fetchAccountID(ctx, cfg)
-	c.mu.Unlock()
-
-	return nil
-}
-
-// checkDependencies checks for required external tools
-func (c *Config) checkDependencies() {
-	// Disabled: SSM plugin warning is too noisy for demo/general use
-	// The action itself will fail gracefully if plugin is missing
-}
-
-// CommonRegions returns a list of common AWS regions
-var CommonRegions = []string{
-	"us-east-1",
-	"us-east-2",
-	"us-west-1",
-	"us-west-2",
-	"eu-west-1",
-	"eu-west-2",
-	"eu-central-1",
-	"ap-northeast-1",
-	"ap-northeast-2",
-	"ap-southeast-1",
-	"ap-southeast-2",
-	"ap-south-1",
-	"sa-east-1",
-}
-
-// FetchAvailableRegions fetches available regions from AWS using the current profile.
-func FetchAvailableRegions(ctx context.Context) ([]string, error) {
-	cfg, err := config.LoadDefaultConfig(ctx, SelectionLoadOptions(Global().Selection())...)
-	if err != nil {
-		return CommonRegions, nil // Fallback to common regions
-	}
-
-	client := ec2.NewFromConfig(cfg)
-	output, err := client.DescribeRegions(ctx, &ec2.DescribeRegionsInput{})
-	if err != nil {
-		return CommonRegions, nil // Fallback to common regions
-	}
-
-	regions := make([]string, 0, len(output.Regions))
-	for _, r := range output.Regions {
-		if r.RegionName != nil {
-			regions = append(regions, *r.RegionName)
-		}
-	}
-	return regions, nil
 }
