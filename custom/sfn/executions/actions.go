@@ -18,6 +18,7 @@ func init() {
 			Shortcut:  "S",
 			Type:      action.ActionTypeAPI,
 			Operation: "StopExecution",
+			Confirm:   true,
 		},
 	})
 

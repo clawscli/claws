@@ -19,30 +19,35 @@ func init() {
 			Shortcut:  "+",
 			Type:      action.ActionTypeAPI,
 			Operation: "ScaleUp",
+			Confirm:   true,
 		},
 		{
 			Name:      "Scale Down",
 			Shortcut:  "-",
 			Type:      action.ActionTypeAPI,
 			Operation: "ScaleDown",
+			Confirm:   true,
 		},
 		{
 			Name:      "Force Deploy",
 			Shortcut:  "f",
 			Type:      action.ActionTypeAPI,
 			Operation: "ForceNewDeployment",
+			Confirm:   true,
 		},
 		{
 			Name:      "Enable Exec",
 			Shortcut:  "x",
 			Type:      action.ActionTypeAPI,
 			Operation: "EnableExecuteCommand",
+			Confirm:   true,
 		},
 		{
 			Name:      "Delete",
 			Shortcut:  "D",
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteService",
+			Confirm:   true,
 		},
 	})
 

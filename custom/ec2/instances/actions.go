@@ -17,18 +17,21 @@ func init() {
 			Shortcut:  "R",
 			Type:      action.ActionTypeAPI,
 			Operation: "StartInstances",
+			Confirm:   true,
 		},
 		{
 			Name:      "Stop",
 			Shortcut:  "S",
 			Type:      action.ActionTypeAPI,
 			Operation: "StopInstances",
+			Confirm:   true,
 		},
 		{
 			Name:      "Reboot",
 			Shortcut:  "B",
 			Type:      action.ActionTypeAPI,
 			Operation: "RebootInstances",
+			Confirm:   true,
 		},
 		{
 			Name:      "Terminate",

@@ -17,6 +17,7 @@ import (
 // Sentinel errors for action execution
 var (
 	ErrEmptyCommand        = errors.New("empty command")
+	ErrEmptyOperation      = errors.New("API action has no Operation defined")
 	ErrInvalidResourceType = errors.New("invalid resource type")
 	ErrReadOnlyDenied      = errors.New("action denied in read-only mode")
 )
@@ -61,12 +62,10 @@ type Action struct {
 	Name      string
 	Shortcut  string
 	Type      ActionType
-	Command   string            // For exec type
-	Operation string            // For api type
-	Target    string            // For view type
-	Confirm   bool              // Require confirmation
-	Requires  []string          // Required dependencies
-	Vars      map[string]string // Variable mappings
+	Command   string // For exec type
+	Operation string // For api type
+	Target    string // For view type
+	Confirm   bool   // Require confirmation
 
 	// SkipAWSEnv skips AWS env injection for exec commands.
 	// Use for commands that need to access ~/.aws files directly (e.g., aws sso login).
@@ -197,6 +196,12 @@ func ExecuteWithDAO(ctx context.Context, action Action, resource dao.Resource, s
 	case ActionTypeExec:
 		result = executeExec(ctx, action, resource)
 	case ActionTypeAPI:
+		// Validate Operation is defined for API actions
+		if action.Operation == "" {
+			log.Error("API action missing Operation", "action", action.Name, "service", service, "resourceType", resourceType)
+			result = ActionResult{Success: false, Error: ErrEmptyOperation}
+			break
+		}
 		if executor := Global.GetExecutor(service, resourceType); executor != nil {
 			result = executor(ctx, action, resource)
 		} else {

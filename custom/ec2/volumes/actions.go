@@ -25,6 +25,7 @@ func init() {
 			Shortcut:  "s",
 			Type:      action.ActionTypeAPI,
 			Operation: "CreateSnapshot",
+			Confirm:   true,
 		},
 		{
 			Name:      "Detach",

@@ -519,8 +519,6 @@ func TestAction_Struct(t *testing.T) {
 		Operation: "TestOp",
 		Target:    "ec2/instances",
 		Confirm:   true,
-		Requires:  []string{"dep1", "dep2"},
-		Vars:      map[string]string{"key": "value"},
 	}
 
 	if action.Name != "Test" {
@@ -534,12 +532,6 @@ func TestAction_Struct(t *testing.T) {
 	}
 	if !action.Confirm {
 		t.Error("Confirm should be true")
-	}
-	if len(action.Requires) != 2 {
-		t.Errorf("Requires length = %d, want 2", len(action.Requires))
-	}
-	if action.Vars["key"] != "value" {
-		t.Errorf("Vars[key] = %q, want %q", action.Vars["key"], "value")
 	}
 }
 

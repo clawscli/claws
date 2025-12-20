@@ -19,30 +19,35 @@ func init() {
 			Shortcut:  "r",
 			Type:      action.ActionTypeAPI,
 			Operation: "ScaleUpRCU",
+			Confirm:   true,
 		},
 		{
 			Name:      "Scale Up WCU",
 			Shortcut:  "w",
 			Type:      action.ActionTypeAPI,
 			Operation: "ScaleUpWCU",
+			Confirm:   true,
 		},
 		{
 			Name:      "Switch to On-Demand",
 			Shortcut:  "o",
 			Type:      action.ActionTypeAPI,
 			Operation: "SwitchToOnDemand",
+			Confirm:   true,
 		},
 		{
 			Name:      "Switch to Provisioned",
 			Shortcut:  "p",
 			Type:      action.ActionTypeAPI,
 			Operation: "SwitchToProvisioned",
+			Confirm:   true,
 		},
 		{
 			Name:      "Delete",
 			Shortcut:  "D",
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteTable",
+			Confirm:   true,
 		},
 	})
 
