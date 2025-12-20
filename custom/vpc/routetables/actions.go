@@ -18,7 +18,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteRouteTable",
 			Confirm:   true,
-			Dangerous: true,
 		},
 	})
 

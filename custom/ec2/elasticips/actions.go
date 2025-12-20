@@ -18,7 +18,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "ReleaseAddress",
 			Confirm:   true,
-			Dangerous: true,
 		},
 		{
 			Name:      "Disassociate",

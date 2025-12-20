@@ -247,71 +247,32 @@ func TestRegistry(t *testing.T) {
 	}
 }
 
-func TestRegistry_ReadOnlyNormalization(t *testing.T) {
-	tests := []struct {
-		name          string
-		service       string
-		actions       []Action
-		wantDangerous []bool // expected Dangerous flag for each action
-	}{
-		{
-			name:    "API actions auto-marked Dangerous",
-			service: "ec2",
-			actions: []Action{
-				{Name: "Stop", Type: ActionTypeAPI, Operation: "StopInstances", Dangerous: false},
-				{Name: "Start", Type: ActionTypeAPI, Operation: "StartInstances", Dangerous: false},
-			},
-			wantDangerous: []bool{true, true},
-		},
-		{
-			name:    "allowlisted operations stay non-Dangerous",
-			service: "cloudformation",
-			actions: []Action{
-				{Name: "Detect Drift", Type: ActionTypeAPI, Operation: "DetectStackDrift", Dangerous: false},
-				{Name: "Delete", Type: ActionTypeAPI, Operation: "DeleteStack", Dangerous: false},
-			},
-			wantDangerous: []bool{false, true}, // DetectStackDrift is allowlisted
-		},
-		{
-			name:    "Lambda DryRun is allowlisted",
-			service: "lambda",
-			actions: []Action{
-				{Name: "Invoke DryRun", Type: ActionTypeAPI, Operation: "InvokeFunctionDryRun", Dangerous: false},
-				{Name: "Invoke", Type: ActionTypeAPI, Operation: "InvokeFunction", Dangerous: false},
-			},
-			wantDangerous: []bool{false, true}, // DryRun is allowlisted
-		},
-		{
-			name:    "Exec actions not normalized",
-			service: "ecs",
-			actions: []Action{
-				{Name: "Tail", Type: ActionTypeExec, Command: "aws logs tail", Dangerous: false},
-			},
-			wantDangerous: []bool{false}, // Exec actions not touched
-		},
-		{
-			name:    "local service skipped",
-			service: "local",
-			actions: []Action{
-				{Name: "Switch", Type: ActionTypeAPI, Operation: "SwitchProfile", Dangerous: false},
-			},
-			wantDangerous: []bool{false}, // local service skipped
-		},
+func TestReadOnlyAllowlist(t *testing.T) {
+	// Verify expected operations are in the allowlist
+	expected := []string{
+		"DetectStackDrift",     // CloudFormation: read-only drift detection
+		"InvokeFunctionDryRun", // Lambda: validation only
+		"SwitchProfile",        // local/profile: switch active profile
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			registry := NewRegistry()
-			registry.Register(tt.service, "test", tt.actions)
+	for _, op := range expected {
+		if !ReadOnlyAllowlist[op] {
+			t.Errorf("ReadOnlyAllowlist should contain %q", op)
+		}
+	}
 
-			got := registry.Get(tt.service, "test")
-			for i, act := range got {
-				if act.Dangerous != tt.wantDangerous[i] {
-					t.Errorf("action[%d] %q Dangerous = %v, want %v",
-						i, act.Name, act.Dangerous, tt.wantDangerous[i])
-				}
-			}
-		})
+	// Verify dangerous operations are NOT in allowlist
+	dangerous := []string{
+		"DeleteStack",
+		"StopInstances",
+		"TerminateInstances",
+		"InvokeFunction",
+	}
+
+	for _, op := range dangerous {
+		if ReadOnlyAllowlist[op] {
+			t.Errorf("ReadOnlyAllowlist should NOT contain %q", op)
+		}
 	}
 }
 
@@ -558,7 +519,6 @@ func TestAction_Struct(t *testing.T) {
 		Operation: "TestOp",
 		Target:    "ec2/instances",
 		Confirm:   true,
-		Dangerous: true,
 		Requires:  []string{"dep1", "dep2"},
 		Vars:      map[string]string{"key": "value"},
 	}
@@ -574,9 +534,6 @@ func TestAction_Struct(t *testing.T) {
 	}
 	if !action.Confirm {
 		t.Error("Confirm should be true")
-	}
-	if !action.Dangerous {
-		t.Error("Dangerous should be true")
 	}
 	if len(action.Requires) != 2 {
 		t.Errorf("Requires length = %d, want 2", len(action.Requires))

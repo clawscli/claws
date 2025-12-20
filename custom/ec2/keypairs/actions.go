@@ -18,7 +18,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteKeyPair",
 			Confirm:   true,
-			Dangerous: true,
 		},
 	})
 

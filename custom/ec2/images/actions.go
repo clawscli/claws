@@ -18,7 +18,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "DeregisterImage",
 			Confirm:   true,
-			Dangerous: true,
 		},
 	})
 

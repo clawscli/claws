@@ -19,28 +19,24 @@ func init() {
 			Shortcut:  "R",
 			Type:      action.ActionTypeAPI,
 			Operation: "StartDBInstance",
-			Dangerous: true,
 		},
 		{
 			Name:      "Stop",
 			Shortcut:  "S",
 			Type:      action.ActionTypeAPI,
 			Operation: "StopDBInstance",
-			Dangerous: true,
 		},
 		{
 			Name:      "Reboot",
 			Shortcut:  "B",
 			Type:      action.ActionTypeAPI,
 			Operation: "RebootDBInstance",
-			Dangerous: true,
 		},
 		{
 			Name:      "Delete",
 			Shortcut:  "D",
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteDBInstance",
-			Dangerous: true,
 		},
 	})
 

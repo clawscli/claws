@@ -23,7 +23,6 @@ func init() {
 			Shortcut:  "D",
 			Type:      action.ActionTypeAPI,
 			Confirm:   true,
-			Dangerous: true,
 		},
 	})
 }

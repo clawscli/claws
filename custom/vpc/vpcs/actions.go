@@ -18,7 +18,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteVpc",
 			Confirm:   true,
-			Dangerous: true,
 		},
 	})
 

@@ -18,7 +18,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteRole",
 			Confirm:   true,
-			Dangerous: true,
 		},
 	})
 

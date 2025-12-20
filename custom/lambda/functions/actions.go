@@ -21,7 +21,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "InvokeFunction",
 			Confirm:   true,
-			Dangerous: false,
 		},
 		{
 			Name:      "Invoke (Dry Run)",
@@ -29,7 +28,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "InvokeFunctionDryRun",
 			Confirm:   false,
-			Dangerous: false,
 		},
 		{
 			Name:      "Delete",
@@ -37,7 +35,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteFunction",
 			Confirm:   true,
-			Dangerous: true,
 		},
 	})
 

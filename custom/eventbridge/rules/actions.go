@@ -18,21 +18,18 @@ func init() {
 			Shortcut:  "E",
 			Type:      action.ActionTypeAPI,
 			Operation: "EnableRule",
-			Dangerous: true,
 		},
 		{
 			Name:      "Disable",
 			Shortcut:  "X",
 			Type:      action.ActionTypeAPI,
 			Operation: "DisableRule",
-			Dangerous: true,
 		},
 		{
 			Name:      "Delete",
 			Shortcut:  "D",
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteRule",
-			Dangerous: true,
 		},
 	})
 

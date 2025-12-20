@@ -18,7 +18,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteStateMachine",
 			Confirm:   true,
-			Dangerous: true,
 		},
 	})
 

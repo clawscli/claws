@@ -18,7 +18,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteRepository",
 			Confirm:   true,
-			Dangerous: true,
 		},
 	})
 

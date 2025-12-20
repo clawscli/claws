@@ -18,7 +18,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteSubnet",
 			Confirm:   true,
-			Dangerous: true,
 		},
 	})
 

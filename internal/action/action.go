@@ -58,7 +58,6 @@ type Action struct {
 	Operation string            // For api type
 	Target    string            // For view type
 	Confirm   bool              // Require confirmation
-	Dangerous bool              // Show warning
 	Requires  []string          // Required dependencies
 	Vars      map[string]string // Variable mappings
 
@@ -103,29 +102,20 @@ func NewRegistry() *Registry {
 	}
 }
 
-// readOnlyAllowlist defines API operations that are safe in read-only mode.
-// All other API actions are automatically marked as Dangerous=true.
-var readOnlyAllowlist = map[string]bool{
+// ReadOnlyAllowlist defines API operations allowed in read-only mode.
+// - View actions: always allowed
+// - Exec actions: always denied (admin only)
+// - API actions: allowed only if Operation is in this list
+var ReadOnlyAllowlist = map[string]bool{
 	"DetectStackDrift":     true, // CloudFormation: read-only drift detection
 	"InvokeFunctionDryRun": true, // Lambda: validation only, no execution
+	"SwitchProfile":        true, // local/profile: switch active profile
 }
 
 // Register registers actions for a resource type.
-// For non-local services, API actions are automatically marked as Dangerous=true
-// unless they are in the readOnlyAllowlist.
 func (r *Registry) Register(service, resource string, actions []Action) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-
-	// Normalize Dangerous flag for API actions (skip local service)
-	if service != "local" {
-		for i := range actions {
-			if actions[i].Type == ActionTypeAPI && !readOnlyAllowlist[actions[i].Operation] {
-				actions[i].Dangerous = true
-			}
-		}
-	}
-
 	key := fmt.Sprintf("%s/%s", service, resource)
 	r.actions[key] = actions
 }
@@ -201,7 +191,9 @@ func executeExec(ctx context.Context, action Action, resource dao.Resource) Acti
 	execCmd.Stdin = os.Stdin
 	execCmd.Stdout = os.Stdout
 	execCmd.Stderr = os.Stderr
-	setAWSEnv(execCmd)
+	if !action.SkipAWSEnv {
+		setAWSEnv(execCmd)
+	}
 
 	err = execCmd.Run()
 	if err != nil {

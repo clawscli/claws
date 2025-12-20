@@ -18,7 +18,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteGroup",
 			Confirm:   true,
-			Dangerous: true,
 		},
 	})
 

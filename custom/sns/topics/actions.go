@@ -18,7 +18,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteTopic",
 			Confirm:   true,
-			Dangerous: true,
 		},
 	})
 

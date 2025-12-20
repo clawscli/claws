@@ -20,7 +20,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "PurgeQueue",
 			Confirm:   true,
-			Dangerous: true,
 		},
 		{
 			Name:      "Send Test Message",
@@ -28,7 +27,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "SendTestMessage",
 			Confirm:   true,
-			Dangerous: false,
 		},
 		{
 			Name:      "Delete",
@@ -36,7 +34,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteQueue",
 			Confirm:   true,
-			Dangerous: true,
 		},
 	})
 

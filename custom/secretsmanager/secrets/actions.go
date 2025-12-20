@@ -18,7 +18,6 @@ func init() {
 			Type:      action.ActionTypeExec,
 			Command:   `aws secretsmanager get-secret-value --secret-id "${ID}" --query 'SecretString' --output text | less`,
 			Confirm:   true,
-			Dangerous: false,
 		},
 		{
 			Name:     "Describe (JSON)",
@@ -32,7 +31,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteSecret",
 			Confirm:   true,
-			Dangerous: true,
 		},
 	})
 

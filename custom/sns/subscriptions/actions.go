@@ -18,7 +18,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "Unsubscribe",
 			Confirm:   true,
-			Dangerous: true,
 		},
 	})
 

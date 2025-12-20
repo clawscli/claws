@@ -18,7 +18,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteDBSnapshot",
 			Confirm:   true,
-			Dangerous: true,
 		},
 	})
 

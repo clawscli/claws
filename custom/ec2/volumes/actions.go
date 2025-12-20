@@ -19,7 +19,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteVolume",
 			Confirm:   true,
-			Dangerous: true,
 		},
 		{
 			Name:      "Create Snapshot",

@@ -19,7 +19,6 @@ func init() {
 			Type:      action.ActionTypeExec,
 			Command:   `aws logs tail "${LOG_GROUP}" --log-stream-names "${NAME}" --since 1h --follow`,
 			Confirm:   false,
-			Dangerous: false,
 		},
 		{
 			Name:      "View Recent (1h)",
@@ -27,7 +26,6 @@ func init() {
 			Type:      action.ActionTypeExec,
 			Command:   `aws logs tail "${LOG_GROUP}" --log-stream-names "${NAME}" --since 1h | less -R`,
 			Confirm:   false,
-			Dangerous: false,
 		},
 		{
 			Name:      "View Recent (24h)",
@@ -35,7 +33,6 @@ func init() {
 			Type:      action.ActionTypeExec,
 			Command:   `aws logs tail "${LOG_GROUP}" --log-stream-names "${NAME}" --since 24h | less -R`,
 			Confirm:   false,
-			Dangerous: false,
 		},
 		{
 			Name:      "Delete",
@@ -43,7 +40,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteLogStream",
 			Confirm:   true,
-			Dangerous: true,
 		},
 	})
 

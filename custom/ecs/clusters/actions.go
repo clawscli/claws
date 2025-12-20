@@ -19,7 +19,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteCluster",
 			Confirm:   true,
-			Dangerous: true,
 		},
 	})
 

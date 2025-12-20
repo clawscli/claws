@@ -19,7 +19,6 @@ func init() {
 			Type:      action.ActionTypeExec,
 			Command:   `aws ecs execute-command --cluster "${CLUSTER}" --task "${ARN}" --container "${CONTAINER}" --interactive --command "/bin/sh"`,
 			Confirm:   true,
-			Dangerous: true,
 		},
 		{
 			Name:      "Stop",
@@ -27,7 +26,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "StopTask",
 			Confirm:   true,
-			Dangerous: true,
 		},
 	})
 

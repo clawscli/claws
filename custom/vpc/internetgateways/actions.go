@@ -25,7 +25,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteInternetGateway",
 			Confirm:   true,
-			Dangerous: true,
 		},
 	})
 

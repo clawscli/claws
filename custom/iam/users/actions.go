@@ -18,7 +18,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteUser",
 			Confirm:   true,
-			Dangerous: true,
 		},
 	})
 

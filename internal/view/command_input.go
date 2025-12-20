@@ -218,7 +218,7 @@ func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 		}
 		return tea.Exec(exec, func(err error) tea.Msg {
 			if err != nil {
-				return nil
+				return ErrorMsg{Err: err}
 			}
 			// Switch to the new profile
 			sel := config.NamedProfile(profileName)

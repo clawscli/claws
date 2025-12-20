@@ -18,7 +18,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteNatGateway",
 			Confirm:   true,
-			Dangerous: true,
 		},
 	})
 

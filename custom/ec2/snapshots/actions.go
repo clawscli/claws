@@ -18,7 +18,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteSnapshot",
 			Confirm:   true,
-			Dangerous: true,
 		},
 	})
 

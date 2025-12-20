@@ -18,7 +18,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteEventBus",
 			Confirm:   true,
-			Dangerous: true,
 		},
 	})
 

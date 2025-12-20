@@ -19,7 +19,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteStack",
 			Confirm:   true,
-			Dangerous: true,
 			Vars: map[string]string{
 				"id_param": "StackName",
 				"id_type":  "string",
@@ -31,7 +30,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "DetectStackDrift",
 			Confirm:   false,
-			Dangerous: false,
 			Vars: map[string]string{
 				"id_param": "StackName",
 				"id_type":  "string",
@@ -43,7 +41,6 @@ func init() {
 			Type:      action.ActionTypeAPI,
 			Operation: "CancelUpdateStack",
 			Confirm:   true,
-			Dangerous: false,
 			Vars: map[string]string{
 				"id_param": "StackName",
 				"id_type":  "string",
