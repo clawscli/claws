@@ -36,7 +36,6 @@ claws/
 │   │   ├── client.go       # NewConfig() for AWS config loading
 │   │   ├── paginate.go     # Paginate(), PaginateIter() helpers
 │   │   ├── errors.go       # IsNotFound(), IsAccessDenied(), etc.
-│   │   ├── context.go      # WithAPITimeout()
 │   │   └── pointers.go     # Str(), Int32(), Int64(), Time() helpers
 │   ├── action/             # Action framework (API calls, exec commands)
 │   ├── config/             # Application configuration (profile, region)
@@ -197,11 +196,6 @@ for item := range appaws.PaginateIter(ctx, fetchFunc) {
 if appaws.IsNotFound(err) { }      // Check for "not found" errors
 if appaws.IsAccessDenied(err) { }  // Check for "access denied" errors
 if appaws.IsThrottling(err) { }    // Check for rate limiting
-```
-
-### Context Timeout
-```go
-ctx = appaws.WithAPITimeout(ctx)  // Add 30s timeout
 ```
 
 ### Safe Pointer Dereferencing

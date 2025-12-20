@@ -173,6 +173,12 @@ func RegisterExecutor(service, resource string, executor ExecutorFunc) {
 func ExecuteWithDAO(ctx context.Context, action Action, resource dao.Resource, service, resourceType string) ActionResult {
 	log.Info("executing action", "action", action.Name, "type", action.Type, "service", service, "resourceType", resourceType, "resourceID", resource.GetID())
 
+	// Validate API action configuration before read-only check (better diagnostics)
+	if action.Type == ActionTypeAPI && action.Operation == "" {
+		log.Error("API action missing Operation", "action", action.Name, "service", service, "resourceType", resourceType)
+		return ActionResult{Success: false, Error: ErrEmptyOperation}
+	}
+
 	// Read-only enforcement at execution layer
 	if config.Global().ReadOnly() {
 		switch action.Type {
@@ -196,12 +202,6 @@ func ExecuteWithDAO(ctx context.Context, action Action, resource dao.Resource, s
 	case ActionTypeExec:
 		result = executeExec(ctx, action, resource)
 	case ActionTypeAPI:
-		// Validate Operation is defined for API actions
-		if action.Operation == "" {
-			log.Error("API action missing Operation", "action", action.Name, "service", service, "resourceType", resourceType)
-			result = ActionResult{Success: false, Error: ErrEmptyOperation}
-			break
-		}
 		if executor := Global.GetExecutor(service, resourceType); executor != nil {
 			result = executor(ctx, action, resource)
 		} else {

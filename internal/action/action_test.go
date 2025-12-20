@@ -874,6 +874,53 @@ func TestReadOnlyEnforcement_SimpleExec(t *testing.T) {
 	})
 }
 
+func TestExecuteWithDAO_EmptyOperation_BeforeReadOnlyCheck(t *testing.T) {
+	// P3: Verify that empty Operation error is returned before read-only check
+	// This ensures better diagnostics - misconfigured actions show ErrEmptyOperation, not ErrReadOnlyDenied
+
+	t.Run("empty Operation returns ErrEmptyOperation even in read-only mode", func(t *testing.T) {
+		// Enable read-only mode
+		config.Global().SetReadOnly(true)
+		defer config.Global().SetReadOnly(false)
+
+		action := Action{
+			Name:      "Misconfigured Action",
+			Type:      ActionTypeAPI,
+			Operation: "", // Empty - misconfigured
+		}
+
+		result := ExecuteWithDAO(context.Background(), action, &mockResource{id: "test"}, "test", "resource")
+
+		if result.Success {
+			t.Error("action with empty Operation should fail")
+		}
+		// Key assertion: should get ErrEmptyOperation, NOT ErrReadOnlyDenied
+		if result.Error != ErrEmptyOperation {
+			t.Errorf("Error = %v, want %v (not ErrReadOnlyDenied)", result.Error, ErrEmptyOperation)
+		}
+	})
+
+	t.Run("empty Operation returns ErrEmptyOperation in non-read-only mode", func(t *testing.T) {
+		// Disable read-only mode
+		config.Global().SetReadOnly(false)
+
+		action := Action{
+			Name:      "Misconfigured Action",
+			Type:      ActionTypeAPI,
+			Operation: "", // Empty - misconfigured
+		}
+
+		result := ExecuteWithDAO(context.Background(), action, &mockResource{id: "test"}, "test", "resource")
+
+		if result.Success {
+			t.Error("action with empty Operation should fail")
+		}
+		if result.Error != ErrEmptyOperation {
+			t.Errorf("Error = %v, want %v", result.Error, ErrEmptyOperation)
+		}
+	})
+}
+
 func TestReadOnlyEnforcement_ExecWithHeader(t *testing.T) {
 	t.Run("read-only blocks non-allowlisted exec", func(t *testing.T) {
 		// Enable read-only mode
