@@ -124,8 +124,7 @@ func (d *ProfileDAO) Get(_ context.Context, id string) (dao.Resource, error) {
 			Name:      config.SDKDefault().DisplayName(),
 			IsCurrent: sel.IsSDKDefault(),
 		}), nil
-	case config.EnvOnly().DisplayName(), IDEnvOnly,
-		config.EnvironmentCredentialsDisplayName: // backward compat
+	case config.EnvOnly().DisplayName(), IDEnvOnly:
 		return NewProfileResource(&ProfileData{
 			Name:      config.EnvOnly().DisplayName(),
 			IsCurrent: sel.IsEnvOnly(),

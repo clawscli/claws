@@ -33,44 +33,8 @@ func SelectionLoadOptions(sel ProfileSelection) []func(*config.LoadOptions) erro
 	return opts
 }
 
-// ProfileLoadOptions returns config load options based on the given profile string.
-// Deprecated: Use SelectionLoadOptions with ProfileSelection instead.
-func ProfileLoadOptions(profile string) []func(*config.LoadOptions) error {
-	switch profile {
-	case UseEnvironmentCredentials:
-		return []func(*config.LoadOptions) error{
-			config.WithSharedConfigFiles([]string{}),
-			config.WithSharedCredentialsFiles([]string{}),
-		}
-	case "":
-		return nil
-	default:
-		return []func(*config.LoadOptions) error{
-			config.WithSharedConfigProfile(profile),
-		}
-	}
-}
-
-// BaseLoadOptions returns common load options for AWS config initialization.
-// Deprecated: Use SelectionLoadOptions instead.
-func BaseLoadOptions(profile string) []func(*config.LoadOptions) error {
-	opts := []func(*config.LoadOptions) error{
-		config.WithEC2IMDSRegion(),
-	}
-	return append(opts, ProfileLoadOptions(profile)...)
-}
-
 // DemoAccountID is the masked account ID shown in demo mode
 const DemoAccountID = "123456789012"
-
-// UseEnvironmentCredentials is a special value to ignore ~/.aws config and use environment credentials
-// (instance profile, ECS task role, Lambda execution role, environment variables, etc.)
-// Deprecated: Use CredentialMode instead
-const UseEnvironmentCredentials = "__environment__"
-
-// EnvironmentCredentialsDisplayName is the display name for the environment credentials option
-// Deprecated: Use CredentialMode display methods instead
-const EnvironmentCredentialsDisplayName = "(Environment)"
 
 // CredentialMode represents how AWS credentials are resolved
 type CredentialMode int
@@ -229,38 +193,6 @@ func (c *Config) UseProfile(name string) {
 	c.SetSelection(NamedProfile(name))
 }
 
-// Profile returns the current AWS profile name for backward compatibility.
-// Returns empty string for SDKDefault, UseEnvironmentCredentials for EnvOnly,
-// or the profile name for NamedProfile.
-// Deprecated: Use Selection() instead
-func (c *Config) Profile() string {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	switch c.selection.Mode {
-	case ModeEnvOnly:
-		return UseEnvironmentCredentials
-	case ModeNamedProfile:
-		return c.selection.ProfileName
-	default:
-		return ""
-	}
-}
-
-// SetProfile sets the current AWS profile for backward compatibility.
-// Deprecated: Use SetSelection(), UseSDKDefault(), UseEnvOnly(), or UseProfile() instead
-func (c *Config) SetProfile(profile string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	switch profile {
-	case "":
-		c.selection = SDKDefault()
-	case UseEnvironmentCredentials:
-		c.selection = EnvOnly()
-	default:
-		c.selection = NamedProfile(profile)
-	}
-}
-
 // AccountID returns the current AWS account ID (masked in demo mode)
 func (c *Config) AccountID() string {
 	c.mu.RLock()
@@ -401,7 +333,7 @@ var CommonRegions = []string{
 
 // FetchAvailableRegions fetches available regions from AWS using the current profile.
 func FetchAvailableRegions(ctx context.Context) ([]string, error) {
-	cfg, err := config.LoadDefaultConfig(ctx, BaseLoadOptions(Global().Profile())...)
+	cfg, err := config.LoadDefaultConfig(ctx, SelectionLoadOptions(Global().Selection())...)
 	if err != nil {
 		return CommonRegions, nil // Fallback to common regions
 	}

@@ -60,7 +60,7 @@ func executeSwitchProfile(resource dao.Resource) action.ActionResult {
 	case config.SDKDefault().DisplayName():
 		sel = config.SDKDefault()
 		msg = "Using SDK default credentials"
-	case config.EnvOnly().DisplayName(), config.EnvironmentCredentialsDisplayName:
+	case config.EnvOnly().DisplayName():
 		sel = config.EnvOnly()
 		msg = "Using environment/IMDS credentials (ignoring ~/.aws config)"
 	default:

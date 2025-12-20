@@ -25,18 +25,34 @@ func TestConfig_RegionGetSet(t *testing.T) {
 	}
 }
 
-func TestConfig_ProfileGetSet(t *testing.T) {
+func TestConfig_SelectionGetSet(t *testing.T) {
 	cfg := &Config{}
 
-	// Initial value should be empty
-	if cfg.Profile() != "" {
-		t.Errorf("Profile() = %q, want empty string", cfg.Profile())
+	// Initial value should be SDK default (zero value)
+	sel := cfg.Selection()
+	if !sel.IsSDKDefault() {
+		t.Errorf("Selection() = %v, want SDKDefault", sel)
 	}
 
-	// Set and get
-	cfg.SetProfile("production")
-	if cfg.Profile() != "production" {
-		t.Errorf("Profile() = %q, want %q", cfg.Profile(), "production")
+	// Set named profile
+	cfg.UseProfile("production")
+	sel = cfg.Selection()
+	if !sel.IsNamedProfile() || sel.ProfileName != "production" {
+		t.Errorf("Selection() = %v, want NamedProfile(production)", sel)
+	}
+
+	// Set env-only mode
+	cfg.UseEnvOnly()
+	sel = cfg.Selection()
+	if !sel.IsEnvOnly() {
+		t.Errorf("Selection() = %v, want EnvOnly", sel)
+	}
+
+	// Set SDK default
+	cfg.UseSDKDefault()
+	sel = cfg.Selection()
+	if !sel.IsSDKDefault() {
+		t.Errorf("Selection() = %v, want SDKDefault", sel)
 	}
 }
 
@@ -128,78 +144,34 @@ func TestCommonRegions(t *testing.T) {
 	}
 }
 
-func TestProfileLoadOptions(t *testing.T) {
-	tests := []struct {
-		name        string
-		profile     string
-		wantNil     bool
-		wantLen     int
-		description string
-	}{
-		{
-			name:        "empty profile",
-			profile:     "",
-			wantNil:     true,
-			description: "empty profile should return nil (SDK default behavior)",
-		},
-		{
-			name:        "environment credentials",
-			profile:     UseEnvironmentCredentials,
-			wantLen:     2,
-			description: "UseEnvironmentCredentials should return 2 options (empty config/creds files)",
-		},
-		{
-			name:        "named profile",
-			profile:     "production",
-			wantLen:     1,
-			description: "named profile should return 1 option (WithSharedConfigProfile)",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			opts := ProfileLoadOptions(tt.profile)
-			if tt.wantNil {
-				if opts != nil {
-					t.Errorf("ProfileLoadOptions(%q) = %v, want nil", tt.profile, opts)
-				}
-				return
-			}
-			if len(opts) != tt.wantLen {
-				t.Errorf("ProfileLoadOptions(%q) returned %d options, want %d", tt.profile, len(opts), tt.wantLen)
-			}
-		})
-	}
-}
-
-func TestBaseLoadOptions(t *testing.T) {
+func TestSelectionLoadOptions(t *testing.T) {
 	tests := []struct {
 		name    string
-		profile string
+		sel     ProfileSelection
 		wantLen int
 	}{
 		{
-			name:    "empty profile",
-			profile: "",
+			name:    "SDK default",
+			sel:     SDKDefault(),
 			wantLen: 1, // just IMDS region
 		},
 		{
-			name:    "environment credentials",
-			profile: UseEnvironmentCredentials,
+			name:    "env only",
+			sel:     EnvOnly(),
 			wantLen: 3, // IMDS region + 2 empty file options
 		},
 		{
 			name:    "named profile",
-			profile: "production",
+			sel:     NamedProfile("production"),
 			wantLen: 2, // IMDS region + profile option
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			opts := BaseLoadOptions(tt.profile)
+			opts := SelectionLoadOptions(tt.sel)
 			if len(opts) != tt.wantLen {
-				t.Errorf("BaseLoadOptions(%q) returned %d options, want %d", tt.profile, len(opts), tt.wantLen)
+				t.Errorf("SelectionLoadOptions(%v) returned %d options, want %d", tt.sel, len(opts), tt.wantLen)
 			}
 		})
 	}

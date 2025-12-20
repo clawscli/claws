@@ -119,7 +119,7 @@ func (m *ActionMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				switch resourceID {
 				case config.SDKDefault().DisplayName():
 					sel = config.SDKDefault()
-				case config.EnvOnly().DisplayName(), config.EnvironmentCredentialsDisplayName:
+				case config.EnvOnly().DisplayName():
 					sel = config.EnvOnly()
 				default:
 					sel = config.NamedProfile(resourceID)

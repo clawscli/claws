@@ -89,8 +89,8 @@ func NewProfileRenderer() render.Renderer {
 }
 
 func getProfileType(data *ProfileData) string {
-	if data.Name == config.EnvironmentCredentialsDisplayName {
-		return "SDK Default"
+	if data.Name == config.EnvOnly().DisplayName() {
+		return "Env/IMDS"
 	}
 	if data.SSOStartURL != "" || data.SSOSession != "" {
 		return "SSO"
@@ -127,9 +127,9 @@ func (r *ProfileRenderer) RenderDetail(resource dao.Resource) string {
 	d := render.NewDetailBuilder()
 	data := pr.Data
 
-	// Special handling for (Environment) option
-	if data.Name == config.EnvironmentCredentialsDisplayName {
-		title := config.EnvironmentCredentialsDisplayName
+	// Special handling for Env/IMDS Only option
+	if data.Name == config.EnvOnly().DisplayName() {
+		title := config.EnvOnly().DisplayName()
 		if data.IsCurrent {
 			title += " (current)"
 		}
