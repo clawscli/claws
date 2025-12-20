@@ -247,6 +247,74 @@ func TestRegistry(t *testing.T) {
 	}
 }
 
+func TestRegistry_ReadOnlyNormalization(t *testing.T) {
+	tests := []struct {
+		name          string
+		service       string
+		actions       []Action
+		wantDangerous []bool // expected Dangerous flag for each action
+	}{
+		{
+			name:    "API actions auto-marked Dangerous",
+			service: "ec2",
+			actions: []Action{
+				{Name: "Stop", Type: ActionTypeAPI, Operation: "StopInstances", Dangerous: false},
+				{Name: "Start", Type: ActionTypeAPI, Operation: "StartInstances", Dangerous: false},
+			},
+			wantDangerous: []bool{true, true},
+		},
+		{
+			name:    "allowlisted operations stay non-Dangerous",
+			service: "cloudformation",
+			actions: []Action{
+				{Name: "Detect Drift", Type: ActionTypeAPI, Operation: "DetectStackDrift", Dangerous: false},
+				{Name: "Delete", Type: ActionTypeAPI, Operation: "DeleteStack", Dangerous: false},
+			},
+			wantDangerous: []bool{false, true}, // DetectStackDrift is allowlisted
+		},
+		{
+			name:    "Lambda DryRun is allowlisted",
+			service: "lambda",
+			actions: []Action{
+				{Name: "Invoke DryRun", Type: ActionTypeAPI, Operation: "InvokeFunctionDryRun", Dangerous: false},
+				{Name: "Invoke", Type: ActionTypeAPI, Operation: "InvokeFunction", Dangerous: false},
+			},
+			wantDangerous: []bool{false, true}, // DryRun is allowlisted
+		},
+		{
+			name:    "Exec actions not normalized",
+			service: "ecs",
+			actions: []Action{
+				{Name: "Tail", Type: ActionTypeExec, Command: "aws logs tail", Dangerous: false},
+			},
+			wantDangerous: []bool{false}, // Exec actions not touched
+		},
+		{
+			name:    "local service skipped",
+			service: "local",
+			actions: []Action{
+				{Name: "Switch", Type: ActionTypeAPI, Operation: "SwitchProfile", Dangerous: false},
+			},
+			wantDangerous: []bool{false}, // local service skipped
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			registry := NewRegistry()
+			registry.Register(tt.service, "test", tt.actions)
+
+			got := registry.Get(tt.service, "test")
+			for i, act := range got {
+				if act.Dangerous != tt.wantDangerous[i] {
+					t.Errorf("action[%d] %q Dangerous = %v, want %v",
+						i, act.Name, act.Dangerous, tt.wantDangerous[i])
+				}
+			}
+		})
+	}
+}
+
 func TestRegistry_Executor(t *testing.T) {
 	registry := NewRegistry()
 

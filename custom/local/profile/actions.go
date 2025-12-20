@@ -33,11 +33,12 @@ func init() {
 			Operation: OperationSwitchProfile,
 		},
 		{
-			Name:     action.ActionNameSSOLogin,
-			Shortcut: "l",
-			Type:     action.ActionTypeExec,
-			Command:  "aws sso login --profile ${NAME}",
-			Filter:   isSSOProfile,
+			Name:       action.ActionNameSSOLogin,
+			Shortcut:   "l",
+			Type:       action.ActionTypeExec,
+			Command:    "aws sso login --profile ${NAME}",
+			SkipAWSEnv: true, // Must access ~/.aws files directly
+			Filter:     isSSOProfile,
 			PostExecFollowUp: func(r dao.Resource) any {
 				sel := config.ProfileSelectionFromID(r.GetID())
 				config.Global().SetSelection(sel)

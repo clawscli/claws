@@ -18,8 +18,8 @@ func init() {
 			Shortcut:  "x",
 			Type:      action.ActionTypeExec,
 			Command:   `aws ecs execute-command --cluster "${CLUSTER}" --task "${ARN}" --container "${CONTAINER}" --interactive --command "/bin/sh"`,
-			Confirm:   false,
-			Dangerous: false,
+			Confirm:   true,
+			Dangerous: true,
 		},
 		{
 			Name:      "Stop",

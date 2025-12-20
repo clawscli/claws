@@ -62,6 +62,10 @@ type Action struct {
 	Requires  []string          // Required dependencies
 	Vars      map[string]string // Variable mappings
 
+	// SkipAWSEnv skips AWS env injection for exec commands.
+	// Use for commands that need to access ~/.aws files directly (e.g., aws sso login).
+	SkipAWSEnv bool
+
 	// Filter returns true if this action should be shown for the given resource.
 	// If nil, the action is always shown.
 	Filter func(resource dao.Resource) bool
@@ -99,10 +103,29 @@ func NewRegistry() *Registry {
 	}
 }
 
-// Register registers actions for a resource type
+// readOnlyAllowlist defines API operations that are safe in read-only mode.
+// All other API actions are automatically marked as Dangerous=true.
+var readOnlyAllowlist = map[string]bool{
+	"DetectStackDrift":     true, // CloudFormation: read-only drift detection
+	"InvokeFunctionDryRun": true, // Lambda: validation only, no execution
+}
+
+// Register registers actions for a resource type.
+// For non-local services, API actions are automatically marked as Dangerous=true
+// unless they are in the readOnlyAllowlist.
 func (r *Registry) Register(service, resource string, actions []Action) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
+	// Normalize Dangerous flag for API actions (skip local service)
+	if service != "local" {
+		for i := range actions {
+			if actions[i].Type == ActionTypeAPI && !readOnlyAllowlist[actions[i].Operation] {
+				actions[i].Dangerous = true
+			}
+		}
+	}
+
 	key := fmt.Sprintf("%s/%s", service, resource)
 	r.actions[key] = actions
 }

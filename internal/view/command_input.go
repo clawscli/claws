@@ -209,9 +209,13 @@ func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 
 	// Handle login command: :login - login via AWS console and get credentials
 	// Creates a temporary profile to avoid polluting existing profiles
+	// SkipAWSEnv=true ensures aws login writes to real ~/.aws files (not /dev/null in EnvOnly mode)
 	if input == "login" {
 		profileName := fmt.Sprintf("claws-%d", time.Now().Unix())
-		exec := &action.SimpleExec{Command: fmt.Sprintf("aws login --remote --profile %s", profileName)}
+		exec := &action.SimpleExec{
+			Command:    fmt.Sprintf("aws login --remote --profile %s", profileName),
+			SkipAWSEnv: true,
+		}
 		return tea.Exec(exec, func(err error) tea.Msg {
 			if err != nil {
 				return nil

@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -16,6 +17,9 @@ import (
 	"github.com/clawscli/claws/internal/ui"
 	"github.com/clawscli/claws/internal/view"
 )
+
+// clearErrorMsg is sent to clear transient errors after a timeout
+type clearErrorMsg struct{}
 
 // App is the main application model
 // appStyles holds cached lipgloss styles for performance
@@ -246,6 +250,13 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case view.ErrorMsg:
 		log.Error("application error", "error", msg.Err)
 		a.err = msg.Err
+		// Auto-clear transient errors after 3 seconds
+		return a, tea.Tick(3*time.Second, func(t time.Time) tea.Msg {
+			return clearErrorMsg{}
+		})
+
+	case clearErrorMsg:
+		a.err = nil
 		return a, nil
 
 	case navmsg.RegionChangedMsg:

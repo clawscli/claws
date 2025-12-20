@@ -25,7 +25,8 @@ func setAWSEnv(cmd *exec.Cmd) {
 // SimpleExec represents a simple exec command without header.
 // Implements tea.ExecCommand interface.
 type SimpleExec struct {
-	Command string
+	Command    string
+	SkipAWSEnv bool // If true, don't inject AWS env vars (for commands that need to write to ~/.aws)
 
 	stdin  io.Reader
 	stdout io.Writer
@@ -64,7 +65,9 @@ func (e *SimpleExec) Run() error {
 	cmd.Stdin = stdin
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
-	setAWSEnv(cmd)
+	if !e.SkipAWSEnv {
+		setAWSEnv(cmd)
+	}
 
 	return cmd.Run()
 }
@@ -72,10 +75,11 @@ func (e *SimpleExec) Run() error {
 // ExecWithHeader represents an exec command that should run with a fixed header
 // Implements tea.ExecCommand interface
 type ExecWithHeader struct {
-	Command  string
-	Resource dao.Resource
-	Service  string
-	ResType  string
+	Command    string
+	Resource   dao.Resource
+	Service    string
+	ResType    string
+	SkipAWSEnv bool // If true, don't inject AWS env vars
 
 	stdin  io.Reader
 	stdout io.Writer
@@ -154,7 +158,9 @@ func (e *ExecWithHeader) Run() error {
 	cmd.Stdin = stdin
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
-	setAWSEnv(cmd)
+	if !e.SkipAWSEnv {
+		setAWSEnv(cmd)
+	}
 
 	// Run the command
 	err := cmd.Run()

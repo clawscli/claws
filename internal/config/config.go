@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"sync"
 )
 
@@ -77,10 +78,14 @@ func NamedProfile(name string) ProfileSelection {
 	return ProfileSelection{Mode: ModeNamedProfile, ProfileName: name}
 }
 
-// DisplayName returns the display name for this selection
+// DisplayName returns the display name for this selection.
+// For SDKDefault mode, includes AWS_PROFILE value if set.
 func (s ProfileSelection) DisplayName() string {
 	switch s.Mode {
 	case ModeSDKDefault:
+		if p := os.Getenv("AWS_PROFILE"); p != "" {
+			return "SDK Default (AWS_PROFILE=" + p + ")"
+		}
 		return "SDK Default"
 	case ModeEnvOnly:
 		return "Env/IMDS Only"

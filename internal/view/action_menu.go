@@ -191,10 +191,11 @@ func (m *ActionMenu) executeAction(act action.Action) (tea.Model, tea.Cmd) {
 			}
 		}
 		exec := &action.ExecWithHeader{
-			Command:  execCmd,
-			Resource: m.resource,
-			Service:  m.service,
-			ResType:  m.resType,
+			Command:    execCmd,
+			Resource:   m.resource,
+			Service:    m.service,
+			ResType:    m.resType,
+			SkipAWSEnv: act.SkipAWSEnv,
 		}
 		return m, tea.Exec(exec, func(err error) tea.Msg {
 			if err != nil {
