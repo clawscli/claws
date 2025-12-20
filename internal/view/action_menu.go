@@ -71,14 +71,16 @@ func NewActionMenu(ctx context.Context, resource dao.Resource, service, resType 
 		}
 		// Read-only mode filtering:
 		// - View actions: always allowed
-		// - Exec actions: always denied (admin only)
+		// - Exec actions: allowed only if in ReadOnlyExecAllowlist (auth workflows)
 		// - API actions: allowed only if in ReadOnlyAllowlist
 		if readOnly {
 			switch act.Type {
 			case action.ActionTypeView:
 				// always allowed
 			case action.ActionTypeExec:
-				continue // admin only
+				if !action.ReadOnlyExecAllowlist[act.Name] {
+					continue // deny arbitrary shells (ECS Exec, SSM Session, etc.)
+				}
 			case action.ActionTypeAPI:
 				if !action.ReadOnlyAllowlist[act.Operation] {
 					continue

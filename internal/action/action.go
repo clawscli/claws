@@ -104,12 +104,18 @@ func NewRegistry() *Registry {
 
 // ReadOnlyAllowlist defines API operations allowed in read-only mode.
 // - View actions: always allowed
-// - Exec actions: always denied (admin only)
+// - Exec actions: allowed only if Name is in ReadOnlyExecAllowlist
 // - API actions: allowed only if Operation is in this list
 var ReadOnlyAllowlist = map[string]bool{
 	"DetectStackDrift":     true, // CloudFormation: read-only drift detection
 	"InvokeFunctionDryRun": true, // Lambda: validation only, no execution
 	"SwitchProfile":        true, // local/profile: switch active profile
+}
+
+// ReadOnlyExecAllowlist defines exec actions allowed in read-only mode.
+// Auth workflows are allowed; arbitrary shells (ECS Exec, SSM Session) are denied.
+var ReadOnlyExecAllowlist = map[string]bool{
+	ActionNameSSOLogin: true, // aws sso login - auth workflow
 }
 
 // Register registers actions for a resource type.
