@@ -16,15 +16,9 @@ import (
 	"gopkg.in/ini.v1"
 )
 
-// Special resource IDs for profile selection modes (aliases for config package constants)
-const (
-	IDSDKDefault = config.ProfileIDSDKDefault
-	IDEnvOnly    = config.ProfileIDEnvOnly
-)
-
 // ProfileData contains parsed profile information from ~/.aws files
 type ProfileData struct {
-	ID              string // IDSDKDefault, IDEnvOnly, or profile name
+	ID              string // config.SDKDefault().ID(), config.EnvOnly().ID(), or profile name
 	Name            string
 	Region          string
 	Output          string
@@ -86,14 +80,14 @@ func (d *ProfileDAO) List(_ context.Context) ([]dao.Resource, error) {
 
 	// 1. SDK Default - lets AWS SDK use standard credential chain
 	resources = append(resources, NewProfileResource(&ProfileData{
-		ID:        IDSDKDefault,
+		ID:        config.SDKDefault().ID(),
 		Name:      config.SDKDefault().DisplayName(),
 		IsCurrent: sel.IsSDKDefault(),
 	}))
 
 	// 2. Env/IMDS Only - ignores ~/.aws config, uses IMDS/environment
 	resources = append(resources, NewProfileResource(&ProfileData{
-		ID:        IDEnvOnly,
+		ID:        config.EnvOnly().ID(),
 		Name:      config.EnvOnly().DisplayName(),
 		IsCurrent: sel.IsEnvOnly(),
 	}))
@@ -120,15 +114,15 @@ func (d *ProfileDAO) Get(_ context.Context, id string) (dao.Resource, error) {
 
 	// Handle special selection modes
 	switch id {
-	case config.SDKDefault().DisplayName(), IDSDKDefault:
+	case config.SDKDefault().DisplayName(), config.SDKDefault().ID():
 		return NewProfileResource(&ProfileData{
-			ID:        IDSDKDefault,
+			ID:        config.SDKDefault().ID(),
 			Name:      config.SDKDefault().DisplayName(),
 			IsCurrent: sel.IsSDKDefault(),
 		}), nil
-	case config.EnvOnly().DisplayName(), IDEnvOnly:
+	case config.EnvOnly().DisplayName(), config.EnvOnly().ID():
 		return NewProfileResource(&ProfileData{
-			ID:        IDEnvOnly,
+			ID:        config.EnvOnly().ID(),
 			Name:      config.EnvOnly().DisplayName(),
 			IsCurrent: sel.IsEnvOnly(),
 		}), nil

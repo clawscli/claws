@@ -10,13 +10,9 @@ import (
 	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/log"
+	navmsg "github.com/clawscli/claws/internal/msg"
 	"github.com/clawscli/claws/internal/ui"
 )
-
-// ProfileChangedMsg is sent when profile is changed
-type ProfileChangedMsg struct {
-	Selection config.ProfileSelection
-}
 
 // ActionMenu displays available actions for a resource
 // actionMenuStyles holds cached lipgloss styles for performance
@@ -50,19 +46,19 @@ func newActionMenuStyles() actionMenuStyles {
 }
 
 type ActionMenu struct {
-	ctx          context.Context
-	resource     dao.Resource
-	service      string
-	resType      string
-	actions      []action.Action
-	cursor       int
-	width        int
-	height       int
-	result       *action.ActionResult
-	confirming   bool
-	confirmIdx   int
-	lastExecName string // Name of the last executed exec action
-	styles       actionMenuStyles
+	ctx            context.Context
+	resource       dao.Resource
+	service        string
+	resType        string
+	actions        []action.Action
+	cursor         int
+	width          int
+	height         int
+	result         *action.ActionResult
+	confirming     bool
+	confirmIdx     int
+	lastExecAction *action.Action // Last executed exec action for PostExecFollowUp
+	styles         actionMenuStyles
 }
 
 // NewActionMenu creates a new ActionMenu
@@ -99,7 +95,7 @@ func (m *ActionMenu) Init() tea.Cmd {
 // Update implements tea.Model
 func (m *ActionMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case ProfileChangedMsg, RegionChangedMsg:
+	case navmsg.ProfileChangedMsg, navmsg.RegionChangedMsg:
 		// Let app.go handle these navigation messages
 		return m, func() tea.Msg { return msg }
 
@@ -110,15 +106,12 @@ func (m *ActionMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			Message: msg.message,
 			Error:   msg.err,
 		}
-		// For local/profile login actions, auto-switch profile after success
-		if msg.success && m.service == "local" && m.resType == "profile" {
-			if isProfileLoginAction(m.lastExecName) {
-				sel := config.ProfileSelectionFromID(m.resource.GetID())
-				config.Global().SetSelection(sel)
-				log.Debug("auto-switching profile after login", "selection", sel.DisplayName(), "action", m.lastExecName)
-				return m, func() tea.Msg {
-					return ProfileChangedMsg{Selection: sel}
-				}
+		// Generic post-exec follow-up handling
+		if msg.success && m.lastExecAction != nil && m.lastExecAction.PostExecFollowUp != nil {
+			followUp := m.lastExecAction.PostExecFollowUp(m.resource)
+			if followUp != nil {
+				log.Debug("post-exec follow-up", "action", m.lastExecAction.Name, "msgType", fmt.Sprintf("%T", followUp))
+				return m, func() tea.Msg { return followUp }
 			}
 		}
 		return m, nil
@@ -184,8 +177,8 @@ func (m *ActionMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // executeAction executes the given action, handling exec-type actions specially
 func (m *ActionMenu) executeAction(act action.Action) (tea.Model, tea.Cmd) {
 	if act.Type == action.ActionTypeExec {
-		// Record action name for post-exec handling
-		m.lastExecName = act.Name
+		// Record action for post-exec follow-up handling
+		m.lastExecAction = &act
 
 		// For exec actions, use tea.Exec to suspend bubbletea
 		execCmd, err := action.ExpandVariables(act.Command, m.resource)
@@ -303,9 +296,4 @@ func (m *ActionMenu) StatusLine() string {
 		return "Confirm: Y/N"
 	}
 	return fmt.Sprintf("Actions for %s • Enter to execute • Esc to cancel", m.resource.GetID())
-}
-
-// isProfileLoginAction returns true if the action name is a profile login action.
-func isProfileLoginAction(name string) bool {
-	return name == action.ActionNameSSOLogin
 }

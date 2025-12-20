@@ -61,6 +61,12 @@ type Action struct {
 	Dangerous bool              // Show warning
 	Requires  []string          // Required dependencies
 	Vars      map[string]string // Variable mappings
+
+	// PostExecFollowUp generates a tea.Msg after successful exec completion.
+	// Called by ActionMenu when an exec action returns success.
+	// If nil, no follow-up message is sent.
+	// Example: profile switch after SSO login returns msg.ProfileChangedMsg.
+	PostExecFollowUp func(resource dao.Resource) any
 }
 
 // ActionResult represents the result of an action

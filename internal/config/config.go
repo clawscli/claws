@@ -135,6 +135,21 @@ func (s ProfileSelection) IsNamedProfile() bool {
 	return s.Mode == ModeNamedProfile
 }
 
+// ID returns the stable resource ID for this selection.
+// This is the inverse of ProfileSelectionFromID.
+func (s ProfileSelection) ID() string {
+	switch s.Mode {
+	case ModeSDKDefault:
+		return ProfileIDSDKDefault
+	case ModeEnvOnly:
+		return ProfileIDEnvOnly
+	case ModeNamedProfile:
+		return s.ProfileName
+	default:
+		return ""
+	}
+}
+
 // fetchAccountID fetches the AWS account ID using STS GetCallerIdentity.
 // Returns empty string on error.
 func fetchAccountID(ctx context.Context, cfg aws.Config) string {

@@ -63,11 +63,11 @@ func NewHeaderPanel() *HeaderPanel {
 	}
 }
 
-// RenderContextLine renders the AWS account/region context line
-// Can be used standalone by other views
-func RenderContextLine(service, resourceType string) string {
+// renderContextLine renders the AWS context line with optional service/resource navigation.
+// If service is empty, only Profile/Account/Region are shown.
+func (h *HeaderPanel) renderContextLine(service, resourceType string) string {
 	cfg := config.Global()
-	s := newHeaderPanelStyles()
+	s := h.styles
 
 	profileDisplay := cfg.Selection().DisplayName()
 	accountID := cfg.AccountID()
@@ -79,15 +79,27 @@ func RenderContextLine(service, resourceType string) string {
 		region = "-"
 	}
 
-	return s.label.Render("Profile: ") + s.value.Render(profileDisplay) +
+	line := s.label.Render("Profile: ") + s.value.Render(profileDisplay) +
 		s.dim.Render("  │  ") +
 		s.label.Render("Account: ") + s.value.Render(accountID) +
 		s.dim.Render("  │  ") +
-		s.label.Render("Region: ") + s.value.Render(region) +
-		s.dim.Render("  │  ") +
-		s.accent.Render(strings.ToUpper(service)) +
-		s.dim.Render(" › ") +
-		s.accent.Render(resourceType)
+		s.label.Render("Region: ") + s.value.Render(region)
+
+	if service != "" {
+		line += s.dim.Render("  │  ") +
+			s.accent.Render(strings.ToUpper(service)) +
+			s.dim.Render(" › ") +
+			s.accent.Render(resourceType)
+	}
+
+	return line
+}
+
+// RenderContextLine renders the AWS account/region context line.
+// Can be used standalone by other views.
+func RenderContextLine(service, resourceType string) string {
+	h := &HeaderPanel{styles: newHeaderPanelStyles()}
+	return h.renderContextLine(service, resourceType)
 }
 
 // SetWidth sets the panel width
@@ -102,26 +114,9 @@ func (h *HeaderPanel) Height(rendered string) int {
 
 // RenderHome renders a simple header box for the home page (no service/resource info)
 func (h *HeaderPanel) RenderHome() string {
-	cfg := config.Global()
-	s := h.styles
+	contextLine := h.renderContextLine("", "")
 
-	profileDisplay := cfg.Selection().DisplayName()
-	accountID := cfg.AccountID()
-	if accountID == "" {
-		accountID = "-"
-	}
-	region := cfg.Region()
-	if region == "" {
-		region = "-"
-	}
-
-	contextLine := s.label.Render("Profile: ") + s.value.Render(profileDisplay) +
-		s.dim.Render("  │  ") +
-		s.label.Render("Account: ") + s.value.Render(accountID) +
-		s.dim.Render("  │  ") +
-		s.label.Render("Region: ") + s.value.Render(region)
-
-	panelStyle := s.panel
+	panelStyle := h.styles.panel
 	if h.width > 4 {
 		panelStyle = panelStyle.Width(h.width - 2)
 	}
@@ -134,33 +129,11 @@ func (h *HeaderPanel) RenderHome() string {
 // resourceType: current resource type (e.g., "instances")
 // summaryFields: fields from renderer.RenderSummary()
 func (h *HeaderPanel) Render(service, resourceType string, summaryFields []render.SummaryField) string {
-	cfg := config.Global()
 	s := h.styles
-
-	// Line 1: AWS Context + Current location
-	profileDisplay := cfg.Selection().DisplayName()
-	accountID := cfg.AccountID()
-	if accountID == "" {
-		accountID = "-"
-	}
-	region := cfg.Region()
-	if region == "" {
-		region = "-"
-	}
-
-	contextLine := s.label.Render("Profile: ") + s.value.Render(profileDisplay) +
-		s.dim.Render("  │  ") +
-		s.label.Render("Account: ") + s.value.Render(accountID) +
-		s.dim.Render("  │  ") +
-		s.label.Render("Region: ") + s.value.Render(region) +
-		s.dim.Render("  │  ") +
-		s.accent.Render(strings.ToUpper(service)) +
-		s.dim.Render(" › ") +
-		s.accent.Render(resourceType)
 
 	// Build content lines (fixed to headerFixedLines)
 	lines := make([]string, headerFixedLines)
-	lines[0] = contextLine
+	lines[0] = h.renderContextLine(service, resourceType)
 
 	// Line 2: Separator
 	sepWidth := h.width - 6

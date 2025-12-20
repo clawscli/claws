@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/log"
+	navmsg "github.com/clawscli/claws/internal/msg"
 	"github.com/clawscli/claws/internal/registry"
 	"github.com/clawscli/claws/internal/ui"
 	"github.com/clawscli/claws/internal/view"
@@ -244,7 +245,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.err = msg.Err
 		return a, nil
 
-	case view.RegionChangedMsg:
+	case navmsg.RegionChangedMsg:
 		log.Info("region changed", "region", msg.Region)
 		// Pop views until we find a refreshable one (ResourceBrowser or ServiceBrowser)
 		for len(a.viewStack) > 0 {
@@ -264,7 +265,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.currentView.SetSize(a.width, a.height-2),
 		)
 
-	case view.ProfileChangedMsg:
+	case navmsg.ProfileChangedMsg:
 		log.Info("profile changed", "selection", msg.Selection.DisplayName(), "currentView", fmt.Sprintf("%T", a.currentView), "stackDepth", len(a.viewStack))
 		// Refresh region and account ID for the new selection
 		if err := config.Global().RefreshForProfile(a.ctx); err != nil {

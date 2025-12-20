@@ -78,7 +78,7 @@ func (e *SimpleExec) SetStderr(w io.Writer) { e.stderr = w }
 // Run executes the command
 func (e *SimpleExec) Run() error {
 	if e.Command == "" {
-		return fmt.Errorf("empty command")
+		return ErrEmptyCommand
 	}
 
 	stdin := e.stdin
@@ -181,7 +181,7 @@ func (e *ExecWithHeader) Run() error {
 
 	// Prepare command - run through shell to support quoting and pipes
 	if e.Command == "" {
-		return fmt.Errorf("empty command")
+		return ErrEmptyCommand
 	}
 
 	cmd := exec.Command("/bin/sh", "-c", e.Command)
@@ -217,7 +217,8 @@ func (e *ExecWithHeader) Run() error {
 	return err
 }
 
-func (e *ExecWithHeader) buildHeader(width int) string {
+func (e *ExecWithHeader) buildHeader(_ int) string {
+	profileDisplay := config.Global().Selection().DisplayName()
 	region := config.Global().Region()
 	accountID := config.Global().AccountID()
 
@@ -251,17 +252,17 @@ func (e *ExecWithHeader) buildHeader(width int) string {
 	}
 	lines = append(lines, resourceLine)
 
-	// Context line
-	contextParts := []string{}
+	// Context line: Profile, Region, Account
+	contextParts := []string{
+		labelStyle.Render("Profile: ") + valueStyle.Render(profileDisplay),
+	}
 	if region != "" {
 		contextParts = append(contextParts, regionStyle.Render("["+region+"]"))
 	}
 	if accountID != "" {
 		contextParts = append(contextParts, labelStyle.Render("Account: ")+valueStyle.Render(accountID))
 	}
-	if len(contextParts) > 0 {
-		lines = append(lines, strings.Join(contextParts, " "))
-	}
+	lines = append(lines, strings.Join(contextParts, " "))
 
 	// Hint line
 	hintStyle := lipgloss.NewStyle().Foreground(ui.Current().TextDim).Italic(true)

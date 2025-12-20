@@ -7,7 +7,7 @@ import (
 	"github.com/clawscli/claws/internal/action"
 	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/dao"
-	"github.com/clawscli/claws/internal/view"
+	"github.com/clawscli/claws/internal/msg"
 )
 
 // Operation constants for profile actions
@@ -28,6 +28,11 @@ func init() {
 			Shortcut: "l",
 			Type:     action.ActionTypeExec,
 			Command:  "aws sso login --profile ${NAME}",
+			PostExecFollowUp: func(r dao.Resource) any {
+				sel := config.ProfileSelectionFromID(r.GetID())
+				config.Global().SetSelection(sel)
+				return msg.ProfileChangedMsg{Selection: sel}
+			},
 		},
 	})
 
@@ -52,11 +57,11 @@ func executeSwitchProfile(resource dao.Resource) action.ActionResult {
 	sel := config.ProfileSelectionFromID(pr.GetID())
 	config.Global().SetSelection(sel)
 
-	msg := fmt.Sprintf("Switched to profile: %s", sel.DisplayName())
+	resultMsg := fmt.Sprintf("Switched to profile: %s", sel.DisplayName())
 
 	return action.ActionResult{
 		Success:     true,
-		Message:     msg,
-		FollowUpMsg: view.ProfileChangedMsg{Selection: sel},
+		Message:     resultMsg,
+		FollowUpMsg: msg.ProfileChangedMsg{Selection: sel},
 	}
 }

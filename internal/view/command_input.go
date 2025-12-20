@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/clawscli/claws/internal/action"
 	"github.com/clawscli/claws/internal/config"
+	navmsg "github.com/clawscli/claws/internal/msg"
 	"github.com/clawscli/claws/internal/registry"
 	"github.com/clawscli/claws/internal/ui"
 )
@@ -218,7 +219,7 @@ func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 			// Switch to the new profile
 			sel := config.NamedProfile(profileName)
 			config.Global().SetSelection(sel)
-			return ProfileChangedMsg{Selection: sel}
+			return navmsg.ProfileChangedMsg{Selection: sel}
 		}), nil
 	}
 
