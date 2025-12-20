@@ -16,16 +16,15 @@ import (
 	"gopkg.in/ini.v1"
 )
 
-// Special resource IDs for profile selection modes
+// Special resource IDs for profile selection modes (aliases for config package constants)
 const (
-	// IDSDKDefault is the resource ID for SDK default credential mode
-	IDSDKDefault = "__sdk_default__"
-	// IDEnvOnly is the resource ID for env/IMDS-only credential mode
-	IDEnvOnly = "__env_only__"
+	IDSDKDefault = config.ProfileIDSDKDefault
+	IDEnvOnly    = config.ProfileIDEnvOnly
 )
 
 // ProfileData contains parsed profile information from ~/.aws files
 type ProfileData struct {
+	ID              string // IDSDKDefault, IDEnvOnly, or profile name
 	Name            string
 	Region          string
 	Output          string
@@ -87,12 +86,14 @@ func (d *ProfileDAO) List(_ context.Context) ([]dao.Resource, error) {
 
 	// 1. SDK Default - lets AWS SDK use standard credential chain
 	resources = append(resources, NewProfileResource(&ProfileData{
+		ID:        IDSDKDefault,
 		Name:      config.SDKDefault().DisplayName(),
 		IsCurrent: sel.IsSDKDefault(),
 	}))
 
 	// 2. Env/IMDS Only - ignores ~/.aws config, uses IMDS/environment
 	resources = append(resources, NewProfileResource(&ProfileData{
+		ID:        IDEnvOnly,
 		Name:      config.EnvOnly().DisplayName(),
 		IsCurrent: sel.IsEnvOnly(),
 	}))
@@ -121,11 +122,13 @@ func (d *ProfileDAO) Get(_ context.Context, id string) (dao.Resource, error) {
 	switch id {
 	case config.SDKDefault().DisplayName(), IDSDKDefault:
 		return NewProfileResource(&ProfileData{
+			ID:        IDSDKDefault,
 			Name:      config.SDKDefault().DisplayName(),
 			IsCurrent: sel.IsSDKDefault(),
 		}), nil
 	case config.EnvOnly().DisplayName(), IDEnvOnly:
 		return NewProfileResource(&ProfileData{
+			ID:        IDEnvOnly,
 			Name:      config.EnvOnly().DisplayName(),
 			IsCurrent: sel.IsEnvOnly(),
 		}), nil
@@ -159,9 +162,13 @@ type ProfileResource struct {
 
 // NewProfileResource creates a new ProfileResource
 func NewProfileResource(data *ProfileData) *ProfileResource {
+	id := data.ID
+	if id == "" {
+		id = data.Name // Fallback for named profiles
+	}
 	return &ProfileResource{
 		BaseResource: dao.BaseResource{
-			ID:   data.Name,
+			ID:   id,
 			Name: data.Name,
 		},
 		Data: data,

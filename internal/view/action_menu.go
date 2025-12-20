@@ -113,17 +113,7 @@ func (m *ActionMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// For local/profile login actions, auto-switch profile after success
 		if msg.success && m.service == "local" && m.resType == "profile" {
 			if isProfileLoginAction(m.lastExecName) {
-				resourceID := m.resource.GetID()
-				// Determine selection based on resource ID
-				var sel config.ProfileSelection
-				switch resourceID {
-				case config.SDKDefault().DisplayName():
-					sel = config.SDKDefault()
-				case config.EnvOnly().DisplayName():
-					sel = config.EnvOnly()
-				default:
-					sel = config.NamedProfile(resourceID)
-				}
+				sel := config.ProfileSelectionFromID(m.resource.GetID())
 				config.Global().SetSelection(sel)
 				log.Debug("auto-switching profile after login", "selection", sel.DisplayName(), "action", m.lastExecName)
 				return m, func() tea.Msg {

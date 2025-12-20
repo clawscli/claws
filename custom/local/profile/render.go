@@ -89,7 +89,7 @@ func NewProfileRenderer() render.Renderer {
 }
 
 func getProfileType(data *ProfileData) string {
-	if data.Name == config.EnvOnly().DisplayName() {
+	if data.ID == IDEnvOnly {
 		return "Env/IMDS"
 	}
 	if data.SSOStartURL != "" || data.SSOSession != "" {
@@ -128,7 +128,7 @@ func (r *ProfileRenderer) RenderDetail(resource dao.Resource) string {
 	data := pr.Data
 
 	// Special handling for Env/IMDS Only option
-	if data.Name == config.EnvOnly().DisplayName() {
+	if data.ID == IDEnvOnly {
 		title := config.EnvOnly().DisplayName()
 		if data.IsCurrent {
 			title += " (current)"

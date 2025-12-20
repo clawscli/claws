@@ -36,6 +36,26 @@ func SelectionLoadOptions(sel ProfileSelection) []func(*config.LoadOptions) erro
 // DemoAccountID is the masked account ID shown in demo mode
 const DemoAccountID = "123456789012"
 
+// Profile resource ID constants for stable identification
+const (
+	// ProfileIDSDKDefault is the resource ID for SDK default credential mode
+	ProfileIDSDKDefault = "__sdk_default__"
+	// ProfileIDEnvOnly is the resource ID for env/IMDS-only credential mode
+	ProfileIDEnvOnly = "__env_only__"
+)
+
+// ProfileSelectionFromID returns ProfileSelection for a resource ID.
+func ProfileSelectionFromID(id string) ProfileSelection {
+	switch id {
+	case ProfileIDSDKDefault:
+		return SDKDefault()
+	case ProfileIDEnvOnly:
+		return EnvOnly()
+	default:
+		return NamedProfile(id)
+	}
+}
+
 // CredentialMode represents how AWS credentials are resolved
 type CredentialMode int
 
@@ -300,12 +320,6 @@ func (c *Config) RefreshForProfile(ctx context.Context) error {
 	c.mu.Unlock()
 
 	return nil
-}
-
-// RefreshAccountID re-fetches the account ID for the current profile.
-// Deprecated: Use RefreshForProfile instead to also update region.
-func (c *Config) RefreshAccountID(ctx context.Context) error {
-	return c.RefreshForProfile(ctx)
 }
 
 // checkDependencies checks for required external tools

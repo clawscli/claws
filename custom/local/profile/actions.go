@@ -49,26 +49,10 @@ func executeSwitchProfile(resource dao.Resource) action.ActionResult {
 		return action.InvalidResourceResult()
 	}
 
-	name := pr.Data.Name
-	cfg := config.Global()
+	sel := config.ProfileSelectionFromID(pr.GetID())
+	config.Global().SetSelection(sel)
 
-	// Determine selection based on resource name
-	var sel config.ProfileSelection
-	var msg string
-
-	switch name {
-	case config.SDKDefault().DisplayName():
-		sel = config.SDKDefault()
-		msg = "Using SDK default credentials"
-	case config.EnvOnly().DisplayName():
-		sel = config.EnvOnly()
-		msg = "Using environment/IMDS credentials (ignoring ~/.aws config)"
-	default:
-		sel = config.NamedProfile(name)
-		msg = fmt.Sprintf("Switched to profile: %s", name)
-	}
-
-	cfg.SetSelection(sel)
+	msg := fmt.Sprintf("Switched to profile: %s", sel.DisplayName())
 
 	return action.ActionResult{
 		Success:     true,
