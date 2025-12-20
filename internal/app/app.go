@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -212,11 +213,11 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			)
 
 		case key.Matches(msg, a.keys.Profile):
-			profileSelector := view.NewProfileSelector()
+			profileBrowser := view.NewResourceBrowserWithType(a.ctx, a.registry, "local", "profile")
 			if a.currentView != nil {
 				a.viewStack = append(a.viewStack, a.currentView)
 			}
-			a.currentView = profileSelector
+			a.currentView = profileBrowser
 			return a, tea.Batch(
 				a.currentView.Init(),
 				a.currentView.SetSize(a.width, a.height-2),
@@ -264,11 +265,21 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		)
 
 	case view.ProfileChangedMsg:
-		log.Info("profile changed", "profile", msg.Profile)
-		// Pop views until we find a refreshable one (ResourceBrowser or ServiceBrowser)
+		log.Info("profile changed", "profile", msg.Profile, "currentView", fmt.Sprintf("%T", a.currentView), "stackDepth", len(a.viewStack))
+		// Refresh account ID for the new profile
+		if err := config.Global().RefreshAccountID(a.ctx); err != nil {
+			log.Debug("failed to refresh account ID", "error", err)
+		}
+		// Pop views until we find a refreshable AWS resource view (skip local service views)
 		for len(a.viewStack) > 0 {
 			a.currentView = a.viewStack[len(a.viewStack)-1]
 			a.viewStack = a.viewStack[:len(a.viewStack)-1]
+
+			// Skip local service views (profile browser) - we want to return to AWS resources
+			if rb, ok := a.currentView.(*view.ResourceBrowser); ok && rb.Service() == "local" {
+				continue
+			}
+
 			if r, ok := a.currentView.(view.Refreshable); ok && r.CanRefresh() {
 				return a, tea.Batch(
 					a.currentView.SetSize(a.width, a.height-2),

@@ -1,12 +1,7 @@
 package config
 
 import (
-	"bufio"
 	"context"
-	"os"
-	"path/filepath"
-	"slices"
-	"strings"
 	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -14,8 +9,35 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
+// ProfileLoadOptions returns config load options based on the given profile.
+// This centralizes the logic for handling different profile modes:
+//   - "" (empty): SDK default behavior (respects AWS_PROFILE env, falls back to default)
+//   - UseEnvironmentCredentials: ignore ~/.aws files, use IMDS/environment only
+//   - any other value: explicitly use that profile from ~/.aws files
+func ProfileLoadOptions(profile string) []func(*config.LoadOptions) error {
+	if profile == UseEnvironmentCredentials {
+		return []func(*config.LoadOptions) error{
+			config.WithSharedConfigFiles([]string{}),
+			config.WithSharedCredentialsFiles([]string{}),
+		}
+	}
+	if profile != "" {
+		return []func(*config.LoadOptions) error{
+			config.WithSharedConfigProfile(profile),
+		}
+	}
+	return nil
+}
+
 // DemoAccountID is the masked account ID shown in demo mode
 const DemoAccountID = "123456789012"
+
+// UseEnvironmentCredentials is a special value to ignore ~/.aws config and use environment credentials
+// (instance profile, ECS task role, Lambda execution role, environment variables, etc.)
+const UseEnvironmentCredentials = "__environment__"
+
+// EnvironmentCredentialsDisplayName is the display name for the environment credentials option
+const EnvironmentCredentialsDisplayName = "(Environment)"
 
 // Config holds global application configuration
 type Config struct {
@@ -136,21 +158,64 @@ func (c *Config) Init(ctx context.Context) error {
 	// Check external dependencies
 	c.checkDependencies()
 
-	cfg, err := config.LoadDefaultConfig(ctx,
+	c.mu.RLock()
+	profile := c.profile
+	c.mu.RUnlock()
+
+	opts := []func(*config.LoadOptions) error{
 		config.WithEC2IMDSRegion(),
-	)
+	}
+	opts = append(opts, ProfileLoadOptions(profile)...)
+
+	cfg, err := config.LoadDefaultConfig(ctx, opts...)
 	if err != nil {
 		return err
 	}
 
 	c.mu.Lock()
-	c.region = cfg.Region
+	if c.region == "" {
+		c.region = cfg.Region
+	}
 	c.mu.Unlock()
 
 	// Get account ID from STS
 	stsClient := sts.NewFromConfig(cfg)
 	identity, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
 	if err == nil && identity.Account != nil {
+		c.mu.Lock()
+		c.accountID = *identity.Account
+		c.mu.Unlock()
+	}
+
+	return nil
+}
+
+// RefreshAccountID re-fetches the account ID for the current profile
+func (c *Config) RefreshAccountID(ctx context.Context) error {
+	c.mu.RLock()
+	profile := c.profile
+	c.mu.RUnlock()
+
+	opts := []func(*config.LoadOptions) error{
+		config.WithEC2IMDSRegion(),
+	}
+	opts = append(opts, ProfileLoadOptions(profile)...)
+
+	cfg, err := config.LoadDefaultConfig(ctx, opts...)
+	if err != nil {
+		return err
+	}
+
+	stsClient := sts.NewFromConfig(cfg)
+	identity, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
+	if err != nil {
+		c.mu.Lock()
+		c.accountID = ""
+		c.mu.Unlock()
+		return err
+	}
+
+	if identity.Account != nil {
 		c.mu.Lock()
 		c.accountID = *identity.Account
 		c.mu.Unlock()
@@ -204,70 +269,4 @@ func FetchAvailableRegions(ctx context.Context) ([]string, error) {
 		}
 	}
 	return regions, nil
-}
-
-// FetchAvailableProfiles returns available AWS profiles from credentials and config files
-func FetchAvailableProfiles() []string {
-	profileSet := make(map[string]struct{})
-
-	// Add "default" profile always
-	profileSet["default"] = struct{}{}
-
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return []string{"default"}
-	}
-
-	// Parse ~/.aws/credentials
-	credentialsPath := filepath.Join(homeDir, ".aws", "credentials")
-	parseProfilesFromFile(credentialsPath, profileSet, false)
-
-	// Parse ~/.aws/config
-	configPath := filepath.Join(homeDir, ".aws", "config")
-	parseProfilesFromFile(configPath, profileSet, true)
-
-	// Convert to sorted slice
-	profiles := make([]string, 0, len(profileSet))
-	for p := range profileSet {
-		profiles = append(profiles, p)
-	}
-	slices.Sort(profiles)
-
-	// Move "default" to the front
-	for i, p := range profiles {
-		if p == "default" && i > 0 {
-			profiles = append([]string{"default"}, append(profiles[:i], profiles[i+1:]...)...)
-			break
-		}
-	}
-
-	return profiles
-}
-
-// parseProfilesFromFile parses profile names from AWS credentials or config file
-func parseProfilesFromFile(path string, profiles map[string]struct{}, isConfig bool) {
-	file, err := os.Open(path)
-	if err != nil {
-		return
-	}
-	defer func() { _ = file.Close() }()
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
-			section := line[1 : len(line)-1]
-			// In config file, profiles are prefixed with "profile "
-			if isConfig {
-				if strings.HasPrefix(section, "profile ") {
-					profiles[strings.TrimPrefix(section, "profile ")] = struct{}{}
-				} else if section == "default" {
-					profiles["default"] = struct{}{}
-				}
-			} else {
-				// In credentials file, section name is the profile name
-				profiles[section] = struct{}{}
-			}
-		}
-	}
 }

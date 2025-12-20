@@ -15,12 +15,12 @@ func NewConfig(ctx context.Context) (aws.Config, error) {
 	opts := []func(*config.LoadOptions) error{
 		config.WithEC2IMDSRegion(),
 	}
-	if profile := appconfig.Global().Profile(); profile != "" && profile != "default" {
-		opts = append(opts, config.WithSharedConfigProfile(profile))
-	}
+	opts = append(opts, appconfig.ProfileLoadOptions(appconfig.Global().Profile())...)
+
 	if region := appconfig.Global().Region(); region != "" {
 		opts = append(opts, config.WithRegion(region))
 	}
+
 	cfg, err := config.LoadDefaultConfig(ctx, opts...)
 	if err != nil {
 		return aws.Config{}, fmt.Errorf("load AWS config: %w", err)
@@ -34,9 +34,8 @@ func NewConfigWithRegion(ctx context.Context, region string) (aws.Config, error)
 	opts := []func(*config.LoadOptions) error{
 		config.WithRegion(region),
 	}
-	if profile := appconfig.Global().Profile(); profile != "" && profile != "default" {
-		opts = append(opts, config.WithSharedConfigProfile(profile))
-	}
+	opts = append(opts, appconfig.ProfileLoadOptions(appconfig.Global().Profile())...)
+
 	cfg, err := config.LoadDefaultConfig(ctx, opts...)
 	if err != nil {
 		return aws.Config{}, fmt.Errorf("load AWS config for region %s: %w", region, err)

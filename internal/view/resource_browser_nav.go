@@ -116,6 +116,11 @@ func (r *ResourceBrowser) CanRefresh() bool {
 	return true
 }
 
+// Service returns the service name for this browser
+func (r *ResourceBrowser) Service() string {
+	return r.service
+}
+
 // getNavigationShortcuts returns a string of navigation shortcuts for the current resource
 func (r *ResourceBrowser) getNavigationShortcuts() string {
 	if r.renderer == nil || len(r.filtered) == 0 {

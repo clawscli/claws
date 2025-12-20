@@ -26,6 +26,7 @@ import (
 	_ "github.com/clawscli/claws/custom/iam/policies"
 	_ "github.com/clawscli/claws/custom/iam/roles"
 	_ "github.com/clawscli/claws/custom/iam/users"
+	_ "github.com/clawscli/claws/custom/local/profile"
 	_ "github.com/clawscli/claws/custom/s3/buckets"
 	_ "github.com/clawscli/claws/custom/vpc/internetgateways"
 	_ "github.com/clawscli/claws/custom/vpc/natgateways"
@@ -324,7 +325,10 @@ func main() {
 
 	cfg.SetReadOnly(opts.readOnly)
 	cfg.SetDemoMode(opts.demoMode)
-	if opts.profile != "" {
+	if opts.envCreds {
+		// Use environment credentials, ignore ~/.aws config
+		cfg.SetProfile(config.UseEnvironmentCredentials)
+	} else if opts.profile != "" {
 		cfg.SetProfile(opts.profile)
 		os.Setenv("AWS_PROFILE", opts.profile)
 	}
@@ -368,6 +372,7 @@ type cliOptions struct {
 	region   string
 	readOnly bool
 	demoMode bool
+	envCreds bool // Use environment credentials (ignore ~/.aws config)
 	logFile  string
 }
 
@@ -395,6 +400,8 @@ func parseFlags() cliOptions {
 			opts.readOnly = true
 		case arg == "--demo":
 			opts.demoMode = true
+		case arg == "-e" || arg == "--env":
+			opts.envCreds = true
 		case arg == "-l" || arg == "--log-file":
 			if i+1 < len(args) {
 				i++
@@ -430,6 +437,9 @@ func printUsage() {
 	fmt.Println("        AWS profile to use")
 	fmt.Println("  -r, --region <region>")
 	fmt.Println("        AWS region to use")
+	fmt.Println("  -e, --env")
+	fmt.Println("        Use environment credentials (ignore ~/.aws config)")
+	fmt.Println("        Useful for instance profiles, ECS task roles, Lambda, etc.")
 	fmt.Println("  -ro, --read-only")
 	fmt.Println("        Run in read-only mode (disable dangerous actions)")
 	fmt.Println("  --demo")

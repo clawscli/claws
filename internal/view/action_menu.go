@@ -9,8 +9,14 @@ import (
 	"github.com/clawscli/claws/internal/action"
 	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/dao"
+	"github.com/clawscli/claws/internal/log"
 	"github.com/clawscli/claws/internal/ui"
 )
+
+// ProfileChangedMsg is sent when profile is changed
+type ProfileChangedMsg struct {
+	Profile string
+}
 
 // ActionMenu displays available actions for a resource
 // actionMenuStyles holds cached lipgloss styles for performance
@@ -44,18 +50,19 @@ func newActionMenuStyles() actionMenuStyles {
 }
 
 type ActionMenu struct {
-	ctx        context.Context
-	resource   dao.Resource
-	service    string
-	resType    string
-	actions    []action.Action
-	cursor     int
-	width      int
-	height     int
-	result     *action.ActionResult
-	confirming bool
-	confirmIdx int
-	styles     actionMenuStyles
+	ctx          context.Context
+	resource     dao.Resource
+	service      string
+	resType      string
+	actions      []action.Action
+	cursor       int
+	width        int
+	height       int
+	result       *action.ActionResult
+	confirming   bool
+	confirmIdx   int
+	lastExecName string // Name of the last executed exec action
+	styles       actionMenuStyles
 }
 
 // NewActionMenu creates a new ActionMenu
@@ -92,12 +99,31 @@ func (m *ActionMenu) Init() tea.Cmd {
 // Update implements tea.Model
 func (m *ActionMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case ProfileChangedMsg, RegionChangedMsg:
+		// Let app.go handle these navigation messages
+		return m, func() tea.Msg { return msg }
+
 	case execResultMsg:
 		// Handle exec action result
 		m.result = &action.ActionResult{
 			Success: msg.success,
 			Message: msg.message,
 			Error:   msg.err,
+		}
+		// For local/profile login actions, auto-switch profile after success
+		if msg.success && m.service == "local" && m.resType == "profile" {
+			if m.lastExecName == "SSO Login" || m.lastExecName == "Console Login" {
+				profileName := m.resource.GetID()
+				// Handle (Environment) option - use the internal constant
+				if profileName == config.EnvironmentCredentialsDisplayName {
+					profileName = config.UseEnvironmentCredentials
+				}
+				config.Global().SetProfile(profileName)
+				log.Debug("auto-switching profile after login", "profile", profileName, "action", m.lastExecName)
+				return m, func() tea.Msg {
+					return ProfileChangedMsg{Profile: profileName}
+				}
+			}
 		}
 		return m, nil
 
@@ -141,8 +167,10 @@ func (m *ActionMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		default:
 			// Check if key matches a shortcut
+			log.Debug("action menu key pressed", "key", msg.String(), "actionsCount", len(m.actions))
 			for i, act := range m.actions {
 				if msg.String() == act.Shortcut {
+					log.Debug("shortcut matched", "shortcut", act.Shortcut, "action", act.Name)
 					if act.Confirm || act.Dangerous {
 						m.confirming = true
 						m.confirmIdx = i
@@ -160,6 +188,9 @@ func (m *ActionMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // executeAction executes the given action, handling exec-type actions specially
 func (m *ActionMenu) executeAction(act action.Action) (tea.Model, tea.Cmd) {
 	if act.Type == action.ActionTypeExec {
+		// Record action name for post-exec handling
+		m.lastExecName = act.Name
+
 		// For exec actions, use tea.Exec to suspend bubbletea
 		execCmd, err := action.ExpandVariables(act.Command, m.resource)
 		if err != nil {
@@ -184,6 +215,12 @@ func (m *ActionMenu) executeAction(act action.Action) (tea.Model, tea.Cmd) {
 	// For other actions, execute directly
 	result := action.ExecuteWithDAO(m.ctx, act, m.resource, m.service, m.resType)
 	m.result = &result
+
+	// If action has a follow-up message, send it
+	if result.FollowUpMsg != nil {
+		log.Debug("action has follow-up message", "action", act.Name, "msgType", fmt.Sprintf("%T", result.FollowUpMsg))
+		return m, func() tea.Msg { return result.FollowUpMsg }
+	}
 	return m, nil
 }
 

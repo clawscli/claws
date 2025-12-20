@@ -59,9 +59,10 @@ type Action struct {
 
 // ActionResult represents the result of an action
 type ActionResult struct {
-	Success bool
-	Message string
-	Error   error
+	Success     bool
+	Message     string
+	Error       error
+	FollowUpMsg any // Optional tea.Msg to send after action completes
 }
 
 // ExecutorFunc is a function that executes an action on a resource
