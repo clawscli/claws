@@ -14,6 +14,14 @@ import (
 	"golang.org/x/term"
 )
 
+// setAWSProfileEnv sets the AWS_PROFILE environment variable on the command
+// if a profile is selected (excluding UseEnvironmentCredentials which uses IMDS/env vars).
+func setAWSProfileEnv(cmd *exec.Cmd) {
+	if profile := config.Global().Profile(); profile != "" && profile != config.UseEnvironmentCredentials {
+		cmd.Env = append(os.Environ(), "AWS_PROFILE="+profile)
+	}
+}
+
 // SimpleExec represents a simple exec command without header.
 // Implements tea.ExecCommand interface.
 type SimpleExec struct {
@@ -56,11 +64,7 @@ func (e *SimpleExec) Run() error {
 	cmd.Stdin = stdin
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
-
-	// Set AWS_PROFILE if a profile is selected
-	if profile := config.Global().Profile(); profile != "" && profile != config.UseEnvironmentCredentials {
-		cmd.Env = append(os.Environ(), "AWS_PROFILE="+profile)
-	}
+	setAWSProfileEnv(cmd)
 
 	return cmd.Run()
 }
@@ -150,12 +154,7 @@ func (e *ExecWithHeader) Run() error {
 	cmd.Stdin = stdin
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
-
-	// Set AWS_PROFILE environment variable if a profile is selected
-	// (skip for UseEnvironmentCredentials which means use IMDS/env vars)
-	if profile := config.Global().Profile(); profile != "" && profile != config.UseEnvironmentCredentials {
-		cmd.Env = append(os.Environ(), "AWS_PROFILE="+profile)
-	}
+	setAWSProfileEnv(cmd)
 
 	// Run the command
 	err := cmd.Run()

@@ -310,9 +310,6 @@ func (m *ActionMenu) StatusLine() string {
 }
 
 // isProfileLoginAction returns true if the action name is a profile login action.
-// Uses constants from custom/local/profile/actions.go.
 func isProfileLoginAction(name string) bool {
-	// Import would create circular dependency, so use string matching.
-	// This value must match ActionNameSSOLogin in custom/local/profile/actions.go
-	return name == "SSO Login"
+	return name == action.ActionNameSSOLogin
 }

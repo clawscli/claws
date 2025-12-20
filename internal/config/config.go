@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
@@ -47,6 +48,17 @@ const UseEnvironmentCredentials = "__environment__"
 
 // EnvironmentCredentialsDisplayName is the display name for the environment credentials option
 const EnvironmentCredentialsDisplayName = "(Environment)"
+
+// fetchAccountID fetches the AWS account ID using STS GetCallerIdentity.
+// Returns empty string on error.
+func fetchAccountID(ctx context.Context, cfg aws.Config) string {
+	stsClient := sts.NewFromConfig(cfg)
+	identity, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
+	if err != nil || identity.Account == nil {
+		return ""
+	}
+	return *identity.Account
+}
 
 // Config holds global application configuration
 type Config struct {
@@ -180,16 +192,8 @@ func (c *Config) Init(ctx context.Context) error {
 	if c.region == "" {
 		c.region = cfg.Region
 	}
+	c.accountID = fetchAccountID(ctx, cfg)
 	c.mu.Unlock()
-
-	// Get account ID from STS
-	stsClient := sts.NewFromConfig(cfg)
-	identity, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
-	if err == nil && identity.Account != nil {
-		c.mu.Lock()
-		c.accountID = *identity.Account
-		c.mu.Unlock()
-	}
 
 	return nil
 }
@@ -206,28 +210,13 @@ func (c *Config) RefreshForProfile(ctx context.Context) error {
 		return err
 	}
 
+	c.mu.Lock()
 	// Update region from profile's default (if set)
 	if cfg.Region != "" {
-		c.mu.Lock()
 		c.region = cfg.Region
-		c.mu.Unlock()
 	}
-
-	// Get account ID from STS
-	stsClient := sts.NewFromConfig(cfg)
-	identity, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
-	if err != nil {
-		c.mu.Lock()
-		c.accountID = ""
-		c.mu.Unlock()
-		return err
-	}
-
-	if identity.Account != nil {
-		c.mu.Lock()
-		c.accountID = *identity.Account
-		c.mu.Unlock()
-	}
+	c.accountID = fetchAccountID(ctx, cfg)
+	c.mu.Unlock()
 
 	return nil
 }
@@ -261,11 +250,9 @@ var CommonRegions = []string{
 	"sa-east-1",
 }
 
-// FetchAvailableRegions fetches available regions from AWS
+// FetchAvailableRegions fetches available regions from AWS using the current profile.
 func FetchAvailableRegions(ctx context.Context) ([]string, error) {
-	cfg, err := config.LoadDefaultConfig(ctx,
-		config.WithEC2IMDSRegion(),
-	)
+	cfg, err := config.LoadDefaultConfig(ctx, BaseLoadOptions(Global().Profile())...)
 	if err != nil {
 		return CommonRegions, nil // Fallback to common regions
 	}

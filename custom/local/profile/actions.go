@@ -10,11 +10,6 @@ import (
 	"github.com/clawscli/claws/internal/view"
 )
 
-// Action names for profile operations (used by action_menu for post-exec handling)
-const (
-	ActionNameSSOLogin = "SSO Login"
-)
-
 func init() {
 	action.Global.Register("local", "profile", []action.Action{
 		{
@@ -24,7 +19,7 @@ func init() {
 			Operation: "SwitchProfile",
 		},
 		{
-			Name:     ActionNameSSOLogin,
+			Name:     action.ActionNameSSOLogin,
 			Shortcut: "l",
 			Type:     action.ActionTypeExec,
 			Command:  "aws sso login --profile ${NAME}",

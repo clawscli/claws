@@ -43,6 +43,12 @@ const (
 	ActionTypeView ActionType = "view" // Navigate to another view
 )
 
+// Profile action names - used by both custom/local/profile and view/action_menu
+// to avoid circular dependencies
+const (
+	ActionNameSSOLogin = "SSO Login"
+)
+
 // Action defines an action that can be performed on a resource
 type Action struct {
 	Name      string
