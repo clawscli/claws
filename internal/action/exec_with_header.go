@@ -15,11 +15,12 @@ import (
 )
 
 // setAWSProfileEnv configures AWS_PROFILE environment variable on the command.
-// - If a profile is selected: sets AWS_PROFILE to the profile name
-// - If UseEnvironmentCredentials: removes AWS_PROFILE to use IMDS/env vars
-// - Preserves any existing cmd.Env entries
+// Behavior depends on the credential mode:
+//   - SDKDefault: preserve existing AWS_PROFILE (don't modify env)
+//   - EnvOnly: remove AWS_PROFILE to force IMDS/env vars
+//   - NamedProfile: set AWS_PROFILE to the profile name
 func setAWSProfileEnv(cmd *exec.Cmd) {
-	profile := config.Global().Profile()
+	sel := config.Global().Selection()
 
 	// Start with existing cmd.Env or os.Environ()
 	baseEnv := cmd.Env
@@ -27,20 +28,32 @@ func setAWSProfileEnv(cmd *exec.Cmd) {
 		baseEnv = os.Environ()
 	}
 
-	// Filter out existing AWS_PROFILE
-	env := make([]string, 0, len(baseEnv)+1)
-	for _, e := range baseEnv {
-		if !strings.HasPrefix(e, "AWS_PROFILE=") {
-			env = append(env, e)
+	switch sel.Mode {
+	case config.ModeSDKDefault:
+		// Preserve existing environment (including any AWS_PROFILE)
+		cmd.Env = baseEnv
+
+	case config.ModeEnvOnly:
+		// Remove AWS_PROFILE to force IMDS/env credentials
+		env := make([]string, 0, len(baseEnv))
+		for _, e := range baseEnv {
+			if !strings.HasPrefix(e, "AWS_PROFILE=") {
+				env = append(env, e)
+			}
 		}
-	}
+		cmd.Env = env
 
-	// Add AWS_PROFILE only if a real profile is selected
-	if profile != "" && profile != config.UseEnvironmentCredentials {
-		env = append(env, "AWS_PROFILE="+profile)
+	case config.ModeNamedProfile:
+		// Replace AWS_PROFILE with the selected profile
+		env := make([]string, 0, len(baseEnv)+1)
+		for _, e := range baseEnv {
+			if !strings.HasPrefix(e, "AWS_PROFILE=") {
+				env = append(env, e)
+			}
+		}
+		env = append(env, "AWS_PROFILE="+sel.ProfileName)
+		cmd.Env = env
 	}
-
-	cmd.Env = env
 }
 
 // SimpleExec represents a simple exec command without header.

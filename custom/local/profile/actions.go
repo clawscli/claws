@@ -49,23 +49,30 @@ func executeSwitchProfile(resource dao.Resource) action.ActionResult {
 		return action.InvalidResourceResult()
 	}
 
-	profileName := pr.Data.Name
+	name := pr.Data.Name
+	cfg := config.Global()
 
-	// Handle (Environment) - use environment credentials, ignore ~/.aws config
-	if profileName == config.EnvironmentCredentialsDisplayName {
-		config.Global().SetProfile(config.UseEnvironmentCredentials)
-		return action.ActionResult{
-			Success:     true,
-			Message:     "Using environment credentials (ignoring ~/.aws config)",
-			FollowUpMsg: view.ProfileChangedMsg{Profile: config.UseEnvironmentCredentials},
-		}
+	// Determine selection based on resource name
+	var sel config.ProfileSelection
+	var msg string
+
+	switch name {
+	case config.SDKDefault().DisplayName():
+		sel = config.SDKDefault()
+		msg = "Using SDK default credentials"
+	case config.EnvOnly().DisplayName(), config.EnvironmentCredentialsDisplayName:
+		sel = config.EnvOnly()
+		msg = "Using environment/IMDS credentials (ignoring ~/.aws config)"
+	default:
+		sel = config.NamedProfile(name)
+		msg = fmt.Sprintf("Switched to profile: %s", name)
 	}
 
-	config.Global().SetProfile(profileName)
+	cfg.SetSelection(sel)
 
 	return action.ActionResult{
 		Success:     true,
-		Message:     fmt.Sprintf("Switched to profile: %s", profileName),
-		FollowUpMsg: view.ProfileChangedMsg{Profile: profileName},
+		Message:     msg,
+		FollowUpMsg: view.ProfileChangedMsg{Selection: sel},
 	}
 }

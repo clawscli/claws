@@ -69,10 +69,7 @@ func RenderContextLine(service, resourceType string) string {
 	cfg := config.Global()
 	s := newHeaderPanelStyles()
 
-	profile := cfg.Profile()
-	if profile == "" {
-		profile = "default"
-	}
+	profileDisplay := cfg.Selection().DisplayName()
 	accountID := cfg.AccountID()
 	if accountID == "" {
 		accountID = "-"
@@ -82,7 +79,7 @@ func RenderContextLine(service, resourceType string) string {
 		region = "-"
 	}
 
-	return s.label.Render("Profile: ") + s.value.Render(profile) +
+	return s.label.Render("Profile: ") + s.value.Render(profileDisplay) +
 		s.dim.Render("  │  ") +
 		s.label.Render("Account: ") + s.value.Render(accountID) +
 		s.dim.Render("  │  ") +
@@ -108,10 +105,7 @@ func (h *HeaderPanel) RenderHome() string {
 	cfg := config.Global()
 	s := h.styles
 
-	profile := cfg.Profile()
-	if profile == "" {
-		profile = "default"
-	}
+	profileDisplay := cfg.Selection().DisplayName()
 	accountID := cfg.AccountID()
 	if accountID == "" {
 		accountID = "-"
@@ -121,7 +115,7 @@ func (h *HeaderPanel) RenderHome() string {
 		region = "-"
 	}
 
-	contextLine := s.label.Render("Profile: ") + s.value.Render(profile) +
+	contextLine := s.label.Render("Profile: ") + s.value.Render(profileDisplay) +
 		s.dim.Render("  │  ") +
 		s.label.Render("Account: ") + s.value.Render(accountID) +
 		s.dim.Render("  │  ") +
@@ -144,10 +138,7 @@ func (h *HeaderPanel) Render(service, resourceType string, summaryFields []rende
 	s := h.styles
 
 	// Line 1: AWS Context + Current location
-	profile := cfg.Profile()
-	if profile == "" {
-		profile = "default"
-	}
+	profileDisplay := cfg.Selection().DisplayName()
 	accountID := cfg.AccountID()
 	if accountID == "" {
 		accountID = "-"
@@ -157,7 +148,7 @@ func (h *HeaderPanel) Render(service, resourceType string, summaryFields []rende
 		region = "-"
 	}
 
-	contextLine := s.label.Render("Profile: ") + s.value.Render(profile) +
+	contextLine := s.label.Render("Profile: ") + s.value.Render(profileDisplay) +
 		s.dim.Render("  │  ") +
 		s.label.Render("Account: ") + s.value.Render(accountID) +
 		s.dim.Render("  │  ") +

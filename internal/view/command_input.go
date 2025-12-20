@@ -216,8 +216,9 @@ func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 				return nil
 			}
 			// Switch to the new profile
-			config.Global().SetProfile(profileName)
-			return ProfileChangedMsg{Profile: profileName}
+			sel := config.NamedProfile(profileName)
+			config.Global().SetSelection(sel)
+			return ProfileChangedMsg{Selection: sel}
 		}), nil
 	}
 

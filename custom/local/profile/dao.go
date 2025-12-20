@@ -7,12 +7,21 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/log"
 	"gopkg.in/ini.v1"
+)
+
+// Special resource IDs for profile selection modes
+const (
+	// IDSDKDefault is the resource ID for SDK default credential mode
+	IDSDKDefault = "__sdk_default__"
+	// IDEnvOnly is the resource ID for env/IMDS-only credential mode
+	IDEnvOnly = "__env_only__"
 )
 
 // ProfileData contains parsed profile information from ~/.aws files
@@ -71,21 +80,34 @@ func (d *ProfileDAO) List(_ context.Context) ([]dao.Resource, error) {
 		return nil, err
 	}
 
-	currentProfile := config.Global().Profile()
+	sel := config.Global().Selection()
 
-	resources := make([]dao.Resource, 0, len(profiles)+1)
+	// Capacity: 2 special entries + profiles
+	resources := make([]dao.Resource, 0, len(profiles)+2)
 
-	// Add Instance Profile option first - ignores ~/.aws config and uses IMDS/environment
-	instanceData := &ProfileData{
-		Name:      config.EnvironmentCredentialsDisplayName,
-		IsCurrent: currentProfile == config.UseEnvironmentCredentials,
+	// 1. SDK Default - lets AWS SDK use standard credential chain
+	resources = append(resources, NewProfileResource(&ProfileData{
+		Name:      config.SDKDefault().DisplayName(),
+		IsCurrent: sel.IsSDKDefault(),
+	}))
+
+	// 2. Env/IMDS Only - ignores ~/.aws config, uses IMDS/environment
+	resources = append(resources, NewProfileResource(&ProfileData{
+		Name:      config.EnvOnly().DisplayName(),
+		IsCurrent: sel.IsEnvOnly(),
+	}))
+
+	// 3. Named profiles from ~/.aws (sorted for stable ordering)
+	names := make([]string, 0, len(profiles))
+	for name := range profiles {
+		names = append(names, name)
 	}
-	resources = append(resources, NewProfileResource(instanceData))
+	sort.Strings(names)
 
-	// Add profiles from ~/.aws files
-	for name, data := range profiles {
+	for _, name := range names {
+		data := profiles[name]
 		data.Name = name
-		data.IsCurrent = (name == currentProfile)
+		data.IsCurrent = sel.IsNamedProfile() && sel.ProfileName == name
 		resources = append(resources, NewProfileResource(data))
 	}
 
@@ -93,13 +115,20 @@ func (d *ProfileDAO) List(_ context.Context) ([]dao.Resource, error) {
 }
 
 func (d *ProfileDAO) Get(_ context.Context, id string) (dao.Resource, error) {
-	currentProfile := config.Global().Profile()
+	sel := config.Global().Selection()
 
-	// Handle (Environment) option
-	if id == config.EnvironmentCredentialsDisplayName {
+	// Handle special selection modes
+	switch id {
+	case config.SDKDefault().DisplayName(), IDSDKDefault:
 		return NewProfileResource(&ProfileData{
-			Name:      config.EnvironmentCredentialsDisplayName,
-			IsCurrent: currentProfile == config.UseEnvironmentCredentials,
+			Name:      config.SDKDefault().DisplayName(),
+			IsCurrent: sel.IsSDKDefault(),
+		}), nil
+	case config.EnvOnly().DisplayName(), IDEnvOnly,
+		config.EnvironmentCredentialsDisplayName: // backward compat
+		return NewProfileResource(&ProfileData{
+			Name:      config.EnvOnly().DisplayName(),
+			IsCurrent: sel.IsEnvOnly(),
 		}), nil
 	}
 
@@ -114,7 +143,7 @@ func (d *ProfileDAO) Get(_ context.Context, id string) (dao.Resource, error) {
 	}
 
 	data.Name = id
-	data.IsCurrent = (id == currentProfile)
+	data.IsCurrent = sel.IsNamedProfile() && sel.ProfileName == id
 	return NewProfileResource(data), nil
 }
 

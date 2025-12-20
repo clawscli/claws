@@ -15,7 +15,7 @@ import (
 
 // ProfileChangedMsg is sent when profile is changed
 type ProfileChangedMsg struct {
-	Profile string
+	Selection config.ProfileSelection
 }
 
 // ActionMenu displays available actions for a resource
@@ -113,15 +113,21 @@ func (m *ActionMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// For local/profile login actions, auto-switch profile after success
 		if msg.success && m.service == "local" && m.resType == "profile" {
 			if isProfileLoginAction(m.lastExecName) {
-				profileName := m.resource.GetID()
-				// Handle (Environment) option - use the internal constant
-				if profileName == config.EnvironmentCredentialsDisplayName {
-					profileName = config.UseEnvironmentCredentials
+				resourceID := m.resource.GetID()
+				// Determine selection based on resource ID
+				var sel config.ProfileSelection
+				switch resourceID {
+				case config.SDKDefault().DisplayName():
+					sel = config.SDKDefault()
+				case config.EnvOnly().DisplayName(), config.EnvironmentCredentialsDisplayName:
+					sel = config.EnvOnly()
+				default:
+					sel = config.NamedProfile(resourceID)
 				}
-				config.Global().SetProfile(profileName)
-				log.Debug("auto-switching profile after login", "profile", profileName, "action", m.lastExecName)
+				config.Global().SetSelection(sel)
+				log.Debug("auto-switching profile after login", "selection", sel.DisplayName(), "action", m.lastExecName)
 				return m, func() tea.Msg {
-					return ProfileChangedMsg{Profile: profileName}
+					return ProfileChangedMsg{Selection: sel}
 				}
 			}
 		}

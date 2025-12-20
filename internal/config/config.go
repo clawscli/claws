@@ -10,28 +10,49 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
-// ProfileLoadOptions returns config load options based on the given profile.
-// This centralizes the logic for handling different profile modes:
-//   - "" (empty): SDK default behavior (respects AWS_PROFILE env, falls back to default)
-//   - UseEnvironmentCredentials: ignore ~/.aws files, use IMDS/environment only
-//   - any other value: explicitly use that profile from ~/.aws files
+// SelectionLoadOptions returns config load options based on the given ProfileSelection.
+// This centralizes the logic for handling different credential modes:
+//   - ModeSDKDefault: no extra options, let SDK use standard chain
+//   - ModeEnvOnly: ignore ~/.aws files, use IMDS/environment only
+//   - ModeNamedProfile: explicitly use that profile from ~/.aws files
+func SelectionLoadOptions(sel ProfileSelection) []func(*config.LoadOptions) error {
+	opts := []func(*config.LoadOptions) error{
+		config.WithEC2IMDSRegion(),
+	}
+	switch sel.Mode {
+	case ModeEnvOnly:
+		opts = append(opts,
+			config.WithSharedConfigFiles([]string{}),
+			config.WithSharedCredentialsFiles([]string{}),
+		)
+	case ModeNamedProfile:
+		opts = append(opts, config.WithSharedConfigProfile(sel.ProfileName))
+	case ModeSDKDefault:
+		// No extra options - let SDK use standard chain
+	}
+	return opts
+}
+
+// ProfileLoadOptions returns config load options based on the given profile string.
+// Deprecated: Use SelectionLoadOptions with ProfileSelection instead.
 func ProfileLoadOptions(profile string) []func(*config.LoadOptions) error {
-	if profile == UseEnvironmentCredentials {
+	switch profile {
+	case UseEnvironmentCredentials:
 		return []func(*config.LoadOptions) error{
 			config.WithSharedConfigFiles([]string{}),
 			config.WithSharedCredentialsFiles([]string{}),
 		}
-	}
-	if profile != "" {
+	case "":
+		return nil
+	default:
 		return []func(*config.LoadOptions) error{
 			config.WithSharedConfigProfile(profile),
 		}
 	}
-	return nil
 }
 
 // BaseLoadOptions returns common load options for AWS config initialization.
-// Includes IMDS region detection and profile-based options.
+// Deprecated: Use SelectionLoadOptions instead.
 func BaseLoadOptions(profile string) []func(*config.LoadOptions) error {
 	opts := []func(*config.LoadOptions) error{
 		config.WithEC2IMDSRegion(),
@@ -44,10 +65,91 @@ const DemoAccountID = "123456789012"
 
 // UseEnvironmentCredentials is a special value to ignore ~/.aws config and use environment credentials
 // (instance profile, ECS task role, Lambda execution role, environment variables, etc.)
+// Deprecated: Use CredentialMode instead
 const UseEnvironmentCredentials = "__environment__"
 
 // EnvironmentCredentialsDisplayName is the display name for the environment credentials option
+// Deprecated: Use CredentialMode display methods instead
 const EnvironmentCredentialsDisplayName = "(Environment)"
+
+// CredentialMode represents how AWS credentials are resolved
+type CredentialMode int
+
+const (
+	// ModeSDKDefault lets AWS SDK decide via standard credential chain.
+	// Preserves existing AWS_PROFILE environment variable.
+	ModeSDKDefault CredentialMode = iota
+
+	// ModeNamedProfile explicitly uses a named profile from ~/.aws config.
+	ModeNamedProfile
+
+	// ModeEnvOnly ignores ~/.aws files, uses IMDS/environment/ECS/Lambda creds only.
+	ModeEnvOnly
+)
+
+// String returns a display string for the credential mode
+func (m CredentialMode) String() string {
+	switch m {
+	case ModeSDKDefault:
+		return "SDK Default"
+	case ModeNamedProfile:
+		return "" // Profile name is shown separately
+	case ModeEnvOnly:
+		return "Env/IMDS Only"
+	default:
+		return "Unknown"
+	}
+}
+
+// ProfileSelection represents the selected credential mode and optional profile name
+type ProfileSelection struct {
+	Mode        CredentialMode
+	ProfileName string // Only used when Mode == ModeNamedProfile
+}
+
+// SDKDefault returns a selection for SDK default credential chain
+func SDKDefault() ProfileSelection {
+	return ProfileSelection{Mode: ModeSDKDefault}
+}
+
+// EnvOnly returns a selection for environment/IMDS credentials only
+func EnvOnly() ProfileSelection {
+	return ProfileSelection{Mode: ModeEnvOnly}
+}
+
+// NamedProfile returns a selection for a specific named profile
+func NamedProfile(name string) ProfileSelection {
+	return ProfileSelection{Mode: ModeNamedProfile, ProfileName: name}
+}
+
+// DisplayName returns the display name for this selection
+func (s ProfileSelection) DisplayName() string {
+	switch s.Mode {
+	case ModeSDKDefault:
+		return "SDK Default"
+	case ModeEnvOnly:
+		return "Env/IMDS Only"
+	case ModeNamedProfile:
+		return s.ProfileName
+	default:
+		return "Unknown"
+	}
+}
+
+// IsSDKDefault returns true if this is SDK default mode
+func (s ProfileSelection) IsSDKDefault() bool {
+	return s.Mode == ModeSDKDefault
+}
+
+// IsEnvOnly returns true if this is env-only mode
+func (s ProfileSelection) IsEnvOnly() bool {
+	return s.Mode == ModeEnvOnly
+}
+
+// IsNamedProfile returns true if this is a named profile
+func (s ProfileSelection) IsNamedProfile() bool {
+	return s.Mode == ModeNamedProfile
+}
 
 // fetchAccountID fetches the AWS account ID using STS GetCallerIdentity.
 // Returns empty string on error.
@@ -64,7 +166,7 @@ func fetchAccountID(ctx context.Context, cfg aws.Config) string {
 type Config struct {
 	mu        sync.RWMutex
 	region    string
-	profile   string
+	selection ProfileSelection
 	accountID string
 	warnings  []string
 	readOnly  bool
@@ -98,18 +200,65 @@ func (c *Config) SetRegion(region string) {
 	c.region = region
 }
 
-// Profile returns the current AWS profile
+// Selection returns the current profile selection
+func (c *Config) Selection() ProfileSelection {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.selection
+}
+
+// SetSelection sets the profile selection
+func (c *Config) SetSelection(sel ProfileSelection) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.selection = sel
+}
+
+// UseSDKDefault sets SDK default credential mode
+func (c *Config) UseSDKDefault() {
+	c.SetSelection(SDKDefault())
+}
+
+// UseEnvOnly sets environment-only credential mode
+func (c *Config) UseEnvOnly() {
+	c.SetSelection(EnvOnly())
+}
+
+// UseProfile sets a named profile
+func (c *Config) UseProfile(name string) {
+	c.SetSelection(NamedProfile(name))
+}
+
+// Profile returns the current AWS profile name for backward compatibility.
+// Returns empty string for SDKDefault, UseEnvironmentCredentials for EnvOnly,
+// or the profile name for NamedProfile.
+// Deprecated: Use Selection() instead
 func (c *Config) Profile() string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.profile
+	switch c.selection.Mode {
+	case ModeEnvOnly:
+		return UseEnvironmentCredentials
+	case ModeNamedProfile:
+		return c.selection.ProfileName
+	default:
+		return ""
+	}
 }
 
-// SetProfile sets the current AWS profile
+// SetProfile sets the current AWS profile for backward compatibility.
+// Deprecated: Use SetSelection(), UseSDKDefault(), UseEnvOnly(), or UseProfile() instead
 func (c *Config) SetProfile(profile string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.profile = profile
+	switch profile {
+	case "":
+		c.selection = SDKDefault()
+	case UseEnvironmentCredentials:
+		c.selection = EnvOnly()
+	default:
+		c.selection = NamedProfile(profile)
+	}
 }
 
 // AccountID returns the current AWS account ID (masked in demo mode)
@@ -180,10 +329,10 @@ func (c *Config) Init(ctx context.Context) error {
 	c.checkDependencies()
 
 	c.mu.RLock()
-	profile := c.profile
+	sel := c.selection
 	c.mu.RUnlock()
 
-	cfg, err := config.LoadDefaultConfig(ctx, BaseLoadOptions(profile)...)
+	cfg, err := config.LoadDefaultConfig(ctx, SelectionLoadOptions(sel)...)
 	if err != nil {
 		return err
 	}
@@ -198,14 +347,14 @@ func (c *Config) Init(ctx context.Context) error {
 	return nil
 }
 
-// RefreshForProfile re-fetches region and account ID for the current profile.
+// RefreshForProfile re-fetches region and account ID for the current selection.
 // Region is updated from the profile's default region if configured.
 func (c *Config) RefreshForProfile(ctx context.Context) error {
 	c.mu.RLock()
-	profile := c.profile
+	sel := c.selection
 	c.mu.RUnlock()
 
-	cfg, err := config.LoadDefaultConfig(ctx, BaseLoadOptions(profile)...)
+	cfg, err := config.LoadDefaultConfig(ctx, SelectionLoadOptions(sel)...)
 	if err != nil {
 		return err
 	}

@@ -265,8 +265,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		)
 
 	case view.ProfileChangedMsg:
-		log.Info("profile changed", "profile", msg.Profile, "currentView", fmt.Sprintf("%T", a.currentView), "stackDepth", len(a.viewStack))
-		// Refresh region and account ID for the new profile
+		log.Info("profile changed", "selection", msg.Selection.DisplayName(), "currentView", fmt.Sprintf("%T", a.currentView), "stackDepth", len(a.viewStack))
+		// Refresh region and account ID for the new selection
 		if err := config.Global().RefreshForProfile(a.ctx); err != nil {
 			log.Debug("failed to refresh profile config", "error", err)
 		}

@@ -327,11 +327,12 @@ func main() {
 	cfg.SetDemoMode(opts.demoMode)
 	if opts.envCreds {
 		// Use environment credentials, ignore ~/.aws config
-		cfg.SetProfile(config.UseEnvironmentCredentials)
+		cfg.UseEnvOnly()
 	} else if opts.profile != "" {
-		cfg.SetProfile(opts.profile)
+		cfg.UseProfile(opts.profile)
 		os.Setenv("AWS_PROFILE", opts.profile)
 	}
+	// else: SDKDefault is the zero value, no action needed
 	if opts.region != "" {
 		cfg.SetRegion(opts.region)
 		os.Setenv("AWS_REGION", opts.region)
