@@ -29,6 +29,15 @@ func ProfileLoadOptions(profile string) []func(*config.LoadOptions) error {
 	return nil
 }
 
+// BaseLoadOptions returns common load options for AWS config initialization.
+// Includes IMDS region detection and profile-based options.
+func BaseLoadOptions(profile string) []func(*config.LoadOptions) error {
+	opts := []func(*config.LoadOptions) error{
+		config.WithEC2IMDSRegion(),
+	}
+	return append(opts, ProfileLoadOptions(profile)...)
+}
+
 // DemoAccountID is the masked account ID shown in demo mode
 const DemoAccountID = "123456789012"
 
@@ -162,12 +171,7 @@ func (c *Config) Init(ctx context.Context) error {
 	profile := c.profile
 	c.mu.RUnlock()
 
-	opts := []func(*config.LoadOptions) error{
-		config.WithEC2IMDSRegion(),
-	}
-	opts = append(opts, ProfileLoadOptions(profile)...)
-
-	cfg, err := config.LoadDefaultConfig(ctx, opts...)
+	cfg, err := config.LoadDefaultConfig(ctx, BaseLoadOptions(profile)...)
 	if err != nil {
 		return err
 	}
@@ -196,12 +200,7 @@ func (c *Config) RefreshAccountID(ctx context.Context) error {
 	profile := c.profile
 	c.mu.RUnlock()
 
-	opts := []func(*config.LoadOptions) error{
-		config.WithEC2IMDSRegion(),
-	}
-	opts = append(opts, ProfileLoadOptions(profile)...)
-
-	cfg, err := config.LoadDefaultConfig(ctx, opts...)
+	cfg, err := config.LoadDefaultConfig(ctx, BaseLoadOptions(profile)...)
 	if err != nil {
 		return err
 	}

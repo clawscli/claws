@@ -13,9 +13,6 @@ import (
 	"gopkg.in/ini.v1"
 )
 
-// EnvironmentCredentialsName is the display name for using instance profile / environment credentials
-const EnvironmentCredentialsName = config.EnvironmentCredentialsDisplayName
-
 // ProfileData contains parsed profile information from ~/.aws files
 type ProfileData struct {
 	Name            string
@@ -78,7 +75,7 @@ func (d *ProfileDAO) List(_ context.Context) ([]dao.Resource, error) {
 
 	// Add Instance Profile option first - ignores ~/.aws config and uses IMDS/environment
 	instanceData := &ProfileData{
-		Name:      EnvironmentCredentialsName,
+		Name:      config.EnvironmentCredentialsDisplayName,
 		IsCurrent: currentProfile == config.UseEnvironmentCredentials,
 	}
 	resources = append(resources, NewProfileResource(instanceData))
@@ -97,9 +94,9 @@ func (d *ProfileDAO) Get(_ context.Context, id string) (dao.Resource, error) {
 	currentProfile := config.Global().Profile()
 
 	// Handle (Environment) option
-	if id == EnvironmentCredentialsName {
+	if id == config.EnvironmentCredentialsDisplayName {
 		return NewProfileResource(&ProfileData{
-			Name:      EnvironmentCredentialsName,
+			Name:      config.EnvironmentCredentialsDisplayName,
 			IsCurrent: currentProfile == config.UseEnvironmentCredentials,
 		}), nil
 	}
@@ -141,6 +138,23 @@ func NewProfileResource(data *ProfileData) *ProfileResource {
 	}
 }
 
+// parseConfigSectionName extracts the profile name from a config file section.
+// Returns the profile name and true if valid, or empty string and false if the section should be skipped.
+func parseConfigSectionName(sectionName string) (string, bool) {
+	if sectionName == "DEFAULT" {
+		return "", false
+	}
+	// In config file, profiles are "profile xxx" except for "default"
+	if strings.HasPrefix(sectionName, "profile ") {
+		return strings.TrimPrefix(sectionName, "profile "), true
+	}
+	if sectionName == "default" {
+		return "default", true
+	}
+	// Skip non-profile sections like sso-session
+	return "", false
+}
+
 // loadProfiles parses ~/.aws/config and ~/.aws/credentials files
 func loadProfiles() (map[string]*ProfileData, error) {
 	homeDir, err := os.UserHomeDir()
@@ -161,20 +175,8 @@ func loadProfiles() (map[string]*ProfileData, error) {
 	}
 	if err == nil {
 		for _, section := range cfg.Sections() {
-			name := section.Name()
-			if name == "DEFAULT" {
-				continue
-			}
-
-			// In config file, profiles are "profile xxx" except for "default"
-			profileName := name
-			if strings.HasPrefix(name, "profile ") {
-				profileName = strings.TrimPrefix(name, "profile ")
-			} else if name != "default" {
-				// Skip non-profile sections like sso-session
-				if strings.HasPrefix(name, "sso-session ") {
-					continue
-				}
+			profileName, ok := parseConfigSectionName(section.Name())
+			if !ok {
 				continue
 			}
 

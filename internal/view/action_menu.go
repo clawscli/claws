@@ -112,7 +112,7 @@ func (m *ActionMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		// For local/profile login actions, auto-switch profile after success
 		if msg.success && m.service == "local" && m.resType == "profile" {
-			if m.lastExecName == "SSO Login" || m.lastExecName == "Console Login" {
+			if isProfileLoginAction(m.lastExecName) {
 				profileName := m.resource.GetID()
 				// Handle (Environment) option - use the internal constant
 				if profileName == config.EnvironmentCredentialsDisplayName {
@@ -307,4 +307,15 @@ func (m *ActionMenu) StatusLine() string {
 		return "Confirm: Y/N"
 	}
 	return fmt.Sprintf("Actions for %s • Enter to execute • Esc to cancel", m.resource.GetID())
+}
+
+// Profile login action names (must match constants in custom/local/profile/actions.go)
+const (
+	profileActionSSOLogin     = "SSO Login"
+	profileActionConsoleLogin = "Console Login"
+)
+
+// isProfileLoginAction returns true if the action name is a profile login action
+func isProfileLoginAction(name string) bool {
+	return name == profileActionSSOLogin || name == profileActionConsoleLogin
 }

@@ -89,7 +89,7 @@ func NewProfileRenderer() render.Renderer {
 }
 
 func getProfileType(data *ProfileData) string {
-	if data.Name == EnvironmentCredentialsName {
+	if data.Name == config.EnvironmentCredentialsDisplayName {
 		return "SDK Default"
 	}
 	if data.SSOStartURL != "" || data.SSOSession != "" {
@@ -128,8 +128,8 @@ func (r *ProfileRenderer) RenderDetail(resource dao.Resource) string {
 	data := pr.Data
 
 	// Special handling for (Environment) option
-	if data.Name == EnvironmentCredentialsName {
-		title := EnvironmentCredentialsName
+	if data.Name == config.EnvironmentCredentialsDisplayName {
+		title := config.EnvironmentCredentialsDisplayName
 		if data.IsCurrent {
 			title += " (current)"
 		}

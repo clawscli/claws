@@ -10,6 +10,12 @@ import (
 	"github.com/clawscli/claws/internal/view"
 )
 
+// Action names for profile operations (used by action_menu for post-exec handling)
+const (
+	ActionNameSSOLogin     = "SSO Login"
+	ActionNameConsoleLogin = "Console Login"
+)
+
 func init() {
 	action.Global.Register("local", "profile", []action.Action{
 		{
@@ -19,13 +25,13 @@ func init() {
 			Operation: "SwitchProfile",
 		},
 		{
-			Name:     "SSO Login",
+			Name:     ActionNameSSOLogin,
 			Shortcut: "l",
 			Type:     action.ActionTypeExec,
 			Command:  "aws sso login --profile ${NAME}",
 		},
 		{
-			Name:     "Console Login",
+			Name:     ActionNameConsoleLogin,
 			Shortcut: "c",
 			Type:     action.ActionTypeExec,
 			Command:  "aws login --remote",
@@ -53,7 +59,7 @@ func executeSwitchProfile(resource dao.Resource) action.ActionResult {
 	profileName := pr.Data.Name
 
 	// Handle (Environment) - use environment credentials, ignore ~/.aws config
-	if profileName == EnvironmentCredentialsName {
+	if profileName == config.EnvironmentCredentialsDisplayName {
 		config.Global().SetProfile(config.UseEnvironmentCredentials)
 		return action.ActionResult{
 			Success:     true,
