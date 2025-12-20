@@ -15,6 +15,15 @@ const (
 	OperationSwitchProfile = "SwitchProfile"
 )
 
+// isSSOProfile returns true if the resource is a profile with SSO configuration
+func isSSOProfile(r dao.Resource) bool {
+	pr, ok := r.(*ProfileResource)
+	if !ok {
+		return false
+	}
+	return pr.Data.SSOStartURL != "" || pr.Data.SSOSession != ""
+}
+
 func init() {
 	action.Global.Register("local", "profile", []action.Action{
 		{
@@ -28,6 +37,7 @@ func init() {
 			Shortcut: "l",
 			Type:     action.ActionTypeExec,
 			Command:  "aws sso login --profile ${NAME}",
+			Filter:   isSSOProfile,
 			PostExecFollowUp: func(r dao.Resource) any {
 				sel := config.ProfileSelectionFromID(r.GetID())
 				config.Global().SetSelection(sel)

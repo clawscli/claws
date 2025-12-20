@@ -65,16 +65,20 @@ type ActionMenu struct {
 func NewActionMenu(ctx context.Context, resource dao.Resource, service, resType string) *ActionMenu {
 	actions := action.Global.Get(service, resType)
 
-	// Filter out dangerous actions in read-only mode
-	if config.Global().ReadOnly() {
-		filtered := make([]action.Action, 0, len(actions))
-		for _, act := range actions {
-			if !act.Dangerous {
-				filtered = append(filtered, act)
-			}
+	// Filter actions based on resource and read-only mode
+	filtered := make([]action.Action, 0, len(actions))
+	for _, act := range actions {
+		// Apply per-action filter
+		if act.Filter != nil && !act.Filter(resource) {
+			continue
 		}
-		actions = filtered
+		// Filter out dangerous actions in read-only mode
+		if config.Global().ReadOnly() && act.Dangerous {
+			continue
+		}
+		filtered = append(filtered, act)
 	}
+	actions = filtered
 
 	return &ActionMenu{
 		ctx:      ctx,

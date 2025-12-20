@@ -62,6 +62,10 @@ type Action struct {
 	Requires  []string          // Required dependencies
 	Vars      map[string]string // Variable mappings
 
+	// Filter returns true if this action should be shown for the given resource.
+	// If nil, the action is always shown.
+	Filter func(resource dao.Resource) bool
+
 	// PostExecFollowUp generates a tea.Msg after successful exec completion.
 	// Called by ActionMenu when an exec action returns success.
 	// If nil, no follow-up message is sent.

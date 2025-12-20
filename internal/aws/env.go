@@ -26,7 +26,11 @@ func BuildSubprocessEnv(baseEnv []string, sel config.ProfileSelection, region st
 	keysToRemove := map[string]bool{}
 
 	switch sel.Mode {
-	case config.ModeEnvOnly, config.ModeNamedProfile:
+	case config.ModeEnvOnly:
+		keysToRemove["AWS_PROFILE"] = true
+		keysToRemove["AWS_CONFIG_FILE"] = true
+		keysToRemove["AWS_SHARED_CREDENTIALS_FILE"] = true
+	case config.ModeNamedProfile:
 		keysToRemove["AWS_PROFILE"] = true
 	}
 

@@ -364,9 +364,9 @@ func (c *CommandInput) GetSuggestions() []string {
 		}
 	} else {
 		// Suggest services and special commands
-		// Add "console" command
-		if strings.HasPrefix("console", input) {
-			suggestions = append(suggestions, "console")
+		// Add "login" command
+		if strings.HasPrefix("login", input) {
+			suggestions = append(suggestions, "login")
 		}
 
 		// Add "tag" command (current view filter)
