@@ -644,7 +644,7 @@ func (r *ResourceBrowser) buildTable() {
 	for i, res := range r.filtered {
 		row := r.renderer.RenderRow(res, cols)
 		// Add mark indicator to first cell if this resource is marked
-		// Note: Don't apply style here - it breaks row highlighting
+		// Note: Don't apply lipgloss style - ANSI reset breaks row highlight
 		if r.markedResource != nil && r.markedResource.GetID() == res.GetID() {
 			if len(row) > 0 {
 				row[0] = "◆ " + row[0]

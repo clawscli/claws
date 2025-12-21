@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/render"
 	"github.com/clawscli/claws/internal/ui"
@@ -180,17 +181,16 @@ func (d *DiffView) renderSideBySide() string {
 
 // truncateOrPad ensures a string is exactly the specified width
 func truncateOrPad(s string, width int) string {
+	if width <= 0 {
+		return ""
+	}
+
 	// Use lipgloss.Width for proper ANSI-aware width calculation
 	plainLen := lipgloss.Width(s)
 
 	if plainLen > width {
-		// Truncate - need to handle ANSI codes properly
-		// Simple approach: just cut runes and add ellipsis
-		runes := []rune(s)
-		if len(runes) > width-1 {
-			return string(runes[:width-1]) + "…"
-		}
-		return s
+		// Use ansi.Truncate for proper ANSI-aware truncation
+		return ansi.Truncate(s, width, "…")
 	}
 
 	// Pad with spaces
