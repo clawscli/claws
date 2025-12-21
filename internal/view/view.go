@@ -66,6 +66,13 @@ type TagFilterMsg struct {
 	Filter string // Tag filter (e.g., "Env=prod", "Env", "Env~prod")
 }
 
+// DiffMsg tells the current view to show diff between resources
+// If LeftName is empty, use current cursor row as left resource
+type DiffMsg struct {
+	LeftName  string // Name of left resource (empty = current row)
+	RightName string // Name of right resource
+}
+
 // Refreshable is an interface for views that can refresh their data
 // Views like ResourceBrowser implement this, while DetailView does not
 type Refreshable interface {

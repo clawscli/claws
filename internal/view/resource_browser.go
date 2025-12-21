@@ -366,6 +366,45 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		r.buildTable()
 		return r, nil
 
+	case DiffMsg:
+		// Handle diff command: :diff <name> or :diff <name1> <name2>
+		var leftRes, rightRes dao.Resource
+
+		// Find right resource by name
+		for _, res := range r.filtered {
+			if res.GetName() == msg.RightName {
+				rightRes = res
+				break
+			}
+		}
+		if rightRes == nil {
+			return r, nil // Right resource not found
+		}
+
+		if msg.LeftName == "" {
+			// :diff <name> - use current cursor row as left
+			if len(r.filtered) > 0 && r.table.Cursor() < len(r.filtered) {
+				leftRes = r.filtered[r.table.Cursor()]
+			}
+		} else {
+			// :diff <name1> <name2> - find left resource by name
+			for _, res := range r.filtered {
+				if res.GetName() == msg.LeftName {
+					leftRes = res
+					break
+				}
+			}
+		}
+
+		if leftRes == nil || leftRes.GetID() == rightRes.GetID() {
+			return r, nil // Left not found or same resource
+		}
+
+		diffView := NewDiffView(r.ctx, leftRes, rightRes, r.renderer, r.service, r.resourceType)
+		return r, func() tea.Msg {
+			return NavigateMsg{View: diffView}
+		}
+
 	case tea.KeyMsg:
 		// Handle filter mode
 		if r.filterActive {
@@ -601,16 +640,14 @@ func (r *ResourceBrowser) buildTable() {
 		}
 	}
 
-	// Marked resource indicator (bright magenta for visibility)
-	markStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("201"))
-
 	rows := make([]table.Row, len(r.filtered))
 	for i, res := range r.filtered {
 		row := r.renderer.RenderRow(res, cols)
 		// Add mark indicator to first cell if this resource is marked
+		// Note: Don't apply style here - it breaks row highlighting
 		if r.markedResource != nil && r.markedResource.GetID() == res.GetID() {
 			if len(row) > 0 {
-				row[0] = markStyle.Render("◆") + " " + row[0]
+				row[0] = "◆ " + row[0]
 			}
 		}
 		rows[i] = row
@@ -808,4 +845,21 @@ func (r *ResourceBrowser) GetTagValues(key string) []string {
 	}
 	slices.Sort(values)
 	return values
+}
+
+// GetResourceNames implements DiffCompletionProvider
+func (r *ResourceBrowser) GetResourceNames() []string {
+	names := make([]string, 0, len(r.filtered))
+	for _, res := range r.filtered {
+		names = append(names, res.GetName())
+	}
+	return names
+}
+
+// GetMarkedResourceName implements DiffCompletionProvider
+func (r *ResourceBrowser) GetMarkedResourceName() string {
+	if r.markedResource == nil {
+		return ""
+	}
+	return r.markedResource.GetName()
 }
