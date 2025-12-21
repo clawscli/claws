@@ -197,3 +197,41 @@ func TestNavigationFlow(t *testing.T) {
 		t.Errorf("Expected viewStack length 0, got %d", len(app.viewStack))
 	}
 }
+
+func TestAWSContextReadyMsg_Success(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	app := New(ctx, reg)
+	app.awsInitializing = true
+
+	// Simulate successful AWS init
+	msg := awsContextReadyMsg{err: nil}
+	app.Update(msg)
+
+	if app.awsInitializing {
+		t.Error("Expected awsInitializing to be false after success")
+	}
+	if app.showWarnings {
+		t.Error("Expected showWarnings to be false after success")
+	}
+}
+
+func TestAWSContextReadyMsg_Timeout(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	app := New(ctx, reg)
+	app.awsInitializing = true
+
+	// Simulate timeout error
+	msg := awsContextReadyMsg{err: context.DeadlineExceeded}
+	app.Update(msg)
+
+	if app.awsInitializing {
+		t.Error("Expected awsInitializing to be false after timeout")
+	}
+	if !app.showWarnings {
+		t.Error("Expected showWarnings to be true after timeout")
+	}
+}

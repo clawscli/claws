@@ -271,6 +271,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case awsContextReadyMsg:
 		a.awsInitializing = false
 		if msg.err != nil {
+			log.Debug("AWS context initialization failed", "error", msg.err)
 			config.Global().AddWarning("AWS init failed: " + msg.err.Error())
 			a.showWarnings = true
 		}
