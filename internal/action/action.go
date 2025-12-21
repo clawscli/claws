@@ -109,27 +109,35 @@ func NewRegistry() *Registry {
 }
 
 // ReadOnlyAllowlist defines API operations allowed in read-only mode.
-// - View actions: always allowed
+// - View actions: always allowed (navigation only)
 // - Exec actions: allowed only if Name is in ReadOnlyExecAllowlist
 // - API actions: allowed only if Operation is in this list
+//
+// Security rationale for each allowed operation:
 var ReadOnlyAllowlist = map[string]bool{
-	"DetectStackDrift":     true, // CloudFormation: read-only drift detection
-	"InvokeFunctionDryRun": true, // Lambda: validation only, no execution
-	"SwitchProfile":        true, // local/profile: switch active profile
+	// DetectStackDrift: Triggers analysis only, no stack modifications
+	"DetectStackDrift": true,
+	// InvokeFunctionDryRun: Validation mode, function is not actually invoked
+	"InvokeFunctionDryRun": true,
+	// SwitchProfile: Local config change only, no AWS resource modifications
+	"SwitchProfile": true,
 }
 
 // ReadOnlyExecAllowlist defines exec actions allowed in read-only mode.
 // Auth workflows and read-only operations are allowed.
-// Arbitrary shells (ECS Exec, SSM Session) are denied.
+// Arbitrary shells (ECS Exec, SSM Session) are denied - they provide
+// interactive access that could modify resources.
+//
+// Security rationale for each allowed action:
 var ReadOnlyExecAllowlist = map[string]bool{
-	// Auth workflows
-	ActionNameSSOLogin: true, // aws sso login
-	ActionNameLogin:    true, // :login command - console login
-
-	// Read-only log viewing
-	ActionNameTailLogs:      true, // aws logs tail --follow
-	ActionNameViewRecent1h:  true, // aws logs tail (1h)
-	ActionNameViewRecent24h: true, // aws logs tail (24h)
+	// SSO Login: Authentication workflow, no resource changes
+	ActionNameSSOLogin: true,
+	// Login: Opens browser for console login, no resource changes
+	ActionNameLogin: true,
+	// Log viewing: Read-only CloudWatch Logs access
+	ActionNameTailLogs:      true,
+	ActionNameViewRecent1h:  true,
+	ActionNameViewRecent24h: true,
 }
 
 // Register registers actions for a resource type.

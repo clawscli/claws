@@ -101,6 +101,7 @@ func (d *ProfileDAO) List(_ context.Context) ([]dao.Resource, error) {
 
 	for _, name := range names {
 		data := profiles[name]
+		data.ID = name // Explicit ID for named profiles
 		data.Name = name
 		data.IsCurrent = sel.IsNamedProfile() && sel.ProfileName == name
 		resources = append(resources, NewProfileResource(data))
@@ -138,6 +139,7 @@ func (d *ProfileDAO) Get(_ context.Context, id string) (dao.Resource, error) {
 		return nil, fmt.Errorf("profile %q not found", id)
 	}
 
+	data.ID = id // Explicit ID for named profiles
 	data.Name = id
 	data.IsCurrent = sel.IsNamedProfile() && sel.ProfileName == id
 	return NewProfileResource(data), nil
