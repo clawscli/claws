@@ -48,11 +48,19 @@ curl -fsSL https://raw.githubusercontent.com/clawscli/claws/main/install.sh | sh
 Options:
 ```bash
 # Install specific version
-curl -fsSL https://raw.githubusercontent.com/clawscli/claws/main/install.sh | VERSION=vX.Y.Z sh
+curl -fsSL https://raw.githubusercontent.com/clawscli/claws/main/install.sh | VERSION=v0.1.6 sh
 
 # Install to custom directory
 curl -fsSL https://raw.githubusercontent.com/clawscli/claws/main/install.sh | INSTALL_DIR=/usr/local/bin sh
 ```
+
+> **Security Note:** Piping scripts directly to `sh` is convenient but bypasses inspection.
+> For increased security, download and review the script first:
+> ```bash
+> curl -fsSL https://raw.githubusercontent.com/clawscli/claws/main/install.sh -o install.sh
+> less install.sh  # Review the script
+> sh install.sh
+> ```
 
 ### Download Binary
 
@@ -373,6 +381,20 @@ task clean          # Clean build artifacts
 ### Adding New Resources
 
 See [docs/adding-resources.md](docs/adding-resources.md) for a guide on adding new AWS resources.
+
+### Releasing
+
+Releases are automated via GoReleaser. Tag format controls which platforms are built:
+
+| Tag | Platforms Built |
+|-----|-----------------|
+| `v0.1.0` | All (linux/darwin arm64+amd64, windows) |
+| `v0.1.0-rc1` | ARM64 only (linux/darwin) |
+| `v0.1.0-rc1-amd64` | ARM64 + AMD64 (linux/darwin) |
+| `v0.1.0-rc1-win` | ARM64 + Windows |
+| `v0.1.0-rc1-all` | All platforms |
+
+Prereleases (tags containing `-`) skip Homebrew publishing.
 
 ## Tech Stack
 
