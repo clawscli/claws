@@ -93,6 +93,9 @@ type ResourceBrowser struct {
 
 	// Cached styles (initialized in initStyles)
 	styles resourceBrowserStyles
+
+	// Diff mark (for comparing two resources)
+	markedResource dao.Resource
 }
 
 // NewResourceBrowser creates a new ResourceBrowser
@@ -407,18 +410,46 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			r.err = nil
 			return r, tea.Batch(r.loadResources, r.spinner.Tick)
 		case "c":
-			// Clear all filters (text filter and field filter)
+			// Clear all filters (text filter, field filter, and mark)
 			r.filterText = ""
 			r.filterInput.SetValue("")
 			r.fieldFilter = ""
 			r.fieldFilterValue = ""
+			r.markedResource = nil
 			r.applyFilter()
 			r.buildTable()
+			return r, nil
+		case "esc":
+			// Clear mark if set, otherwise let app handle navigation
+			if r.markedResource != nil {
+				r.markedResource = nil
+				r.buildTable()
+				return r, nil
+			}
+		case "m":
+			// Mark/unmark current resource for diff
+			if len(r.filtered) > 0 && r.table.Cursor() < len(r.filtered) {
+				resource := r.filtered[r.table.Cursor()]
+				if r.markedResource != nil && r.markedResource.GetID() == resource.GetID() {
+					// Unmark if same resource
+					r.markedResource = nil
+				} else {
+					r.markedResource = resource
+				}
+				r.buildTable() // Rebuild to update mark indicator
+			}
 			return r, nil
 		case "d", "enter":
 			if len(r.filtered) > 0 && r.table.Cursor() < len(r.filtered) {
 				resource := r.filtered[r.table.Cursor()]
-				// Pass DAO for async refresh in DetailView
+				// If marked resource exists and different from current, show diff
+				if r.markedResource != nil && r.markedResource.GetID() != resource.GetID() {
+					diffView := NewDiffView(r.ctx, r.markedResource, resource, r.renderer, r.service, r.resourceType)
+					return r, func() tea.Msg {
+						return NavigateMsg{View: diffView}
+					}
+				}
+				// Otherwise show detail view
 				detailView := NewDetailView(r.ctx, resource, r.renderer, r.service, r.resourceType, r.registry, r.dao)
 				return r, func() tea.Msg {
 					return NavigateMsg{View: detailView}
@@ -545,17 +576,44 @@ func (r *ResourceBrowser) buildTable() {
 
 	cols := r.renderer.Columns()
 	tableCols := make([]table.Column, len(cols))
+
+	// Calculate total width of defined columns
+	totalColWidth := 0
+	for _, col := range cols {
+		totalColWidth += col.Width
+	}
+
+	// Expand last column to fill remaining screen width
+	extraWidth := r.width - totalColWidth
+	if extraWidth < 0 {
+		extraWidth = 0
+	}
+
 	for i, col := range cols {
 		title := col.Name + r.getSortIndicator(i)
+		width := col.Width
+		if i == len(cols)-1 {
+			width += extraWidth // Last column fills remaining space
+		}
 		tableCols[i] = table.Column{
 			Title: title,
-			Width: col.Width,
+			Width: width,
 		}
 	}
 
+	// Marked resource indicator (bright magenta for visibility)
+	markStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("201"))
+
 	rows := make([]table.Row, len(r.filtered))
 	for i, res := range r.filtered {
-		rows[i] = r.renderer.RenderRow(res, cols)
+		row := r.renderer.RenderRow(res, cols)
+		// Add mark indicator to first cell if this resource is marked
+		if r.markedResource != nil && r.markedResource.GetID() == res.GetID() {
+			if len(row) > 0 {
+				row[0] = markStyle.Render("◆") + " " + row[0]
+			}
+		}
+		rows[i] = row
 	}
 
 	// Calculate header height dynamically
@@ -577,6 +635,7 @@ func (r *ResourceBrowser) buildTable() {
 		table.WithRows(rows),
 		table.WithFocused(true),
 		table.WithHeight(tableHeight),
+		table.WithWidth(r.width),
 	)
 
 	th := ui.Current()
@@ -592,8 +651,7 @@ func (r *ResourceBrowser) buildTable() {
 		Foreground(th.SelectionText).
 		Background(th.Selection).
 		Bold(false)
-	s.Cell = s.Cell.
-		Foreground(th.Text)
+	// Note: Not setting s.Cell foreground - let Selected style take precedence
 	t.SetStyles(s)
 
 	// Restore cursor position (clamped to valid range)
