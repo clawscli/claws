@@ -70,7 +70,6 @@ func TestDetailViewEscString(t *testing.T) {
 
 	// Test that "esc" string is correctly identified
 	escMsg := tea.KeyMsg{Type: tea.KeyEsc}
-	t.Logf("Esc key string: %q", escMsg.String())
 
 	if escMsg.String() != "esc" {
 		t.Errorf("Expected esc key String() to be 'esc', got %q", escMsg.String())

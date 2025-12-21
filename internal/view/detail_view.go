@@ -56,11 +56,6 @@ func NewDetailView(ctx context.Context, resource dao.Resource, renderer render.R
 	hp := NewHeaderPanel()
 	hp.SetWidth(120) // Default width until SetSize is called
 
-	// Initialize spinner
-	s := spinner.New()
-	s.Spinner = spinner.Dot
-	s.Style = lipgloss.NewStyle().Foreground(ui.Current().Accent)
-
 	return &DetailView{
 		ctx:         ctx,
 		resource:    resource,
@@ -70,7 +65,7 @@ func NewDetailView(ctx context.Context, resource dao.Resource, renderer render.R
 		registry:    reg,
 		dao:         d,
 		headerPanel: hp,
-		spinner:     s,
+		spinner:     ui.NewSpinner(),
 		styles:      newDetailViewStyles(),
 	}
 }
@@ -83,8 +78,8 @@ type detailRefreshMsg struct {
 
 // Init implements tea.Model
 func (d *DetailView) Init() tea.Cmd {
-	// Start async refresh for extended details if DAO is available
-	if d.dao != nil {
+	// Start async refresh for extended details if DAO supports Get operation
+	if d.dao != nil && d.dao.Supports(dao.OpGet) {
 		d.refreshing = true
 		return tea.Batch(d.spinner.Tick, d.refreshResource)
 	}
@@ -129,10 +124,8 @@ func (d *DetailView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return d, nil
 
 	case tea.KeyMsg:
-		// Check for esc (both string and raw byte) - let app handle back navigation
-		isEsc := msg.String() == "esc" || msg.Type == tea.KeyEsc || msg.Type == tea.KeyEscape ||
-			(msg.Type == tea.KeyRunes && len(msg.Runes) == 1 && msg.Runes[0] == 27)
-		if isEsc {
+		// Let app handle back navigation
+		if IsEscKey(msg) {
 			return d, nil
 		}
 

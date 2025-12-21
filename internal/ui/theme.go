@@ -1,6 +1,9 @@
 package ui
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"github.com/charmbracelet/bubbles/spinner"
+	"github.com/charmbracelet/lipgloss"
+)
 
 // Theme defines the color scheme for the application
 type Theme struct {
@@ -100,4 +103,12 @@ func WarningStyle() lipgloss.Style {
 // DangerStyle returns a style for danger/error states
 func DangerStyle() lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(current.Danger)
+}
+
+// NewSpinner creates a consistently styled spinner for loading states
+func NewSpinner() spinner.Model {
+	s := spinner.New()
+	s.Spinner = spinner.Dot
+	s.Style = lipgloss.NewStyle().Foreground(current.Accent)
+	return s
 }

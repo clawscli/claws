@@ -228,11 +228,13 @@ func (s *ServiceBrowser) rebuildFlatItems() {
 }
 
 func (s *ServiceBrowser) handleFilterInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "esc":
+	if IsEscKey(msg) {
 		s.filterActive = false
 		s.filterInput.Blur()
 		return s, nil
+	}
+
+	switch msg.String() {
 
 	case "enter":
 		s.filterActive = false
@@ -297,13 +299,21 @@ func (s *ServiceBrowser) handleNavigation(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		s.filterInput.Focus()
 		return s, textinput.Blink
 
-	case "c", "esc":
+	case "c":
 		if s.filterText != "" {
 			s.filterText = ""
 			s.filterInput.SetValue("")
 			s.rebuildFlatItems()
 			s.cursor = 0
 		}
+	}
+
+	// Also allow esc to clear filter (handles various escape sequences)
+	if IsEscKey(msg) && s.filterText != "" {
+		s.filterText = ""
+		s.filterInput.SetValue("")
+		s.rebuildFlatItems()
+		s.cursor = 0
 	}
 
 	// Update viewport content and scroll to cursor

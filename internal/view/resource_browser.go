@@ -139,11 +139,6 @@ func newResourceBrowser(ctx context.Context, reg *registry.Registry, service, re
 	hp := NewHeaderPanel()
 	hp.SetWidth(120) // Default width until SetSize is called
 
-	// Initialize spinner
-	s := spinner.New()
-	s.Spinner = spinner.Dot
-	s.Style = lipgloss.NewStyle().Foreground(ui.Current().Accent)
-
 	return &ResourceBrowser{
 		ctx:           ctx,
 		registry:      reg,
@@ -153,7 +148,7 @@ func newResourceBrowser(ctx context.Context, reg *registry.Registry, service, re
 		loading:       true,
 		filterInput:   ti,
 		headerPanel:   hp,
-		spinner:       s,
+		spinner:       ui.NewSpinner(),
 		styles:        newResourceBrowserStyles(),
 		pageSize:      100, // default page size for paginated resources
 		sortColumn:    -1,  // no sorting by default
@@ -371,10 +366,7 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		// Handle filter mode
 		if r.filterActive {
-			// Check for esc (both string and raw byte)
-			isEsc := msg.String() == "esc" || msg.Type == tea.KeyEsc || msg.Type == tea.KeyEscape ||
-				(msg.Type == tea.KeyRunes && len(msg.Runes) == 1 && msg.Runes[0] == 27)
-			if isEsc {
+			if IsEscKey(msg) {
 				r.filterActive = false
 				r.filterInput.Blur()
 				return r, nil
@@ -542,7 +534,7 @@ func (r *ResourceBrowser) loadNextPage() tea.Msg {
 	}
 }
 
-// handleNavigation checks if a key matches a navigation shortcut
+// buildTable rebuilds the table with current filtered resources
 func (r *ResourceBrowser) buildTable() {
 	if r.renderer == nil {
 		return

@@ -74,6 +74,9 @@ type App struct {
 	showWarnings  bool
 	warningsReady bool // true after first render, to ignore initial terminal responses
 
+	// AWS initialization state
+	awsInitializing bool
+
 	// Cached styles
 	styles appStyles
 }
@@ -94,6 +97,7 @@ func New(ctx context.Context, reg *registry.Registry) *App {
 func (a *App) Init() tea.Cmd {
 	// Start with the service browser view immediately (no blocking on AWS calls)
 	a.currentView = view.NewServiceBrowser(a.ctx, a.registry)
+	a.awsInitializing = true
 
 	// Initialize AWS context in background (region detection, account ID fetch)
 	initAWSCmd := func() tea.Msg {
@@ -165,10 +169,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		// Handle back navigation (esc or backspace)
-		// Check for ESC key in various forms (KeyEsc, KeyEscape, or raw ESC byte as KeyRunes)
-		isEsc := msg.String() == "esc" || msg.Type == tea.KeyEsc || msg.Type == tea.KeyEscape ||
-			(msg.Type == tea.KeyRunes && len(msg.Runes) == 1 && msg.Runes[0] == 27)
-		isBack := isEsc || msg.Type == tea.KeyBackspace
+		isBack := view.IsEscKey(msg) || msg.Type == tea.KeyBackspace
 
 		if isBack {
 			// If current view has active input, let it handle esc first
@@ -262,6 +263,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, nil
 
 	case awsContextReadyMsg:
+		a.awsInitializing = false
 		if msg.err != nil {
 			config.Global().AddWarning("AWS init failed: " + msg.err.Error())
 			a.showWarnings = true
@@ -373,6 +375,11 @@ func (a *App) View() string {
 	if config.Global().ReadOnly() {
 		roIndicator := a.styles.readOnly.Render("READ-ONLY")
 		statusContent = roIndicator + " " + statusContent
+	}
+
+	// Add AWS initializing indicator
+	if a.awsInitializing {
+		statusContent = ui.DimStyle().Render("AWS initializing...") + " • " + statusContent
 	}
 
 	status := a.styles.status.Render(statusContent)
