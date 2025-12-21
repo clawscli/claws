@@ -38,6 +38,9 @@ func TestEscKeyIntegration(t *testing.T) {
 	// Set size
 	app.Update(tea.WindowSizeMsg{Width: 100, Height: 50})
 
+	// Clear any warnings (AWS init may fail in CI without credentials)
+	app.showWarnings = false
+
 	t.Logf("Initial state: currentView=%T, viewStack=%d", app.currentView, len(app.viewStack))
 
 	// Verify we start with ServiceBrowser and empty stack
