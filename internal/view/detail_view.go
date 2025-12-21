@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -43,13 +44,21 @@ type DetailView struct {
 	width       int
 	height      int
 	registry    *registry.Registry
+	dao         dao.DAO // for async refresh
+	refreshing  bool    // true while fetching extended details
+	spinner     spinner.Model
 	styles      detailViewStyles
 }
 
 // NewDetailView creates a new DetailView
-func NewDetailView(ctx context.Context, resource dao.Resource, renderer render.Renderer, service, resType string, reg *registry.Registry) *DetailView {
+func NewDetailView(ctx context.Context, resource dao.Resource, renderer render.Renderer, service, resType string, reg *registry.Registry, d dao.DAO) *DetailView {
 	hp := NewHeaderPanel()
 	hp.SetWidth(120) // Default width until SetSize is called
+
+	// Initialize spinner
+	s := spinner.New()
+	s.Spinner = spinner.Dot
+	s.Style = lipgloss.NewStyle().Foreground(ui.Current().Accent)
 
 	return &DetailView{
 		ctx:         ctx,
@@ -58,33 +67,79 @@ func NewDetailView(ctx context.Context, resource dao.Resource, renderer render.R
 		service:     service,
 		resType:     resType,
 		registry:    reg,
+		dao:         d,
 		headerPanel: hp,
+		spinner:     s,
 		styles:      newDetailViewStyles(),
 	}
 }
 
+// detailRefreshMsg is sent when async resource refresh completes
+type detailRefreshMsg struct {
+	resource dao.Resource
+	err      error
+}
+
 // Init implements tea.Model
 func (d *DetailView) Init() tea.Cmd {
+	// Start async refresh for extended details if DAO is available
+	if d.dao != nil {
+		d.refreshing = true
+		return tea.Batch(d.spinner.Tick, d.refreshResource)
+	}
 	return nil
+}
+
+// refreshResource fetches extended resource details in background
+func (d *DetailView) refreshResource() tea.Msg {
+	if d.dao == nil {
+		return detailRefreshMsg{resource: d.resource}
+	}
+	refreshed, err := d.dao.Get(d.ctx, d.resource.GetID())
+	if err != nil {
+		return detailRefreshMsg{resource: d.resource, err: err}
+	}
+	return detailRefreshMsg{resource: refreshed}
 }
 
 // Update implements tea.Model
 func (d *DetailView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if keyMsg, ok := msg.(tea.KeyMsg); ok {
+	switch msg := msg.(type) {
+	case detailRefreshMsg:
+		d.refreshing = false
+		if msg.err == nil {
+			d.resource = msg.resource
+			// Re-render content with refreshed data
+			if d.ready {
+				content := d.renderContent()
+				d.viewport.SetContent(content)
+			}
+		}
+		return d, nil
+
+	case spinner.TickMsg:
+		if d.refreshing {
+			var cmd tea.Cmd
+			d.spinner, cmd = d.spinner.Update(msg)
+			return d, cmd
+		}
+		return d, nil
+
+	case tea.KeyMsg:
 		// Check for esc (both string and raw byte) - let app handle back navigation
-		isEsc := keyMsg.String() == "esc" || keyMsg.Type == tea.KeyEsc || keyMsg.Type == tea.KeyEscape ||
-			(keyMsg.Type == tea.KeyRunes && len(keyMsg.Runes) == 1 && keyMsg.Runes[0] == 27)
+		isEsc := msg.String() == "esc" || msg.Type == tea.KeyEsc || msg.Type == tea.KeyEscape ||
+			(msg.Type == tea.KeyRunes && len(msg.Runes) == 1 && msg.Runes[0] == 27)
 		if isEsc {
 			return d, nil
 		}
 
 		// Check navigation shortcuts
-		if model, cmd := d.handleNavigation(keyMsg.String()); model != nil {
+		if model, cmd := d.handleNavigation(msg.String()); model != nil {
 			return model, cmd
 		}
 
 		// Open action menu (only if actions exist)
-		if keyMsg.String() == "a" {
+		if msg.String() == "a" {
 			if actions := action.Global.Get(d.service, d.resType); len(actions) > 0 {
 				actionMenu := NewActionMenu(d.ctx, d.resource, d.service, d.resType)
 				return d, func() tea.Msg {
@@ -176,7 +231,13 @@ func (d *DetailView) SetSize(width, height int) tea.Cmd {
 
 // StatusLine implements View
 func (d *DetailView) StatusLine() string {
-	parts := []string{d.resource.GetID(), "↑/↓:scroll"}
+	parts := []string{d.resource.GetID()}
+
+	if d.refreshing {
+		parts = append(parts, d.spinner.View()+" refreshing...")
+	}
+
+	parts = append(parts, "↑/↓:scroll")
 
 	if actions := action.Global.Get(d.service, d.resType); len(actions) > 0 {
 		parts = append(parts, "a:actions")

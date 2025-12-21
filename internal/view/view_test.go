@@ -44,7 +44,7 @@ func TestDetailViewEsc(t *testing.T) {
 	resource := &mockResource{id: "i-123", name: "test-instance"}
 	ctx := context.Background()
 
-	dv := NewDetailView(ctx, resource, nil, "ec2", "instances", nil)
+	dv := NewDetailView(ctx, resource, nil, "ec2", "instances", nil, nil)
 	dv.SetSize(100, 50) // Initialize viewport
 
 	// Send esc to DetailView
@@ -65,7 +65,7 @@ func TestDetailViewEscString(t *testing.T) {
 	resource := &mockResource{id: "i-123", name: "test-instance"}
 	ctx := context.Background()
 
-	dv := NewDetailView(ctx, resource, nil, "ec2", "instances", nil)
+	dv := NewDetailView(ctx, resource, nil, "ec2", "instances", nil, nil)
 	dv.SetSize(100, 50)
 
 	// Test that "esc" string is correctly identified

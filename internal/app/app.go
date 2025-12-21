@@ -21,6 +21,11 @@ import (
 // clearErrorMsg is sent to clear transient errors after a timeout
 type clearErrorMsg struct{}
 
+// awsContextReadyMsg is sent when AWS context initialization completes
+type awsContextReadyMsg struct {
+	err error
+}
+
 // App is the main application model
 // appStyles holds cached lipgloss styles for performance
 type appStyles struct {
@@ -87,19 +92,16 @@ func New(ctx context.Context, reg *registry.Registry) *App {
 
 // Init implements tea.Model
 func (a *App) Init() tea.Cmd {
-	// Initialize AWS context (detect region from IMDS, fetch account ID)
-	if err := aws.InitContext(a.ctx); err != nil {
-		config.Global().AddWarning("AWS init failed: " + err.Error())
-	}
-
-	// Show warnings if any
-	if len(config.Global().Warnings()) > 0 {
-		a.showWarnings = true
-	}
-
-	// Start with the service browser view
+	// Start with the service browser view immediately (no blocking on AWS calls)
 	a.currentView = view.NewServiceBrowser(a.ctx, a.registry)
-	return a.currentView.Init()
+
+	// Initialize AWS context in background (region detection, account ID fetch)
+	initAWSCmd := func() tea.Msg {
+		err := aws.InitContext(a.ctx)
+		return awsContextReadyMsg{err: err}
+	}
+
+	return tea.Batch(a.currentView.Init(), initAWSCmd)
 }
 
 // Update implements tea.Model
@@ -257,6 +259,14 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case clearErrorMsg:
 		a.err = nil
+		return a, nil
+
+	case awsContextReadyMsg:
+		if msg.err != nil {
+			config.Global().AddWarning("AWS init failed: " + msg.err.Error())
+			a.showWarnings = true
+		}
+		// Trigger a re-render to update header with account ID
 		return a, nil
 
 	case navmsg.RegionChangedMsg:
