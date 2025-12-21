@@ -89,7 +89,7 @@ func (d *DetailView) Init() tea.Cmd {
 
 // refreshResource fetches extended resource details in background
 func (d *DetailView) refreshResource() tea.Msg {
-	if d.dao == nil {
+	if d.dao == nil || d.resource == nil {
 		return detailRefreshMsg{resource: d.resource}
 	}
 	refreshed, err := d.dao.Get(d.ctx, d.resource.GetID())

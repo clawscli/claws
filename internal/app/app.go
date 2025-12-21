@@ -18,6 +18,9 @@ import (
 	"github.com/clawscli/claws/internal/view"
 )
 
+// awsInitTimeout is the maximum time to wait for AWS context initialization
+const awsInitTimeout = 5 * time.Second
+
 // clearErrorMsg is sent to clear transient errors after a timeout
 type clearErrorMsg struct{}
 
@@ -100,8 +103,11 @@ func (a *App) Init() tea.Cmd {
 	a.awsInitializing = true
 
 	// Initialize AWS context in background (region detection, account ID fetch)
+	// Use timeout to avoid indefinite hang on network issues
 	initAWSCmd := func() tea.Msg {
-		err := aws.InitContext(a.ctx)
+		ctx, cancel := context.WithTimeout(a.ctx, awsInitTimeout)
+		defer cancel()
+		err := aws.InitContext(ctx)
 		return awsContextReadyMsg{err: err}
 	}
 
