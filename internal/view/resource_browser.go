@@ -446,11 +446,11 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "tab":
 			// Cycle to next resource type
 			r.cycleResourceType(1)
-			return r, r.loadResources
+			return r, tea.Batch(r.loadResources, r.spinner.Tick)
 		case "shift+tab":
 			// Cycle to previous resource type
 			r.cycleResourceType(-1)
-			return r, r.loadResources
+			return r, tea.Batch(r.loadResources, r.spinner.Tick)
 		case "1", "2", "3", "4", "5", "6", "7", "8", "9":
 			// Switch to resource type by number
 			idx := int(msg.String()[0] - '1')

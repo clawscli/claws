@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/clawscli/claws/internal/action"
 	"github.com/clawscli/claws/internal/dao"
+	"github.com/clawscli/claws/internal/log"
 	"github.com/clawscli/claws/internal/registry"
 	"github.com/clawscli/claws/internal/render"
 	"github.com/clawscli/claws/internal/ui"
@@ -107,7 +108,9 @@ func (d *DetailView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case detailRefreshMsg:
 		d.refreshing = false
-		if msg.err == nil {
+		if msg.err != nil {
+			log.Warn("failed to refresh resource details", "error", msg.err)
+		} else {
 			d.resource = msg.resource
 			// Re-render content with refreshed data
 			if d.ready {
