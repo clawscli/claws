@@ -143,6 +143,21 @@ claws -l debug.log
 | `o` | View Outputs / Operations |
 | `i` | View Images / Indexes |
 
+### Commands
+
+| Command | Action |
+|---------|--------|
+| `:login` | AWS console login (creates `claws-<timestamp>` profile) |
+| `:local/profile` | Browse and switch AWS profiles |
+| `:ec2/instances` | Navigate to EC2 instances |
+| `:sort <col>` | Sort by column |
+| `:tag <filter>` | Filter by tag |
+
+**Login Details:**
+- `:login` runs `aws login --remote` and creates a temporary profile
+- For SSO profiles, use "SSO Login" action from profile browser (`P` or `:local/profile`)
+- Temporary `claws-*` profiles can be cleaned up from `~/.aws/credentials`
+
 ## Supported Services (67 services, 158 resources)
 
 ### Compute
