@@ -21,10 +21,10 @@ A terminal UI for AWS resource management 👮
 ## Features
 
 - **Interactive TUI** - Navigate AWS resources with vim-style keybindings
-- **Multi-service support** - EC2, S3, IAM, RDS, Lambda, ECS, and 60+ more services
+- **Multi-service support** - EC2, S3, IAM, RDS, Lambda, ECS, and 60+ more services (158 resources total)
 - **Resource actions** - Start/stop instances, delete resources, tail logs
 - **Cross-resource navigation** - Jump from VPC to subnets, from Lambda to CloudWatch Logs
-- **Profile & region switching** - Switch AWS profiles (`P`) and regions (`R`) on the fly
+- **Profile & region switching** - Switch AWS profiles (`P`) and regions (`R`) on the fly, browse profiles with `:local/profile`
 - **Command mode** - Quick navigation with `:ec2/instances` syntax
 - **Filtering** - Fuzzy search with `/`, tag filtering with `:tag Env=prod`
 - **Column sorting** - Sort by any column with `:sort <col>` command
@@ -92,6 +92,10 @@ claws -p myprofile
 # Or with specific region
 claws -r us-west-2
 
+# Use environment credentials only (ignore ~/.aws config)
+# Useful for EC2 instance profiles, ECS task roles, Lambda, etc.
+claws -e
+
 # Read-only mode (disables destructive actions)
 claws --read-only
 # or
@@ -139,7 +143,7 @@ claws -l debug.log
 | `o` | View Outputs / Operations |
 | `i` | View Images / Indexes |
 
-## Supported Services (67 services, 151 resources)
+## Supported Services (67 services, 158 resources)
 
 ### Compute
 | Service | Resources |
@@ -232,7 +236,7 @@ claws -l debug.log
 | Service Quotas | Services, Quotas |
 | CodeBuild | Projects, Builds |
 | CodePipeline | Pipelines, Executions |
-| AWS Backup | Plans, Jobs |
+| AWS Backup | Plans, Vaults, Selections, Protected Resources, Backup Jobs, Copy Jobs, Restore Jobs, Recovery Points |
 | Organizations | Accounts, OUs, Policies, Roots |
 | License Manager | Configurations, Licenses, Grants |
 
@@ -242,6 +246,11 @@ claws -l debug.log
 | RI/SP | Reserved Instances, Savings Plans |
 | Cost Explorer | Costs |
 | Budgets | Budgets, Notifications |
+
+### Local
+| Service | Resources |
+|---------|-----------|
+| Profile | AWS Profiles (browse and switch ~/.aws profiles) |
 
 ## Service Aliases
 
@@ -278,6 +287,7 @@ Quick shortcuts for common services:
 | `agent` | Bedrock Agent Agents |
 | `models` | Bedrock Foundation Models |
 | `guardrail` | Bedrock Guardrails |
+| `profile`, `profiles` | Local Profiles |
 
 ## Configuration
 

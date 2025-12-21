@@ -118,6 +118,8 @@ func defaultAliases() map[string]string {
 		"ri":            "risp/reserved-instances",
 		"sp":            "risp/savings-plans",
 		"odcr":          "ec2/capacity-reservations",
+		"profile":       "local/profile",
+		"profiles":      "local/profile",
 	}
 }
 
@@ -190,6 +192,7 @@ func defaultDisplayNames() map[string]string {
 		"vpc":               "VPC",
 		"wafv2":             "WAF",
 		"xray":              "X-Ray",
+		"local":             "Local",
 	}
 }
 
@@ -231,6 +234,10 @@ func defaultCategories() []ServiceCategory {
 		{
 			Name:     "Cost Management",
 			Services: []string{"risp", "costexplorer", "budgets"},
+		},
+		{
+			Name:     "Local",
+			Services: []string{"local"},
 		},
 	}
 }
