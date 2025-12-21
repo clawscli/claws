@@ -28,16 +28,14 @@ case "$ARCH" in
   *) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;;
 esac
 
-# Get latest version if not specified
+# Set download URL
 if [ -z "$VERSION" ]; then
-  VERSION=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" | grep '"tag_name"' | cut -d'"' -f4)
-  if [ -z "$VERSION" ]; then
-    echo "Failed to get latest version. Check network or GitHub API rate limit." >&2
-    exit 1
-  fi
+  BASE_URL="https://github.com/$REPO/releases/latest/download"
+  echo "Installing claws (latest) for $OS/$ARCH..."
+else
+  BASE_URL="https://github.com/$REPO/releases/download/${VERSION}"
+  echo "Installing claws $VERSION for $OS/$ARCH..."
 fi
-
-echo "Installing claws $VERSION for $OS/$ARCH..."
 
 # Create temp directory (use template for BSD/macOS compatibility)
 TMP=$(mktemp -d "${TMPDIR:-/tmp}/claws.XXXXXX")
@@ -45,8 +43,8 @@ trap "rm -rf '$TMP'" EXIT
 
 # Download binary and checksums
 TARBALL="claws-${OS}-${ARCH}.tar.gz"
-curl -fsSL "https://github.com/$REPO/releases/download/${VERSION}/${TARBALL}" -o "$TMP/$TARBALL"
-curl -fsSL "https://github.com/$REPO/releases/download/${VERSION}/checksums.txt" -o "$TMP/checksums.txt"
+curl -fsSL "${BASE_URL}/${TARBALL}" -o "$TMP/$TARBALL"
+curl -fsSL "${BASE_URL}/checksums.txt" -o "$TMP/checksums.txt"
 
 # Verify checksum
 cd "$TMP"
@@ -69,7 +67,7 @@ mkdir -p "$INSTALL_DIR"
 mv claws "$INSTALL_DIR/"
 chmod +x "$INSTALL_DIR/claws"
 
-echo "claws $VERSION installed to $INSTALL_DIR/claws"
+echo "claws installed to $INSTALL_DIR/claws"
 
 # PATH warning
 case ":$PATH:" in
