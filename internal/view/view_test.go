@@ -865,3 +865,121 @@ func TestDiffView_View_NotReady(t *testing.T) {
 		t.Errorf("View() = %q, want 'Loading...'", view)
 	}
 }
+
+// mockDiffProvider for testing getDiffSuggestions
+type mockDiffProvider struct {
+	names      []string
+	markedName string
+}
+
+func (m *mockDiffProvider) GetResourceNames() []string {
+	return m.names
+}
+
+func (m *mockDiffProvider) GetMarkedResourceName() string {
+	return m.markedName
+}
+
+func TestCommandInput_getDiffSuggestions(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	tests := []struct {
+		name     string
+		provider *mockDiffProvider
+		args     string
+		want     []string
+	}{
+		{
+			name:     "nil provider",
+			provider: nil,
+			args:     "",
+			want:     nil,
+		},
+		{
+			name:     "empty args returns all",
+			provider: &mockDiffProvider{names: []string{"web-server", "db-server", "cache"}},
+			args:     "",
+			want:     []string{"diff web-server", "diff db-server", "diff cache"},
+		},
+		{
+			name:     "first name prefix filter",
+			provider: &mockDiffProvider{names: []string{"web-server", "db-server", "cache"}},
+			args:     "server",
+			want:     []string{"diff web-server", "diff db-server"},
+		},
+		{
+			name:     "case insensitive match",
+			provider: &mockDiffProvider{names: []string{"Web-Server", "DB-Server", "Cache"}},
+			args:     "SERVER",
+			want:     []string{"diff Web-Server", "diff DB-Server"},
+		},
+		{
+			name:     "no match returns empty",
+			provider: &mockDiffProvider{names: []string{"web-server", "db-server"}},
+			args:     "xyz",
+			want:     nil,
+		},
+		{
+			name:     "second name completion excludes first",
+			provider: &mockDiffProvider{names: []string{"web-server", "db-server", "cache"}},
+			args:     "web-server ",
+			want:     []string{"diff web-server db-server", "diff web-server cache"},
+		},
+		{
+			name:     "second name with prefix",
+			provider: &mockDiffProvider{names: []string{"web-server", "db-server", "cache"}},
+			args:     "web-server db",
+			want:     []string{"diff web-server db-server"},
+		},
+		{
+			name:     "second name no match",
+			provider: &mockDiffProvider{names: []string{"web-server", "db-server"}},
+			args:     "web-server xyz",
+			want:     nil,
+		},
+		{
+			name:     "empty names list",
+			provider: &mockDiffProvider{names: []string{}},
+			args:     "",
+			want:     nil,
+		},
+		{
+			name:     "single resource for first",
+			provider: &mockDiffProvider{names: []string{"only-one"}},
+			args:     "",
+			want:     []string{"diff only-one"},
+		},
+		{
+			name:     "single resource for second - no suggestions",
+			provider: &mockDiffProvider{names: []string{"only-one"}},
+			args:     "only-one ",
+			want:     nil, // can't diff with self
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ci := NewCommandInput(ctx, reg)
+			if tt.provider != nil {
+				ci.SetDiffProvider(tt.provider)
+			}
+
+			got := ci.getDiffSuggestions(tt.args)
+
+			// Check length
+			if len(got) != len(tt.want) {
+				t.Errorf("getDiffSuggestions(%q) returned %d items, want %d\ngot:  %v\nwant: %v",
+					tt.args, len(got), len(tt.want), got, tt.want)
+				return
+			}
+
+			// Check each item
+			for i, want := range tt.want {
+				if got[i] != want {
+					t.Errorf("getDiffSuggestions(%q)[%d] = %q, want %q", tt.args, i, got[i], want)
+				}
+			}
+		})
+	}
+}
