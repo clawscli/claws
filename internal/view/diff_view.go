@@ -30,9 +30,7 @@ type DiffView struct {
 type diffViewStyles struct {
 	title     lipgloss.Style
 	header    lipgloss.Style
-	added     lipgloss.Style
-	removed   lipgloss.Style
-	unchanged lipgloss.Style
+	content   lipgloss.Style
 	separator lipgloss.Style
 }
 
@@ -41,9 +39,7 @@ func newDiffViewStyles() diffViewStyles {
 	return diffViewStyles{
 		title:     lipgloss.NewStyle().Bold(true).Foreground(t.Primary),
 		header:    lipgloss.NewStyle().Bold(true).Foreground(t.Secondary),
-		added:     lipgloss.NewStyle().Foreground(t.Success),
-		removed:   lipgloss.NewStyle().Foreground(t.Danger),
-		unchanged: lipgloss.NewStyle().Foreground(t.TextDim),
+		content:   lipgloss.NewStyle().Foreground(t.Text),
 		separator: lipgloss.NewStyle().Foreground(t.TableBorder),
 	}
 }
@@ -109,7 +105,7 @@ func (d *DiffView) SetSize(width, height int) tea.Cmd {
 		d.viewport.Height = viewportHeight
 	}
 
-	content := d.renderDiff()
+	content := d.renderSideBySide()
 	d.viewport.SetContent(content)
 
 	return nil
@@ -117,18 +113,17 @@ func (d *DiffView) SetSize(width, height int) tea.Cmd {
 
 // StatusLine implements View
 func (d *DiffView) StatusLine() string {
-	return "↑/↓:scroll • esc:back"
+	return d.left.GetName() + " vs " + d.right.GetName() + " • ↑/↓:scroll • esc:back"
 }
 
-// renderDiff generates the side-by-side diff view
-func (d *DiffView) renderDiff() string {
+// renderSideBySide generates the side-by-side view
+func (d *DiffView) renderSideBySide() string {
 	s := d.styles
 	var out strings.Builder
 
 	// Header
-	out.WriteString(s.title.Render("Diff: "+d.resourceType) + "\n")
-	out.WriteString(s.header.Render("← "+d.left.GetName()) + "  " + s.separator.Render("│") + "  " + s.header.Render(d.right.GetName()+" →") + "\n")
-	out.WriteString(strings.Repeat("─", d.width) + "\n\n")
+	out.WriteString(s.title.Render("Compare: "+d.resourceType) + "\n")
+	out.WriteString(strings.Repeat("─", d.width) + "\n")
 
 	// Get rendered detail for both resources
 	leftDetail := ""
@@ -145,107 +140,52 @@ func (d *DiffView) renderDiff() string {
 	// Calculate column width (half of available width minus separator)
 	colWidth := (d.width - 3) / 2
 
-	// Compute diff and render side-by-side
-	diff := computeLineDiff(leftLines, rightLines)
-	for _, entry := range diff {
-		leftLine := truncateOrPad(entry.Left, colWidth)
-		rightLine := truncateOrPad(entry.Right, colWidth)
+	// Column headers
+	leftHeader := truncateOrPad("◀ "+d.left.GetName(), colWidth)
+	rightHeader := truncateOrPad(d.right.GetName()+" ▶", colWidth)
+	out.WriteString(s.header.Render(leftHeader))
+	out.WriteString(s.separator.Render(" │ "))
+	out.WriteString(s.header.Render(rightHeader))
+	out.WriteString("\n")
+	out.WriteString(strings.Repeat("─", colWidth))
+	out.WriteString("─┼─")
+	out.WriteString(strings.Repeat("─", colWidth))
+	out.WriteString("\n")
 
-		switch entry.Type {
-		case diffEqual:
-			out.WriteString(s.unchanged.Render(leftLine))
-			out.WriteString(s.separator.Render(" │ "))
-			out.WriteString(s.unchanged.Render(rightLine))
-		case diffRemoved:
-			out.WriteString(s.removed.Render(leftLine))
-			out.WriteString(s.separator.Render(" │ "))
-			out.WriteString(strings.Repeat(" ", colWidth))
-		case diffAdded:
-			out.WriteString(strings.Repeat(" ", colWidth))
-			out.WriteString(s.separator.Render(" │ "))
-			out.WriteString(s.added.Render(rightLine))
-		case diffChanged:
-			out.WriteString(s.removed.Render(leftLine))
-			out.WriteString(s.separator.Render(" │ "))
-			out.WriteString(s.added.Render(rightLine))
+	// Render side by side
+	maxLines := len(leftLines)
+	if len(rightLines) > maxLines {
+		maxLines = len(rightLines)
+	}
+
+	for i := 0; i < maxLines; i++ {
+		leftLine := ""
+		rightLine := ""
+
+		if i < len(leftLines) {
+			leftLine = leftLines[i]
 		}
+		if i < len(rightLines) {
+			rightLine = rightLines[i]
+		}
+
+		out.WriteString(truncateOrPad(leftLine, colWidth))
+		out.WriteString(s.separator.Render(" │ "))
+		out.WriteString(truncateOrPad(rightLine, colWidth))
 		out.WriteString("\n")
 	}
 
 	return out.String()
 }
 
-// diffType represents the type of difference
-type diffType int
-
-const (
-	diffEqual diffType = iota
-	diffAdded
-	diffRemoved
-	diffChanged
-)
-
-// diffEntry represents a single diff line
-type diffEntry struct {
-	Type  diffType
-	Left  string
-	Right string
-}
-
-// computeLineDiff computes line-by-line diff between two sets of lines
-// This is a simple implementation; Phase 2 will use jd for JSON blocks
-func computeLineDiff(left, right []string) []diffEntry {
-	// Use LCS (Longest Common Subsequence) algorithm for proper diff
-	// For now, use a simple line-by-line comparison
-	result := []diffEntry{}
-
-	// Build a map of right lines for quick lookup
-	rightMap := make(map[string][]int)
-	for i, line := range right {
-		rightMap[line] = append(rightMap[line], i)
-	}
-
-	// Simple diff: compare line by line
-	maxLen := len(left)
-	if len(right) > maxLen {
-		maxLen = len(right)
-	}
-
-	for i := 0; i < maxLen; i++ {
-		var leftLine, rightLine string
-		hasLeft := i < len(left)
-		hasRight := i < len(right)
-
-		if hasLeft {
-			leftLine = left[i]
-		}
-		if hasRight {
-			rightLine = right[i]
-		}
-
-		if hasLeft && hasRight {
-			if leftLine == rightLine {
-				result = append(result, diffEntry{Type: diffEqual, Left: leftLine, Right: rightLine})
-			} else {
-				result = append(result, diffEntry{Type: diffChanged, Left: leftLine, Right: rightLine})
-			}
-		} else if hasLeft {
-			result = append(result, diffEntry{Type: diffRemoved, Left: leftLine})
-		} else {
-			result = append(result, diffEntry{Type: diffAdded, Right: rightLine})
-		}
-	}
-
-	return result
-}
-
 // truncateOrPad ensures a string is exactly the specified width
 func truncateOrPad(s string, width int) string {
-	// Remove ANSI escape codes for length calculation
+	// Use lipgloss.Width for proper ANSI-aware width calculation
 	plainLen := lipgloss.Width(s)
 
 	if plainLen > width {
-		// Truncate with ellipsis
+		// Truncate - need to handle ANSI codes properly
+		// Simple approach: just cut runes and add ellipsis
 		runes := []rune(s)
 		if len(runes) > width-1 {
 			return string(runes[:width-1]) + "…"
