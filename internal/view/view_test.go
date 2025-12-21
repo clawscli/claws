@@ -2,6 +2,8 @@ package view
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -503,6 +505,155 @@ func TestCommandInput_Update_Enter_Service(t *testing.T) {
 
 	if nav == nil {
 		t.Error("Expected NavigateMsg for 'ec2'")
+	}
+}
+
+// IsEscKey tests
+
+func TestIsEscKey(t *testing.T) {
+	tests := []struct {
+		name string
+		msg  tea.KeyMsg
+		want bool
+	}{
+		{"KeyEsc", tea.KeyMsg{Type: tea.KeyEsc}, true},
+		{"KeyEscape", tea.KeyMsg{Type: tea.KeyEscape}, true},
+		{"raw ESC byte", tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{27}}, true},
+		{"Enter", tea.KeyMsg{Type: tea.KeyEnter}, false},
+		{"Space", tea.KeyMsg{Type: tea.KeySpace}, false},
+		{"letter a", tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}}, false},
+		{"letter q", tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}}, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := IsEscKey(tt.msg)
+			if got != tt.want {
+				t.Errorf("IsEscKey() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// DetailView async refresh tests
+
+func TestDetailViewRefreshError(t *testing.T) {
+	resource := &mockResource{id: "i-123", name: "test-instance"}
+	ctx := context.Background()
+
+	dv := NewDetailView(ctx, resource, nil, "ec2", "instances", nil, nil)
+	dv.SetSize(100, 50)
+
+	// Simulate refresh error
+	errMsg := detailRefreshMsg{
+		resource: resource,
+		err:      fmt.Errorf("access denied"),
+	}
+
+	dv.Update(errMsg)
+
+	// Check that error is stored
+	if dv.refreshErr == nil {
+		t.Error("Expected refreshErr to be set after error message")
+	}
+
+	// Check status line contains error indicator
+	status := dv.StatusLine()
+	if !strings.Contains(status, "refresh failed") {
+		t.Errorf("StatusLine() = %q, want to contain 'refresh failed'", status)
+	}
+}
+
+func TestDetailViewRefreshSuccess(t *testing.T) {
+	resource := &mockResource{id: "i-123", name: "test-instance"}
+	ctx := context.Background()
+
+	dv := NewDetailView(ctx, resource, nil, "ec2", "instances", nil, nil)
+	dv.SetSize(100, 50)
+
+	// Set an initial error
+	dv.refreshErr = fmt.Errorf("previous error")
+
+	// Simulate successful refresh
+	newResource := &mockResource{id: "i-123", name: "updated-instance"}
+	successMsg := detailRefreshMsg{
+		resource: newResource,
+		err:      nil,
+	}
+
+	dv.Update(successMsg)
+
+	// Error should be cleared
+	if dv.refreshErr != nil {
+		t.Error("Expected refreshErr to be nil after successful refresh")
+	}
+
+	// Resource should be updated
+	if dv.resource.GetName() != "updated-instance" {
+		t.Errorf("resource.GetName() = %q, want 'updated-instance'", dv.resource.GetName())
+	}
+}
+
+// mockDAO for testing
+type mockDAO struct {
+	dao.BaseDAO
+	supportsGet bool
+	getErr      error
+}
+
+func (m *mockDAO) List(ctx context.Context) ([]dao.Resource, error) {
+	return nil, nil
+}
+
+func (m *mockDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
+	if m.getErr != nil {
+		return nil, m.getErr
+	}
+	return &mockResource{id: id, name: "fetched"}, nil
+}
+
+func (m *mockDAO) Delete(ctx context.Context, id string) error {
+	return nil
+}
+
+func (m *mockDAO) Supports(op dao.Operation) bool {
+	if op == dao.OpGet {
+		return m.supportsGet
+	}
+	return true
+}
+
+func TestDetailViewInitWithSupportsGet(t *testing.T) {
+	resource := &mockResource{id: "i-123", name: "test"}
+	ctx := context.Background()
+
+	// DAO that supports Get
+	daoWithGet := &mockDAO{supportsGet: true}
+	dv := NewDetailView(ctx, resource, nil, "ec2", "instances", nil, daoWithGet)
+
+	cmd := dv.Init()
+	if cmd == nil {
+		t.Error("Expected Init() to return command when DAO supports Get")
+	}
+	if !dv.refreshing {
+		t.Error("Expected refreshing to be true when DAO supports Get")
+	}
+}
+
+func TestDetailViewInitWithoutSupportsGet(t *testing.T) {
+	resource := &mockResource{id: "i-123", name: "test"}
+	ctx := context.Background()
+
+	// DAO that doesn't support Get
+	daoWithoutGet := &mockDAO{supportsGet: false}
+	dv := NewDetailView(ctx, resource, nil, "ec2", "instances", nil, daoWithoutGet)
+
+	cmd := dv.Init()
+	if cmd != nil {
+		t.Error("Expected Init() to return nil when DAO doesn't support Get")
+	}
+	if dv.refreshing {
+		t.Error("Expected refreshing to be false when DAO doesn't support Get")
 	}
 }
 

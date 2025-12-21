@@ -47,6 +47,7 @@ type DetailView struct {
 	registry    *registry.Registry
 	dao         dao.DAO // for async refresh
 	refreshing  bool    // true while fetching extended details
+	refreshErr  error   // error from last refresh attempt
 	spinner     spinner.Model
 	styles      detailViewStyles
 }
@@ -105,7 +106,9 @@ func (d *DetailView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		d.refreshing = false
 		if msg.err != nil {
 			log.Warn("failed to refresh resource details", "error", msg.err)
+			d.refreshErr = msg.err
 		} else {
+			d.refreshErr = nil
 			d.resource = msg.resource
 			// Re-render content with refreshed data
 			if d.ready {
@@ -231,6 +234,8 @@ func (d *DetailView) StatusLine() string {
 
 	if d.refreshing {
 		parts = append(parts, d.spinner.View()+" refreshing...")
+	} else if d.refreshErr != nil {
+		parts = append(parts, "⚠ refresh failed")
 	}
 
 	parts = append(parts, "↑/↓:scroll")

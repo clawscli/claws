@@ -96,6 +96,27 @@ func TestDangerStyle(t *testing.T) {
 	}
 }
 
+func TestNewSpinner(t *testing.T) {
+	s := NewSpinner()
+
+	// Spinner should be initialized
+	if s.Spinner.Frames == nil {
+		t.Error("NewSpinner() should have spinner frames")
+	}
+
+	// Should use Dot spinner (has specific frame count)
+	// spinner.Dot has 10 frames
+	if len(s.Spinner.Frames) == 0 {
+		t.Error("NewSpinner() should have non-empty frames")
+	}
+
+	// View should produce output
+	view := s.View()
+	if view == "" {
+		t.Error("NewSpinner().View() should produce output")
+	}
+}
+
 func TestThemeFields(t *testing.T) {
 	theme := DefaultTheme()
 
