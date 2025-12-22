@@ -43,18 +43,10 @@ func (d *VectorBucketDAO) List(ctx context.Context) ([]dao.Resource, error) {
 		return nil, err
 	}
 
-	// Get bucket details for each summary
-	var resources []dao.Resource
+	// Use Summary directly to avoid N+1 GetVectorBucket calls
+	resources := make([]dao.Resource, 0, len(summaries))
 	for _, bucket := range summaries {
-		getOutput, err := d.client.GetVectorBucket(ctx, &s3vectors.GetVectorBucketInput{
-			VectorBucketName: bucket.VectorBucketName,
-		})
-		if err != nil {
-			// Use summary info if we can't get details
-			resources = append(resources, NewVectorBucketResourceFromSummary(bucket))
-			continue
-		}
-		resources = append(resources, NewVectorBucketResource(getOutput.VectorBucket))
+		resources = append(resources, NewVectorBucketResourceFromSummary(bucket))
 	}
 
 	return resources, nil
@@ -89,9 +81,8 @@ func (d *VectorBucketDAO) Delete(ctx context.Context, id string) error {
 // VectorBucketResource wraps an S3 Vector Bucket
 type VectorBucketResource struct {
 	dao.BaseResource
-	Item       *types.VectorBucket
-	Summary    *types.VectorBucketSummary
-	fromDetail bool
+	Item    *types.VectorBucket        // Full details (from Get)
+	Summary *types.VectorBucketSummary // Summary (from List)
 }
 
 // NewVectorBucketResource creates a new VectorBucketResource from detail
@@ -107,8 +98,7 @@ func NewVectorBucketResource(bucket *types.VectorBucket) *VectorBucketResource {
 			Tags: make(map[string]string),
 			Data: bucket,
 		},
-		Item:       bucket,
-		fromDetail: true,
+		Item: bucket,
 	}
 }
 
@@ -125,14 +115,13 @@ func NewVectorBucketResourceFromSummary(summary types.VectorBucketSummary) *Vect
 			Tags: make(map[string]string),
 			Data: summary,
 		},
-		Summary:    &summary,
-		fromDetail: false,
+		Summary: &summary,
 	}
 }
 
 // BucketName returns the bucket name
 func (r *VectorBucketResource) BucketName() string {
-	if r.fromDetail && r.Item != nil {
+	if r.Item != nil {
 		return appaws.Str(r.Item.VectorBucketName)
 	}
 	if r.Summary != nil {
@@ -143,7 +132,7 @@ func (r *VectorBucketResource) BucketName() string {
 
 // CreationDate returns the creation date as string
 func (r *VectorBucketResource) CreationDate() string {
-	if r.fromDetail && r.Item != nil && r.Item.CreationTime != nil {
+	if r.Item != nil && r.Item.CreationTime != nil {
 		return r.Item.CreationTime.Format("2006-01-02 15:04:05")
 	}
 	if r.Summary != nil && r.Summary.CreationTime != nil {
@@ -152,17 +141,17 @@ func (r *VectorBucketResource) CreationDate() string {
 	return ""
 }
 
-// EncryptionType returns the encryption type
+// EncryptionType returns the encryption type (only available from Item/detail)
 func (r *VectorBucketResource) EncryptionType() string {
-	if r.fromDetail && r.Item != nil && r.Item.EncryptionConfiguration != nil {
+	if r.Item != nil && r.Item.EncryptionConfiguration != nil {
 		return string(r.Item.EncryptionConfiguration.SseType)
 	}
-	return "SSE-S3"
+	return "-"
 }
 
 // KmsKeyArn returns the KMS key ARN if using KMS encryption
 func (r *VectorBucketResource) KmsKeyArn() string {
-	if r.fromDetail && r.Item != nil && r.Item.EncryptionConfiguration != nil {
+	if r.Item != nil && r.Item.EncryptionConfiguration != nil {
 		return appaws.Str(r.Item.EncryptionConfiguration.KmsKeyArn)
 	}
 	return ""
