@@ -210,11 +210,13 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, a.keys.Command):
 			a.commandMode = true
-			// Set tag completion provider if current view is a ResourceBrowser
+			// Set completion providers if current view is a ResourceBrowser
 			if rb, ok := a.currentView.(*view.ResourceBrowser); ok {
 				a.commandInput.SetTagProvider(rb)
+				a.commandInput.SetDiffProvider(rb)
 			} else {
 				a.commandInput.SetTagProvider(nil)
+				a.commandInput.SetDiffProvider(nil)
 			}
 			return a, a.commandInput.Activate()
 

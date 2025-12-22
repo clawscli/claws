@@ -92,6 +92,13 @@ func (h *HelpView) View() string {
 	out += s.key.Render(":tags") + s.desc.Render("Browse all tagged resources") + "\n"
 	out += s.key.Render(":tags Env=prod") + s.desc.Render("Browse with tag filter") + "\n"
 
+	// Diff Commands
+	out += "\n" + s.section.Render("Compare Resources") + "\n"
+	out += s.key.Render("m") + s.desc.Render("Mark resource for comparison") + "\n"
+	out += s.key.Render("d") + s.desc.Render("Compare with marked resource (or view detail)") + "\n"
+	out += s.key.Render(":diff name") + s.desc.Render("Compare current row with named resource") + "\n"
+	out += s.key.Render(":diff a b") + s.desc.Render("Compare two named resources") + "\n"
+
 	// Actions
 	out += "\n" + s.section.Render("Actions (EC2 Instances)") + "\n"
 	out += s.key.Render("x") + s.desc.Render("SSM Session") + "\n"
@@ -125,7 +132,9 @@ func (h *HelpView) View() string {
 			"  :sort Name       → Sort by Name column\n" +
 			"  :sort desc Age   → Sort by Age descending\n" +
 			"  :tag Env=prod    → Filter current view by tag\n" +
-			"  :tags Env=prod   → Browse all resources with tag",
+			"  :tags Env=prod   → Browse all resources with tag\n" +
+			"  :diff my-func    → Compare current row with my-func\n" +
+			"  :diff foo bar    → Compare foo with bar",
 	)
 
 	return out

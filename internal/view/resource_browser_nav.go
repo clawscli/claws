@@ -67,24 +67,38 @@ func (r *ResourceBrowser) StatusLine() string {
 	// Build sort info
 	sortInfo := r.getSortInfo()
 
+	// Build mark info
+	markInfo := ""
+	if r.markedResource != nil {
+		markInfo = fmt.Sprintf(" [◆ %s]", r.markedResource.GetName())
+	}
+
 	// Build navigation shortcuts string
 	navInfo := r.getNavigationShortcuts()
 
+	// d key hint: "diff" if marked, "describe" otherwise
+	dHint := "d:describe"
+	if r.markedResource != nil {
+		dHint = "d:diff"
+	}
+
 	if r.filterText != "" || filterInfo != "" {
-		base := fmt.Sprintf("%s/%s%s%s%s • %d/%d items • c:clear", r.service, r.resourceType, filterInfo, sortInfo, autoReloadInfo, shown, total)
+		base := fmt.Sprintf("%s/%s%s%s%s%s • %d/%d items • c:clear", r.service, r.resourceType, filterInfo, sortInfo, markInfo, autoReloadInfo, shown, total)
 		if hasActions {
 			base += " a:actions"
 		}
+		base += " m:mark"
 		if navInfo != "" {
 			base += " " + navInfo
 		}
 		return base
 	}
 
-	base := fmt.Sprintf("%s/%s%s%s • %d items • /:filter d:describe", r.service, r.resourceType, sortInfo, autoReloadInfo, total)
+	base := fmt.Sprintf("%s/%s%s%s%s • %d items • /:filter %s", r.service, r.resourceType, sortInfo, markInfo, autoReloadInfo, total, dHint)
 	if hasActions {
 		base += " a:actions"
 	}
+	base += " m:mark"
 	if navInfo != "" {
 		base += " " + navInfo
 	}

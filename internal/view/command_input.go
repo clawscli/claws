@@ -41,6 +41,14 @@ type TagCompletionProvider interface {
 	GetTagValues(key string) []string
 }
 
+// DiffCompletionProvider provides resource names for diff command completion
+type DiffCompletionProvider interface {
+	// GetResourceNames returns all resource names for completion
+	GetResourceNames() []string
+	// GetMarkedResourceName returns the marked resource name (empty if none)
+	GetMarkedResourceName() string
+}
+
 type CommandInput struct {
 	ctx         context.Context
 	registry    *registry.Registry
@@ -53,6 +61,8 @@ type CommandInput struct {
 
 	// Tag completion
 	tagProvider TagCompletionProvider
+	// Diff completion
+	diffProvider DiffCompletionProvider
 }
 
 // NewCommandInput creates a new CommandInput
@@ -193,6 +203,11 @@ func (c *CommandInput) SetTagProvider(provider TagCompletionProvider) {
 	c.tagProvider = provider
 }
 
+// SetDiffProvider sets the diff completion provider
+func (c *CommandInput) SetDiffProvider(provider DiffCompletionProvider) {
+	c.diffProvider = provider
+}
+
 func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 	input := strings.TrimSpace(c.textInput.Value())
 
@@ -247,6 +262,23 @@ func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 		}
 		browser := NewTagBrowser(c.ctx, c.registry, tagFilter)
 		return nil, &NavigateMsg{View: browser}
+	}
+
+	// Handle diff command: :diff <name> or :diff <name1> <name2>
+	if strings.HasPrefix(input, "diff ") {
+		args := strings.TrimSpace(strings.TrimPrefix(input, "diff "))
+		parts := strings.Fields(args)
+		if len(parts) == 1 {
+			// :diff <name> - compare current row with named resource
+			return func() tea.Msg {
+				return DiffMsg{LeftName: "", RightName: parts[0]}
+			}, nil
+		} else if len(parts) >= 2 {
+			// :diff <name1> <name2> - compare two named resources
+			return func() tea.Msg {
+				return DiffMsg{LeftName: parts[0], RightName: parts[1]}
+			}, nil
+		}
 	}
 
 	// Parse command: service or service/resource
@@ -353,6 +385,11 @@ func (c *CommandInput) GetSuggestions() []string {
 		return c.getTagSuggestions("tags ", strings.TrimPrefix(input, "tags "))
 	}
 
+	// Handle :diff command completion
+	if strings.HasPrefix(input, "diff ") {
+		return c.getDiffSuggestions(strings.TrimPrefix(input, "diff "))
+	}
+
 	if strings.Contains(input, "/") {
 		// Suggest resources
 		parts := strings.SplitN(input, "/", 2)
@@ -389,6 +426,11 @@ func (c *CommandInput) GetSuggestions() []string {
 			suggestions = append(suggestions, "sort")
 		}
 
+		// Add "diff" command
+		if strings.HasPrefix("diff", input) && c.diffProvider != nil {
+			suggestions = append(suggestions, "diff")
+		}
+
 		for _, svc := range c.registry.ListServices() {
 			if strings.HasPrefix(svc, input) {
 				suggestions = append(suggestions, svc)
@@ -396,6 +438,39 @@ func (c *CommandInput) GetSuggestions() []string {
 		}
 	}
 
+	return suggestions
+}
+
+// getDiffSuggestions returns resource name suggestions for diff command
+// Supports: :diff <name1> and :diff <name1> <name2>
+func (c *CommandInput) getDiffSuggestions(args string) []string {
+	if c.diffProvider == nil {
+		return nil
+	}
+
+	var suggestions []string
+	names := c.diffProvider.GetResourceNames()
+
+	// Check if we're completing the second name (has space after first name)
+	parts := strings.SplitN(args, " ", 2)
+	if len(parts) == 2 {
+		// Completing second name: "diff name1 <prefix>"
+		firstName := parts[0]
+		secondPrefix := strings.ToLower(parts[1])
+		for _, name := range names {
+			if name != firstName && (secondPrefix == "" || strings.Contains(strings.ToLower(name), secondPrefix)) {
+				suggestions = append(suggestions, "diff "+firstName+" "+name)
+			}
+		}
+	} else {
+		// Completing first name: "diff <prefix>"
+		prefix := strings.ToLower(args)
+		for _, name := range names {
+			if prefix == "" || strings.Contains(strings.ToLower(name), prefix) {
+				suggestions = append(suggestions, "diff "+name)
+			}
+		}
+	}
 	return suggestions
 }
 

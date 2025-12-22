@@ -28,6 +28,7 @@ A terminal UI for AWS resource management 👮
 - **Command mode** - Quick navigation with `:ec2/instances` syntax
 - **Filtering** - Fuzzy search with `/`, tag filtering with `:tag Env=prod`
 - **Column sorting** - Sort by any column with `:sort <col>` command
+- **Resource comparison** - Side-by-side diff view with `m` to mark, `d` to compare
 - **Pagination** - Handle large datasets with `N` key for next page
 
 ## Installation
@@ -144,7 +145,9 @@ claws -l debug.log
 | `Tab` | Next resource type |
 | `1-9` | Switch to resource type by number |
 | `a` | Open actions menu |
-| `c` | Clear filter |
+| `m` | Mark resource for comparison |
+| `d` | Describe (or diff if marked) |
+| `c` | Clear filter and mark |
 | `N` | Load next page (pagination) |
 | `Ctrl+r` | Refresh |
 | `R` | Switch AWS region |
@@ -175,6 +178,8 @@ claws -l debug.log
 | `:ec2/instances` | Navigate to EC2 instances |
 | `:sort <col>` | Sort by column |
 | `:tag <filter>` | Filter by tag |
+| `:diff <name>` | Compare current row with named resource |
+| `:diff <n1> <n2>` | Compare two named resources |
 
 **Login Details:**
 - `:login` runs `aws login --remote` and creates a temporary profile
