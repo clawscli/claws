@@ -130,3 +130,42 @@ func TestBucketResource_NilName(t *testing.T) {
 		t.Errorf("BucketName = %q, want empty string for nil name", resource.BucketName)
 	}
 }
+
+func TestBucketResource_BucketRegion(t *testing.T) {
+	// Test that BucketRegion from ListBuckets response is handled correctly
+	bucket := types.Bucket{
+		Name:         aws.String("regional-bucket"),
+		BucketRegion: aws.String("ap-northeast-1"),
+	}
+
+	resource := NewBucketResource(bucket)
+
+	// BucketRegion is set separately in DAO.List(), so initially empty
+	if resource.Region != "" {
+		t.Errorf("Region should be empty initially, got %q", resource.Region)
+	}
+
+	// Simulate what DAO.List() does
+	if bucket.BucketRegion != nil {
+		resource.Region = *bucket.BucketRegion
+	}
+
+	if resource.Region != "ap-northeast-1" {
+		t.Errorf("Region = %q, want %q", resource.Region, "ap-northeast-1")
+	}
+}
+
+func TestBucketResource_BucketRegionNil(t *testing.T) {
+	// Test that nil BucketRegion doesn't cause issues
+	bucket := types.Bucket{
+		Name:         aws.String("no-region-bucket"),
+		BucketRegion: nil,
+	}
+
+	resource := NewBucketResource(bucket)
+
+	// Region should remain empty when BucketRegion is nil
+	if resource.Region != "" {
+		t.Errorf("Region should be empty for nil BucketRegion, got %q", resource.Region)
+	}
+}

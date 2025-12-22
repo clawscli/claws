@@ -69,9 +69,8 @@ func getExpires(r dao.Resource) string {
 
 func getInUse(r dao.Resource) string {
 	if cert, ok := r.(*CertificateResource); ok {
-		count := len(cert.InUseBy())
-		if count > 0 {
-			return fmt.Sprintf("%d", count)
+		if inUse := cert.IsInUse(); inUse != nil && *inUse {
+			return "Yes"
 		}
 		return "-"
 	}
@@ -151,7 +150,7 @@ func (r *CertificateRenderer) RenderDetail(resource dao.Resource) string {
 	if notAfter := cert.NotAfter(); notAfter != "" {
 		d.Field("Valid Until", notAfter)
 		// Calculate days until expiry
-		if cert.Item.NotAfter != nil {
+		if cert.Item != nil && cert.Item.NotAfter != nil {
 			daysLeft := int(time.Until(*cert.Item.NotAfter).Hours() / 24)
 			if daysLeft >= 0 {
 				d.Field("Days Until Expiry", fmt.Sprintf("%d days", daysLeft))

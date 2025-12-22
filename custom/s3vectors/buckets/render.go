@@ -21,7 +21,6 @@ func NewVectorBucketRenderer() *VectorBucketRenderer {
 			Resource: "buckets",
 			Cols: []render.Column{
 				{Name: "NAME", Width: 50, Getter: getName},
-				{Name: "ENCRYPTION", Width: 12, Getter: getEncryption},
 				{Name: "CREATED", Width: 20, Getter: getCreated},
 				{Name: "AGE", Width: 10, Getter: getAge},
 			},
@@ -36,13 +35,6 @@ func getName(r dao.Resource) string {
 	return r.GetName()
 }
 
-func getEncryption(r dao.Resource) string {
-	if bucket, ok := r.(*VectorBucketResource); ok {
-		return bucket.EncryptionType()
-	}
-	return ""
-}
-
 func getCreated(r dao.Resource) string {
 	if bucket, ok := r.(*VectorBucketResource); ok {
 		return bucket.CreationDate()
@@ -52,7 +44,7 @@ func getCreated(r dao.Resource) string {
 
 func getAge(r dao.Resource) string {
 	if bucket, ok := r.(*VectorBucketResource); ok {
-		if bucket.fromDetail && bucket.Item != nil && bucket.Item.CreationTime != nil {
+		if bucket.Item != nil && bucket.Item.CreationTime != nil {
 			return render.FormatAge(*bucket.Item.CreationTime)
 		}
 		if bucket.Summary != nil && bucket.Summary.CreationTime != nil {

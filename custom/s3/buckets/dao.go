@@ -9,7 +9,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
-	"github.com/clawscli/claws/internal/log"
 )
 
 // BucketDAO provides data access for S3 buckets
@@ -31,31 +30,28 @@ func NewBucketDAO(ctx context.Context) (dao.DAO, error) {
 }
 
 func (d *BucketDAO) List(ctx context.Context) ([]dao.Resource, error) {
-	output, err := d.client.ListBuckets(ctx, &s3.ListBucketsInput{})
+	// Use MaxBuckets parameter to get BucketRegion in the response
+	// This avoids N+1 GetBucketLocation calls
+	buckets, err := appaws.Paginate(ctx, func(token *string) ([]types.Bucket, *string, error) {
+		output, err := d.client.ListBuckets(ctx, &s3.ListBucketsInput{
+			ContinuationToken: token,
+			MaxBuckets:        appaws.Int32Ptr(1000),
+		})
+		if err != nil {
+			return nil, nil, fmt.Errorf("list buckets: %w", err)
+		}
+		return output.Buckets, output.ContinuationToken, nil
+	})
 	if err != nil {
-		return nil, fmt.Errorf("list buckets: %w", err)
+		return nil, err
 	}
 
-	resources := make([]dao.Resource, 0, len(output.Buckets))
-	for _, bucket := range output.Buckets {
+	resources := make([]dao.Resource, 0, len(buckets))
+	for _, bucket := range buckets {
 		r := NewBucketResource(bucket)
-		// Fetch bucket region
-		if bucket.Name != nil {
-			locOutput, err := d.client.GetBucketLocation(ctx, &s3.GetBucketLocationInput{
-				Bucket: bucket.Name,
-			})
-			if err != nil {
-				// Log non-access-denied errors (access denied is common for cross-account buckets)
-				if !appaws.IsAccessDenied(err) {
-					log.Warn("failed to get bucket location", "bucket", *bucket.Name, "error", err)
-				}
-			} else if locOutput != nil {
-				if locOutput.LocationConstraint != "" {
-					r.Region = string(locOutput.LocationConstraint)
-				} else {
-					r.Region = "us-east-1" // default for buckets without explicit location
-				}
-			}
+		// BucketRegion is included when any parameter is set in ListBucketsInput
+		if bucket.BucketRegion != nil {
+			r.Region = *bucket.BucketRegion
 		}
 		resources = append(resources, r)
 	}
