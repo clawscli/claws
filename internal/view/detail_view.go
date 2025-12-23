@@ -287,6 +287,7 @@ func (d *DetailView) renderContent() string {
 			detail = strings.ReplaceAll(detail, placeholder+"\n", loading+"\n")
 			if strings.HasSuffix(detail, placeholder) {
 				detail = detail[:len(detail)-len(placeholder)] + loading
+				break // Only one placeholder can be at EOF
 			}
 		}
 	}
