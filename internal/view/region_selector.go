@@ -306,6 +306,9 @@ func (r *RegionSelector) renderContent() string {
 }
 
 func (r *RegionSelector) getItemAtPosition(y int) int {
+	if !r.ready {
+		return -1
+	}
 	// Layout: title (1) + filter? (1) + viewport content
 	headerHeight := 1
 	if r.filterActive || r.filterText != "" {

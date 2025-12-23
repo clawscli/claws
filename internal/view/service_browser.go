@@ -453,7 +453,7 @@ func (s *ServiceBrowser) selectCurrentService() (tea.Model, tea.Cmd) {
 
 // getItemAtPosition returns the item index at the given (x, y) position, or -1 if none
 func (s *ServiceBrowser) getItemAtPosition(x, y int) int {
-	if len(s.itemPositions) == 0 {
+	if !s.ready || len(s.itemPositions) == 0 {
 		return -1
 	}
 
