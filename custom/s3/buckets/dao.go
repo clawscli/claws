@@ -283,3 +283,13 @@ func (r *BucketResource) Age() time.Duration {
 	}
 	return time.Since(r.CreationDate)
 }
+
+// MergeFrom implements dao.Mergeable to preserve List-only fields after Get() refresh.
+// CreationDate is only available from ListBuckets, not from any Get API.
+func (r *BucketResource) MergeFrom(original dao.Resource) {
+	if orig, ok := original.(*BucketResource); ok {
+		if r.CreationDate.IsZero() && !orig.CreationDate.IsZero() {
+			r.CreationDate = orig.CreationDate
+		}
+	}
+}

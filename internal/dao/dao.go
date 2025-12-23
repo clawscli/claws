@@ -102,6 +102,17 @@ type PaginatedDAO interface {
 	ListPage(ctx context.Context, pageSize int, pageToken string) ([]Resource, string, error)
 }
 
+// Mergeable is an optional interface for resources that need to preserve
+// fields from List() when refreshed via Get(). This is useful when Get()
+// returns a new resource that lacks some fields only available from List()
+// (e.g., S3 bucket CreationDate is only in ListBuckets response).
+type Mergeable interface {
+	Resource
+	// MergeFrom copies fields from the original resource that are not
+	// available in the Get() response. Called after Get() refresh.
+	MergeFrom(original Resource)
+}
+
 // Context key types for filter values
 type filterContextKey string
 
