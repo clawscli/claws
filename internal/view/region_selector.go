@@ -132,7 +132,8 @@ func (r *RegionSelector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		r.regions = msg.regions
 		sortRegions(r.regions)
 		r.applyFilter()
-		// Set cursor to current region
+		r.clampCursor()
+		// Set cursor to current region if found
 		for i, region := range r.filtered {
 			if region == r.currentRegion {
 				r.cursor = i
@@ -178,7 +179,7 @@ func (r *RegionSelector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				r.filterInput.Blur()
 				r.filterText = r.filterInput.Value()
 				r.applyFilter()
-				r.cursor = 0
+				r.clampCursor()
 				r.updateViewport()
 				return r, nil
 			default:
@@ -186,7 +187,7 @@ func (r *RegionSelector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				r.filterInput, cmd = r.filterInput.Update(msg)
 				r.filterText = r.filterInput.Value()
 				r.applyFilter()
-				r.cursor = 0
+				r.clampCursor()
 				r.updateViewport()
 				return r, cmd
 			}
@@ -201,7 +202,7 @@ func (r *RegionSelector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			r.filterText = ""
 			r.filterInput.SetValue("")
 			r.applyFilter()
-			r.cursor = 0
+			r.clampCursor()
 			r.updateViewport()
 			return r, nil
 		case "up", "k":
@@ -249,6 +250,16 @@ func (r *RegionSelector) applyFilter() {
 		if strings.Contains(strings.ToLower(region), filter) {
 			r.filtered = append(r.filtered, region)
 		}
+	}
+}
+
+func (r *RegionSelector) clampCursor() {
+	if len(r.filtered) == 0 {
+		r.cursor = -1
+	} else if r.cursor >= len(r.filtered) {
+		r.cursor = len(r.filtered) - 1
+	} else if r.cursor < 0 {
+		r.cursor = 0
 	}
 }
 
