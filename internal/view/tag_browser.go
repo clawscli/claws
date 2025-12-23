@@ -120,6 +120,33 @@ func (t *TagBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		t.err = msg.err
 		return t, nil
 
+	case tea.MouseWheelMsg:
+		var cmd tea.Cmd
+		t.table, cmd = t.table.Update(msg)
+		return t, cmd
+
+	case tea.MouseMotionMsg:
+		// Hover: update cursor
+		if idx := t.getRowAtPosition(msg.Y); idx >= 0 && idx != t.table.Cursor() {
+			t.table.SetCursor(idx)
+		}
+		return t, nil
+
+	case tea.MouseClickMsg:
+		// Click: select and navigate
+		if msg.Button == tea.MouseLeft && len(t.filtered) > 0 {
+			if idx := t.getRowAtPosition(msg.Y); idx >= 0 {
+				t.table.SetCursor(idx)
+				selected := t.filtered[idx]
+				return t, func() tea.Msg {
+					return NavigateMsg{
+						View: NewResourceBrowserWithType(t.ctx, t.registry, selected.Service, selected.ResourceType),
+					}
+				}
+			}
+		}
+		return t, nil
+
 	case tea.KeyPressMsg:
 		// Handle filter input mode
 		if t.filterActive {
@@ -251,11 +278,23 @@ func (t *TagBrowser) buildTable() {
 		}
 	}
 
+	// Ensure reasonable dimensions (SetSize might not be called yet)
+	// Layout: header(1) + status(1) + filter(0/1) + table
+	tableHeight := t.height - 2
+	if tableHeight < 10 {
+		tableHeight = 20
+	}
+	tableWidth := t.width
+	if tableWidth < 80 {
+		tableWidth = 120
+	}
+
 	tbl := table.New(
 		table.WithColumns(columns),
 		table.WithRows(rows),
 		table.WithFocused(true),
-		table.WithHeight(t.height-6),
+		table.WithHeight(tableHeight),
+		table.WithWidth(tableWidth),
 	)
 
 	s := table.DefaultStyles()
@@ -331,17 +370,7 @@ func (t *TagBrowser) ViewString() string {
 			Render(t.filterInput.View()) + "\n"
 	}
 
-	// Help
-	helpText := "↑/k up • ↓/j down • / filter • c clear • enter select • esc back"
-	if t.filterActive {
-		helpText = "Type to filter • enter confirm • esc cancel"
-	}
-	help := lipgloss.NewStyle().
-		Foreground(theme.TextDim).
-		Padding(0, 1).
-		Render(helpText)
-
-	return header + "\n" + status + "\n" + filterView + t.table.View() + "\n" + help
+	return header + "\n" + status + "\n" + filterView + t.table.View()
 }
 
 // View implements tea.Model
@@ -354,7 +383,8 @@ func (t *TagBrowser) SetSize(width, height int) tea.Cmd {
 	t.width = width
 	t.height = height
 	if t.table.Columns() != nil {
-		t.table.SetHeight(height - 6)
+		t.table.SetHeight(height - 2)
+		t.table.SetWidth(width)
 	}
 	return nil
 }
@@ -377,4 +407,19 @@ func (t *TagBrowser) StatusLine() string {
 // HasActiveInput returns true when filter input is active
 func (t *TagBrowser) HasActiveInput() bool {
 	return t.filterActive
+}
+
+// getRowAtPosition returns the row index at given Y position, or -1 if none
+func (t *TagBrowser) getRowAtPosition(y int) int {
+	// Layout: header (1) + status (1) + filter (0/1) + table header (2 with border)
+	headerHeight := 4 // header + status + table header with border
+	if t.filterActive {
+		headerHeight++
+	}
+
+	row := y - headerHeight
+	if row >= 0 && row < len(t.filtered) {
+		return row
+	}
+	return -1
 }

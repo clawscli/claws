@@ -130,6 +130,31 @@ func (m *ActionMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case tea.MouseMotionMsg:
+		// Hover: update cursor
+		if !m.confirming {
+			if idx := m.getActionAtPosition(msg.Y); idx >= 0 && idx != m.cursor {
+				m.cursor = idx
+			}
+		}
+		return m, nil
+
+	case tea.MouseClickMsg:
+		// Click: select and execute
+		if msg.Button == tea.MouseLeft && !m.confirming {
+			if idx := m.getActionAtPosition(msg.Y); idx >= 0 {
+				m.cursor = idx
+				act := m.actions[idx]
+				if act.Confirm {
+					m.confirming = true
+					m.confirmIdx = idx
+					return m, nil
+				}
+				return m.executeAction(act)
+			}
+		}
+		return m, nil
+
 	case tea.KeyPressMsg:
 		// Handle confirmation mode
 		if m.confirming {
@@ -287,6 +312,18 @@ func (m *ActionMenu) ViewString() string {
 // View implements tea.Model
 func (m *ActionMenu) View() tea.View {
 	return tea.NewView(m.ViewString())
+}
+
+// getActionAtPosition returns the action index at given Y position, or -1 if none
+func (m *ActionMenu) getActionAtPosition(y int) int {
+	// Layout: title (1) + margin (1) + empty (1) = 3 lines before actions
+	headerHeight := 3
+	idx := y - headerHeight
+
+	if idx >= 0 && idx < len(m.actions) {
+		return idx
+	}
+	return -1
 }
 
 // SetSize implements View
