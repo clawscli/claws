@@ -81,9 +81,15 @@ func (d *DetailBuilder) Section(name string) *DetailBuilder {
 	return d
 }
 
-// Field adds a label: value line
+// Field adds a label: value line.
+// Placeholder constants (NotConfigured, Empty, NoValue) are written without styling
+// so they can be replaced with "Loading..." during async detail refresh.
 func (d *DetailBuilder) Field(label, value string) *DetailBuilder {
-	d.sb.WriteString(d.styles.Label.Render(label+":") + d.styles.Value.Render(value) + "\n")
+	styledValue := value
+	if value != NotConfigured && value != Empty && value != NoValue {
+		styledValue = d.styles.Value.Render(value)
+	}
+	d.sb.WriteString(d.styles.Label.Render(label+":") + styledValue + "\n")
 	return d
 }
 

@@ -316,14 +316,34 @@ func TestDetailBuilderWithConstants(t *testing.T) {
 
 	result := d.String()
 
-	// Verify all constants appear in output
-	if !strings.Contains(result, NotConfigured) {
-		t.Errorf("result should contain %q", NotConfigured)
+	// Verify all constants appear in output as plain text (not styled)
+	// This is important for Loading... replacement to work
+	if !strings.Contains(result, NotConfigured+"\n") {
+		t.Errorf("result should contain %q as plain text", NotConfigured)
 	}
-	if !strings.Contains(result, Empty) {
-		t.Errorf("result should contain %q", Empty)
+	if !strings.Contains(result, Empty+"\n") {
+		t.Errorf("result should contain %q as plain text", Empty)
 	}
-	if !strings.Contains(result, NoValue) {
-		t.Errorf("result should contain %q", NoValue)
+	if !strings.Contains(result, NoValue+"\n") {
+		t.Errorf("result should contain %q as plain text", NoValue)
+	}
+}
+
+func TestDetailBuilderPlaceholdersMatchable(t *testing.T) {
+	d := NewDetailBuilder()
+
+	// Placeholders should be matchable for Loading... replacement
+	d.Field("Status", NotConfigured)
+	d.Field("Items", Empty)
+	d.Field("Comment", NoValue)
+
+	result := d.String()
+
+	// Each placeholder should appear with newline suffix (for line-ending match)
+	placeholders := []string{NotConfigured, Empty, NoValue}
+	for _, p := range placeholders {
+		if !strings.Contains(result, p+"\n") {
+			t.Errorf("placeholder %q should be matchable with newline suffix, got:\n%s", p, result)
+		}
 	}
 }
