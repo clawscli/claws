@@ -21,6 +21,12 @@ import (
 )
 
 // ResourceBrowser displays resources of a specific type
+
+const (
+	// logTokenMaxLen is the max length of pagination token shown in debug logs
+	logTokenMaxLen = 20
+)
+
 // resourceBrowserStyles holds cached lipgloss styles for performance
 type resourceBrowserStyles struct {
 	count        lipgloss.Style
@@ -616,7 +622,7 @@ func (r *ResourceBrowser) loadNextPage() tea.Msg {
 	}
 
 	start := time.Now()
-	log.Debug("loading next page", "service", r.service, "resourceType", r.resourceType, "token", r.nextPageToken[:min(20, len(r.nextPageToken))])
+	log.Debug("loading next page", "service", r.service, "resourceType", r.resourceType, "token", r.nextPageToken[:min(logTokenMaxLen, len(r.nextPageToken))])
 
 	listCtx := r.ctx
 	if r.fieldFilter != "" && r.fieldFilterValue != "" {

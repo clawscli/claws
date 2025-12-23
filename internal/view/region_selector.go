@@ -11,6 +11,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/config"
+	"github.com/clawscli/claws/internal/log"
 	navmsg "github.com/clawscli/claws/internal/msg"
 	"github.com/clawscli/claws/internal/ui"
 )
@@ -94,7 +95,10 @@ func (r *RegionSelector) Init() tea.Cmd {
 }
 
 func (r *RegionSelector) loadRegions() tea.Msg {
-	regions, _ := aws.FetchAvailableRegions(r.ctx)
+	regions, err := aws.FetchAvailableRegions(r.ctx)
+	if err != nil {
+		log.Error("failed to fetch regions", "error", err)
+	}
 	return regionsLoadedMsg{regions: regions}
 }
 
@@ -305,6 +309,7 @@ func (r *RegionSelector) renderContent() string {
 	return b.String()
 }
 
+// getItemAtPosition returns the region index at given Y position, or -1 if none
 func (r *RegionSelector) getItemAtPosition(y int) int {
 	if !r.ready {
 		return -1
