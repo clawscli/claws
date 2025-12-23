@@ -164,7 +164,7 @@ func (r *ImageRenderer) RenderDetail(resource dao.Resource) string {
 		for _, bdm := range v.Item.BlockDeviceMappings {
 			deviceName := appaws.Str(bdm.DeviceName)
 			if deviceName == "" {
-				deviceName = "-"
+				deviceName = render.NoValue
 			}
 			d.Field("Device", deviceName)
 			if bdm.Ebs != nil {

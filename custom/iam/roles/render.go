@@ -125,7 +125,7 @@ func (r *RoleRenderer) RenderDetail(resource dao.Resource) string {
 	// Attached Policies
 	d.Section("Attached Policies")
 	if len(rr.AttachedPolicies) == 0 && len(rr.InlinePolicies) == 0 {
-		d.Field("Policies", "None")
+		d.Field("Policies", render.Empty)
 	} else {
 		if len(rr.AttachedPolicies) > 0 {
 			d.Field("Managed Policies", fmt.Sprintf("%d", len(rr.AttachedPolicies)))

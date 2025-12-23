@@ -100,7 +100,7 @@ func (r *EndpointRenderer) RenderDetail(resource dao.Resource) string {
 	if desc := ep.Description(); desc != "" {
 		d.Line(desc)
 	} else {
-		d.Line("-")
+		d.Line(render.NoValue)
 	}
 
 	d.Section("Timestamps")

@@ -116,7 +116,7 @@ func (r *UserRenderer) RenderDetail(resource dao.Resource) string {
 	// Access Keys
 	d.Section("Access Keys")
 	if len(ur.AccessKeys) == 0 {
-		d.Field("Access Keys", "None")
+		d.Field("Access Keys", render.Empty)
 	} else {
 		d.Field("Access Key Count", fmt.Sprintf("%d", len(ur.AccessKeys)))
 		for i, key := range ur.AccessKeys {
@@ -148,7 +148,7 @@ func (r *UserRenderer) RenderDetail(resource dao.Resource) string {
 	// Groups
 	d.Section("Groups")
 	if len(ur.Groups) == 0 {
-		d.Field("Groups", "None")
+		d.Field("Groups", render.Empty)
 	} else {
 		d.Field("Group Count", fmt.Sprintf("%d", len(ur.Groups)))
 		for _, group := range ur.Groups {
@@ -159,7 +159,7 @@ func (r *UserRenderer) RenderDetail(resource dao.Resource) string {
 	// Attached Policies
 	d.Section("Attached Policies")
 	if len(ur.AttachedPolicies) == 0 && len(ur.InlinePolicies) == 0 {
-		d.Field("Policies", "None")
+		d.Field("Policies", render.Empty)
 	} else {
 		if len(ur.AttachedPolicies) > 0 {
 			d.Field("Managed Policies", fmt.Sprintf("%d", len(ur.AttachedPolicies)))

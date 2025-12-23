@@ -9,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/registry"
+	"github.com/clawscli/claws/internal/render"
 )
 
 func TestResourceBrowserFilterEsc(t *testing.T) {
@@ -863,6 +864,98 @@ func TestDiffView_View_NotReady(t *testing.T) {
 	view := dv.View()
 	if view != "Loading..." {
 		t.Errorf("View() = %q, want 'Loading...'", view)
+	}
+}
+
+// mockRenderer for testing renderContent with Loading replacement
+type mockRenderer struct {
+	detail string
+}
+
+func (m *mockRenderer) ServiceName() string                                     { return "test" }
+func (m *mockRenderer) ResourceType() string                                    { return "items" }
+func (m *mockRenderer) Columns() []render.Column                                { return nil }
+func (m *mockRenderer) RenderRow(r dao.Resource, cols []render.Column) []string { return nil }
+func (m *mockRenderer) RenderDetail(r dao.Resource) string                      { return m.detail }
+func (m *mockRenderer) RenderSummary(r dao.Resource) []render.SummaryField      { return nil }
+
+func TestDetailViewLoadingPlaceholderReplacement(t *testing.T) {
+	ctx := context.Background()
+	resource := &mockResource{id: "test-1", name: "test-resource"}
+
+	tests := []struct {
+		name            string
+		detail          string
+		refreshing      bool
+		wantContains    []string
+		wantNotContains []string
+	}{
+		{
+			name:            "refreshing replaces NotConfigured at line end",
+			detail:          "Status: " + render.NotConfigured + "\n",
+			refreshing:      true,
+			wantContains:    []string{"Loading..."},
+			wantNotContains: []string{render.NotConfigured},
+		},
+		{
+			name:            "refreshing replaces Empty at line end",
+			detail:          "Items: " + render.Empty + "\n",
+			refreshing:      true,
+			wantContains:    []string{"Loading..."},
+			wantNotContains: []string{render.Empty},
+		},
+		{
+			name:            "refreshing replaces NoValue at line end",
+			detail:          "Comment: " + render.NoValue + "\n",
+			refreshing:      true,
+			wantContains:    []string{"Loading..."},
+			wantNotContains: []string{render.NoValue + "\n"},
+		},
+		{
+			name:            "refreshing does NOT replace placeholder in middle of text",
+			detail:          "Name: Not configured server\n",
+			refreshing:      true,
+			wantContains:    []string{"Not configured server"}, // Should remain
+			wantNotContains: []string{},
+		},
+		{
+			name:            "refreshing does NOT replace NoValue in middle of text",
+			detail:          "ID: i-1234567890abcdef0\n",
+			refreshing:      true,
+			wantContains:    []string{"i-1234567890abcdef0"}, // Hyphens should remain
+			wantNotContains: []string{},
+		},
+		{
+			name:            "not refreshing keeps placeholders",
+			detail:          "Status: " + render.NotConfigured + "\nItems: " + render.Empty + "\n",
+			refreshing:      false,
+			wantContains:    []string{render.NotConfigured, render.Empty},
+			wantNotContains: []string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			renderer := &mockRenderer{detail: tt.detail}
+			dv := NewDetailView(ctx, resource, renderer, "test", "items", nil, nil)
+			dv.refreshing = tt.refreshing
+			dv.SetSize(100, 50)
+
+			// Get the viewport content
+			content := dv.viewport.View()
+
+			for _, want := range tt.wantContains {
+				if !strings.Contains(content, want) {
+					t.Errorf("content should contain %q, got:\n%s", want, content)
+				}
+			}
+
+			for _, notWant := range tt.wantNotContains {
+				if strings.Contains(content, notWant) {
+					t.Errorf("content should not contain %q, got:\n%s", notWant, content)
+				}
+			}
+		})
 	}
 }
 

@@ -9,6 +9,22 @@ import (
 	"github.com/clawscli/claws/internal/ui"
 )
 
+// Empty value placeholder constants for consistent display across detail views.
+// These are replaced with "Loading..." during async data fetching.
+const (
+	// NotConfigured indicates an optional feature/setting is not configured.
+	// Use for: Versioning, Encryption, Public Access Block, etc.
+	NotConfigured = "Not configured"
+
+	// Empty indicates a list/collection has no items.
+	// Use for: Policies, Groups, Access Keys, etc.
+	Empty = "None"
+
+	// NoValue indicates a single value field has no value.
+	// Use for: Description, Comment, optional single values, etc.
+	NoValue = "-"
+)
+
 // DetailStyles contains common styles for detail views
 // cachedDetailStyles holds the cached default styles
 var cachedDetailStyles *DetailStyles

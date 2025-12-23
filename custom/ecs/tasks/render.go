@@ -191,11 +191,11 @@ func (r *TaskRenderer) RenderDetail(resource dao.Resource) string {
 		for _, c := range containers {
 			name := appaws.Str(c.Name)
 			if name == "" {
-				name = "-"
+				name = render.NoValue
 			}
 			status := appaws.Str(c.LastStatus)
 			if status == "" {
-				status = "-"
+				status = render.NoValue
 			}
 			d.Field(name, status)
 			if c.Reason != nil && *c.Reason != "" {

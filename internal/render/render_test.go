@@ -283,3 +283,59 @@ func TestStyleHelpers(t *testing.T) {
 	_ = DimStyle().Render("test")
 	_ = DefaultStyle().Render("test")
 }
+
+func TestEmptyValueConstants(t *testing.T) {
+	// Verify constants have expected values
+	tests := []struct {
+		name     string
+		constant string
+		want     string
+	}{
+		{"NotConfigured", NotConfigured, "Not configured"},
+		{"Empty", Empty, "None"},
+		{"NoValue", NoValue, "-"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.constant != tt.want {
+				t.Errorf("%s = %q, want %q", tt.name, tt.constant, tt.want)
+			}
+		})
+	}
+}
+
+func TestDetailBuilderWithConstants(t *testing.T) {
+	d := NewDetailBuilder()
+
+	// Test using constants in Field
+	d.Field("Status", NotConfigured)
+	d.Field("Items", Empty)
+	d.Field("Comment", NoValue)
+
+	result := d.String()
+
+	// Verify all constants appear in output
+	if !containsString(result, NotConfigured) {
+		t.Errorf("result should contain %q", NotConfigured)
+	}
+	if !containsString(result, Empty) {
+		t.Errorf("result should contain %q", Empty)
+	}
+	if !containsString(result, NoValue) {
+		t.Errorf("result should contain %q", NoValue)
+	}
+}
+
+func containsString(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsStringHelper(s, substr))
+}
+
+func containsStringHelper(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}

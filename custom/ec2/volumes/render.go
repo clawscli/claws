@@ -166,11 +166,11 @@ func (r *VolumeRenderer) RenderDetail(resource dao.Resource) string {
 		for _, att := range v.Item.Attachments {
 			instanceID := appaws.Str(att.InstanceId)
 			if instanceID == "" {
-				instanceID = "-"
+				instanceID = render.NoValue
 			}
 			device := appaws.Str(att.Device)
 			if device == "" {
-				device = "-"
+				device = render.NoValue
 			}
 			deleteOnTerm := "No"
 			if att.DeleteOnTermination != nil && *att.DeleteOnTermination {

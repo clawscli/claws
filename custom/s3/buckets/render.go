@@ -100,7 +100,7 @@ func (r *BucketRenderer) RenderDetail(resource dao.Resource) string {
 	if b.Versioning != "" {
 		d.Field("Status", b.Versioning)
 	} else {
-		d.Field("Status", "Not configured")
+		d.Field("Status", render.NotConfigured)
 	}
 	if b.MFADelete != "" {
 		d.Field("MFA Delete", b.MFADelete)
@@ -118,7 +118,7 @@ func (r *BucketRenderer) RenderDetail(resource dao.Resource) string {
 			d.Field("Bucket Key", "Enabled")
 		}
 	} else {
-		d.Field("Status", "Not configured")
+		d.Field("Status", render.NotConfigured)
 	}
 
 	// Public Access Block
@@ -151,7 +151,7 @@ func (r *BucketRenderer) RenderDetail(resource dao.Resource) string {
 			}
 		}
 	} else {
-		d.Field("Status", "Not configured")
+		d.Field("Status", render.NotConfigured)
 	}
 
 	// Object Lock

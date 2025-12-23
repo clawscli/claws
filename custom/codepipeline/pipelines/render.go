@@ -104,7 +104,7 @@ func (r *PipelineRenderer) RenderDetail(resource dao.Resource) string {
 	if stageStates := pipeline.StageStates(); len(stageStates) > 0 {
 		d.Section("Stage Status")
 		for _, ss := range stageStates {
-			status := "-"
+			status := render.NoValue
 			if ss.LatestExecution != nil {
 				status = string(ss.LatestExecution.Status)
 			}

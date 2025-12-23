@@ -99,7 +99,7 @@ func (r *VersionRenderer) RenderDetail(resource dao.Resource) string {
 	if desc := v.Description(); desc != "" {
 		d.Line(desc)
 	} else {
-		d.Line("-")
+		d.Line(render.NoValue)
 	}
 
 	d.Section("Timestamps")
