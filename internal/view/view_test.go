@@ -940,6 +940,13 @@ func TestDetailViewLoadingPlaceholderReplacement(t *testing.T) {
 			wantNotContains: []string{render.NotConfigured, render.Empty, render.NoValue},
 		},
 		{
+			name:            "refreshing replaces multiple same placeholders",
+			detail:          "Status: " + render.NotConfigured + "\nEncryption: " + render.NotConfigured + "\n",
+			refreshing:      true,
+			wantContains:    []string{"Loading..."},
+			wantNotContains: []string{render.NotConfigured},
+		},
+		{
 			name:            "not refreshing keeps placeholders",
 			detail:          "Status: " + render.NotConfigured + "\nItems: " + render.Empty + "\n",
 			refreshing:      false,
