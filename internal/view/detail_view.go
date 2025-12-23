@@ -109,7 +109,8 @@ func (d *DetailView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			d.refreshErr = msg.err
 		} else {
 			d.refreshErr = nil
-			d.resource = msg.resource
+			// Merge refreshed resource with original to preserve List-only fields
+			d.resource = mergeResources(d.resource, msg.resource)
 			// Re-render content with refreshed data
 			if d.ready {
 				content := d.renderContent()
@@ -310,4 +311,20 @@ func (d *DetailView) renderGenericDetail() string {
 	out += "\n" + ui.DimStyle().Render("(Raw data view not implemented)")
 
 	return out
+}
+
+// mergeResources merges the refreshed resource with the original to preserve
+// fields that are only available from List() but not from Get().
+func mergeResources(original, refreshed dao.Resource) dao.Resource {
+	if original == nil {
+		return refreshed
+	}
+	if refreshed == nil {
+		return original
+	}
+	// If refreshed resource implements Mergeable, let it copy fields from original
+	if m, ok := refreshed.(dao.Mergeable); ok {
+		m.MergeFrom(original)
+	}
+	return refreshed
 }
