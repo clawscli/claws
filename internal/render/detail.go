@@ -93,7 +93,9 @@ func (d *DetailBuilder) Field(label, value string) *DetailBuilder {
 	return d
 }
 
-// FieldStyled adds a label: value line with custom value styling
+// FieldStyled adds a label: value line with custom value styling.
+// Note: Do not use with placeholder constants (NotConfigured, Empty, NoValue)
+// as styling prevents Loading... replacement during refresh.
 func (d *DetailBuilder) FieldStyled(label, value string, style lipgloss.Style) *DetailBuilder {
 	d.sb.WriteString(d.styles.Label.Render(label+":") + style.Render(value) + "\n")
 	return d
