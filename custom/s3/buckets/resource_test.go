@@ -225,11 +225,30 @@ func TestBucketResource_MergeFrom_NoOverwrite(t *testing.T) {
 }
 
 func TestBucketResource_MergeFrom_WrongType(t *testing.T) {
+	creationTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
 	refreshed := &BucketResource{
-		BucketName: "test-bucket",
+		BucketName:   "test-bucket",
+		CreationDate: creationTime,
 	}
 
-	// Should not panic when passed wrong type
-	type OtherResource struct{}
-	refreshed.MergeFrom(nil) // nil should be safe
+	// Should not panic when passed nil
+	refreshed.MergeFrom(nil)
+
+	// Should not panic and should not modify when passed wrong type
+	other := &otherResource{}
+	refreshed.MergeFrom(other)
+
+	// CreationDate should remain unchanged
+	if !refreshed.CreationDate.Equal(creationTime) {
+		t.Errorf("CreationDate should not change when merging wrong type")
+	}
 }
+
+// otherResource is a mock for testing wrong type handling
+type otherResource struct{}
+
+func (r *otherResource) GetID() string              { return "" }
+func (r *otherResource) GetName() string            { return "" }
+func (r *otherResource) GetARN() string             { return "" }
+func (r *otherResource) GetTags() map[string]string { return nil }
+func (r *otherResource) Raw() any                   { return nil }
