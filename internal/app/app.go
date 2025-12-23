@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/charmbracelet/bubbles/help"
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/help"
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/log"
@@ -118,8 +118,8 @@ func (a *App) Init() tea.Cmd {
 func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Dismiss warnings on Enter or Space only
 	if a.showWarnings && a.warningsReady {
-		if keyMsg, ok := msg.(tea.KeyMsg); ok {
-			if keyMsg.Type == tea.KeyEnter || keyMsg.String() == " " {
+		if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
+			if keyMsg.Code == tea.KeyEnter || keyMsg.String() == " " {
 				a.showWarnings = false
 				return a, nil
 			}
@@ -131,7 +131,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Handle command mode first
 	if a.commandMode {
 		switch msg := msg.(type) {
-		case tea.KeyMsg:
+		case tea.KeyPressMsg:
 			cmd, nav := a.commandInput.Update(msg)
 			if !a.commandInput.IsActive() {
 				a.commandMode = false
@@ -160,7 +160,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		a.width = msg.Width
 		a.height = msg.Height
-		a.help.Width = msg.Width
+		a.help.SetWidth(msg.Width)
 		a.commandInput.SetWidth(msg.Width)
 		// Update cached styles with new width
 		a.styles = newAppStyles(msg.Width)
@@ -173,9 +173,9 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return a, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Handle back navigation (esc or backspace)
-		isBack := view.IsEscKey(msg) || msg.Type == tea.KeyBackspace
+		isBack := view.IsEscKey(msg) || msg.Code == tea.KeyBackspace
 
 		if isBack {
 			// If current view has active input, let it handle esc first
@@ -354,22 +354,30 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return a, nil
 }
 
+// newAltScreenView creates a View with AltScreen and mouse support enabled
+func newAltScreenView(content string) tea.View {
+	v := tea.NewView(content)
+	v.AltScreen = true
+	v.MouseMode = tea.MouseModeAllMotion // AllMotion for hover tracking
+	return v
+}
+
 // View implements tea.Model
-func (a *App) View() string {
+func (a *App) View() tea.View {
 	// Show warnings modal if active
 	if a.showWarnings {
-		return a.renderWarnings()
+		return newAltScreenView(a.renderWarnings())
 	}
 
 	var content string
 	if a.currentView != nil {
-		content = a.currentView.View()
+		content = a.currentView.ViewString()
 	}
 
 	// Command input (replaces status bar when active)
 	if a.commandMode {
 		cmdView := a.commandInput.View()
-		return content + "\n" + cmdView
+		return newAltScreenView(content + "\n" + cmdView)
 	}
 
 	// Status bar (use cached style)
@@ -393,7 +401,7 @@ func (a *App) View() string {
 
 	status := a.styles.status.Render(statusContent)
 
-	return content + "\n" + status
+	return newAltScreenView(content + "\n" + status)
 }
 
 // renderWarnings renders the startup warnings modal

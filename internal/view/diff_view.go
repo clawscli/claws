@@ -4,9 +4,9 @@ import (
 	"context"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/render"
@@ -66,7 +66,7 @@ func (d *DiffView) Init() tea.Cmd {
 // Update implements tea.Model
 func (d *DiffView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if IsEscKey(msg) || msg.String() == "q" {
 			return d, nil // Let app handle back navigation
 		}
@@ -77,13 +77,18 @@ func (d *DiffView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return d, cmd
 }
 
-// View implements tea.Model
-func (d *DiffView) View() string {
+// ViewString returns the view content as a string
+func (d *DiffView) ViewString() string {
 	if !d.ready {
 		return "Loading..."
 	}
 
 	return d.viewport.View()
+}
+
+// View implements tea.Model
+func (d *DiffView) View() tea.View {
+	return tea.NewView(d.ViewString())
 }
 
 // SetSize implements View
@@ -99,11 +104,11 @@ func (d *DiffView) SetSize(width, height int) tea.Cmd {
 	}
 
 	if !d.ready {
-		d.viewport = viewport.New(width, viewportHeight)
+		d.viewport = viewport.New(viewport.WithWidth(width), viewport.WithHeight(viewportHeight))
 		d.ready = true
 	} else {
-		d.viewport.Width = width
-		d.viewport.Height = viewportHeight
+		d.viewport.SetWidth(width)
+		d.viewport.SetHeight(viewportHeight)
 	}
 
 	content := d.renderSideBySide()

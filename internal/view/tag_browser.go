@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/table"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/table"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/filter"
 	"github.com/clawscli/claws/internal/registry"
@@ -120,7 +120,7 @@ func (t *TagBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		t.err = msg.err
 		return t, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Handle filter input mode
 		if t.filterActive {
 			switch msg.String() {
@@ -291,8 +291,8 @@ func formatTags(tags map[string]string, maxLen int) string {
 	return result
 }
 
-// View implements tea.Model
-func (t *TagBrowser) View() string {
+// ViewString returns the view content as a string
+func (t *TagBrowser) ViewString() string {
 	theme := ui.Current()
 
 	// Header
@@ -342,6 +342,11 @@ func (t *TagBrowser) View() string {
 		Render(helpText)
 
 	return header + "\n" + status + "\n" + filterView + t.table.View() + "\n" + help
+}
+
+// View implements tea.Model
+func (t *TagBrowser) View() tea.View {
+	return tea.NewView(t.ViewString())
 }
 
 // SetSize sets the view size

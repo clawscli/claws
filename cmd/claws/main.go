@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/clawscli/claws/internal/app"
 	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/log"
@@ -353,13 +353,9 @@ func main() {
 	application := app.New(ctx, registry.Global)
 
 	// Run the TUI
-	// Note: Mouse tracking disabled because it causes ESC key handling issues
-	// (ESC is interpreted as potential start of mouse escape sequence)
-	p := tea.NewProgram(
-		application,
-		tea.WithAltScreen(),
-		// tea.WithMouseCellMotion(), // Disabled - causes ESC issues
-	)
+	// Note: In v2, AltScreen and MouseMode are set via the View struct
+	// v2 has better ESC key handling via x/input package
+	p := tea.NewProgram(application)
 
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)

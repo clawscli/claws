@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/clawscli/claws/internal/action"
 	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/dao"
@@ -130,7 +130,7 @@ func (m *ActionMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Handle confirmation mode
 		if m.confirming {
 			switch msg.String() {
@@ -236,8 +236,8 @@ type execResultMsg struct {
 	err     error
 }
 
-// View implements tea.Model
-func (m *ActionMenu) View() string {
+// ViewString returns the view content as a string
+func (m *ActionMenu) ViewString() string {
 	s := m.styles
 
 	var out string
@@ -282,6 +282,11 @@ func (m *ActionMenu) View() string {
 	}
 
 	return out
+}
+
+// View implements tea.Model
+func (m *ActionMenu) View() tea.View {
+	return tea.NewView(m.ViewString())
 }
 
 // SetSize implements View

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"slices"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/clawscli/claws/internal/action"
 )
 

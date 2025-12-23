@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/registry"
@@ -25,6 +25,9 @@ type View interface {
 
 	// StatusLine returns the status line text for this view
 	StatusLine() string
+
+	// ViewString returns the view content as a string (for internal composition)
+	ViewString() string
 }
 
 // InputCapture is an optional interface for views that capture input
@@ -83,11 +86,9 @@ type Refreshable interface {
 
 // IsEscKey returns true if the key message represents an escape key press.
 // This handles various terminal escape sequences consistently across views.
-// We check for rune 27 (raw ESC byte) because some terminals send ESC as a raw
-// byte rather than a recognized key type.
-func IsEscKey(msg tea.KeyMsg) bool {
-	return msg.String() == "esc" || msg.Type == tea.KeyEsc || msg.Type == tea.KeyEscape ||
-		(msg.Type == tea.KeyRunes && len(msg.Runes) == 1 && msg.Runes[0] == 27)
+// In v2, we use msg.Code and tea.KeyEscape.
+func IsEscKey(msg tea.KeyPressMsg) bool {
+	return msg.String() == "esc" || msg.Code == tea.KeyEscape
 }
 
 // NavigationHelper provides common navigation functionality

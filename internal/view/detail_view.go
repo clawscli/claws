@@ -4,10 +4,10 @@ import (
 	"context"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/clawscli/claws/internal/action"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/log"
@@ -127,7 +127,7 @@ func (d *DetailView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return d, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Let app handle back navigation
 		if IsEscKey(msg) {
 			return d, nil
@@ -174,8 +174,8 @@ func (d *DetailView) handleNavigation(key string) (tea.Model, tea.Cmd) {
 	return nil, nil
 }
 
-// View implements tea.Model
-func (d *DetailView) View() string {
+// ViewString returns the view content as a string
+func (d *DetailView) ViewString() string {
 	if !d.ready {
 		return "Loading..."
 	}
@@ -190,6 +190,11 @@ func (d *DetailView) View() string {
 	header := d.headerPanel.Render(d.service, d.resType, summaryFields)
 
 	return header + "\n" + d.viewport.View()
+}
+
+// View implements tea.Model
+func (d *DetailView) View() tea.View {
+	return tea.NewView(d.ViewString())
 }
 
 // SetSize implements View
@@ -215,11 +220,11 @@ func (d *DetailView) SetSize(width, height int) tea.Cmd {
 	}
 
 	if !d.ready {
-		d.viewport = viewport.New(width, viewportHeight)
+		d.viewport = viewport.New(viewport.WithWidth(width), viewport.WithHeight(viewportHeight))
 		d.ready = true
 	} else {
-		d.viewport.Width = width
-		d.viewport.Height = viewportHeight
+		d.viewport.SetWidth(width)
+		d.viewport.SetHeight(viewportHeight)
 	}
 
 	// Render content

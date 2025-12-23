@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/clawscli/claws/internal/action"
 	"github.com/clawscli/claws/internal/config"
 	navmsg "github.com/clawscli/claws/internal/msg"
@@ -71,7 +71,7 @@ func NewCommandInput(ctx context.Context, reg *registry.Registry) *CommandInput 
 	ti.Placeholder = "service/resource"
 	ti.Prompt = ":"
 	ti.CharLimit = 50
-	ti.Width = 30
+	ti.SetWidth(30)
 
 	return &CommandInput{
 		ctx:       ctx,
@@ -106,7 +106,7 @@ func (c *CommandInput) IsActive() bool {
 // Update handles input updates
 func (c *CommandInput) Update(msg tea.Msg) (tea.Cmd, *NavigateMsg) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "esc":
 			c.Deactivate()
@@ -195,7 +195,7 @@ func (c *CommandInput) View() string {
 // SetWidth sets the input width
 func (c *CommandInput) SetWidth(width int) {
 	c.width = width
-	c.textInput.Width = width - 4
+	c.textInput.SetWidth(width - 4)
 }
 
 // SetTagProvider sets the tag completion provider

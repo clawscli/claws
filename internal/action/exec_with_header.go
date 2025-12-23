@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/dao"

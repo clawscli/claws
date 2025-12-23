@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/table"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/table"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/clawscli/claws/internal/action"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/log"
@@ -43,21 +43,30 @@ func newResourceBrowserStyles() resourceBrowserStyles {
 	}
 }
 
+// tabPosition stores rendered position of a tab for mouse click detection
+type tabPosition struct {
+	startX, endX int
+	tabIdx       int
+}
+
 type ResourceBrowser struct {
 	ctx           context.Context
 	registry      *registry.Registry
 	service       string
 	resourceType  string
 	resourceTypes []string // All resource types for this service
-	table         table.Model
-	dao           dao.DAO
-	renderer      render.Renderer
-	resources     []dao.Resource
-	filtered      []dao.Resource
-	loading       bool
-	err           error
-	width         int
-	height        int
+
+	// Tab positions for mouse click detection
+	tabPositions []tabPosition
+	table        table.Model
+	dao          dao.DAO
+	renderer     render.Renderer
+	resources    []dao.Resource
+	filtered     []dao.Resource
+	loading      bool
+	err          error
+	width        int
+	height       int
 
 	// Header panel
 	headerPanel *HeaderPanel
@@ -405,7 +414,7 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return NavigateMsg{View: diffView}
 		}
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// Handle filter mode
 		if r.filterActive {
 			if IsEscKey(msg) {
@@ -539,6 +548,31 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return r, cmd
 		}
 		return r, nil
+
+	case tea.MouseWheelMsg:
+		// Pass wheel events to table for scrolling
+		var cmd tea.Cmd
+		r.table, cmd = r.table.Update(msg)
+		return r, cmd
+
+	case tea.MouseMotionMsg:
+		// Update cursor on hover for better UX
+		if idx := r.getRowAtPosition(msg.Y); idx >= 0 && idx != r.table.Cursor() {
+			r.table.SetCursor(idx)
+		}
+		return r, nil
+
+	case tea.MouseClickMsg:
+		if msg.Button == tea.MouseLeft {
+			// Check if click is on tabs
+			if idx := r.getTabAtPosition(msg.X, msg.Y); idx >= 0 {
+				return r.switchToTab(idx)
+			}
+			// Handle mouse click on table row
+			if len(r.filtered) > 0 {
+				return r.handleMouseClick(msg.X, msg.Y)
+			}
+		}
 	}
 
 	var cmd tea.Cmd
@@ -705,8 +739,8 @@ func (r *ResourceBrowser) buildTable() {
 	r.table = t
 }
 
-// View implements tea.Model
-func (r *ResourceBrowser) View() string {
+// ViewString returns the view content as a string
+func (r *ResourceBrowser) ViewString() string {
 	if r.loading {
 		header := r.headerPanel.Render(r.service, r.resourceType, nil)
 		return header + "\n" + r.spinner.View() + " Loading..."
@@ -763,11 +797,16 @@ func (r *ResourceBrowser) View() string {
 	return headerPanel + "\n" + tabsView + "\n" + filterView + r.table.View()
 }
 
+// View implements tea.Model
+func (r *ResourceBrowser) View() tea.View {
+	return tea.NewView(r.ViewString())
+}
+
 // SetSize implements View
 func (r *ResourceBrowser) SetSize(width, height int) tea.Cmd {
 	r.width = width
 	r.height = height
-	r.filterInput.Width = width - 4
+	r.filterInput.SetWidth(width - 4)
 	r.headerPanel.SetWidth(width)
 	if r.renderer != nil {
 		r.buildTable()
@@ -779,21 +818,114 @@ func (r *ResourceBrowser) HasActiveInput() bool {
 	return r.filterActive
 }
 
+// getRowAtPosition returns the row index at given Y position, or -1 if none
+func (r *ResourceBrowser) getRowAtPosition(y int) int {
+	// Calculate header height dynamically
+	// Structure: headerPanel + \n + tabsView + \n + filterView? + tableHeader
+	headerStr := r.headerPanel.Render(r.service, r.resourceType, nil)
+	headerPanelHeight := r.headerPanel.Height(headerStr)
+
+	headerHeight := headerPanelHeight + 1 + 1 // headerPanel + \n + tabs
+	if r.filterActive || r.filterText != "" {
+		headerHeight++ // filter line
+	}
+
+	// Table header row
+	tableHeaderRows := 1
+	row := y - headerHeight - tableHeaderRows
+
+	if row >= 0 && row < len(r.filtered) {
+		return row
+	}
+	return -1
+}
+
+// handleMouseClick handles mouse click on table rows
+func (r *ResourceBrowser) handleMouseClick(x, y int) (tea.Model, tea.Cmd) {
+	if row := r.getRowAtPosition(y); row >= 0 {
+		r.table.SetCursor(row)
+		return r.openDetailView()
+	}
+	return r, nil
+}
+
+// getTabAtPosition returns the tab index at given position, or -1 if none
+func (r *ResourceBrowser) getTabAtPosition(x, y int) int {
+	if len(r.tabPositions) == 0 {
+		return -1
+	}
+
+	// Calculate tabs Y position (after header panel)
+	headerStr := r.headerPanel.Render(r.service, r.resourceType, nil)
+	headerHeight := r.headerPanel.Height(headerStr)
+	tabsY := headerHeight // tabs are on the line after header
+
+	if y != tabsY {
+		return -1
+	}
+
+	// Find which tab was clicked
+	for _, tp := range r.tabPositions {
+		if x >= tp.startX && x < tp.endX {
+			return tp.tabIdx
+		}
+	}
+	return -1
+}
+
+// switchToTab switches to the specified tab index
+func (r *ResourceBrowser) switchToTab(idx int) (tea.Model, tea.Cmd) {
+	if idx < 0 || idx >= len(r.resourceTypes) {
+		return r, nil
+	}
+	r.resourceType = r.resourceTypes[idx]
+	return r, r.loadResources
+}
+
+// openDetailView opens detail view for current cursor position
+func (r *ResourceBrowser) openDetailView() (tea.Model, tea.Cmd) {
+	if len(r.filtered) == 0 || r.table.Cursor() >= len(r.filtered) {
+		return r, nil
+	}
+	resource := r.filtered[r.table.Cursor()]
+	detailView := NewDetailView(r.ctx, resource, r.renderer, r.service, r.resourceType, r.registry, r.dao)
+	return r, func() tea.Msg {
+		return NavigateMsg{View: detailView}
+	}
+}
+
 func (r *ResourceBrowser) renderTabs() string {
+	// Reset tab positions
+	r.tabPositions = r.tabPositions[:0]
+
 	if len(r.resourceTypes) <= 1 {
 		return r.styles.tabSingle.Render(r.resourceType)
 	}
 
 	var tabs string
+	currentX := 0
 	for i, rt := range r.resourceTypes {
 		prefix := fmt.Sprintf("%d:", i+1)
+		var tabStr string
 		if rt == r.resourceType {
-			tabs += r.styles.tabActive.Render(prefix + rt)
+			tabStr = r.styles.tabActive.Render(prefix + rt)
 		} else {
-			tabs += r.styles.tabInactive.Render(prefix + rt)
+			tabStr = r.styles.tabInactive.Render(prefix + rt)
 		}
+
+		// Record tab position (use visible width)
+		tabWidth := lipgloss.Width(tabStr)
+		r.tabPositions = append(r.tabPositions, tabPosition{
+			startX: currentX,
+			endX:   currentX + tabWidth,
+			tabIdx: i,
+		})
+		currentX += tabWidth
+
+		tabs += tabStr
 		if i < len(r.resourceTypes)-1 {
 			tabs += " "
+			currentX++ // space between tabs
 		}
 	}
 

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/clawscli/claws/internal/registry"
 )
 
@@ -72,8 +72,8 @@ func TestEscKeyIntegration(t *testing.T) {
 
 	// Now test esc key handling
 	// Create esc key message
-	escMsg := tea.KeyMsg{Type: tea.KeyEsc}
-	t.Logf("Sending esc: msg.String()=%q, msg.Type=%d", escMsg.String(), escMsg.Type)
+	escMsg := tea.KeyPressMsg{Code: tea.KeyEscape}
+	t.Logf("Sending esc: msg.String()=%q, msg.Code=%d", escMsg.String(), escMsg.Code)
 
 	// Send esc
 	app.Update(escMsg)
@@ -101,20 +101,19 @@ func TestEscKeyIntegration(t *testing.T) {
 
 // TestEscRawBytes tests esc handling with raw escape byte
 func TestEscRawBytes(t *testing.T) {
-	// Test what tea.KeyMsg looks like for different escape inputs
+	// Test what tea.KeyPressMsg looks like for different escape inputs
 	tests := []struct {
 		name string
-		msg  tea.KeyMsg
+		msg  tea.KeyPressMsg
 	}{
-		{"KeyEsc", tea.KeyMsg{Type: tea.KeyEsc}},
-		{"KeyEscape", tea.KeyMsg{Type: tea.KeyEscape}},
-		{"Runes27", tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{27}}},
+		{"KeyEscape", tea.KeyPressMsg{Code: tea.KeyEscape}},
+		{"Runes27", tea.KeyPressMsg{Code: 27}},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			str := tt.msg.String()
-			t.Logf("%s: String()=%q, Type=%d", tt.name, str, tt.msg.Type)
+			t.Logf("%s: String()=%q, Code=%d", tt.name, str, tt.msg.Code)
 		})
 	}
 }
@@ -136,9 +135,9 @@ func TestRawEscapeByteHandling(t *testing.T) {
 	app.viewStack = append(app.viewStack, serviceBrowser, resourceBrowser)
 	app.currentView = detailView
 
-	// Send raw escape byte as KeyRunes
-	rawEscMsg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{27}}
-	t.Logf("Sending raw escape: msg.String()=%q, msg.Type=%d", rawEscMsg.String(), rawEscMsg.Type)
+	// Send raw escape byte (ESC key code = 27)
+	rawEscMsg := tea.KeyPressMsg{Code: 27}
+	t.Logf("Sending raw escape: msg.String()=%q, msg.Code=%d", rawEscMsg.String(), rawEscMsg.Code)
 	t.Logf("Before: currentView=%s, viewStack=%d", app.currentView.StatusLine(), len(app.viewStack))
 
 	app.Update(rawEscMsg)

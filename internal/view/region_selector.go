@@ -3,9 +3,9 @@ package view
 import (
 	"context"
 
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/list"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/config"
 	navmsg "github.com/clawscli/claws/internal/msg"
@@ -84,7 +84,7 @@ func (r *RegionSelector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		r.list.Select(selectedIdx)
 		return r, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if !r.list.SettingFilter() {
 			switch msg.String() {
 			case "enter", "l":
@@ -104,11 +104,16 @@ func (r *RegionSelector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return r, cmd
 }
 
-// View implements tea.Model
-func (r *RegionSelector) View() string {
+// ViewString returns the view content as a string
+func (r *RegionSelector) ViewString() string {
 	current := config.Global().Region()
 	header := ui.DimStyle().Render("Current: " + current)
 	return header + "\n\n" + r.list.View()
+}
+
+// View implements tea.Model
+func (r *RegionSelector) View() tea.View {
+	return tea.NewView(r.ViewString())
 }
 
 // SetSize implements View

@@ -1,8 +1,8 @@
 package view
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/clawscli/claws/internal/ui"
 )
 
@@ -48,8 +48,8 @@ func (h *HelpView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return h, nil
 }
 
-// View implements tea.Model
-func (h *HelpView) View() string {
+// ViewString returns the view content as a string
+func (h *HelpView) ViewString() string {
 	s := h.styles
 
 	var out string
@@ -138,6 +138,11 @@ func (h *HelpView) View() string {
 	)
 
 	return out
+}
+
+// View implements tea.Model
+func (h *HelpView) View() tea.View {
+	return tea.NewView(h.ViewString())
 }
 
 // SetSize implements View

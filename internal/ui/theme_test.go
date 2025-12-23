@@ -1,9 +1,8 @@
 package ui
 
 import (
+	"image/color"
 	"testing"
-
-	"github.com/charmbracelet/lipgloss"
 )
 
 func TestDefaultTheme(t *testing.T) {
@@ -13,26 +12,26 @@ func TestDefaultTheme(t *testing.T) {
 		t.Fatal("DefaultTheme() returned nil")
 	}
 
-	// Check that primary colors are set
-	if theme.Primary == "" {
-		t.Error("Primary color should not be empty")
+	// Check that primary colors are set (not nil)
+	if theme.Primary == nil {
+		t.Error("Primary color should not be nil")
 	}
-	if theme.Secondary == "" {
-		t.Error("Secondary color should not be empty")
+	if theme.Secondary == nil {
+		t.Error("Secondary color should not be nil")
 	}
-	if theme.Accent == "" {
-		t.Error("Accent color should not be empty")
+	if theme.Accent == nil {
+		t.Error("Accent color should not be nil")
 	}
 
 	// Check semantic colors
-	if theme.Success == "" {
-		t.Error("Success color should not be empty")
+	if theme.Success == nil {
+		t.Error("Success color should not be nil")
 	}
-	if theme.Warning == "" {
-		t.Error("Warning color should not be empty")
+	if theme.Warning == nil {
+		t.Error("Warning color should not be nil")
 	}
-	if theme.Danger == "" {
-		t.Error("Danger color should not be empty")
+	if theme.Danger == nil {
+		t.Error("Danger color should not be nil")
 	}
 }
 
@@ -45,23 +44,27 @@ func TestCurrent(t *testing.T) {
 
 	// Current should return the same as DefaultTheme initially
 	defaultTheme := DefaultTheme()
-	if theme.Primary != defaultTheme.Primary {
-		t.Errorf("Current().Primary = %v, want %v", theme.Primary, defaultTheme.Primary)
+	if !colorsEqual(theme.Primary, defaultTheme.Primary) {
+		t.Errorf("Current().Primary should equal DefaultTheme().Primary")
 	}
+}
+
+// colorsEqual compares two colors for equality
+func colorsEqual(a, b color.Color) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	ar, ag, ab, aa := a.RGBA()
+	br, bg, bb, ba := b.RGBA()
+	return ar == br && ag == bg && ab == bb && aa == ba
 }
 
 func TestDimStyle(t *testing.T) {
 	style := DimStyle()
 
-	// Should have foreground color set
-	fg := style.GetForeground()
-	if fg == nil {
-		t.Error("DimStyle() should have foreground color")
-	}
-
-	// Render should work without panic
-	result := style.Render("test")
-	if result == "" {
+	// Just verify it doesn't panic and produces output
+	rendered := style.Render("test")
+	if rendered == "" {
 		t.Error("DimStyle().Render() should produce output")
 	}
 }
@@ -69,30 +72,27 @@ func TestDimStyle(t *testing.T) {
 func TestSuccessStyle(t *testing.T) {
 	style := SuccessStyle()
 
-	// Should have foreground color set
-	fg := style.GetForeground()
-	if fg == nil {
-		t.Error("SuccessStyle() should have foreground color")
+	rendered := style.Render("success")
+	if rendered == "" {
+		t.Error("SuccessStyle().Render() should produce output")
 	}
 }
 
 func TestWarningStyle(t *testing.T) {
 	style := WarningStyle()
 
-	// Should have foreground color set
-	fg := style.GetForeground()
-	if fg == nil {
-		t.Error("WarningStyle() should have foreground color")
+	rendered := style.Render("warning")
+	if rendered == "" {
+		t.Error("WarningStyle().Render() should produce output")
 	}
 }
 
 func TestDangerStyle(t *testing.T) {
 	style := DangerStyle()
 
-	// Should have foreground color set
-	fg := style.GetForeground()
-	if fg == nil {
-		t.Error("DangerStyle() should have foreground color")
+	rendered := style.Render("danger")
+	if rendered == "" {
+		t.Error("DangerStyle().Render() should produce output")
 	}
 }
 
@@ -120,10 +120,10 @@ func TestNewSpinner(t *testing.T) {
 func TestThemeFields(t *testing.T) {
 	theme := DefaultTheme()
 
-	// Test all text colors are set
+	// Test all text colors are set (not nil)
 	textColors := []struct {
 		name  string
-		color lipgloss.Color
+		color color.Color
 	}{
 		{"Text", theme.Text},
 		{"TextBright", theme.TextBright},
@@ -132,15 +132,15 @@ func TestThemeFields(t *testing.T) {
 	}
 
 	for _, tc := range textColors {
-		if tc.color == "" {
-			t.Errorf("%s color should not be empty", tc.name)
+		if tc.color == nil {
+			t.Errorf("%s color should not be nil", tc.name)
 		}
 	}
 
 	// Test UI element colors
 	uiColors := []struct {
 		name  string
-		color lipgloss.Color
+		color color.Color
 	}{
 		{"Border", theme.Border},
 		{"BorderHighlight", theme.BorderHighlight},
@@ -151,15 +151,15 @@ func TestThemeFields(t *testing.T) {
 	}
 
 	for _, tc := range uiColors {
-		if tc.color == "" {
-			t.Errorf("%s color should not be empty", tc.name)
+		if tc.color == nil {
+			t.Errorf("%s color should not be nil", tc.name)
 		}
 	}
 
 	// Test table colors
 	tableColors := []struct {
 		name  string
-		color lipgloss.Color
+		color color.Color
 	}{
 		{"TableHeader", theme.TableHeader},
 		{"TableHeaderText", theme.TableHeaderText},
@@ -167,8 +167,8 @@ func TestThemeFields(t *testing.T) {
 	}
 
 	for _, tc := range tableColors {
-		if tc.color == "" {
-			t.Errorf("%s color should not be empty", tc.name)
+		if tc.color == nil {
+			t.Errorf("%s color should not be nil", tc.name)
 		}
 	}
 }

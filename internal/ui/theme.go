@@ -1,42 +1,44 @@
 package ui
 
 import (
-	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/lipgloss"
+	"image/color"
+
+	"charm.land/bubbles/v2/spinner"
+	"charm.land/lipgloss/v2"
 )
 
 // Theme defines the color scheme for the application
 type Theme struct {
 	// Primary colors
-	Primary   lipgloss.Color // Main accent color (titles, highlights)
-	Secondary lipgloss.Color // Secondary accent color
-	Accent    lipgloss.Color // Navigation/links accent
+	Primary   color.Color // Main accent color (titles, highlights)
+	Secondary color.Color // Secondary accent color
+	Accent    color.Color // Navigation/links accent
 
 	// Text colors
-	Text       lipgloss.Color // Normal text
-	TextBright lipgloss.Color // Bright/emphasized text
-	TextDim    lipgloss.Color // Dimmed text (labels, hints)
-	TextMuted  lipgloss.Color // Very dim text (separators, borders)
+	Text       color.Color // Normal text
+	TextBright color.Color // Bright/emphasized text
+	TextDim    color.Color // Dimmed text (labels, hints)
+	TextMuted  color.Color // Very dim text (separators, borders)
 
 	// Semantic colors
-	Success lipgloss.Color // Green - success states
-	Warning lipgloss.Color // Yellow/Orange - warning states
-	Danger  lipgloss.Color // Red - error/danger states
-	Info    lipgloss.Color // Blue - info states
-	Pending lipgloss.Color // Yellow - pending/in-progress states
+	Success color.Color // Green - success states
+	Warning color.Color // Yellow/Orange - warning states
+	Danger  color.Color // Red - error/danger states
+	Info    color.Color // Blue - info states
+	Pending color.Color // Yellow - pending/in-progress states
 
 	// UI element colors
-	Border          lipgloss.Color // Border color
-	BorderHighlight lipgloss.Color // Highlighted border
-	Background      lipgloss.Color // Background for panels
-	BackgroundAlt   lipgloss.Color // Alternative background
-	Selection       lipgloss.Color // Selected item background
-	SelectionText   lipgloss.Color // Selected item text
+	Border          color.Color // Border color
+	BorderHighlight color.Color // Highlighted border
+	Background      color.Color // Background for panels
+	BackgroundAlt   color.Color // Alternative background
+	Selection       color.Color // Selected item background
+	SelectionText   color.Color // Selected item text
 
 	// Table colors
-	TableHeader     lipgloss.Color // Table header background
-	TableHeaderText lipgloss.Color // Table header text
-	TableBorder     lipgloss.Color // Table border
+	TableHeader     color.Color // Table header background
+	TableHeaderText color.Color // Table header text
+	TableBorder     color.Color // Table border
 }
 
 // DefaultTheme returns the default dark theme

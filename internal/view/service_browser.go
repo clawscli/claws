@@ -4,10 +4,10 @@ import (
 	"context"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/textinput"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/clawscli/claws/internal/registry"
 	"github.com/clawscli/claws/internal/ui"
 )
@@ -15,13 +15,20 @@ import (
 // Grid layout constants
 const (
 	cellWidth    = 24 // Width of each grid cell
-	cellHeight   = 2  // Height of each cell (service name + aliases)
+	cellHeight   = 3  // Height of each cell (service name + aliases + padding)
 	minColumns   = 2
 	maxColumns   = 6
 	cellPaddingX = 2
 )
 
 // ServiceBrowser displays available AWS services in a grid layout grouped by category
+// itemPosition stores the rendered position of an item for mouse hit testing
+type itemPosition struct {
+	startLine, endLine int
+	startCol, endCol   int
+	itemIdx            int
+}
+
 type ServiceBrowser struct {
 	ctx      context.Context
 	registry *registry.Registry
@@ -34,6 +41,9 @@ type ServiceBrowser struct {
 	cols   int // Number of columns in grid
 	width  int
 	height int
+
+	// Mouse hit testing - populated during render
+	itemPositions []itemPosition
 
 	// Header panel
 	headerPanel *HeaderPanel
@@ -187,11 +197,34 @@ func (s *ServiceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case RefreshMsg:
 		return s, s.loadServices
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if s.filterActive {
 			return s.handleFilterInput(msg)
 		}
 		return s.handleNavigation(msg)
+
+	case tea.MouseWheelMsg:
+		// Pass wheel events to viewport for scrolling
+		var cmd tea.Cmd
+		s.viewport, cmd = s.viewport.Update(msg)
+		return s, cmd
+
+	case tea.MouseMotionMsg:
+		// Hover: update cursor to item under mouse
+		if idx := s.getItemAtPosition(msg.X, msg.Y); idx >= 0 && idx != s.cursor {
+			s.cursor = idx
+			s.updateViewport()
+		}
+		return s, nil
+
+	case tea.MouseClickMsg:
+		// Click: select item at position and navigate
+		if msg.Button == tea.MouseLeft {
+			if idx := s.getItemAtPosition(msg.X, msg.Y); idx >= 0 {
+				s.cursor = idx
+				return s.selectCurrentService()
+			}
+		}
 	}
 
 	return s, nil
@@ -227,7 +260,7 @@ func (s *ServiceBrowser) rebuildFlatItems() {
 	s.updateViewport()
 }
 
-func (s *ServiceBrowser) handleFilterInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (s *ServiceBrowser) handleFilterInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if IsEscKey(msg) {
 		s.filterActive = false
 		s.filterInput.Blur()
@@ -254,7 +287,7 @@ func (s *ServiceBrowser) handleFilterInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 	return s, cmd
 }
 
-func (s *ServiceBrowser) handleNavigation(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (s *ServiceBrowser) handleNavigation(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if len(s.flatItems) == 0 {
 		if msg.String() == "/" {
 			s.filterActive = true
@@ -343,8 +376,8 @@ func (s *ServiceBrowser) updateViewport() {
 	cursorRatio := float64(s.cursor) / float64(len(s.flatItems))
 	targetLine := int(cursorRatio * float64(totalLines))
 
-	vpHeight := s.viewport.Height
-	currentTop := s.viewport.YOffset
+	vpHeight := s.viewport.Height()
+	currentTop := s.viewport.YOffset()
 
 	// Scroll if cursor is outside visible area
 	if targetLine < currentTop {
@@ -418,8 +451,35 @@ func (s *ServiceBrowser) selectCurrentService() (tea.Model, tea.Cmd) {
 	return s, nil
 }
 
-// View implements tea.Model
-func (s *ServiceBrowser) View() string {
+// getItemAtPosition returns the item index at the given (x, y) position, or -1 if none
+func (s *ServiceBrowser) getItemAtPosition(x, y int) int {
+	if len(s.itemPositions) == 0 {
+		return -1
+	}
+
+	// Calculate header panel height dynamically
+	headerStr := s.headerPanel.RenderHome()
+	headerHeight := s.headerPanel.Height(headerStr)
+
+	// Adjust y for header and viewport scroll offset
+	contentY := y - headerHeight + s.viewport.YOffset()
+	if contentY < 0 {
+		return -1
+	}
+
+	// Search through recorded positions
+	for _, pos := range s.itemPositions {
+		if contentY >= pos.startLine && contentY < pos.endLine &&
+			x >= pos.startCol && x < pos.endCol {
+			return pos.itemIdx
+		}
+	}
+
+	return -1
+}
+
+// ViewString returns the view content as a string
+func (s *ServiceBrowser) ViewString() string {
 	// Header panel (always visible at top)
 	header := s.headerPanel.RenderHome()
 
@@ -436,14 +496,25 @@ func (s *ServiceBrowser) View() string {
 	return header + "\n" + s.viewport.View() + footer
 }
 
+// View implements tea.Model
+func (s *ServiceBrowser) View() tea.View {
+	return tea.NewView(s.ViewString())
+}
+
 // renderContent renders the service grid content for the viewport
 func (s *ServiceBrowser) renderContent() string {
 	var b strings.Builder
+
+	// Reset item positions for mouse hit testing
+	s.itemPositions = s.itemPositions[:0]
 
 	if len(s.flatItems) == 0 {
 		b.WriteString(s.styles.aliases.Render("\n  No services found"))
 		return b.String()
 	}
+
+	// Track current line for position recording
+	currentLine := 0
 
 	// Render by category
 	globalIdx := 0
@@ -461,8 +532,11 @@ func (s *ServiceBrowser) renderContent() string {
 		}
 
 		// Category header
-		b.WriteString(s.styles.category.Render("── " + cat.name + " "))
+		catHeader := s.styles.category.Render("── " + cat.name + " ")
+		catHeaderHeight := strings.Count(catHeader, "\n") + 1 // +1 for the \n we add
+		b.WriteString(catHeader)
 		b.WriteString("\n")
+		currentLine += catHeaderHeight
 
 		// Render services in grid
 		rows := (len(catItems) + s.cols - 1) / s.cols
@@ -475,8 +549,26 @@ func (s *ServiceBrowser) renderContent() string {
 					cells = append(cells, s.renderCell(catItems[idx].service, selected))
 				}
 			}
-			b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, cells...))
+			rowContent := lipgloss.JoinHorizontal(lipgloss.Top, cells...)
+			rowHeight := strings.Count(rowContent, "\n") + 1 // +1 for the line after
+
+			// Record positions for items in this row
+			for col := 0; col < s.cols; col++ {
+				idx := row*s.cols + col
+				if idx < len(catItems) {
+					s.itemPositions = append(s.itemPositions, itemPosition{
+						startLine: currentLine,
+						endLine:   currentLine + rowHeight,
+						startCol:  col * cellWidth,
+						endCol:    (col + 1) * cellWidth,
+						itemIdx:   globalIdx + idx,
+					})
+				}
+			}
+
+			b.WriteString(rowContent)
 			b.WriteString("\n")
+			currentLine += rowHeight
 		}
 
 		globalIdx += len(catItems)
@@ -545,11 +637,11 @@ func (s *ServiceBrowser) SetSize(width, height int) tea.Cmd {
 	}
 
 	if !s.ready {
-		s.viewport = viewport.New(width, vpHeight)
+		s.viewport = viewport.New(viewport.WithWidth(width), viewport.WithHeight(vpHeight))
 		s.ready = true
 	} else {
-		s.viewport.Width = width
-		s.viewport.Height = vpHeight
+		s.viewport.SetWidth(width)
+		s.viewport.SetHeight(vpHeight)
 	}
 
 	// Update viewport content

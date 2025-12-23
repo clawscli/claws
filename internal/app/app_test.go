@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/clawscli/claws/internal/registry"
 	"github.com/clawscli/claws/internal/view"
 )
@@ -17,12 +17,13 @@ type MockView struct {
 }
 
 func (m *MockView) Init() tea.Cmd                     { return nil }
-func (m *MockView) View() string                      { return m.name }
+func (m *MockView) View() tea.View                    { return tea.NewView(m.name) }
+func (m *MockView) ViewString() string                { return m.name }
 func (m *MockView) SetSize(width, height int) tea.Cmd { return nil }
 func (m *MockView) StatusLine() string                { return m.name }
 func (m *MockView) HasActiveInput() bool              { return m.hasInput }
 func (m *MockView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if keyMsg, ok := msg.(tea.KeyMsg); ok && keyMsg.String() == "esc" {
+	if keyMsg, ok := msg.(tea.KeyPressMsg); ok && keyMsg.String() == "esc" {
 		m.escReceived = true
 		m.hasInput = false // Close input on esc
 	}
@@ -46,7 +47,7 @@ func TestEscInDetailView(t *testing.T) {
 	app.currentView = detailView
 
 	// Press esc
-	escMsg := tea.KeyMsg{Type: tea.KeyEsc}
+	escMsg := tea.KeyPressMsg{Code: tea.KeyEscape}
 	t.Logf("Before esc: currentView=%s, viewStack=%d", app.currentView.StatusLine(), len(app.viewStack))
 
 	app.Update(escMsg)
@@ -95,7 +96,7 @@ func TestEscInFilterMode(t *testing.T) {
 	app.currentView = resourceBrowser
 
 	// Press esc - should close filter, NOT go back
-	escMsg := tea.KeyMsg{Type: tea.KeyEsc}
+	escMsg := tea.KeyPressMsg{Code: tea.KeyEscape}
 	t.Logf("Before esc: currentView=%s, hasInput=%v, viewStack=%d",
 		app.currentView.StatusLine(), resourceBrowser.hasInput, len(app.viewStack))
 
@@ -171,7 +172,7 @@ func TestNavigationFlow(t *testing.T) {
 	}
 
 	// Press esc - should go back to ResourceBrowser
-	escMsg := tea.KeyMsg{Type: tea.KeyEsc}
+	escMsg := tea.KeyPressMsg{Code: tea.KeyEscape}
 	app.Update(escMsg)
 
 	t.Logf("After 1st esc: currentView=%s, viewStack=%d",

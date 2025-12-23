@@ -3,7 +3,7 @@ package view
 import (
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/render"
 	"github.com/clawscli/claws/internal/ui"
