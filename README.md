@@ -164,6 +164,7 @@ claws -l debug.log
 | Click | Select item / navigate |
 | Scroll wheel | Scroll through lists |
 | Click on tabs | Switch resource type |
+| Back button | Navigate back (same as Esc) |
 
 ### Navigation Shortcuts (Context-dependent)
 

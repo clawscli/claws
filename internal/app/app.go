@@ -173,6 +173,14 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return a, nil
 
+	case tea.MouseClickMsg:
+		// Mouse back button navigates back (same as esc/backspace)
+		if msg.Button == tea.MouseBackward && len(a.viewStack) > 0 {
+			a.currentView = a.viewStack[len(a.viewStack)-1]
+			a.viewStack = a.viewStack[:len(a.viewStack)-1]
+			return a, a.currentView.SetSize(a.width, a.height-2)
+		}
+
 	case tea.KeyPressMsg:
 		// Handle back navigation (esc or backspace)
 		isBack := view.IsEscKey(msg) || msg.Code == tea.KeyBackspace
