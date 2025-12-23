@@ -883,10 +883,11 @@ func (r *ResourceBrowser) switchToTab(idx int) (tea.Model, tea.Cmd) {
 
 // openDetailView opens detail view for current cursor position
 func (r *ResourceBrowser) openDetailView() (tea.Model, tea.Cmd) {
-	if len(r.filtered) == 0 || r.table.Cursor() >= len(r.filtered) {
+	cursor := r.table.Cursor()
+	if len(r.filtered) == 0 || cursor < 0 || cursor >= len(r.filtered) {
 		return r, nil
 	}
-	resource := r.filtered[r.table.Cursor()]
+	resource := r.filtered[cursor]
 	detailView := NewDetailView(r.ctx, resource, r.renderer, r.service, r.resourceType, r.registry, r.dao)
 	return r, func() tea.Msg {
 		return NavigateMsg{View: detailView}

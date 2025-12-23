@@ -471,7 +471,11 @@ func (s *ServiceBrowser) getItemAtPosition(x, y int) int {
 	for _, pos := range s.itemPositions {
 		if contentY >= pos.startLine && contentY < pos.endLine &&
 			x >= pos.startCol && x < pos.endCol {
-			return pos.itemIdx
+			// Safety check: ensure itemIdx is within bounds
+			if pos.itemIdx >= 0 && pos.itemIdx < len(s.flatItems) {
+				return pos.itemIdx
+			}
+			return -1
 		}
 	}
 

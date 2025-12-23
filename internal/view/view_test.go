@@ -986,6 +986,191 @@ func TestDetailViewLoadingPlaceholderReplacement(t *testing.T) {
 	}
 }
 
+// Mouse interaction tests
+
+func TestServiceBrowserMouseHover(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	reg.RegisterCustom("ec2", "instances", registry.Entry{})
+	reg.RegisterCustom("s3", "buckets", registry.Entry{})
+
+	browser := NewServiceBrowser(ctx, reg)
+	browser.Update(browser.Init()())
+	browser.SetSize(100, 50)
+
+	initialCursor := browser.cursor
+
+	// Simulate mouse motion - exact position depends on layout
+	// Just verify it doesn't crash and cursor can change
+	motionMsg := tea.MouseMotionMsg{X: 30, Y: 5}
+	browser.Update(motionMsg)
+
+	// Cursor may or may not change depending on position
+	// Main test is that it doesn't panic
+	t.Logf("Cursor after hover: %d (was %d)", browser.cursor, initialCursor)
+}
+
+func TestServiceBrowserMouseClick(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	reg.RegisterCustom("ec2", "instances", registry.Entry{})
+	reg.RegisterCustom("s3", "buckets", registry.Entry{})
+
+	browser := NewServiceBrowser(ctx, reg)
+	browser.Update(browser.Init()())
+	browser.SetSize(100, 50)
+
+	// Simulate mouse click
+	clickMsg := tea.MouseClickMsg{X: 30, Y: 5, Button: tea.MouseLeft}
+	_, cmd := browser.Update(clickMsg)
+
+	// Click might trigger navigation or do nothing depending on position
+	t.Logf("Command after click: %v", cmd)
+}
+
+func TestServiceBrowserMouseWheel(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	reg.RegisterCustom("ec2", "instances", registry.Entry{})
+	reg.RegisterCustom("s3", "buckets", registry.Entry{})
+
+	browser := NewServiceBrowser(ctx, reg)
+	browser.Update(browser.Init()())
+	browser.SetSize(100, 50)
+
+	// Simulate mouse wheel
+	wheelMsg := tea.MouseWheelMsg{X: 30, Y: 5, Button: tea.MouseWheelDown}
+	browser.Update(wheelMsg)
+
+	// Should not panic
+}
+
+func TestResourceBrowserMouseHover(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	browser := NewResourceBrowser(ctx, reg, "ec2")
+	browser.SetSize(100, 50)
+
+	// Add some test resources
+	browser.resources = []dao.Resource{
+		&mockResource{id: "i-1", name: "instance-1"},
+		&mockResource{id: "i-2", name: "instance-2"},
+	}
+	browser.applyFilter()
+	browser.buildTable()
+
+	initialCursor := browser.table.Cursor()
+
+	// Simulate mouse motion
+	motionMsg := tea.MouseMotionMsg{X: 30, Y: 10}
+	browser.Update(motionMsg)
+
+	t.Logf("Cursor after hover: %d (was %d)", browser.table.Cursor(), initialCursor)
+}
+
+func TestResourceBrowserMouseClick(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	browser := NewResourceBrowser(ctx, reg, "ec2")
+	browser.SetSize(100, 50)
+
+	// Add some test resources
+	browser.resources = []dao.Resource{
+		&mockResource{id: "i-1", name: "instance-1"},
+		&mockResource{id: "i-2", name: "instance-2"},
+	}
+	browser.applyFilter()
+	browser.buildTable()
+
+	// Simulate mouse click
+	clickMsg := tea.MouseClickMsg{X: 30, Y: 10, Button: tea.MouseLeft}
+	_, cmd := browser.Update(clickMsg)
+
+	t.Logf("Command after click: %v", cmd)
+}
+
+func TestActionMenuMouseHover(t *testing.T) {
+	ctx := context.Background()
+	resource := &mockResource{id: "i-123", name: "test"}
+
+	menu := NewActionMenu(ctx, resource, "ec2", "instances")
+
+	initialCursor := menu.cursor
+
+	// Simulate mouse motion
+	motionMsg := tea.MouseMotionMsg{X: 10, Y: 5}
+	menu.Update(motionMsg)
+
+	t.Logf("Cursor after hover: %d (was %d)", menu.cursor, initialCursor)
+}
+
+func TestRegionSelectorMouseHover(t *testing.T) {
+	ctx := context.Background()
+
+	selector := NewRegionSelector(ctx)
+	selector.SetSize(100, 50)
+
+	// Simulate regions loaded
+	selector.regions = []string{"us-east-1", "us-west-2", "eu-west-1"}
+	selector.applyFilter()
+	selector.updateViewport()
+
+	initialCursor := selector.cursor
+
+	// Simulate mouse motion
+	motionMsg := tea.MouseMotionMsg{X: 10, Y: 3}
+	selector.Update(motionMsg)
+
+	t.Logf("Cursor after hover: %d (was %d)", selector.cursor, initialCursor)
+}
+
+func TestRegionSelectorMouseClick(t *testing.T) {
+	ctx := context.Background()
+
+	selector := NewRegionSelector(ctx)
+	selector.SetSize(100, 50)
+
+	// Simulate regions loaded
+	selector.regions = []string{"us-east-1", "us-west-2", "eu-west-1"}
+	selector.applyFilter()
+	selector.updateViewport()
+
+	// Simulate mouse click
+	clickMsg := tea.MouseClickMsg{X: 10, Y: 3, Button: tea.MouseLeft}
+	_, cmd := selector.Update(clickMsg)
+
+	// Click might trigger region selection
+	t.Logf("Command after click: %v", cmd)
+}
+
+func TestTagBrowserMouseHover(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	browser := NewTagBrowser(ctx, reg, "")
+	browser.SetSize(100, 50)
+
+	// Set up test data
+	browser.resources = []taggedResource{
+		{Service: "ec2", ResourceType: "instances", Resource: &mockResource{id: "i-1", name: "test"}},
+	}
+	browser.applyFilter()
+	browser.buildTable()
+
+	initialCursor := browser.table.Cursor()
+
+	// Simulate mouse motion
+	motionMsg := tea.MouseMotionMsg{X: 30, Y: 8}
+	browser.Update(motionMsg)
+
+	t.Logf("Cursor after hover: %d (was %d)", browser.table.Cursor(), initialCursor)
+}
+
 // mockDiffProvider for testing getDiffSuggestions
 type mockDiffProvider struct {
 	names      []string
