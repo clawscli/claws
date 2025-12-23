@@ -818,14 +818,16 @@ func (r *ResourceBrowser) HasActiveInput() bool {
 	return r.filterActive
 }
 
+// getHeaderPanelHeight returns the height of the header panel
+func (r *ResourceBrowser) getHeaderPanelHeight() int {
+	headerStr := r.headerPanel.Render(r.service, r.resourceType, nil)
+	return r.headerPanel.Height(headerStr)
+}
+
 // getRowAtPosition returns the row index at given Y position, or -1 if none
 func (r *ResourceBrowser) getRowAtPosition(y int) int {
-	// Calculate header height dynamically
 	// Structure: headerPanel + \n + tabsView + \n + filterView? + tableHeader
-	headerStr := r.headerPanel.Render(r.service, r.resourceType, nil)
-	headerPanelHeight := r.headerPanel.Height(headerStr)
-
-	headerHeight := headerPanelHeight + 1 + 1 // headerPanel + \n + tabs
+	headerHeight := r.getHeaderPanelHeight() + 1 + 1 // headerPanel + \n + tabs
 	if r.filterActive || r.filterText != "" {
 		headerHeight++ // filter line
 	}
@@ -855,11 +857,8 @@ func (r *ResourceBrowser) getTabAtPosition(x, y int) int {
 		return -1
 	}
 
-	// Calculate tabs Y position (after header panel)
-	headerStr := r.headerPanel.Render(r.service, r.resourceType, nil)
-	headerHeight := r.headerPanel.Height(headerStr)
-	tabsY := headerHeight // tabs are on the line after header
-
+	// Tabs are on the line after header panel
+	tabsY := r.getHeaderPanelHeight()
 	if y != tabsY {
 		return -1
 	}

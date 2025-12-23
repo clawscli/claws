@@ -15,7 +15,7 @@ import (
 // Grid layout constants
 const (
 	cellWidth    = 24 // Width of each grid cell
-	cellHeight   = 3  // Height of each cell (service name + aliases + padding)
+	cellHeight   = 3  // Height of each cell (service name + aliases + padding for mouse hit testing)
 	minColumns   = 2
 	maxColumns   = 6
 	cellPaddingX = 2
