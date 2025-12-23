@@ -909,7 +909,14 @@ func TestDetailViewLoadingPlaceholderReplacement(t *testing.T) {
 			detail:          "Comment: " + render.NoValue + "\n",
 			refreshing:      true,
 			wantContains:    []string{"Loading..."},
-			wantNotContains: []string{render.NoValue + "\n"},
+			wantNotContains: []string{render.NoValue},
+		},
+		{
+			name:            "refreshing replaces placeholder at EOF without newline",
+			detail:          "Status: " + render.NotConfigured,
+			refreshing:      true,
+			wantContains:    []string{"Loading..."},
+			wantNotContains: []string{render.NotConfigured},
 		},
 		{
 			name:            "refreshing does NOT replace placeholder in middle of text",

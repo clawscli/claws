@@ -276,16 +276,19 @@ func (d *DetailView) renderContent() string {
 		detail = d.renderGenericDetail()
 	}
 
-	// Replace placeholder values with "Loading..." during async refresh
-	// We match placeholders at line endings to avoid replacing them when
-	// they appear as part of other text (e.g., "Not configured server").
+	// Replace placeholder values with "Loading..." during async refresh.
+	// Match placeholders only at line endings to avoid replacing substrings
+	// (e.g., "Not configured server" should not be replaced).
 	if d.refreshing && detail != "" {
 		loading := ui.DimStyle().Render("Loading...")
 
-		// Replace placeholders only when they appear at end of line
-		detail = strings.ReplaceAll(detail, render.NotConfigured+"\n", loading+"\n")
-		detail = strings.ReplaceAll(detail, render.Empty+"\n", loading+"\n")
-		detail = strings.ReplaceAll(detail, render.NoValue+"\n", loading+"\n")
+		// Replace placeholders at end of line or end of content
+		for _, placeholder := range []string{render.NotConfigured, render.Empty, render.NoValue} {
+			detail = strings.ReplaceAll(detail, placeholder+"\n", loading+"\n")
+			if strings.HasSuffix(detail, placeholder) {
+				detail = detail[:len(detail)-len(placeholder)] + loading
+			}
+		}
 	}
 
 	return detail
