@@ -222,7 +222,11 @@ func (r *MyResourceRenderer) RenderDetail(resource dao.Resource) string {
     // Add more sections as needed
     if mr.Detail != nil {
         d.Section("Configuration")
-        d.Field("Setting1", appaws.Str(mr.Detail.Setting1))
+        if s := appaws.Str(mr.Detail.Setting1); s != "" {
+            d.Field("Setting1", s)
+        } else {
+            d.Field("Setting1", render.NotConfigured)
+        }
         d.Field("Setting2", appaws.Str(mr.Detail.Setting2))
     }
 
@@ -434,23 +438,31 @@ func (d *ChildDAO) List(ctx context.Context) ([]dao.Resource, error) {
 
 3. **Use `DetailBuilder`** - Use `render.NewDetailBuilder()` for consistent detail views.
 
-4. **Use AWS Helpers** - Always use `appaws.Str()`, `appaws.Int32()`, etc. for safe pointer dereferencing.
-
-5. **Use `appaws.Paginate`** - For List methods, use pagination helper to collect all results.
-
-6. **Filter by Name, Not ARN** - When setting up navigation filters, prefer using names over ARNs for reliability. ARNs can cause issues with client-side filtering.
-
-7. **Sort Results** - If listing from multiple sources, sort results for consistent ordering.
-
-8. **Error Handling** - Use `appaws.IsNotFound()` to check for "not found" errors.
-
-9. **Test Locally**:
-   ```bash
-   task build && ./claws
-   # Navigate to :myservice/myresources
+4. **Use Empty Value Constants** - For detail views, use these constants instead of hardcoded strings:
+   ```go
+   render.NotConfigured  // "Not configured" - for optional features not set up
+   render.Empty          // "None" - for empty lists/collections
+   render.NoValue        // "-" - for missing single values
    ```
+   These are automatically replaced with "Loading..." during async detail refresh.
 
-10. **Check Dead Code**:
+5. **Use AWS Helpers** - Always use `appaws.Str()`, `appaws.Int32()`, etc. for safe pointer dereferencing.
+
+6. **Use `appaws.Paginate`** - For List methods, use pagination helper to collect all results.
+
+7. **Filter by Name, Not ARN** - When setting up navigation filters, prefer using names over ARNs for reliability. ARNs can cause issues with client-side filtering.
+
+8. **Sort Results** - If listing from multiple sources, sort results for consistent ordering.
+
+9. **Error Handling** - Use `appaws.IsNotFound()` to check for "not found" errors.
+
+10. **Test Locally**:
+    ```bash
+    task build && ./claws
+    # Navigate to :myservice/myresources
+    ```
+
+11. **Check Dead Code**:
     ```bash
     go run golang.org/x/tools/cmd/deadcode@latest ./...
     ```
