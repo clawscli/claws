@@ -99,6 +99,12 @@ func (r *RecommendationRenderer) RenderDetail(resource dao.Resource) string {
 	d.Field("Type", rec.Type())
 	d.Field("Source", rec.Source())
 
+	// Description (full recommendation only)
+	if desc := rec.Description(); desc != "" {
+		d.Section("Description")
+		d.Field("", desc)
+	}
+
 	// Pillars
 	d.Section("Pillars")
 	for _, pillar := range rec.PillarList() {
@@ -110,6 +116,13 @@ func (r *RecommendationRenderer) RenderDetail(resource dao.Resource) string {
 	d.Field("Errors", fmt.Sprintf("%d", rec.ErrorCount()))
 	d.Field("Warnings", fmt.Sprintf("%d", rec.WarningCount()))
 	d.Field("OK", fmt.Sprintf("%d", rec.OkCount()))
+
+	// Cost Savings (if available)
+	if savings := rec.EstimatedMonthlySavings(); savings > 0 {
+		d.Section("Cost Optimization")
+		d.Field("Estimated Monthly Savings", fmt.Sprintf("$%.2f", savings))
+		d.Field("Estimated Savings %", fmt.Sprintf("%.1f%%", rec.EstimatedPercentMonthlySavings()))
+	}
 
 	// AWS Services
 	if len(rec.AwsServices()) > 0 {
@@ -125,11 +138,25 @@ func (r *RecommendationRenderer) RenderDetail(resource dao.Resource) string {
 	if rec.LastUpdatedAt() != "" {
 		d.Field("Last Updated", rec.LastUpdatedAt())
 	}
+	if resolved := rec.ResolvedAt(); resolved != "" {
+		d.Field("Resolved", resolved)
+	}
+
+	// Creator (full recommendation only)
+	if createdBy := rec.CreatedBy(); createdBy != "" {
+		d.Field("Created By", createdBy)
+	}
 
 	// Lifecycle
 	if rec.LifecycleStage() != "" {
 		d.Section("Lifecycle")
 		d.Field("Stage", rec.LifecycleStage())
+		if reason := rec.UpdateReason(); reason != "" {
+			d.Field("Update Reason", reason)
+		}
+		if code := rec.UpdateReasonCode(); code != "" {
+			d.Field("Reason Code", code)
+		}
 	}
 
 	return d.String()

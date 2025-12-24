@@ -140,7 +140,14 @@ func (r *AnomalyRenderer) RenderDetail(resource dao.Resource) string {
 				d.Field(prefix+" Usage Type", *cause.UsageType)
 			}
 			if cause.LinkedAccount != nil {
-				d.Field(prefix+" Account", *cause.LinkedAccount)
+				acct := *cause.LinkedAccount
+				if cause.LinkedAccountName != nil {
+					acct = fmt.Sprintf("%s (%s)", *cause.LinkedAccountName, acct)
+				}
+				d.Field(prefix+" Account", acct)
+			}
+			if cause.Impact != nil {
+				d.Field(prefix+" Contribution", fmt.Sprintf("$%.2f", cause.Impact.Contribution))
 			}
 		}
 	}

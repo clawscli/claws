@@ -111,10 +111,48 @@ func (r *SummaryRenderer) RenderDetail(resource dao.Resource) string {
 		}
 	}
 
+	// Performance Risk Ratings
+	if risk := s.PerformanceRiskRatings(); risk != nil {
+		d.Section("Performance Risk Distribution")
+		d.Field("Very Low", fmt.Sprintf("%d", risk.VeryLow))
+		d.Field("Low", fmt.Sprintf("%d", risk.Low))
+		d.Field("Medium", fmt.Sprintf("%d", risk.Medium))
+		d.Field("High", fmt.Sprintf("%d", risk.High))
+	}
+
 	// Savings Opportunity
 	d.Section("Savings Opportunity")
 	d.Field("Savings Percentage", fmt.Sprintf("%.2f%%", s.SavingsOpportunityPercentage()))
 	d.Field("Estimated Monthly Savings", fmt.Sprintf("$%.2f", s.EstimatedMonthlySavings()))
+
+	// Idle Savings
+	if idle := s.IdleSavingsOpportunity(); idle != nil && idle.EstimatedMonthlySavings != nil {
+		d.Section("Idle Resource Savings")
+		d.Field("Savings Percentage", fmt.Sprintf("%.2f%%", idle.SavingsOpportunityPercentage))
+		d.Field("Estimated Monthly Savings", fmt.Sprintf("$%.2f", idle.EstimatedMonthlySavings.Value))
+	}
+
+	// Idle Summaries
+	if idleSummaries := s.IdleSummaries(); len(idleSummaries) > 0 {
+		d.Section("Idle Resources")
+		for _, is := range idleSummaries {
+			if is.Value > 0 {
+				d.Field(string(is.Name), fmt.Sprintf("%.0f", is.Value))
+			}
+		}
+	}
+
+	// Inferred Workload Savings
+	if workloads := s.InferredWorkloadSavings(); len(workloads) > 0 {
+		d.Section("Inferred Workload Savings")
+		for _, w := range workloads {
+			if w.EstimatedMonthlySavings != nil && w.EstimatedMonthlySavings.Value > 0 {
+				for _, wt := range w.InferredWorkloadTypes {
+					d.Field(string(wt), fmt.Sprintf("$%.2f", w.EstimatedMonthlySavings.Value))
+				}
+			}
+		}
+	}
 
 	return d.String()
 }

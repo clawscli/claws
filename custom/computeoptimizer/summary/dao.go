@@ -169,3 +169,23 @@ func (r *SummaryResource) NotOptimizedCount() float64 {
 	}
 	return count
 }
+
+// PerformanceRiskRatings returns the performance risk ratings.
+func (r *SummaryResource) PerformanceRiskRatings() *types.CurrentPerformanceRiskRatings {
+	return r.item().CurrentPerformanceRiskRatings
+}
+
+// IdleSummaries returns the idle resource summaries.
+func (r *SummaryResource) IdleSummaries() []types.IdleSummary {
+	return r.item().IdleSummaries
+}
+
+// IdleSavingsOpportunity returns the idle savings opportunity.
+func (r *SummaryResource) IdleSavingsOpportunity() *types.SavingsOpportunity {
+	return r.item().IdleSavingsOpportunity
+}
+
+// InferredWorkloadSavings returns the inferred workload savings.
+func (r *SummaryResource) InferredWorkloadSavings() []types.InferredWorkloadSaving {
+	return r.item().InferredWorkloadSavings
+}
