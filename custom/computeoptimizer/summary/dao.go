@@ -79,7 +79,6 @@ func (d *SummaryDAO) Delete(ctx context.Context, id string) error {
 // SummaryResource wraps a Compute Optimizer Recommendation Summary.
 type SummaryResource struct {
 	dao.BaseResource
-	Item types.RecommendationSummary
 }
 
 // NewSummaryResource creates a new SummaryResource.
@@ -92,29 +91,33 @@ func NewSummaryResource(summary types.RecommendationSummary) *SummaryResource {
 			Name: resourceType,
 			Data: summary,
 		},
-		Item: summary,
 	}
+}
+
+// item returns the underlying SDK type.
+func (r *SummaryResource) item() types.RecommendationSummary {
+	return r.Data.(types.RecommendationSummary)
 }
 
 // ResourceType returns the resource type.
 func (r *SummaryResource) ResourceType() string {
-	return string(r.Item.RecommendationResourceType)
+	return string(r.item().RecommendationResourceType)
 }
 
 // AccountId returns the AWS account ID.
 func (r *SummaryResource) AccountId() string {
-	return appaws.Str(r.Item.AccountId)
+	return appaws.Str(r.item().AccountId)
 }
 
 // Summaries returns the summary findings.
 func (r *SummaryResource) Summaries() []types.Summary {
-	return r.Item.Summaries
+	return r.item().Summaries
 }
 
 // SummaryString returns a formatted summary of findings.
 func (r *SummaryResource) SummaryString() string {
 	result := ""
-	for _, s := range r.Item.Summaries {
+	for _, s := range r.item().Summaries {
 		if s.Value > 0 {
 			if result != "" {
 				result += ", "
@@ -127,24 +130,24 @@ func (r *SummaryResource) SummaryString() string {
 
 // SavingsOpportunityPercentage returns the savings opportunity percentage.
 func (r *SummaryResource) SavingsOpportunityPercentage() float64 {
-	if r.Item.SavingsOpportunity != nil {
-		return r.Item.SavingsOpportunity.SavingsOpportunityPercentage
+	if r.item().SavingsOpportunity != nil {
+		return r.item().SavingsOpportunity.SavingsOpportunityPercentage
 	}
 	return 0
 }
 
 // EstimatedMonthlySavings returns the estimated monthly savings value.
 func (r *SummaryResource) EstimatedMonthlySavings() float64 {
-	if r.Item.SavingsOpportunity != nil && r.Item.SavingsOpportunity.EstimatedMonthlySavings != nil {
-		return r.Item.SavingsOpportunity.EstimatedMonthlySavings.Value
+	if r.item().SavingsOpportunity != nil && r.item().SavingsOpportunity.EstimatedMonthlySavings != nil {
+		return r.item().SavingsOpportunity.EstimatedMonthlySavings.Value
 	}
 	return 0
 }
 
 // EstimatedMonthlySavingsCurrency returns the currency for savings.
 func (r *SummaryResource) EstimatedMonthlySavingsCurrency() string {
-	if r.Item.SavingsOpportunity != nil && r.Item.SavingsOpportunity.EstimatedMonthlySavings != nil {
-		return string(r.Item.SavingsOpportunity.EstimatedMonthlySavings.Currency)
+	if r.item().SavingsOpportunity != nil && r.item().SavingsOpportunity.EstimatedMonthlySavings != nil {
+		return string(r.item().SavingsOpportunity.EstimatedMonthlySavings.Currency)
 	}
 	return "USD"
 }
@@ -152,7 +155,7 @@ func (r *SummaryResource) EstimatedMonthlySavingsCurrency() string {
 // TotalResources returns the total count of resources.
 func (r *SummaryResource) TotalResources() float64 {
 	var total float64
-	for _, s := range r.Item.Summaries {
+	for _, s := range r.item().Summaries {
 		total += s.Value
 	}
 	return total
@@ -160,7 +163,7 @@ func (r *SummaryResource) TotalResources() float64 {
 
 // OptimizedCount returns count of optimized resources.
 func (r *SummaryResource) OptimizedCount() float64 {
-	for _, s := range r.Item.Summaries {
+	for _, s := range r.item().Summaries {
 		if s.Name == types.FindingOptimized {
 			return s.Value
 		}
@@ -171,7 +174,7 @@ func (r *SummaryResource) OptimizedCount() float64 {
 // NotOptimizedCount returns count of not optimized resources.
 func (r *SummaryResource) NotOptimizedCount() float64 {
 	var count float64
-	for _, s := range r.Item.Summaries {
+	for _, s := range r.item().Summaries {
 		if s.Name == types.FindingUnderProvisioned ||
 			s.Name == types.FindingOverProvisioned ||
 			s.Name == types.FindingNotOptimized {

@@ -80,7 +80,6 @@ func (d *MonitorDAO) Delete(ctx context.Context, id string) error {
 // MonitorResource wraps a Cost Anomaly Monitor.
 type MonitorResource struct {
 	dao.BaseResource
-	Item types.AnomalyMonitor
 }
 
 // NewMonitorResource creates a new MonitorResource.
@@ -95,41 +94,45 @@ func NewMonitorResource(monitor types.AnomalyMonitor) *MonitorResource {
 			ARN:  arn,
 			Data: monitor,
 		},
-		Item: monitor,
 	}
+}
+
+// item returns the underlying SDK type.
+func (r *MonitorResource) item() types.AnomalyMonitor {
+	return r.Data.(types.AnomalyMonitor)
 }
 
 // MonitorName returns the monitor name.
 func (r *MonitorResource) MonitorName() string {
-	return appaws.Str(r.Item.MonitorName)
+	return appaws.Str(r.item().MonitorName)
 }
 
 // MonitorType returns the monitor type.
 func (r *MonitorResource) MonitorType() string {
-	return string(r.Item.MonitorType)
+	return string(r.item().MonitorType)
 }
 
 // MonitorDimension returns the dimension being monitored.
 func (r *MonitorResource) MonitorDimension() string {
-	return string(r.Item.MonitorDimension)
+	return string(r.item().MonitorDimension)
 }
 
 // CreationDate returns the creation date.
 func (r *MonitorResource) CreationDate() string {
-	return appaws.Str(r.Item.CreationDate)
+	return appaws.Str(r.item().CreationDate)
 }
 
 // LastEvaluatedDate returns when the monitor last evaluated.
 func (r *MonitorResource) LastEvaluatedDate() string {
-	return appaws.Str(r.Item.LastEvaluatedDate)
+	return appaws.Str(r.item().LastEvaluatedDate)
 }
 
 // LastUpdatedDate returns when the monitor was last updated.
 func (r *MonitorResource) LastUpdatedDate() string {
-	return appaws.Str(r.Item.LastUpdatedDate)
+	return appaws.Str(r.item().LastUpdatedDate)
 }
 
 // DimensionalValueCount returns the count of evaluated dimensions.
 func (r *MonitorResource) DimensionalValueCount() int32 {
-	return r.Item.DimensionalValueCount
+	return r.item().DimensionalValueCount
 }

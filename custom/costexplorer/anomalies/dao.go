@@ -90,7 +90,6 @@ func (d *AnomalyDAO) Delete(ctx context.Context, id string) error {
 // AnomalyResource wraps a Cost Anomaly.
 type AnomalyResource struct {
 	dao.BaseResource
-	Item types.Anomaly
 }
 
 // NewAnomalyResource creates a new AnomalyResource.
@@ -99,85 +98,90 @@ func NewAnomalyResource(anomaly types.Anomaly) *AnomalyResource {
 		BaseResource: dao.BaseResource{
 			ID:   appaws.Str(anomaly.AnomalyId),
 			Name: appaws.Str(anomaly.DimensionValue),
+			Data: anomaly,
 		},
-		Item: anomaly,
 	}
+}
+
+// item returns the underlying SDK type.
+func (r *AnomalyResource) item() types.Anomaly {
+	return r.Data.(types.Anomaly)
 }
 
 // DimensionValue returns the dimension (usually service name).
 func (r *AnomalyResource) DimensionValue() string {
-	return appaws.Str(r.Item.DimensionValue)
+	return appaws.Str(r.item().DimensionValue)
 }
 
 // StartDate returns when the anomaly started.
 func (r *AnomalyResource) StartDate() string {
-	return appaws.Str(r.Item.AnomalyStartDate)
+	return appaws.Str(r.item().AnomalyStartDate)
 }
 
 // EndDate returns when the anomaly ended.
 func (r *AnomalyResource) EndDate() string {
-	return appaws.Str(r.Item.AnomalyEndDate)
+	return appaws.Str(r.item().AnomalyEndDate)
 }
 
 // TotalImpact returns the total cost impact.
 func (r *AnomalyResource) TotalImpact() float64 {
-	if r.Item.Impact != nil {
-		return r.Item.Impact.TotalImpact
+	if r.item().Impact != nil {
+		return r.item().Impact.TotalImpact
 	}
 	return 0
 }
 
 // TotalActualSpend returns the actual spend.
 func (r *AnomalyResource) TotalActualSpend() float64 {
-	if r.Item.Impact != nil {
-		return appaws.Float64(r.Item.Impact.TotalActualSpend)
+	if r.item().Impact != nil {
+		return appaws.Float64(r.item().Impact.TotalActualSpend)
 	}
 	return 0
 }
 
 // TotalExpectedSpend returns the expected spend.
 func (r *AnomalyResource) TotalExpectedSpend() float64 {
-	if r.Item.Impact != nil {
-		return appaws.Float64(r.Item.Impact.TotalExpectedSpend)
+	if r.item().Impact != nil {
+		return appaws.Float64(r.item().Impact.TotalExpectedSpend)
 	}
 	return 0
 }
 
 // TotalImpactPercentage returns the impact as a percentage.
 func (r *AnomalyResource) TotalImpactPercentage() float64 {
-	if r.Item.Impact != nil {
-		return appaws.Float64(r.Item.Impact.TotalImpactPercentage)
+	if r.item().Impact != nil {
+		return appaws.Float64(r.item().Impact.TotalImpactPercentage)
 	}
 	return 0
 }
 
 // MaxScore returns the maximum anomaly score.
 func (r *AnomalyResource) MaxScore() float64 {
-	if r.Item.AnomalyScore != nil {
-		return r.Item.AnomalyScore.MaxScore
+	if r.item().AnomalyScore != nil {
+		return r.item().AnomalyScore.MaxScore
 	}
 	return 0
 }
 
 // CurrentScore returns the current anomaly score.
 func (r *AnomalyResource) CurrentScore() float64 {
-	if r.Item.AnomalyScore != nil {
-		return r.Item.AnomalyScore.CurrentScore
+	if r.item().AnomalyScore != nil {
+		return r.item().AnomalyScore.CurrentScore
 	}
 	return 0
 }
 
 // MonitorArn returns the monitor ARN.
 func (r *AnomalyResource) MonitorArn() string {
-	return appaws.Str(r.Item.MonitorArn)
+	return appaws.Str(r.item().MonitorArn)
 }
 
 // RootCauses returns the root causes.
 func (r *AnomalyResource) RootCauses() []types.RootCause {
-	return r.Item.RootCauses
+	return r.item().RootCauses
 }
 
 // Feedback returns the feedback status.
 func (r *AnomalyResource) Feedback() string {
-	return string(r.Item.Feedback)
+	return string(r.item().Feedback)
 }

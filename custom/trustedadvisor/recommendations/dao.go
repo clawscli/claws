@@ -98,7 +98,6 @@ func (d *RecommendationDAO) Delete(ctx context.Context, id string) error {
 // RecommendationResource wraps a Trusted Advisor Recommendation.
 type RecommendationResource struct {
 	dao.BaseResource
-	Item types.RecommendationSummary
 }
 
 // NewRecommendationResource creates a new RecommendationResource.
@@ -110,24 +109,28 @@ func NewRecommendationResource(rec types.RecommendationSummary) *RecommendationR
 			ARN:  appaws.Str(rec.Arn),
 			Data: rec,
 		},
-		Item: rec,
 	}
+}
+
+// item returns the underlying SDK type.
+func (r *RecommendationResource) item() types.RecommendationSummary {
+	return r.Data.(types.RecommendationSummary)
 }
 
 // Name returns the recommendation name.
 func (r *RecommendationResource) Name() string {
-	return appaws.Str(r.Item.Name)
+	return appaws.Str(r.item().Name)
 }
 
 // Status returns the recommendation status.
 func (r *RecommendationResource) Status() string {
-	return string(r.Item.Status)
+	return string(r.item().Status)
 }
 
 // Pillars returns the pillars as a comma-separated string.
 func (r *RecommendationResource) Pillars() string {
-	pillars := make([]string, len(r.Item.Pillars))
-	for i, p := range r.Item.Pillars {
+	pillars := make([]string, len(r.item().Pillars))
+	for i, p := range r.item().Pillars {
 		pillars[i] = string(p)
 	}
 	return strings.Join(pillars, ", ")
@@ -135,65 +138,65 @@ func (r *RecommendationResource) Pillars() string {
 
 // PillarList returns the pillars as a slice.
 func (r *RecommendationResource) PillarList() []types.RecommendationPillar {
-	return r.Item.Pillars
+	return r.item().Pillars
 }
 
 // Source returns the recommendation source.
 func (r *RecommendationResource) Source() string {
-	return string(r.Item.Source)
+	return string(r.item().Source)
 }
 
 // Type returns the recommendation type.
 func (r *RecommendationResource) Type() string {
-	return string(r.Item.Type)
+	return string(r.item().Type)
 }
 
 // ErrorCount returns the number of resources with errors.
 func (r *RecommendationResource) ErrorCount() int64 {
-	if r.Item.ResourcesAggregates != nil {
-		return appaws.Int64(r.Item.ResourcesAggregates.ErrorCount)
+	if r.item().ResourcesAggregates != nil {
+		return appaws.Int64(r.item().ResourcesAggregates.ErrorCount)
 	}
 	return 0
 }
 
 // WarningCount returns the number of resources with warnings.
 func (r *RecommendationResource) WarningCount() int64 {
-	if r.Item.ResourcesAggregates != nil {
-		return appaws.Int64(r.Item.ResourcesAggregates.WarningCount)
+	if r.item().ResourcesAggregates != nil {
+		return appaws.Int64(r.item().ResourcesAggregates.WarningCount)
 	}
 	return 0
 }
 
 // OkCount returns the number of resources that are OK.
 func (r *RecommendationResource) OkCount() int64 {
-	if r.Item.ResourcesAggregates != nil {
-		return appaws.Int64(r.Item.ResourcesAggregates.OkCount)
+	if r.item().ResourcesAggregates != nil {
+		return appaws.Int64(r.item().ResourcesAggregates.OkCount)
 	}
 	return 0
 }
 
 // AwsServices returns the AWS services this recommendation applies to.
 func (r *RecommendationResource) AwsServices() []string {
-	return r.Item.AwsServices
+	return r.item().AwsServices
 }
 
 // CreatedAt returns the creation time as a formatted string.
 func (r *RecommendationResource) CreatedAt() string {
-	if r.Item.CreatedAt != nil {
-		return r.Item.CreatedAt.Format("2006-01-02 15:04:05")
+	if r.item().CreatedAt != nil {
+		return r.item().CreatedAt.Format("2006-01-02 15:04:05")
 	}
 	return ""
 }
 
 // LastUpdatedAt returns the last update time as a formatted string.
 func (r *RecommendationResource) LastUpdatedAt() string {
-	if r.Item.LastUpdatedAt != nil {
-		return r.Item.LastUpdatedAt.Format("2006-01-02 15:04:05")
+	if r.item().LastUpdatedAt != nil {
+		return r.item().LastUpdatedAt.Format("2006-01-02 15:04:05")
 	}
 	return ""
 }
 
 // LifecycleStage returns the lifecycle stage.
 func (r *RecommendationResource) LifecycleStage() string {
-	return string(r.Item.LifecycleStage)
+	return string(r.item().LifecycleStage)
 }
