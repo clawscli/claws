@@ -29,6 +29,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/codebuild v1.68.8
 	github.com/aws/aws-sdk-go-v2/service/codepipeline v1.46.16
 	github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider v1.57.17
+	github.com/aws/aws-sdk-go-v2/service/computeoptimizer v1.49.3
 	github.com/aws/aws-sdk-go-v2/service/configservice v1.59.9
 	github.com/aws/aws-sdk-go-v2/service/costexplorer v1.62.0
 	github.com/aws/aws-sdk-go-v2/service/datasync v1.57.0
@@ -73,6 +74,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.41.5
 	github.com/aws/aws-sdk-go-v2/service/transcribe v1.53.10
 	github.com/aws/aws-sdk-go-v2/service/transfer v1.68.4
+	github.com/aws/aws-sdk-go-v2/service/trustedadvisor v1.13.17
 	github.com/aws/aws-sdk-go-v2/service/wafv2 v1.70.4
 	github.com/aws/aws-sdk-go-v2/service/xray v1.36.16
 	github.com/aws/smithy-go v1.24.0
@@ -116,7 +118,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
-	github.com/sahilm/fuzzy v0.1.1 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394 // indirect
 	golang.org/x/sync v0.19.0 // indirect

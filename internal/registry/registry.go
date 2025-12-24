@@ -192,6 +192,8 @@ func defaultDisplayNames() map[string]string {
 		"vpc":               "VPC",
 		"wafv2":             "WAF",
 		"xray":              "X-Ray",
+		"trustedadvisor":    "Trusted Advisor",
+		"computeoptimizer":  "Compute Optimizer",
 		"local":             "Local",
 	}
 }
@@ -228,8 +230,16 @@ func defaultCategories() []ServiceCategory {
 			Services: []string{"sqs", "sns", "eventbridge", "sfn", "kinesis", "transfer", "datasync"},
 		},
 		{
-			Name:     "Management",
-			Services: []string{"cloudformation", "cloudwatch", "cloudtrail", "config", "xray", "health", "service-quotas", "codebuild", "codepipeline", "backup", "organizations", "license-manager"},
+			Name:     "DevOps",
+			Services: []string{"codebuild", "codepipeline", "cloudformation"},
+		},
+		{
+			Name:     "Monitoring",
+			Services: []string{"cloudwatch", "cloudtrail", "xray", "health"},
+		},
+		{
+			Name:     "Governance",
+			Services: []string{"config", "organizations", "service-quotas", "license-manager", "backup", "trustedadvisor", "computeoptimizer"},
 		},
 		{
 			Name:     "Cost Management",

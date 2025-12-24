@@ -66,6 +66,8 @@ github.com/aws/aws-sdk-go-v2/service/codepipeline v1.46.16 h1:d3xDjD1paX0rHG+CVd
 github.com/aws/aws-sdk-go-v2/service/codepipeline v1.46.16/go.mod h1:p461ewWfgWNHSHnpSphvvUYAVjq/XaL+2DsXJjza2F4=
 github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider v1.57.17 h1:kYAxFlyBhmhdjel6MNFf5lYQlTcMUOXPC33mor8rFz0=
 github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider v1.57.17/go.mod h1:NSRHRisUPKx5y8RD+HpeCjIn8SYz5m6HhNGkd0GLB1o=
+github.com/aws/aws-sdk-go-v2/service/computeoptimizer v1.49.3 h1:FF2Z+l7R0L1XamxF1UfLYZ/B+gI+L/bKQWA6k+L94T0=
+github.com/aws/aws-sdk-go-v2/service/computeoptimizer v1.49.3/go.mod h1:ihDczy1E6oCNDolEL8peazafiSnqf2Usw7X9jn40m9w=
 github.com/aws/aws-sdk-go-v2/service/configservice v1.59.9 h1:mfrlCO6GCwSiVV+riXWQnfQxJMXeTe9xZ4k0HCDYFZ4=
 github.com/aws/aws-sdk-go-v2/service/configservice v1.59.9/go.mod h1:nkku7pEfQLBI9XGX0fTdDylOiXF8T54Wrff6CHBMeXY=
 github.com/aws/aws-sdk-go-v2/service/costexplorer v1.62.0 h1:YD2xJ3wFL8svkw7cEpt/1rUq1NeMnz+TRXgMooMFoqo=
@@ -170,6 +172,8 @@ github.com/aws/aws-sdk-go-v2/service/transcribe v1.53.10 h1:in3CSrCjUYvz3z6I/flh
 github.com/aws/aws-sdk-go-v2/service/transcribe v1.53.10/go.mod h1:ELpS1JjDBqdWL3vGuJJThEUZM7jxD+tzw9cHaCm7DEs=
 github.com/aws/aws-sdk-go-v2/service/transfer v1.68.4 h1:btvrYbX0GK9orCMyQYZWMcTGnr/6vyTgrRoxlxn0zoo=
 github.com/aws/aws-sdk-go-v2/service/transfer v1.68.4/go.mod h1:ipUzOV/iivYDtfMRTYXeat4B8+lKX1X9MMLnTGcprpQ=
+github.com/aws/aws-sdk-go-v2/service/trustedadvisor v1.13.17 h1:JmmxkbTdh4T/YVBCDsjAmIqiFgZaN0J1diHq7/fCnk4=
+github.com/aws/aws-sdk-go-v2/service/trustedadvisor v1.13.17/go.mod h1:LoA+TP4mpM7Szx9mjMSevYMroSZGXIbmtjqI4sBcA1w=
 github.com/aws/aws-sdk-go-v2/service/wafv2 v1.70.4 h1:nzu+shQb7bVbXFWEnFB/R2LuiM4p8QuyN3P9vS/KJBw=
 github.com/aws/aws-sdk-go-v2/service/wafv2 v1.70.4/go.mod h1:UU4OZ1UXQ8O2vx6dj6czjDKv+8WbmtVYBFoFS+4buQ8=
 github.com/aws/aws-sdk-go-v2/service/xray v1.36.16 h1:QmiDhZi76gIQXhZttJvkrJQBEiMQtnvD1SykHVWRD7A=
@@ -210,8 +214,6 @@ github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
 github.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=
 github.com/kr/text v0.2.0/go.mod h1:eLer722TekiGuMkidMxC/pM04lWEeraHUUmBw8l2grE=
-github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0SNc=
-github.com/kylelemons/godebug v1.1.0/go.mod h1:9/0rRGxNHcop5bhtWyNeEfOS8JIWk580+fNqagV/RAw=
 github.com/lucasb-eyer/go-colorful v1.3.0 h1:2/yBRLdWBZKrf7gB40FoiKfAWYQ0lqNcbuQwVHXptag=
 github.com/lucasb-eyer/go-colorful v1.3.0/go.mod h1:R4dSotOR9KMtayYi1e77YzuveK+i7ruzyGqttikkLy0=
 github.com/mattn/go-runewidth v0.0.19 h1:v++JhqYnZuu5jSKrk9RbgF5v4CGUjqRfBm05byFGLdw=
@@ -226,8 +228,6 @@ github.com/rivo/uniseg v0.4.7/go.mod h1:FN3SvrM+Zdj16jyLfmOkMNblXMcoc8DfTHruCPUc
 github.com/rogpeppe/go-internal v1.9.0/go.mod h1:WtVeX8xhTBvf0smdhujwtBcq4Qrzq/fJaraNFVN+nFs=
 github.com/rogpeppe/go-internal v1.14.1 h1:UQB4HGPB6osV0SQTLymcB4TgvyWu6ZyliaW0tI/otEQ=
 github.com/rogpeppe/go-internal v1.14.1/go.mod h1:MaRKkUm5W0goXpeCfT7UZI6fk/L7L7so1lCWt35ZSgc=
-github.com/sahilm/fuzzy v0.1.1 h1:ceu5RHF8DGgoi+/dR5PsECjCDH1BE3Fnmpo7aVXOdRA=
-github.com/sahilm/fuzzy v0.1.1/go.mod h1:VFvziUEIMCrT6A6tw2RFIXPXXmzXbOsSHF0DOI8ZK9Y=
 github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
 github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e h1:JVG44RsyaB9T2KIHavMF/ppJZNG9ZpyihvCd0w101no=

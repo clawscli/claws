@@ -196,7 +196,15 @@ import (
 	_ "github.com/clawscli/claws/custom/xray/groups"
 
 	// Cost Explorer
+	_ "github.com/clawscli/claws/custom/costexplorer/anomalies"
 	_ "github.com/clawscli/claws/custom/costexplorer/costs"
+	_ "github.com/clawscli/claws/custom/costexplorer/monitors"
+
+	// Trusted Advisor
+	_ "github.com/clawscli/claws/custom/trustedadvisor/recommendations"
+
+	// Compute Optimizer
+	_ "github.com/clawscli/claws/custom/computeoptimizer/summary"
 
 	// Budgets
 	_ "github.com/clawscli/claws/custom/budgets/budgets"

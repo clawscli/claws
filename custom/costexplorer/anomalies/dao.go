@@ -1,0 +1,183 @@
+package anomalies
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/aws/aws-sdk-go-v2/service/costexplorer"
+	"github.com/aws/aws-sdk-go-v2/service/costexplorer/types"
+	appaws "github.com/clawscli/claws/internal/aws"
+	"github.com/clawscli/claws/internal/dao"
+)
+
+// AnomalyDAO provides data access for Cost Anomaly Detection.
+type AnomalyDAO struct {
+	dao.BaseDAO
+	client *costexplorer.Client
+}
+
+// NewAnomalyDAO creates a new AnomalyDAO.
+func NewAnomalyDAO(ctx context.Context) (dao.DAO, error) {
+	cfg, err := appaws.NewConfig(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("new costexplorer/anomalies dao: %w", err)
+	}
+	return &AnomalyDAO{
+		BaseDAO: dao.NewBaseDAO("cost-explorer", "anomalies"),
+		client:  costexplorer.NewFromConfig(cfg),
+	}, nil
+}
+
+// List returns cost anomalies from the last 90 days.
+func (d *AnomalyDAO) List(ctx context.Context) ([]dao.Resource, error) {
+	// Get last 90 days of anomalies
+	now := time.Now()
+	start := now.AddDate(0, 0, -90).Format("2006-01-02")
+	end := now.Format("2006-01-02")
+
+	var resources []dao.Resource
+	var nextToken *string
+
+	for {
+		input := &costexplorer.GetAnomaliesInput{
+			DateInterval: &types.AnomalyDateInterval{
+				StartDate: &start,
+				EndDate:   &end,
+			},
+			NextPageToken: nextToken,
+		}
+
+		output, err := d.client.GetAnomalies(ctx, input)
+		if err != nil {
+			return nil, fmt.Errorf("get anomalies: %w", err)
+		}
+
+		for _, anomaly := range output.Anomalies {
+			resources = append(resources, NewAnomalyResource(anomaly))
+		}
+
+		if output.NextPageToken == nil {
+			break
+		}
+		nextToken = output.NextPageToken
+	}
+
+	return resources, nil
+}
+
+// Get returns a specific anomaly by ID.
+func (d *AnomalyDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
+	// GetAnomalies doesn't support filtering by ID, so we need to list and find
+	resources, err := d.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, r := range resources {
+		if r.GetID() == id {
+			return r, nil
+		}
+	}
+	return nil, fmt.Errorf("anomaly not found: %s", id)
+}
+
+// Delete is not supported for anomalies.
+func (d *AnomalyDAO) Delete(ctx context.Context, id string) error {
+	return fmt.Errorf("delete not supported for cost anomalies")
+}
+
+// AnomalyResource wraps a Cost Anomaly.
+type AnomalyResource struct {
+	dao.BaseResource
+	Item types.Anomaly
+}
+
+// NewAnomalyResource creates a new AnomalyResource.
+func NewAnomalyResource(anomaly types.Anomaly) *AnomalyResource {
+	return &AnomalyResource{
+		BaseResource: dao.BaseResource{
+			ID:  appaws.Str(anomaly.AnomalyId),
+			ARN: appaws.Str(anomaly.AnomalyId),
+		},
+		Item: anomaly,
+	}
+}
+
+// DimensionValue returns the dimension (usually service name).
+func (r *AnomalyResource) DimensionValue() string {
+	return appaws.Str(r.Item.DimensionValue)
+}
+
+// StartDate returns when the anomaly started.
+func (r *AnomalyResource) StartDate() string {
+	return appaws.Str(r.Item.AnomalyStartDate)
+}
+
+// EndDate returns when the anomaly ended.
+func (r *AnomalyResource) EndDate() string {
+	return appaws.Str(r.Item.AnomalyEndDate)
+}
+
+// TotalImpact returns the total cost impact.
+func (r *AnomalyResource) TotalImpact() float64 {
+	if r.Item.Impact != nil {
+		return r.Item.Impact.TotalImpact
+	}
+	return 0
+}
+
+// TotalActualSpend returns the actual spend.
+func (r *AnomalyResource) TotalActualSpend() float64 {
+	if r.Item.Impact != nil {
+		return appaws.Float64(r.Item.Impact.TotalActualSpend)
+	}
+	return 0
+}
+
+// TotalExpectedSpend returns the expected spend.
+func (r *AnomalyResource) TotalExpectedSpend() float64 {
+	if r.Item.Impact != nil {
+		return appaws.Float64(r.Item.Impact.TotalExpectedSpend)
+	}
+	return 0
+}
+
+// TotalImpactPercentage returns the impact as a percentage.
+func (r *AnomalyResource) TotalImpactPercentage() float64 {
+	if r.Item.Impact != nil {
+		return appaws.Float64(r.Item.Impact.TotalImpactPercentage)
+	}
+	return 0
+}
+
+// MaxScore returns the maximum anomaly score.
+func (r *AnomalyResource) MaxScore() float64 {
+	if r.Item.AnomalyScore != nil {
+		return r.Item.AnomalyScore.MaxScore
+	}
+	return 0
+}
+
+// CurrentScore returns the current anomaly score.
+func (r *AnomalyResource) CurrentScore() float64 {
+	if r.Item.AnomalyScore != nil {
+		return r.Item.AnomalyScore.CurrentScore
+	}
+	return 0
+}
+
+// MonitorArn returns the monitor ARN.
+func (r *AnomalyResource) MonitorArn() string {
+	return appaws.Str(r.Item.MonitorArn)
+}
+
+// RootCauses returns the root causes.
+func (r *AnomalyResource) RootCauses() []types.RootCause {
+	return r.Item.RootCauses
+}
+
+// Feedback returns the feedback status.
+func (r *AnomalyResource) Feedback() string {
+	return string(r.Item.Feedback)
+}
