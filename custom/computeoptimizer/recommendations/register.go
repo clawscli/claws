@@ -1,0 +1,20 @@
+package recommendations
+
+import (
+	"context"
+
+	"github.com/clawscli/claws/internal/dao"
+	"github.com/clawscli/claws/internal/registry"
+	"github.com/clawscli/claws/internal/render"
+)
+
+func init() {
+	registry.Global.RegisterCustom("computeoptimizer", "recommendations", registry.Entry{
+		DAOFactory: func(ctx context.Context) (dao.DAO, error) {
+			return NewRecommendationDAO(ctx)
+		},
+		RendererFactory: func() render.Renderer {
+			return NewRecommendationRenderer()
+		},
+	})
+}

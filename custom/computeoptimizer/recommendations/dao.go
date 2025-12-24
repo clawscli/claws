@@ -1,0 +1,482 @@
+package recommendations
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/aws/aws-sdk-go-v2/service/computeoptimizer"
+	"github.com/aws/aws-sdk-go-v2/service/computeoptimizer/types"
+	appaws "github.com/clawscli/claws/internal/aws"
+	"github.com/clawscli/claws/internal/dao"
+)
+
+// RecommendationDAO provides data access for Compute Optimizer Recommendations.
+type RecommendationDAO struct {
+	dao.BaseDAO
+	client *computeoptimizer.Client
+}
+
+// NewRecommendationDAO creates a new RecommendationDAO.
+func NewRecommendationDAO(ctx context.Context) (dao.DAO, error) {
+	cfg, err := appaws.NewConfig(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("new computeoptimizer/recommendations dao: %w", err)
+	}
+	return &RecommendationDAO{
+		BaseDAO: dao.NewBaseDAO("compute-optimizer", "recommendations"),
+		client:  computeoptimizer.NewFromConfig(cfg),
+	}, nil
+}
+
+// List returns all recommendations from multiple resource types.
+func (d *RecommendationDAO) List(ctx context.Context) ([]dao.Resource, error) {
+	var resources []dao.Resource
+
+	// Fetch EC2 recommendations
+	ec2Recs, err := d.listEC2Recommendations(ctx)
+	if err != nil {
+		// Log error but continue with other types
+		_ = err
+	} else {
+		resources = append(resources, ec2Recs...)
+	}
+
+	// Fetch ASG recommendations
+	asgRecs, err := d.listASGRecommendations(ctx)
+	if err != nil {
+		_ = err
+	} else {
+		resources = append(resources, asgRecs...)
+	}
+
+	// Fetch EBS recommendations
+	ebsRecs, err := d.listEBSRecommendations(ctx)
+	if err != nil {
+		_ = err
+	} else {
+		resources = append(resources, ebsRecs...)
+	}
+
+	// Fetch Lambda recommendations
+	lambdaRecs, err := d.listLambdaRecommendations(ctx)
+	if err != nil {
+		_ = err
+	} else {
+		resources = append(resources, lambdaRecs...)
+	}
+
+	// Fetch ECS recommendations
+	ecsRecs, err := d.listECSRecommendations(ctx)
+	if err != nil {
+		_ = err
+	} else {
+		resources = append(resources, ecsRecs...)
+	}
+
+	return resources, nil
+}
+
+func (d *RecommendationDAO) listEC2Recommendations(ctx context.Context) ([]dao.Resource, error) {
+	var resources []dao.Resource
+	var nextToken *string
+
+	for {
+		input := &computeoptimizer.GetEC2InstanceRecommendationsInput{
+			NextToken: nextToken,
+		}
+
+		output, err := d.client.GetEC2InstanceRecommendations(ctx, input)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, rec := range output.InstanceRecommendations {
+			resources = append(resources, NewEC2RecommendationResource(rec))
+		}
+
+		if output.NextToken == nil {
+			break
+		}
+		nextToken = output.NextToken
+	}
+
+	return resources, nil
+}
+
+func (d *RecommendationDAO) listASGRecommendations(ctx context.Context) ([]dao.Resource, error) {
+	var resources []dao.Resource
+	var nextToken *string
+
+	for {
+		input := &computeoptimizer.GetAutoScalingGroupRecommendationsInput{
+			NextToken: nextToken,
+		}
+
+		output, err := d.client.GetAutoScalingGroupRecommendations(ctx, input)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, rec := range output.AutoScalingGroupRecommendations {
+			resources = append(resources, NewASGRecommendationResource(rec))
+		}
+
+		if output.NextToken == nil {
+			break
+		}
+		nextToken = output.NextToken
+	}
+
+	return resources, nil
+}
+
+func (d *RecommendationDAO) listEBSRecommendations(ctx context.Context) ([]dao.Resource, error) {
+	var resources []dao.Resource
+	var nextToken *string
+
+	for {
+		input := &computeoptimizer.GetEBSVolumeRecommendationsInput{
+			NextToken: nextToken,
+		}
+
+		output, err := d.client.GetEBSVolumeRecommendations(ctx, input)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, rec := range output.VolumeRecommendations {
+			resources = append(resources, NewEBSRecommendationResource(rec))
+		}
+
+		if output.NextToken == nil {
+			break
+		}
+		nextToken = output.NextToken
+	}
+
+	return resources, nil
+}
+
+func (d *RecommendationDAO) listLambdaRecommendations(ctx context.Context) ([]dao.Resource, error) {
+	var resources []dao.Resource
+	var nextToken *string
+
+	for {
+		input := &computeoptimizer.GetLambdaFunctionRecommendationsInput{
+			NextToken: nextToken,
+		}
+
+		output, err := d.client.GetLambdaFunctionRecommendations(ctx, input)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, rec := range output.LambdaFunctionRecommendations {
+			resources = append(resources, NewLambdaRecommendationResource(rec))
+		}
+
+		if output.NextToken == nil {
+			break
+		}
+		nextToken = output.NextToken
+	}
+
+	return resources, nil
+}
+
+func (d *RecommendationDAO) listECSRecommendations(ctx context.Context) ([]dao.Resource, error) {
+	var resources []dao.Resource
+	var nextToken *string
+
+	for {
+		input := &computeoptimizer.GetECSServiceRecommendationsInput{
+			NextToken: nextToken,
+		}
+
+		output, err := d.client.GetECSServiceRecommendations(ctx, input)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, rec := range output.EcsServiceRecommendations {
+			resources = append(resources, NewECSRecommendationResource(rec))
+		}
+
+		if output.NextToken == nil {
+			break
+		}
+		nextToken = output.NextToken
+	}
+
+	return resources, nil
+}
+
+// Get returns a specific recommendation by ID.
+func (d *RecommendationDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
+	resources, err := d.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, r := range resources {
+		if r.GetID() == id {
+			return r, nil
+		}
+	}
+	return nil, fmt.Errorf("recommendation not found: %s", id)
+}
+
+// Delete is not supported.
+func (d *RecommendationDAO) Delete(ctx context.Context, id string) error {
+	return fmt.Errorf("delete not supported for compute optimizer recommendations")
+}
+
+// RecommendationResource is a unified wrapper for all recommendation types.
+type RecommendationResource struct {
+	dao.BaseResource
+	resourceType    string
+	finding         string
+	currentConfig   string
+	savingsPercent  float64
+	savingsValue    float64
+	savingsCurrency string
+	performanceRisk string
+}
+
+// ResourceType returns the resource type (EC2, ASG, EBS, Lambda, ECS).
+func (r *RecommendationResource) ResourceType() string {
+	return r.resourceType
+}
+
+// Finding returns the finding classification.
+func (r *RecommendationResource) Finding() string {
+	return r.finding
+}
+
+// CurrentConfig returns a summary of current configuration.
+func (r *RecommendationResource) CurrentConfig() string {
+	return r.currentConfig
+}
+
+// SavingsPercent returns the savings opportunity percentage.
+func (r *RecommendationResource) SavingsPercent() float64 {
+	return r.savingsPercent
+}
+
+// SavingsValue returns the estimated monthly savings.
+func (r *RecommendationResource) SavingsValue() float64 {
+	return r.savingsValue
+}
+
+// SavingsCurrency returns the currency for savings.
+func (r *RecommendationResource) SavingsCurrency() string {
+	if r.savingsCurrency == "" {
+		return "USD"
+	}
+	return r.savingsCurrency
+}
+
+// PerformanceRisk returns the current performance risk level.
+func (r *RecommendationResource) PerformanceRisk() string {
+	return r.performanceRisk
+}
+
+// NewEC2RecommendationResource creates a resource from EC2 recommendation.
+func NewEC2RecommendationResource(rec types.InstanceRecommendation) *RecommendationResource {
+	arn := appaws.Str(rec.InstanceArn)
+	instanceType := appaws.Str(rec.CurrentInstanceType)
+
+	var savingsPercent, savingsValue float64
+	var savingsCurrency string
+	if rec.RecommendationOptions != nil && len(rec.RecommendationOptions) > 0 {
+		opt := rec.RecommendationOptions[0]
+		if opt.SavingsOpportunity != nil {
+			savingsPercent = opt.SavingsOpportunity.SavingsOpportunityPercentage
+			if opt.SavingsOpportunity.EstimatedMonthlySavings != nil {
+				savingsValue = opt.SavingsOpportunity.EstimatedMonthlySavings.Value
+				savingsCurrency = string(opt.SavingsOpportunity.EstimatedMonthlySavings.Currency)
+			}
+		}
+	}
+
+	return &RecommendationResource{
+		BaseResource: dao.BaseResource{
+			ID:   arn,
+			Name: extractNameFromArn(arn),
+			Data: rec,
+		},
+		resourceType:    "EC2",
+		finding:         string(rec.Finding),
+		currentConfig:   instanceType,
+		savingsPercent:  savingsPercent,
+		savingsValue:    savingsValue,
+		savingsCurrency: savingsCurrency,
+		performanceRisk: string(rec.CurrentPerformanceRisk),
+	}
+}
+
+// NewASGRecommendationResource creates a resource from ASG recommendation.
+func NewASGRecommendationResource(rec types.AutoScalingGroupRecommendation) *RecommendationResource {
+	arn := appaws.Str(rec.AutoScalingGroupArn)
+	name := appaws.Str(rec.AutoScalingGroupName)
+
+	var currentConfig string
+	if rec.CurrentConfiguration != nil {
+		currentConfig = appaws.Str(rec.CurrentConfiguration.InstanceType)
+	}
+
+	var savingsPercent, savingsValue float64
+	var savingsCurrency string
+	if rec.RecommendationOptions != nil && len(rec.RecommendationOptions) > 0 {
+		opt := rec.RecommendationOptions[0]
+		if opt.SavingsOpportunity != nil {
+			savingsPercent = opt.SavingsOpportunity.SavingsOpportunityPercentage
+			if opt.SavingsOpportunity.EstimatedMonthlySavings != nil {
+				savingsValue = opt.SavingsOpportunity.EstimatedMonthlySavings.Value
+				savingsCurrency = string(opt.SavingsOpportunity.EstimatedMonthlySavings.Currency)
+			}
+		}
+	}
+
+	return &RecommendationResource{
+		BaseResource: dao.BaseResource{
+			ID:   arn,
+			Name: name,
+			Data: rec,
+		},
+		resourceType:    "ASG",
+		finding:         string(rec.Finding),
+		currentConfig:   currentConfig,
+		savingsPercent:  savingsPercent,
+		savingsValue:    savingsValue,
+		savingsCurrency: savingsCurrency,
+		performanceRisk: string(rec.CurrentPerformanceRisk),
+	}
+}
+
+// NewEBSRecommendationResource creates a resource from EBS recommendation.
+func NewEBSRecommendationResource(rec types.VolumeRecommendation) *RecommendationResource {
+	arn := appaws.Str(rec.VolumeArn)
+
+	var currentConfig string
+	if rec.CurrentConfiguration != nil {
+		currentConfig = fmt.Sprintf("%s/%dGB", appaws.Str(rec.CurrentConfiguration.VolumeType), rec.CurrentConfiguration.VolumeSize)
+	}
+
+	var savingsPercent, savingsValue float64
+	var savingsCurrency string
+	if rec.VolumeRecommendationOptions != nil && len(rec.VolumeRecommendationOptions) > 0 {
+		opt := rec.VolumeRecommendationOptions[0]
+		if opt.SavingsOpportunity != nil {
+			savingsPercent = opt.SavingsOpportunity.SavingsOpportunityPercentage
+			if opt.SavingsOpportunity.EstimatedMonthlySavings != nil {
+				savingsValue = opt.SavingsOpportunity.EstimatedMonthlySavings.Value
+				savingsCurrency = string(opt.SavingsOpportunity.EstimatedMonthlySavings.Currency)
+			}
+		}
+	}
+
+	return &RecommendationResource{
+		BaseResource: dao.BaseResource{
+			ID:   arn,
+			Name: extractNameFromArn(arn),
+			Data: rec,
+		},
+		resourceType:    "EBS",
+		finding:         string(rec.Finding),
+		currentConfig:   currentConfig,
+		savingsPercent:  savingsPercent,
+		savingsValue:    savingsValue,
+		savingsCurrency: savingsCurrency,
+		performanceRisk: string(rec.CurrentPerformanceRisk),
+	}
+}
+
+// NewLambdaRecommendationResource creates a resource from Lambda recommendation.
+func NewLambdaRecommendationResource(rec types.LambdaFunctionRecommendation) *RecommendationResource {
+	arn := appaws.Str(rec.FunctionArn)
+
+	currentConfig := fmt.Sprintf("%dMB", rec.CurrentMemorySize)
+
+	var savingsPercent, savingsValue float64
+	var savingsCurrency string
+	if rec.MemorySizeRecommendationOptions != nil && len(rec.MemorySizeRecommendationOptions) > 0 {
+		opt := rec.MemorySizeRecommendationOptions[0]
+		if opt.SavingsOpportunity != nil {
+			savingsPercent = opt.SavingsOpportunity.SavingsOpportunityPercentage
+			if opt.SavingsOpportunity.EstimatedMonthlySavings != nil {
+				savingsValue = opt.SavingsOpportunity.EstimatedMonthlySavings.Value
+				savingsCurrency = string(opt.SavingsOpportunity.EstimatedMonthlySavings.Currency)
+			}
+		}
+	}
+
+	return &RecommendationResource{
+		BaseResource: dao.BaseResource{
+			ID:   arn,
+			Name: extractNameFromArn(arn),
+			Data: rec,
+		},
+		resourceType:    "Lambda",
+		finding:         string(rec.Finding),
+		currentConfig:   currentConfig,
+		savingsPercent:  savingsPercent,
+		savingsValue:    savingsValue,
+		savingsCurrency: savingsCurrency,
+		performanceRisk: string(rec.CurrentPerformanceRisk),
+	}
+}
+
+// NewECSRecommendationResource creates a resource from ECS recommendation.
+func NewECSRecommendationResource(rec types.ECSServiceRecommendation) *RecommendationResource {
+	arn := appaws.Str(rec.ServiceArn)
+
+	var currentConfig string
+	if rec.CurrentServiceConfiguration != nil {
+		cpu := rec.CurrentServiceConfiguration.Cpu
+		mem := rec.CurrentServiceConfiguration.Memory
+		currentConfig = fmt.Sprintf("CPU:%d/Mem:%d", cpu, mem)
+	}
+
+	var savingsPercent, savingsValue float64
+	var savingsCurrency string
+	if rec.ServiceRecommendationOptions != nil && len(rec.ServiceRecommendationOptions) > 0 {
+		opt := rec.ServiceRecommendationOptions[0]
+		if opt.SavingsOpportunity != nil {
+			savingsPercent = opt.SavingsOpportunity.SavingsOpportunityPercentage
+			if opt.SavingsOpportunity.EstimatedMonthlySavings != nil {
+				savingsValue = opt.SavingsOpportunity.EstimatedMonthlySavings.Value
+				savingsCurrency = string(opt.SavingsOpportunity.EstimatedMonthlySavings.Currency)
+			}
+		}
+	}
+
+	return &RecommendationResource{
+		BaseResource: dao.BaseResource{
+			ID:   arn,
+			Name: extractNameFromArn(arn),
+			Data: rec,
+		},
+		resourceType:    "ECS",
+		finding:         string(rec.Finding),
+		currentConfig:   currentConfig,
+		savingsPercent:  savingsPercent,
+		savingsValue:    savingsValue,
+		savingsCurrency: savingsCurrency,
+		performanceRisk: string(rec.CurrentPerformanceRisk),
+	}
+}
+
+// extractNameFromArn extracts the resource name from an ARN.
+func extractNameFromArn(arn string) string {
+	if arn == "" {
+		return ""
+	}
+	// Find last / or :
+	for i := len(arn) - 1; i >= 0; i-- {
+		if arn[i] == '/' || arn[i] == ':' {
+			return arn[i+1:]
+		}
+	}
+	return arn
+}

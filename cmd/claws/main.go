@@ -204,6 +204,7 @@ import (
 	_ "github.com/clawscli/claws/custom/trustedadvisor/recommendations"
 
 	// Compute Optimizer
+	_ "github.com/clawscli/claws/custom/computeoptimizer/recommendations"
 	_ "github.com/clawscli/claws/custom/computeoptimizer/summary"
 
 	// Budgets
