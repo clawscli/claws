@@ -93,137 +93,107 @@ func (d *RecommendationDAO) List(ctx context.Context) ([]dao.Resource, error) {
 }
 
 func (d *RecommendationDAO) listEC2Recommendations(ctx context.Context) ([]dao.Resource, error) {
-	var resources []dao.Resource
-	var nextToken *string
-
-	for {
-		input := &computeoptimizer.GetEC2InstanceRecommendationsInput{
-			NextToken: nextToken,
-		}
-
-		output, err := d.client.GetEC2InstanceRecommendations(ctx, input)
+	recs, err := appaws.Paginate(ctx, func(token *string) ([]types.InstanceRecommendation, *string, error) {
+		output, err := d.client.GetEC2InstanceRecommendations(ctx, &computeoptimizer.GetEC2InstanceRecommendationsInput{
+			NextToken: token,
+		})
 		if err != nil {
-			return nil, err
+			return nil, nil, fmt.Errorf("list ec2 recommendations: %w", err)
 		}
-
-		for _, rec := range output.InstanceRecommendations {
-			resources = append(resources, NewEC2RecommendationResource(rec))
-		}
-
-		if output.NextToken == nil {
-			break
-		}
-		nextToken = output.NextToken
+		return output.InstanceRecommendations, output.NextToken, nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
+	resources := make([]dao.Resource, len(recs))
+	for i, rec := range recs {
+		resources[i] = NewEC2RecommendationResource(rec)
+	}
 	return resources, nil
 }
 
 func (d *RecommendationDAO) listASGRecommendations(ctx context.Context) ([]dao.Resource, error) {
-	var resources []dao.Resource
-	var nextToken *string
-
-	for {
-		input := &computeoptimizer.GetAutoScalingGroupRecommendationsInput{
-			NextToken: nextToken,
-		}
-
-		output, err := d.client.GetAutoScalingGroupRecommendations(ctx, input)
+	recs, err := appaws.Paginate(ctx, func(token *string) ([]types.AutoScalingGroupRecommendation, *string, error) {
+		output, err := d.client.GetAutoScalingGroupRecommendations(ctx, &computeoptimizer.GetAutoScalingGroupRecommendationsInput{
+			NextToken: token,
+		})
 		if err != nil {
-			return nil, err
+			return nil, nil, fmt.Errorf("list asg recommendations: %w", err)
 		}
-
-		for _, rec := range output.AutoScalingGroupRecommendations {
-			resources = append(resources, NewASGRecommendationResource(rec))
-		}
-
-		if output.NextToken == nil {
-			break
-		}
-		nextToken = output.NextToken
+		return output.AutoScalingGroupRecommendations, output.NextToken, nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
+	resources := make([]dao.Resource, len(recs))
+	for i, rec := range recs {
+		resources[i] = NewASGRecommendationResource(rec)
+	}
 	return resources, nil
 }
 
 func (d *RecommendationDAO) listEBSRecommendations(ctx context.Context) ([]dao.Resource, error) {
-	var resources []dao.Resource
-	var nextToken *string
-
-	for {
-		input := &computeoptimizer.GetEBSVolumeRecommendationsInput{
-			NextToken: nextToken,
-		}
-
-		output, err := d.client.GetEBSVolumeRecommendations(ctx, input)
+	recs, err := appaws.Paginate(ctx, func(token *string) ([]types.VolumeRecommendation, *string, error) {
+		output, err := d.client.GetEBSVolumeRecommendations(ctx, &computeoptimizer.GetEBSVolumeRecommendationsInput{
+			NextToken: token,
+		})
 		if err != nil {
-			return nil, err
+			return nil, nil, fmt.Errorf("list ebs recommendations: %w", err)
 		}
-
-		for _, rec := range output.VolumeRecommendations {
-			resources = append(resources, NewEBSRecommendationResource(rec))
-		}
-
-		if output.NextToken == nil {
-			break
-		}
-		nextToken = output.NextToken
+		return output.VolumeRecommendations, output.NextToken, nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
+	resources := make([]dao.Resource, len(recs))
+	for i, rec := range recs {
+		resources[i] = NewEBSRecommendationResource(rec)
+	}
 	return resources, nil
 }
 
 func (d *RecommendationDAO) listLambdaRecommendations(ctx context.Context) ([]dao.Resource, error) {
-	var resources []dao.Resource
-	var nextToken *string
-
-	for {
-		input := &computeoptimizer.GetLambdaFunctionRecommendationsInput{
-			NextToken: nextToken,
-		}
-
-		output, err := d.client.GetLambdaFunctionRecommendations(ctx, input)
+	recs, err := appaws.Paginate(ctx, func(token *string) ([]types.LambdaFunctionRecommendation, *string, error) {
+		output, err := d.client.GetLambdaFunctionRecommendations(ctx, &computeoptimizer.GetLambdaFunctionRecommendationsInput{
+			NextToken: token,
+		})
 		if err != nil {
-			return nil, err
+			return nil, nil, fmt.Errorf("list lambda recommendations: %w", err)
 		}
-
-		for _, rec := range output.LambdaFunctionRecommendations {
-			resources = append(resources, NewLambdaRecommendationResource(rec))
-		}
-
-		if output.NextToken == nil {
-			break
-		}
-		nextToken = output.NextToken
+		return output.LambdaFunctionRecommendations, output.NextToken, nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
+	resources := make([]dao.Resource, len(recs))
+	for i, rec := range recs {
+		resources[i] = NewLambdaRecommendationResource(rec)
+	}
 	return resources, nil
 }
 
 func (d *RecommendationDAO) listECSRecommendations(ctx context.Context) ([]dao.Resource, error) {
-	var resources []dao.Resource
-	var nextToken *string
-
-	for {
-		input := &computeoptimizer.GetECSServiceRecommendationsInput{
-			NextToken: nextToken,
-		}
-
-		output, err := d.client.GetECSServiceRecommendations(ctx, input)
+	recs, err := appaws.Paginate(ctx, func(token *string) ([]types.ECSServiceRecommendation, *string, error) {
+		output, err := d.client.GetECSServiceRecommendations(ctx, &computeoptimizer.GetECSServiceRecommendationsInput{
+			NextToken: token,
+		})
 		if err != nil {
-			return nil, err
+			return nil, nil, fmt.Errorf("list ecs recommendations: %w", err)
 		}
-
-		for _, rec := range output.EcsServiceRecommendations {
-			resources = append(resources, NewECSRecommendationResource(rec))
-		}
-
-		if output.NextToken == nil {
-			break
-		}
-		nextToken = output.NextToken
+		return output.EcsServiceRecommendations, output.NextToken, nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
+	resources := make([]dao.Resource, len(recs))
+	for i, rec := range recs {
+		resources[i] = NewECSRecommendationResource(rec)
+	}
 	return resources, nil
 }
 
@@ -321,19 +291,11 @@ func NewEC2RecommendationResource(rec types.InstanceRecommendation) *Recommendat
 		savingsPercent, savingsValue, savingsCurrency = extractSavings(rec.RecommendationOptions[0].SavingsOpportunity)
 	}
 
-	// Convert tags to map
-	tags := make(map[string]string)
-	for _, tag := range rec.Tags {
-		if tag.Key != nil && tag.Value != nil {
-			tags[*tag.Key] = *tag.Value
-		}
-	}
-
 	return &RecommendationResource{
 		BaseResource: dao.BaseResource{
 			ID:   arn,
 			Name: appaws.ExtractResourceName(arn),
-			Tags: tags,
+			Tags: appaws.TagsToMap(rec.Tags),
 			Data: rec,
 		},
 		resourceType:    "EC2",
@@ -454,19 +416,11 @@ func NewECSRecommendationResource(rec types.ECSServiceRecommendation) *Recommend
 		savingsPercent, savingsValue, savingsCurrency = extractSavings(rec.ServiceRecommendationOptions[0].SavingsOpportunity)
 	}
 
-	// Convert tags to map
-	tags := make(map[string]string)
-	for _, tag := range rec.Tags {
-		if tag.Key != nil && tag.Value != nil {
-			tags[*tag.Key] = *tag.Value
-		}
-	}
-
 	return &RecommendationResource{
 		BaseResource: dao.BaseResource{
 			ID:   arn,
 			Name: appaws.ExtractResourceName(arn),
-			Tags: tags,
+			Tags: appaws.TagsToMap(rec.Tags),
 			Data: rec,
 		},
 		resourceType:    "ECS",

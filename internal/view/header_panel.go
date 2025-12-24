@@ -157,7 +157,7 @@ func (h *HeaderPanel) Render(service, resourceType string, summaryFields []rende
 
 		for i, field := range summaryFields {
 			if rowIndex >= maxRows {
-				break // Only show first 2 rows of fields
+				break // Only show first 3 rows of fields
 			}
 
 			// Truncate long values to prevent line wrapping

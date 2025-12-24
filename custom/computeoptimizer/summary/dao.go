@@ -30,29 +30,23 @@ func NewSummaryDAO(ctx context.Context) (dao.DAO, error) {
 
 // List returns recommendation summaries for all resource types.
 func (d *SummaryDAO) List(ctx context.Context) ([]dao.Resource, error) {
-	var resources []dao.Resource
-	var nextToken *string
-
-	for {
-		input := &computeoptimizer.GetRecommendationSummariesInput{
-			NextToken: nextToken,
-		}
-
-		output, err := d.client.GetRecommendationSummaries(ctx, input)
+	summaries, err := appaws.Paginate(ctx, func(token *string) ([]types.RecommendationSummary, *string, error) {
+		output, err := d.client.GetRecommendationSummaries(ctx, &computeoptimizer.GetRecommendationSummariesInput{
+			NextToken: token,
+		})
 		if err != nil {
-			return nil, fmt.Errorf("get recommendation summaries: %w", err)
+			return nil, nil, fmt.Errorf("list recommendation summaries: %w", err)
 		}
-
-		for _, summary := range output.RecommendationSummaries {
-			resources = append(resources, NewSummaryResource(summary))
-		}
-
-		if output.NextToken == nil {
-			break
-		}
-		nextToken = output.NextToken
+		return output.RecommendationSummaries, output.NextToken, nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
+	resources := make([]dao.Resource, len(summaries))
+	for i, summary := range summaries {
+		resources[i] = NewSummaryResource(summary)
+	}
 	return resources, nil
 }
 
@@ -112,20 +106,6 @@ func (r *SummaryResource) AccountId() string {
 // Summaries returns the summary findings.
 func (r *SummaryResource) Summaries() []types.Summary {
 	return r.item().Summaries
-}
-
-// SummaryString returns a formatted summary of findings.
-func (r *SummaryResource) SummaryString() string {
-	result := ""
-	for _, s := range r.item().Summaries {
-		if s.Value > 0 {
-			if result != "" {
-				result += ", "
-			}
-			result += fmt.Sprintf("%s:%.0f", string(s.Name), s.Value)
-		}
-	}
-	return result
 }
 
 // SavingsOpportunityPercentage returns the savings opportunity percentage.

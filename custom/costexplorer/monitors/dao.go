@@ -24,35 +24,30 @@ func NewMonitorDAO(ctx context.Context) (dao.DAO, error) {
 	}
 	return &MonitorDAO{
 		BaseDAO: dao.NewBaseDAO("costexplorer", "monitors"),
-		client:  costexplorer.NewFromConfig(cfg),
+		// Cost Explorer API is only available in us-east-1
+		client: costexplorer.NewFromConfig(cfg, func(o *costexplorer.Options) { o.Region = "us-east-1" }),
 	}, nil
 }
 
 // List returns all anomaly monitors.
 func (d *MonitorDAO) List(ctx context.Context) ([]dao.Resource, error) {
-	var resources []dao.Resource
-	var nextToken *string
-
-	for {
-		input := &costexplorer.GetAnomalyMonitorsInput{
-			NextPageToken: nextToken,
-		}
-
-		output, err := d.client.GetAnomalyMonitors(ctx, input)
+	monitors, err := appaws.Paginate(ctx, func(token *string) ([]types.AnomalyMonitor, *string, error) {
+		output, err := d.client.GetAnomalyMonitors(ctx, &costexplorer.GetAnomalyMonitorsInput{
+			NextPageToken: token,
+		})
 		if err != nil {
-			return nil, fmt.Errorf("get anomaly monitors: %w", err)
+			return nil, nil, fmt.Errorf("list anomaly monitors: %w", err)
 		}
-
-		for _, monitor := range output.AnomalyMonitors {
-			resources = append(resources, NewMonitorResource(monitor))
-		}
-
-		if output.NextPageToken == nil {
-			break
-		}
-		nextToken = output.NextPageToken
+		return output.AnomalyMonitors, output.NextPageToken, nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
+	resources := make([]dao.Resource, len(monitors))
+	for i, monitor := range monitors {
+		resources[i] = NewMonitorResource(monitor)
+	}
 	return resources, nil
 }
 

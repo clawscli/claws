@@ -25,7 +25,8 @@ func NewAnomalyDAO(ctx context.Context) (dao.DAO, error) {
 	}
 	return &AnomalyDAO{
 		BaseDAO: dao.NewBaseDAO("costexplorer", "anomalies"),
-		client:  costexplorer.NewFromConfig(cfg),
+		// Cost Explorer API is only available in us-east-1
+		client: costexplorer.NewFromConfig(cfg, func(o *costexplorer.Options) { o.Region = "us-east-1" }),
 	}, nil
 }
 
@@ -36,33 +37,27 @@ func (d *AnomalyDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	start := now.AddDate(0, 0, -90).Format("2006-01-02")
 	end := now.Format("2006-01-02")
 
-	var resources []dao.Resource
-	var nextToken *string
-
-	for {
-		input := &costexplorer.GetAnomaliesInput{
+	anomalies, err := appaws.Paginate(ctx, func(token *string) ([]types.Anomaly, *string, error) {
+		output, err := d.client.GetAnomalies(ctx, &costexplorer.GetAnomaliesInput{
 			DateInterval: &types.AnomalyDateInterval{
 				StartDate: &start,
 				EndDate:   &end,
 			},
-			NextPageToken: nextToken,
-		}
-
-		output, err := d.client.GetAnomalies(ctx, input)
+			NextPageToken: token,
+		})
 		if err != nil {
-			return nil, fmt.Errorf("get anomalies: %w", err)
+			return nil, nil, fmt.Errorf("list anomalies: %w", err)
 		}
-
-		for _, anomaly := range output.Anomalies {
-			resources = append(resources, NewAnomalyResource(anomaly))
-		}
-
-		if output.NextPageToken == nil {
-			break
-		}
-		nextToken = output.NextPageToken
+		return output.Anomalies, output.NextPageToken, nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
+	resources := make([]dao.Resource, len(anomalies))
+	for i, anomaly := range anomalies {
+		resources[i] = NewAnomalyResource(anomaly)
+	}
 	return resources, nil
 }
 

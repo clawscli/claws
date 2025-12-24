@@ -31,29 +31,23 @@ func NewRecommendationDAO(ctx context.Context) (dao.DAO, error) {
 
 // List returns all Trusted Advisor recommendations.
 func (d *RecommendationDAO) List(ctx context.Context) ([]dao.Resource, error) {
-	var resources []dao.Resource
-	var nextToken *string
-
-	for {
-		input := &trustedadvisor.ListRecommendationsInput{
-			NextToken: nextToken,
-		}
-
-		output, err := d.client.ListRecommendations(ctx, input)
+	recs, err := appaws.Paginate(ctx, func(token *string) ([]types.RecommendationSummary, *string, error) {
+		output, err := d.client.ListRecommendations(ctx, &trustedadvisor.ListRecommendationsInput{
+			NextToken: token,
+		})
 		if err != nil {
-			return nil, fmt.Errorf("list recommendations: %w", err)
+			return nil, nil, fmt.Errorf("list recommendations: %w", err)
 		}
-
-		for _, rec := range output.RecommendationSummaries {
-			resources = append(resources, NewRecommendationResource(rec))
-		}
-
-		if output.NextToken == nil {
-			break
-		}
-		nextToken = output.NextToken
+		return output.RecommendationSummaries, output.NextToken, nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
+	resources := make([]dao.Resource, len(recs))
+	for i, rec := range recs {
+		resources[i] = NewRecommendationResource(rec)
+	}
 	return resources, nil
 }
 
