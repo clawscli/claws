@@ -5,6 +5,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/clawscli/claws/internal/config"
+	"github.com/clawscli/claws/internal/registry"
 	"github.com/clawscli/claws/internal/render"
 	"github.com/clawscli/claws/internal/ui"
 	"github.com/mattn/go-runewidth"
@@ -86,8 +87,9 @@ func (h *HeaderPanel) renderContextLine(service, resourceType string) string {
 		s.label.Render("Region: ") + s.value.Render(region)
 
 	if service != "" {
+		displayName := registry.Global.GetDisplayName(service)
 		line += s.dim.Render("  │  ") +
-			s.accent.Render(strings.ToUpper(service)) +
+			s.accent.Render(displayName) +
 			s.dim.Render(" › ") +
 			s.accent.Render(resourceType)
 	}

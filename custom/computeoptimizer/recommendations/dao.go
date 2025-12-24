@@ -25,10 +25,13 @@ func NewRecommendationDAO(ctx context.Context) (dao.DAO, error) {
 		return nil, fmt.Errorf("new computeoptimizer/recommendations dao: %w", err)
 	}
 	return &RecommendationDAO{
-		BaseDAO: dao.NewBaseDAO("compute-optimizer", "recommendations"),
+		BaseDAO: dao.NewBaseDAO("computeoptimizer", "recommendations"),
 		client:  computeoptimizer.NewFromConfig(cfg),
 	}, nil
 }
+
+// numRecommendationAPIs is the number of recommendation APIs we call.
+const numRecommendationAPIs = 5
 
 // List returns all recommendations from multiple resource types.
 // Partial failures are logged but don't prevent returning results from successful APIs.
@@ -82,7 +85,7 @@ func (d *RecommendationDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	}
 
 	// If all APIs failed, return combined error
-	if len(errs) == 5 {
+	if len(errs) == numRecommendationAPIs {
 		return nil, errors.Join(errs...)
 	}
 
@@ -318,10 +321,19 @@ func NewEC2RecommendationResource(rec types.InstanceRecommendation) *Recommendat
 		savingsPercent, savingsValue, savingsCurrency = extractSavings(rec.RecommendationOptions[0].SavingsOpportunity)
 	}
 
+	// Convert tags to map
+	tags := make(map[string]string)
+	for _, tag := range rec.Tags {
+		if tag.Key != nil && tag.Value != nil {
+			tags[*tag.Key] = *tag.Value
+		}
+	}
+
 	return &RecommendationResource{
 		BaseResource: dao.BaseResource{
 			ID:   arn,
 			Name: appaws.ExtractResourceName(arn),
+			Tags: tags,
 			Data: rec,
 		},
 		resourceType:    "EC2",
@@ -442,10 +454,19 @@ func NewECSRecommendationResource(rec types.ECSServiceRecommendation) *Recommend
 		savingsPercent, savingsValue, savingsCurrency = extractSavings(rec.ServiceRecommendationOptions[0].SavingsOpportunity)
 	}
 
+	// Convert tags to map
+	tags := make(map[string]string)
+	for _, tag := range rec.Tags {
+		if tag.Key != nil && tag.Value != nil {
+			tags[*tag.Key] = *tag.Value
+		}
+	}
+
 	return &RecommendationResource{
 		BaseResource: dao.BaseResource{
 			ID:   arn,
 			Name: appaws.ExtractResourceName(arn),
+			Tags: tags,
 			Data: rec,
 		},
 		resourceType:    "ECS",

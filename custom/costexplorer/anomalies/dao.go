@@ -24,7 +24,7 @@ func NewAnomalyDAO(ctx context.Context) (dao.DAO, error) {
 		return nil, fmt.Errorf("new costexplorer/anomalies dao: %w", err)
 	}
 	return &AnomalyDAO{
-		BaseDAO: dao.NewBaseDAO("cost-explorer", "anomalies"),
+		BaseDAO: dao.NewBaseDAO("costexplorer", "anomalies"),
 		client:  costexplorer.NewFromConfig(cfg),
 	}, nil
 }

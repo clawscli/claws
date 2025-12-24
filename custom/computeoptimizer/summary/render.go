@@ -16,7 +16,7 @@ type SummaryRenderer struct {
 func NewSummaryRenderer() render.Renderer {
 	return &SummaryRenderer{
 		BaseRenderer: render.BaseRenderer{
-			Service:  "compute-optimizer",
+			Service:  "computeoptimizer",
 			Resource: "summary",
 			Cols: []render.Column{
 				{Name: "RESOURCE TYPE", Width: 20, Getter: getResourceType},

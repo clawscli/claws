@@ -23,7 +23,7 @@ func NewMonitorDAO(ctx context.Context) (dao.DAO, error) {
 		return nil, fmt.Errorf("new costexplorer/monitors dao: %w", err)
 	}
 	return &MonitorDAO{
-		BaseDAO: dao.NewBaseDAO("cost-explorer", "monitors"),
+		BaseDAO: dao.NewBaseDAO("costexplorer", "monitors"),
 		client:  costexplorer.NewFromConfig(cfg),
 	}, nil
 }

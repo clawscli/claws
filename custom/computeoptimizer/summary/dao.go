@@ -23,7 +23,7 @@ func NewSummaryDAO(ctx context.Context) (dao.DAO, error) {
 		return nil, fmt.Errorf("new computeoptimizer/summary dao: %w", err)
 	}
 	return &SummaryDAO{
-		BaseDAO: dao.NewBaseDAO("compute-optimizer", "summary"),
+		BaseDAO: dao.NewBaseDAO("computeoptimizer", "summary"),
 		client:  computeoptimizer.NewFromConfig(cfg),
 	}, nil
 }

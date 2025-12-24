@@ -19,7 +19,7 @@ type RecommendationRenderer struct {
 func NewRecommendationRenderer() render.Renderer {
 	return &RecommendationRenderer{
 		BaseRenderer: render.BaseRenderer{
-			Service:  "compute-optimizer",
+			Service:  "computeoptimizer",
 			Resource: "recommendations",
 			Cols: []render.Column{
 				{Name: "TYPE", Width: 8, Getter: getType},
