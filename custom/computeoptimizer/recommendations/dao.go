@@ -2,12 +2,14 @@ package recommendations
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/computeoptimizer"
 	"github.com/aws/aws-sdk-go-v2/service/computeoptimizer/types"
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	"github.com/clawscli/claws/internal/log"
 )
 
 // RecommendationDAO provides data access for Compute Optimizer Recommendations.
@@ -29,14 +31,16 @@ func NewRecommendationDAO(ctx context.Context) (dao.DAO, error) {
 }
 
 // List returns all recommendations from multiple resource types.
+// Partial failures are logged but don't prevent returning results from successful APIs.
 func (d *RecommendationDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	var resources []dao.Resource
+	var errs []error
 
 	// Fetch EC2 recommendations
 	ec2Recs, err := d.listEC2Recommendations(ctx)
 	if err != nil {
-		// Log error but continue with other types
-		_ = err
+		log.Warn("failed to list EC2 recommendations", "error", err)
+		errs = append(errs, fmt.Errorf("EC2: %w", err))
 	} else {
 		resources = append(resources, ec2Recs...)
 	}
@@ -44,7 +48,8 @@ func (d *RecommendationDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	// Fetch ASG recommendations
 	asgRecs, err := d.listASGRecommendations(ctx)
 	if err != nil {
-		_ = err
+		log.Warn("failed to list ASG recommendations", "error", err)
+		errs = append(errs, fmt.Errorf("ASG: %w", err))
 	} else {
 		resources = append(resources, asgRecs...)
 	}
@@ -52,7 +57,8 @@ func (d *RecommendationDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	// Fetch EBS recommendations
 	ebsRecs, err := d.listEBSRecommendations(ctx)
 	if err != nil {
-		_ = err
+		log.Warn("failed to list EBS recommendations", "error", err)
+		errs = append(errs, fmt.Errorf("EBS: %w", err))
 	} else {
 		resources = append(resources, ebsRecs...)
 	}
@@ -60,7 +66,8 @@ func (d *RecommendationDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	// Fetch Lambda recommendations
 	lambdaRecs, err := d.listLambdaRecommendations(ctx)
 	if err != nil {
-		_ = err
+		log.Warn("failed to list Lambda recommendations", "error", err)
+		errs = append(errs, fmt.Errorf("Lambda: %w", err))
 	} else {
 		resources = append(resources, lambdaRecs...)
 	}
@@ -68,9 +75,15 @@ func (d *RecommendationDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	// Fetch ECS recommendations
 	ecsRecs, err := d.listECSRecommendations(ctx)
 	if err != nil {
-		_ = err
+		log.Warn("failed to list ECS recommendations", "error", err)
+		errs = append(errs, fmt.Errorf("ECS: %w", err))
 	} else {
 		resources = append(resources, ecsRecs...)
+	}
+
+	// If all APIs failed, return combined error
+	if len(errs) == 5 {
+		return nil, errors.Join(errs...)
 	}
 
 	return resources, nil
@@ -243,6 +256,19 @@ type RecommendationResource struct {
 	performanceRisk string
 }
 
+// extractSavings extracts savings info from SavingsOpportunity.
+func extractSavings(opportunity *types.SavingsOpportunity) (pct, val float64, currency string) {
+	if opportunity == nil {
+		return 0, 0, ""
+	}
+	pct = opportunity.SavingsOpportunityPercentage
+	if opportunity.EstimatedMonthlySavings != nil {
+		val = opportunity.EstimatedMonthlySavings.Value
+		currency = string(opportunity.EstimatedMonthlySavings.Currency)
+	}
+	return
+}
+
 // ResourceType returns the resource type (EC2, ASG, EBS, Lambda, ECS).
 func (r *RecommendationResource) ResourceType() string {
 	return r.resourceType
@@ -288,15 +314,8 @@ func NewEC2RecommendationResource(rec types.InstanceRecommendation) *Recommendat
 
 	var savingsPercent, savingsValue float64
 	var savingsCurrency string
-	if rec.RecommendationOptions != nil && len(rec.RecommendationOptions) > 0 {
-		opt := rec.RecommendationOptions[0]
-		if opt.SavingsOpportunity != nil {
-			savingsPercent = opt.SavingsOpportunity.SavingsOpportunityPercentage
-			if opt.SavingsOpportunity.EstimatedMonthlySavings != nil {
-				savingsValue = opt.SavingsOpportunity.EstimatedMonthlySavings.Value
-				savingsCurrency = string(opt.SavingsOpportunity.EstimatedMonthlySavings.Currency)
-			}
-		}
+	if len(rec.RecommendationOptions) > 0 {
+		savingsPercent, savingsValue, savingsCurrency = extractSavings(rec.RecommendationOptions[0].SavingsOpportunity)
 	}
 
 	return &RecommendationResource{
@@ -327,15 +346,8 @@ func NewASGRecommendationResource(rec types.AutoScalingGroupRecommendation) *Rec
 
 	var savingsPercent, savingsValue float64
 	var savingsCurrency string
-	if rec.RecommendationOptions != nil && len(rec.RecommendationOptions) > 0 {
-		opt := rec.RecommendationOptions[0]
-		if opt.SavingsOpportunity != nil {
-			savingsPercent = opt.SavingsOpportunity.SavingsOpportunityPercentage
-			if opt.SavingsOpportunity.EstimatedMonthlySavings != nil {
-				savingsValue = opt.SavingsOpportunity.EstimatedMonthlySavings.Value
-				savingsCurrency = string(opt.SavingsOpportunity.EstimatedMonthlySavings.Currency)
-			}
-		}
+	if len(rec.RecommendationOptions) > 0 {
+		savingsPercent, savingsValue, savingsCurrency = extractSavings(rec.RecommendationOptions[0].SavingsOpportunity)
 	}
 
 	return &RecommendationResource{
@@ -365,15 +377,8 @@ func NewEBSRecommendationResource(rec types.VolumeRecommendation) *Recommendatio
 
 	var savingsPercent, savingsValue float64
 	var savingsCurrency string
-	if rec.VolumeRecommendationOptions != nil && len(rec.VolumeRecommendationOptions) > 0 {
-		opt := rec.VolumeRecommendationOptions[0]
-		if opt.SavingsOpportunity != nil {
-			savingsPercent = opt.SavingsOpportunity.SavingsOpportunityPercentage
-			if opt.SavingsOpportunity.EstimatedMonthlySavings != nil {
-				savingsValue = opt.SavingsOpportunity.EstimatedMonthlySavings.Value
-				savingsCurrency = string(opt.SavingsOpportunity.EstimatedMonthlySavings.Currency)
-			}
-		}
+	if len(rec.VolumeRecommendationOptions) > 0 {
+		savingsPercent, savingsValue, savingsCurrency = extractSavings(rec.VolumeRecommendationOptions[0].SavingsOpportunity)
 	}
 
 	return &RecommendationResource{
@@ -400,15 +405,8 @@ func NewLambdaRecommendationResource(rec types.LambdaFunctionRecommendation) *Re
 
 	var savingsPercent, savingsValue float64
 	var savingsCurrency string
-	if rec.MemorySizeRecommendationOptions != nil && len(rec.MemorySizeRecommendationOptions) > 0 {
-		opt := rec.MemorySizeRecommendationOptions[0]
-		if opt.SavingsOpportunity != nil {
-			savingsPercent = opt.SavingsOpportunity.SavingsOpportunityPercentage
-			if opt.SavingsOpportunity.EstimatedMonthlySavings != nil {
-				savingsValue = opt.SavingsOpportunity.EstimatedMonthlySavings.Value
-				savingsCurrency = string(opt.SavingsOpportunity.EstimatedMonthlySavings.Currency)
-			}
-		}
+	if len(rec.MemorySizeRecommendationOptions) > 0 {
+		savingsPercent, savingsValue, savingsCurrency = extractSavings(rec.MemorySizeRecommendationOptions[0].SavingsOpportunity)
 	}
 
 	return &RecommendationResource{
@@ -440,15 +438,8 @@ func NewECSRecommendationResource(rec types.ECSServiceRecommendation) *Recommend
 
 	var savingsPercent, savingsValue float64
 	var savingsCurrency string
-	if rec.ServiceRecommendationOptions != nil && len(rec.ServiceRecommendationOptions) > 0 {
-		opt := rec.ServiceRecommendationOptions[0]
-		if opt.SavingsOpportunity != nil {
-			savingsPercent = opt.SavingsOpportunity.SavingsOpportunityPercentage
-			if opt.SavingsOpportunity.EstimatedMonthlySavings != nil {
-				savingsValue = opt.SavingsOpportunity.EstimatedMonthlySavings.Value
-				savingsCurrency = string(opt.SavingsOpportunity.EstimatedMonthlySavings.Currency)
-			}
-		}
+	if len(rec.ServiceRecommendationOptions) > 0 {
+		savingsPercent, savingsValue, savingsCurrency = extractSavings(rec.ServiceRecommendationOptions[0].SavingsOpportunity)
 	}
 
 	return &RecommendationResource{

@@ -97,8 +97,8 @@ type AnomalyResource struct {
 func NewAnomalyResource(anomaly types.Anomaly) *AnomalyResource {
 	return &AnomalyResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(anomaly.AnomalyId),
-			ARN: appaws.Str(anomaly.AnomalyId),
+			ID:   appaws.Str(anomaly.AnomalyId),
+			Name: appaws.Str(anomaly.DimensionValue),
 		},
 		Item: anomaly,
 	}
