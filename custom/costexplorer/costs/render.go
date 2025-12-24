@@ -17,7 +17,7 @@ type CostRenderer struct {
 func NewCostRenderer() render.Renderer {
 	return &CostRenderer{
 		BaseRenderer: render.BaseRenderer{
-			Service:  "cost-explorer",
+			Service:  "costexplorer",
 			Resource: "costs",
 			Cols: []render.Column{
 				{Name: "SERVICE", Width: 45, Getter: func(r dao.Resource) string { return r.GetID() }},
