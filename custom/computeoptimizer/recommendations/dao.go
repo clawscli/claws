@@ -40,7 +40,7 @@ func (d *RecommendationDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	ec2Recs, err := d.listEC2Recommendations(ctx)
 	if err != nil {
 		log.Warn("failed to list EC2 recommendations", "error", err)
-		errs = append(errs, fmt.Errorf("EC2: %w", err))
+		errs = append(errs, fmt.Errorf("ec2: %w", err))
 	} else {
 		resources = append(resources, ec2Recs...)
 	}
@@ -49,7 +49,7 @@ func (d *RecommendationDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	asgRecs, err := d.listASGRecommendations(ctx)
 	if err != nil {
 		log.Warn("failed to list ASG recommendations", "error", err)
-		errs = append(errs, fmt.Errorf("ASG: %w", err))
+		errs = append(errs, fmt.Errorf("asg: %w", err))
 	} else {
 		resources = append(resources, asgRecs...)
 	}
@@ -58,7 +58,7 @@ func (d *RecommendationDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	ebsRecs, err := d.listEBSRecommendations(ctx)
 	if err != nil {
 		log.Warn("failed to list EBS recommendations", "error", err)
-		errs = append(errs, fmt.Errorf("EBS: %w", err))
+		errs = append(errs, fmt.Errorf("ebs: %w", err))
 	} else {
 		resources = append(resources, ebsRecs...)
 	}
@@ -67,7 +67,7 @@ func (d *RecommendationDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	lambdaRecs, err := d.listLambdaRecommendations(ctx)
 	if err != nil {
 		log.Warn("failed to list Lambda recommendations", "error", err)
-		errs = append(errs, fmt.Errorf("Lambda: %w", err))
+		errs = append(errs, fmt.Errorf("lambda: %w", err))
 	} else {
 		resources = append(resources, lambdaRecs...)
 	}
@@ -76,7 +76,7 @@ func (d *RecommendationDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	ecsRecs, err := d.listECSRecommendations(ctx)
 	if err != nil {
 		log.Warn("failed to list ECS recommendations", "error", err)
-		errs = append(errs, fmt.Errorf("ECS: %w", err))
+		errs = append(errs, fmt.Errorf("ecs: %w", err))
 	} else {
 		resources = append(resources, ecsRecs...)
 	}
@@ -321,7 +321,7 @@ func NewEC2RecommendationResource(rec types.InstanceRecommendation) *Recommendat
 	return &RecommendationResource{
 		BaseResource: dao.BaseResource{
 			ID:   arn,
-			Name: extractNameFromArn(arn),
+			Name: appaws.ExtractResourceName(arn),
 			Data: rec,
 		},
 		resourceType:    "EC2",
@@ -384,7 +384,7 @@ func NewEBSRecommendationResource(rec types.VolumeRecommendation) *Recommendatio
 	return &RecommendationResource{
 		BaseResource: dao.BaseResource{
 			ID:   arn,
-			Name: extractNameFromArn(arn),
+			Name: appaws.ExtractResourceName(arn),
 			Data: rec,
 		},
 		resourceType:    "EBS",
@@ -412,7 +412,7 @@ func NewLambdaRecommendationResource(rec types.LambdaFunctionRecommendation) *Re
 	return &RecommendationResource{
 		BaseResource: dao.BaseResource{
 			ID:   arn,
-			Name: extractNameFromArn(arn),
+			Name: appaws.ExtractResourceName(arn),
 			Data: rec,
 		},
 		resourceType:    "Lambda",
@@ -445,7 +445,7 @@ func NewECSRecommendationResource(rec types.ECSServiceRecommendation) *Recommend
 	return &RecommendationResource{
 		BaseResource: dao.BaseResource{
 			ID:   arn,
-			Name: extractNameFromArn(arn),
+			Name: appaws.ExtractResourceName(arn),
 			Data: rec,
 		},
 		resourceType:    "ECS",
@@ -456,18 +456,4 @@ func NewECSRecommendationResource(rec types.ECSServiceRecommendation) *Recommend
 		savingsCurrency: savingsCurrency,
 		performanceRisk: string(rec.CurrentPerformanceRisk),
 	}
-}
-
-// extractNameFromArn extracts the resource name from an ARN.
-func extractNameFromArn(arn string) string {
-	if arn == "" {
-		return ""
-	}
-	// Find last / or :
-	for i := len(arn) - 1; i >= 0; i-- {
-		if arn[i] == '/' || arn[i] == ':' {
-			return arn[i+1:]
-		}
-	}
-	return arn
 }
