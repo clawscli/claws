@@ -70,6 +70,12 @@ func (d *SummaryDAO) Delete(ctx context.Context, id string) error {
 	return fmt.Errorf("delete not supported for compute optimizer summaries")
 }
 
+// Supports returns true only for List operation.
+// Get() is implemented via List() scan, so we disable auto-refresh in DetailView.
+func (d *SummaryDAO) Supports(op dao.Operation) bool {
+	return op == dao.OpList
+}
+
 // SummaryResource wraps a Compute Optimizer Recommendation Summary.
 type SummaryResource struct {
 	dao.BaseResource

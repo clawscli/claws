@@ -19,14 +19,14 @@ type CostDAO struct {
 
 // NewCostDAO creates a new CostDAO.
 func NewCostDAO(ctx context.Context) (dao.DAO, error) {
-	cfg, err := appaws.NewConfig(ctx)
+	// Cost Explorer API is only available in us-east-1
+	cfg, err := appaws.NewConfigWithRegion(ctx, "us-east-1")
 	if err != nil {
 		return nil, fmt.Errorf("new costexplorer/costs dao: %w", err)
 	}
 	return &CostDAO{
 		BaseDAO: dao.NewBaseDAO("costexplorer", "costs"),
-		// Cost Explorer API is only available in us-east-1
-		client: costexplorer.NewFromConfig(cfg, func(o *costexplorer.Options) { o.Region = "us-east-1" }),
+		client:  costexplorer.NewFromConfig(cfg),
 	}, nil
 }
 

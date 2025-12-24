@@ -114,7 +114,7 @@ func (r *SummaryRenderer) RenderDetail(resource dao.Resource) string {
 	// Savings Opportunity
 	d.Section("Savings Opportunity")
 	d.Field("Savings Percentage", fmt.Sprintf("%.2f%%", s.SavingsOpportunityPercentage()))
-	d.Field("Estimated Monthly Savings", fmt.Sprintf("$%.2f %s", s.EstimatedMonthlySavings(), s.EstimatedMonthlySavingsCurrency()))
+	d.Field("Estimated Monthly Savings", fmt.Sprintf("$%.2f", s.EstimatedMonthlySavings()))
 
 	return d.String()
 }

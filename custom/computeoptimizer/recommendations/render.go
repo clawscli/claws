@@ -119,7 +119,7 @@ func (r *RecommendationRenderer) RenderDetail(resource dao.Resource) string {
 	if rec.SavingsPercent() > 0 || rec.SavingsValue() > 0 {
 		d.Section("Savings Opportunity")
 		d.Field("Savings Percentage", fmt.Sprintf("%.2f%%", rec.SavingsPercent()))
-		d.Field("Estimated Monthly Savings", fmt.Sprintf("$%.2f %s", rec.SavingsValue(), rec.SavingsCurrency()))
+		d.Field("Estimated Monthly Savings", fmt.Sprintf("$%.2f", rec.SavingsValue()))
 	}
 
 	// Type-specific details from original SDK data

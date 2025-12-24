@@ -19,14 +19,14 @@ type AnomalyDAO struct {
 
 // NewAnomalyDAO creates a new AnomalyDAO.
 func NewAnomalyDAO(ctx context.Context) (dao.DAO, error) {
-	cfg, err := appaws.NewConfig(ctx)
+	// Cost Explorer API is only available in us-east-1
+	cfg, err := appaws.NewConfigWithRegion(ctx, "us-east-1")
 	if err != nil {
 		return nil, fmt.Errorf("new costexplorer/anomalies dao: %w", err)
 	}
 	return &AnomalyDAO{
 		BaseDAO: dao.NewBaseDAO("costexplorer", "anomalies"),
-		// Cost Explorer API is only available in us-east-1
-		client: costexplorer.NewFromConfig(cfg, func(o *costexplorer.Options) { o.Region = "us-east-1" }),
+		client:  costexplorer.NewFromConfig(cfg),
 	}, nil
 }
 
@@ -80,6 +80,12 @@ func (d *AnomalyDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 // Delete is not supported for anomalies.
 func (d *AnomalyDAO) Delete(ctx context.Context, id string) error {
 	return fmt.Errorf("delete not supported for cost anomalies")
+}
+
+// Supports returns true only for List operation.
+// Get() is implemented via List() scan, so we disable auto-refresh in DetailView.
+func (d *AnomalyDAO) Supports(op dao.Operation) bool {
+	return op == dao.OpList
 }
 
 // AnomalyResource wraps a Cost Anomaly.

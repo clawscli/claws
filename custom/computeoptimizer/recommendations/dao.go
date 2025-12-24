@@ -217,6 +217,12 @@ func (d *RecommendationDAO) Delete(ctx context.Context, id string) error {
 	return fmt.Errorf("delete not supported for compute optimizer recommendations")
 }
 
+// Supports returns true only for List operation.
+// Get() is implemented via List() scan, so we disable auto-refresh in DetailView.
+func (d *RecommendationDAO) Supports(op dao.Operation) bool {
+	return op == dao.OpList
+}
+
 // RecommendationResource is a unified wrapper for all recommendation types.
 type RecommendationResource struct {
 	dao.BaseResource
@@ -295,6 +301,7 @@ func NewEC2RecommendationResource(rec types.InstanceRecommendation) *Recommendat
 		BaseResource: dao.BaseResource{
 			ID:   arn,
 			Name: appaws.ExtractResourceName(arn),
+			ARN:  arn,
 			Tags: appaws.TagsToMap(rec.Tags),
 			Data: rec,
 		},
@@ -328,6 +335,7 @@ func NewASGRecommendationResource(rec types.AutoScalingGroupRecommendation) *Rec
 		BaseResource: dao.BaseResource{
 			ID:   arn,
 			Name: name,
+			ARN:  arn,
 			Data: rec,
 		},
 		resourceType:    "ASG",
@@ -359,6 +367,7 @@ func NewEBSRecommendationResource(rec types.VolumeRecommendation) *Recommendatio
 		BaseResource: dao.BaseResource{
 			ID:   arn,
 			Name: appaws.ExtractResourceName(arn),
+			ARN:  arn,
 			Data: rec,
 		},
 		resourceType:    "EBS",
@@ -387,6 +396,7 @@ func NewLambdaRecommendationResource(rec types.LambdaFunctionRecommendation) *Re
 		BaseResource: dao.BaseResource{
 			ID:   arn,
 			Name: appaws.ExtractResourceName(arn),
+			ARN:  arn,
 			Data: rec,
 		},
 		resourceType:    "Lambda",
@@ -420,6 +430,7 @@ func NewECSRecommendationResource(rec types.ECSServiceRecommendation) *Recommend
 		BaseResource: dao.BaseResource{
 			ID:   arn,
 			Name: appaws.ExtractResourceName(arn),
+			ARN:  arn,
 			Tags: appaws.TagsToMap(rec.Tags),
 			Data: rec,
 		},

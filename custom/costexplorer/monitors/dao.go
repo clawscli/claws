@@ -18,14 +18,14 @@ type MonitorDAO struct {
 
 // NewMonitorDAO creates a new MonitorDAO.
 func NewMonitorDAO(ctx context.Context) (dao.DAO, error) {
-	cfg, err := appaws.NewConfig(ctx)
+	// Cost Explorer API is only available in us-east-1
+	cfg, err := appaws.NewConfigWithRegion(ctx, "us-east-1")
 	if err != nil {
 		return nil, fmt.Errorf("new costexplorer/monitors dao: %w", err)
 	}
 	return &MonitorDAO{
 		BaseDAO: dao.NewBaseDAO("costexplorer", "monitors"),
-		// Cost Explorer API is only available in us-east-1
-		client: costexplorer.NewFromConfig(cfg, func(o *costexplorer.Options) { o.Region = "us-east-1" }),
+		client:  costexplorer.NewFromConfig(cfg),
 	}, nil
 }
 
