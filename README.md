@@ -336,6 +336,7 @@ Quick shortcuts for common services:
 | `ri` | Reserved Instances |
 | `sp` | Savings Plans |
 | `odcr` | Capacity Reservations |
+| `tgw` | Transit Gateways |
 | `agentcore` | Bedrock AgentCore |
 | `kb` | Bedrock Agent Knowledge Bases |
 | `agent` | Bedrock Agent Agents |
