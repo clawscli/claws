@@ -181,12 +181,7 @@ func renderEC2Detail(d *render.DetailBuilder, rec types.InstanceRecommendation) 
 	}
 
 	// Tags
-	if len(rec.Tags) > 0 {
-		d.Section("Tags")
-		for _, tag := range rec.Tags {
-			d.Field(appaws.Str(tag.Key), appaws.Str(tag.Value))
-		}
-	}
+	d.Tags(appaws.TagsToMap(rec.Tags))
 }
 
 func renderASGDetail(d *render.DetailBuilder, rec types.AutoScalingGroupRecommendation) {
@@ -385,12 +380,7 @@ func renderECSDetail(d *render.DetailBuilder, rec types.ECSServiceRecommendation
 	}
 
 	// Tags
-	if len(rec.Tags) > 0 {
-		d.Section("Tags")
-		for _, tag := range rec.Tags {
-			d.Field(appaws.Str(tag.Key), appaws.Str(tag.Value))
-		}
-	}
+	d.Tags(appaws.TagsToMap(rec.Tags))
 }
 
 // RenderSummary renders summary fields.
