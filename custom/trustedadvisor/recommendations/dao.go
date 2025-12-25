@@ -72,6 +72,11 @@ func (d *RecommendationDAO) Delete(ctx context.Context, id string) error {
 	return fmt.Errorf("delete not supported for trusted advisor recommendations")
 }
 
+// Supports returns true for List and Get operations only.
+func (d *RecommendationDAO) Supports(op dao.Operation) bool {
+	return op == dao.OpList || op == dao.OpGet
+}
+
 // RecommendationResource wraps a Trusted Advisor Recommendation.
 type RecommendationResource struct {
 	dao.BaseResource

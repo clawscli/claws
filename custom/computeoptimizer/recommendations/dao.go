@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/service/computeoptimizer"
@@ -79,6 +80,16 @@ func (d *RecommendationDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	if len(errs) == len(fetchers) {
 		return nil, errors.Join(errs...)
 	}
+
+	// Sort for stable ordering: by type, then by savings (descending)
+	sort.Slice(resources, func(i, j int) bool {
+		ri := resources[i].(*RecommendationResource)
+		rj := resources[j].(*RecommendationResource)
+		if ri.resourceType != rj.resourceType {
+			return ri.resourceType < rj.resourceType
+		}
+		return ri.savingsValue > rj.savingsValue
+	})
 
 	return resources, nil
 }
@@ -267,6 +278,11 @@ func (r *RecommendationResource) SavingsValue() float64 {
 // PerformanceRisk returns the current performance risk level.
 func (r *RecommendationResource) PerformanceRisk() string {
 	return r.performanceRisk
+}
+
+// SavingsCurrency returns the currency for savings values.
+func (r *RecommendationResource) SavingsCurrency() string {
+	return r.savingsCurrency
 }
 
 // NewEC2RecommendationResource creates a resource from EC2 recommendation.

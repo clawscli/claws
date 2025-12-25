@@ -20,7 +20,7 @@ type AnomalyDAO struct {
 // NewAnomalyDAO creates a new AnomalyDAO.
 func NewAnomalyDAO(ctx context.Context) (dao.DAO, error) {
 	// Cost Explorer API is only available in us-east-1
-	cfg, err := appaws.NewConfigWithRegion(ctx, "us-east-1")
+	cfg, err := appaws.NewConfigWithRegion(ctx, appaws.CostExplorerRegion)
 	if err != nil {
 		return nil, fmt.Errorf("new costexplorer/anomalies dao: %w", err)
 	}

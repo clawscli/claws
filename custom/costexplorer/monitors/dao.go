@@ -19,7 +19,7 @@ type MonitorDAO struct {
 // NewMonitorDAO creates a new MonitorDAO.
 func NewMonitorDAO(ctx context.Context) (dao.DAO, error) {
 	// Cost Explorer API is only available in us-east-1
-	cfg, err := appaws.NewConfigWithRegion(ctx, "us-east-1")
+	cfg, err := appaws.NewConfigWithRegion(ctx, appaws.CostExplorerRegion)
 	if err != nil {
 		return nil, fmt.Errorf("new costexplorer/monitors dao: %w", err)
 	}
@@ -70,6 +70,11 @@ func (d *MonitorDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 // Delete is not supported for monitors (requires DeleteAnomalyMonitor API).
 func (d *MonitorDAO) Delete(ctx context.Context, id string) error {
 	return fmt.Errorf("delete not supported for cost anomaly monitors")
+}
+
+// Supports returns true for List and Get operations only.
+func (d *MonitorDAO) Supports(op dao.Operation) bool {
+	return op == dao.OpList || op == dao.OpGet
 }
 
 // MonitorResource wraps a Cost Anomaly Monitor.

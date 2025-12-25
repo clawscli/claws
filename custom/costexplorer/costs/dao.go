@@ -20,7 +20,7 @@ type CostDAO struct {
 // NewCostDAO creates a new CostDAO.
 func NewCostDAO(ctx context.Context) (dao.DAO, error) {
 	// Cost Explorer API is only available in us-east-1
-	cfg, err := appaws.NewConfigWithRegion(ctx, "us-east-1")
+	cfg, err := appaws.NewConfigWithRegion(ctx, appaws.CostExplorerRegion)
 	if err != nil {
 		return nil, fmt.Errorf("new costexplorer/costs dao: %w", err)
 	}
@@ -116,6 +116,11 @@ func (d *CostDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 // Delete is not supported for cost data.
 func (d *CostDAO) Delete(ctx context.Context, id string) error {
 	return fmt.Errorf("delete not supported for cost data")
+}
+
+// Supports returns true for List and Get operations only.
+func (d *CostDAO) Supports(op dao.Operation) bool {
+	return op == dao.OpList || op == dao.OpGet
 }
 
 // CostResource wraps AWS cost data for a service.

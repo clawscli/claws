@@ -84,7 +84,7 @@ func getEstSavings(r dao.Resource) string {
 	}
 	savings := rec.SavingsValue()
 	if savings > 0 {
-		return fmt.Sprintf("$%.2f", savings)
+		return appaws.FormatMoney(savings, rec.SavingsCurrency())
 	}
 	return "-"
 }
@@ -119,7 +119,7 @@ func (r *RecommendationRenderer) RenderDetail(resource dao.Resource) string {
 	if rec.SavingsPercent() > 0 || rec.SavingsValue() > 0 {
 		d.Section("Savings Opportunity")
 		d.Field("Savings Percentage", fmt.Sprintf("%.2f%%", rec.SavingsPercent()))
-		d.Field("Estimated Monthly Savings", fmt.Sprintf("$%.2f", rec.SavingsValue()))
+		d.Field("Estimated Monthly Savings", appaws.FormatMoney(rec.SavingsValue(), rec.SavingsCurrency()))
 	}
 
 	// Type-specific details from original SDK data
@@ -403,6 +403,6 @@ func (r *RecommendationRenderer) RenderSummary(resource dao.Resource) []render.S
 	return []render.SummaryField{
 		{Label: "Type", Value: rec.ResourceType()},
 		{Label: "Finding", Value: rec.Finding()},
-		{Label: "Savings", Value: fmt.Sprintf("$%.2f (%.1f%%)", rec.SavingsValue(), rec.SavingsPercent())},
+		{Label: "Savings", Value: fmt.Sprintf("%s (%.1f%%)", appaws.FormatMoney(rec.SavingsValue(), rec.SavingsCurrency()), rec.SavingsPercent())},
 	}
 }
