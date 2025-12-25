@@ -3,6 +3,7 @@ package summary
 import (
 	"fmt"
 
+	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/render"
 )
@@ -81,7 +82,7 @@ func getEstSavings(r dao.Resource) string {
 	}
 	savings := s.EstimatedMonthlySavings()
 	if savings > 0 {
-		return fmt.Sprintf("$%.2f", savings)
+		return appaws.FormatMoney(savings, s.SavingsCurrency())
 	}
 	return "-"
 }
@@ -123,13 +124,13 @@ func (r *SummaryRenderer) RenderDetail(resource dao.Resource) string {
 	// Savings Opportunity
 	d.Section("Savings Opportunity")
 	d.Field("Savings Percentage", fmt.Sprintf("%.2f%%", s.SavingsOpportunityPercentage()))
-	d.Field("Estimated Monthly Savings", fmt.Sprintf("$%.2f", s.EstimatedMonthlySavings()))
+	d.Field("Estimated Monthly Savings", appaws.FormatMoney(s.EstimatedMonthlySavings(), s.SavingsCurrency()))
 
 	// Idle Savings
 	if idle := s.IdleSavingsOpportunity(); idle != nil && idle.EstimatedMonthlySavings != nil {
 		d.Section("Idle Resource Savings")
 		d.Field("Savings Percentage", fmt.Sprintf("%.2f%%", idle.SavingsOpportunityPercentage))
-		d.Field("Estimated Monthly Savings", fmt.Sprintf("$%.2f", idle.EstimatedMonthlySavings.Value))
+		d.Field("Estimated Monthly Savings", appaws.FormatMoney(idle.EstimatedMonthlySavings.Value, string(idle.EstimatedMonthlySavings.Currency)))
 	}
 
 	// Idle Summaries
@@ -148,7 +149,7 @@ func (r *SummaryRenderer) RenderDetail(resource dao.Resource) string {
 		for _, w := range workloads {
 			if w.EstimatedMonthlySavings != nil && w.EstimatedMonthlySavings.Value > 0 {
 				for _, wt := range w.InferredWorkloadTypes {
-					d.Field(string(wt), fmt.Sprintf("$%.2f", w.EstimatedMonthlySavings.Value))
+					d.Field(string(wt), appaws.FormatMoney(w.EstimatedMonthlySavings.Value, string(w.EstimatedMonthlySavings.Currency)))
 				}
 			}
 		}
@@ -167,6 +168,6 @@ func (r *SummaryRenderer) RenderSummary(resource dao.Resource) []render.SummaryF
 	return []render.SummaryField{
 		{Label: "Resource Type", Value: s.ResourceType()},
 		{Label: "Total", Value: fmt.Sprintf("%.0f", s.TotalResources())},
-		{Label: "Savings", Value: fmt.Sprintf("$%.2f (%.1f%%)", s.EstimatedMonthlySavings(), s.SavingsOpportunityPercentage())},
+		{Label: "Savings", Value: fmt.Sprintf("%s (%.1f%%)", appaws.FormatMoney(s.EstimatedMonthlySavings(), s.SavingsCurrency()), s.SavingsOpportunityPercentage())},
 	}
 }

@@ -32,8 +32,8 @@ func NewCostDAO(ctx context.Context) (dao.DAO, error) {
 
 // List returns costs grouped by service for the current month.
 func (d *CostDAO) List(ctx context.Context) ([]dao.Resource, error) {
-	// Get current month's date range
-	now := time.Now()
+	// Get current month's date range (use UTC for consistency)
+	now := time.Now().UTC()
 	startOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
 	endOfMonth := startOfMonth.AddDate(0, 1, 0)
 
@@ -71,8 +71,8 @@ func (d *CostDAO) List(ctx context.Context) ([]dao.Resource, error) {
 
 // Get returns cost for a specific service.
 func (d *CostDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
-	// Get current month's date range
-	now := time.Now()
+	// Get current month's date range (use UTC for consistency)
+	now := time.Now().UTC()
 	startOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
 	endOfMonth := startOfMonth.AddDate(0, 1, 0)
 

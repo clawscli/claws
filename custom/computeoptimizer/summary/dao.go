@@ -130,6 +130,14 @@ func (r *SummaryResource) EstimatedMonthlySavings() float64 {
 	return 0
 }
 
+// SavingsCurrency returns the currency for savings values.
+func (r *SummaryResource) SavingsCurrency() string {
+	if r.item().SavingsOpportunity != nil && r.item().SavingsOpportunity.EstimatedMonthlySavings != nil {
+		return string(r.item().SavingsOpportunity.EstimatedMonthlySavings.Currency)
+	}
+	return ""
+}
+
 // TotalResources returns the total count of resources.
 func (r *SummaryResource) TotalResources() float64 {
 	var total float64

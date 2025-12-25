@@ -3,6 +3,7 @@ package anomalies
 import (
 	"fmt"
 
+	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/render"
 )
@@ -44,7 +45,7 @@ func getImpact(r dao.Resource) string {
 	if !ok {
 		return ""
 	}
-	return fmt.Sprintf("$%.2f", a.TotalImpact())
+	return appaws.FormatMoney(a.TotalImpact(), "")
 }
 
 func getImpactPct(r dao.Resource) string {
@@ -111,10 +112,10 @@ func (r *AnomalyRenderer) RenderDetail(resource dao.Resource) string {
 
 	// Impact
 	d.Section("Cost Impact")
-	d.Field("Total Impact", fmt.Sprintf("$%.2f", a.TotalImpact()))
+	d.Field("Total Impact", appaws.FormatMoney(a.TotalImpact(), ""))
 	d.Field("Impact Percentage", fmt.Sprintf("%.2f%%", a.TotalImpactPercentage()))
-	d.Field("Actual Spend", fmt.Sprintf("$%.2f", a.TotalActualSpend()))
-	d.Field("Expected Spend", fmt.Sprintf("$%.2f", a.TotalExpectedSpend()))
+	d.Field("Actual Spend", appaws.FormatMoney(a.TotalActualSpend(), ""))
+	d.Field("Expected Spend", appaws.FormatMoney(a.TotalExpectedSpend(), ""))
 
 	// Score
 	d.Section("Anomaly Score")
@@ -147,7 +148,7 @@ func (r *AnomalyRenderer) RenderDetail(resource dao.Resource) string {
 				d.Field(prefix+" Account", acct)
 			}
 			if cause.Impact != nil {
-				d.Field(prefix+" Contribution", fmt.Sprintf("$%.2f", cause.Impact.Contribution))
+				d.Field(prefix+" Contribution", appaws.FormatMoney(cause.Impact.Contribution, ""))
 			}
 		}
 	}
@@ -165,7 +166,7 @@ func (r *AnomalyRenderer) RenderSummary(resource dao.Resource) []render.SummaryF
 	return []render.SummaryField{
 		{Label: "Service", Value: a.DimensionValue()},
 		{Label: "Period", Value: fmt.Sprintf("%s to %s", a.StartDate(), a.EndDate())},
-		{Label: "Impact", Value: fmt.Sprintf("$%.2f (%.1f%%)", a.TotalImpact(), a.TotalImpactPercentage())},
+		{Label: "Impact", Value: fmt.Sprintf("%s (%.1f%%)", appaws.FormatMoney(a.TotalImpact(), ""), a.TotalImpactPercentage())},
 		{Label: "Score", Value: fmt.Sprintf("%.1f", a.MaxScore())},
 	}
 }

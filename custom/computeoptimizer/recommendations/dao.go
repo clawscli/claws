@@ -398,7 +398,7 @@ func NewLambdaRecommendationResource(rec types.LambdaFunctionRecommendation) *Re
 			ARN:  arn,
 			Data: rec,
 		},
-		resourceType:    "Lambda",
+		resourceType:    "LAMBDA",
 		finding:         string(rec.Finding),
 		currentConfig:   currentConfig,
 		savingsPercent:  savingsPercent,

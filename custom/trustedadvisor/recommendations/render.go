@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/render"
 )
@@ -120,7 +121,7 @@ func (r *RecommendationRenderer) RenderDetail(resource dao.Resource) string {
 	// Cost Savings (if available)
 	if savings := rec.EstimatedMonthlySavings(); savings > 0 {
 		d.Section("Cost Optimization")
-		d.Field("Estimated Monthly Savings", fmt.Sprintf("$%.2f", savings))
+		d.Field("Estimated Monthly Savings", appaws.FormatMoney(savings, ""))
 		d.Field("Estimated Savings %", fmt.Sprintf("%.1f%%", rec.EstimatedPercentMonthlySavings()))
 	}
 

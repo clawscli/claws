@@ -165,7 +165,7 @@ func renderEC2Detail(d *render.DetailBuilder, rec types.InstanceRecommendation) 
 			if opt.SavingsOpportunity != nil {
 				d.Field(prefix+" Savings %", fmt.Sprintf("%.2f%%", opt.SavingsOpportunity.SavingsOpportunityPercentage))
 				if opt.SavingsOpportunity.EstimatedMonthlySavings != nil {
-					d.Field(prefix+" Est. Savings", fmt.Sprintf("$%.2f", opt.SavingsOpportunity.EstimatedMonthlySavings.Value))
+					d.Field(prefix+" Est. Savings", appaws.FormatMoney(opt.SavingsOpportunity.EstimatedMonthlySavings.Value, string(opt.SavingsOpportunity.EstimatedMonthlySavings.Currency)))
 				}
 			}
 			d.Field(prefix+" Performance Risk", fmt.Sprintf("%.0f", opt.PerformanceRisk))
@@ -210,7 +210,7 @@ func renderASGDetail(d *render.DetailBuilder, rec types.AutoScalingGroupRecommen
 			if opt.SavingsOpportunity != nil {
 				d.Field(prefix+" Savings %", fmt.Sprintf("%.2f%%", opt.SavingsOpportunity.SavingsOpportunityPercentage))
 				if opt.SavingsOpportunity.EstimatedMonthlySavings != nil {
-					d.Field(prefix+" Est. Savings", fmt.Sprintf("$%.2f", opt.SavingsOpportunity.EstimatedMonthlySavings.Value))
+					d.Field(prefix+" Est. Savings", appaws.FormatMoney(opt.SavingsOpportunity.EstimatedMonthlySavings.Value, string(opt.SavingsOpportunity.EstimatedMonthlySavings.Currency)))
 				}
 			}
 			d.Field(prefix+" Performance Risk", fmt.Sprintf("%.0f", opt.PerformanceRisk))
@@ -267,7 +267,7 @@ func renderEBSDetail(d *render.DetailBuilder, rec types.VolumeRecommendation) {
 			if opt.SavingsOpportunity != nil {
 				d.Field(prefix+" Savings %", fmt.Sprintf("%.2f%%", opt.SavingsOpportunity.SavingsOpportunityPercentage))
 				if opt.SavingsOpportunity.EstimatedMonthlySavings != nil {
-					d.Field(prefix+" Est. Savings", fmt.Sprintf("$%.2f", opt.SavingsOpportunity.EstimatedMonthlySavings.Value))
+					d.Field(prefix+" Est. Savings", appaws.FormatMoney(opt.SavingsOpportunity.EstimatedMonthlySavings.Value, string(opt.SavingsOpportunity.EstimatedMonthlySavings.Currency)))
 				}
 			}
 			d.Field(prefix+" Performance Risk", fmt.Sprintf("%.0f", opt.PerformanceRisk))
@@ -321,7 +321,7 @@ func renderLambdaDetail(d *render.DetailBuilder, rec types.LambdaFunctionRecomme
 			if opt.SavingsOpportunity != nil {
 				d.Field(prefix+" Savings %", fmt.Sprintf("%.2f%%", opt.SavingsOpportunity.SavingsOpportunityPercentage))
 				if opt.SavingsOpportunity.EstimatedMonthlySavings != nil {
-					d.Field(prefix+" Est. Savings", fmt.Sprintf("$%.2f", opt.SavingsOpportunity.EstimatedMonthlySavings.Value))
+					d.Field(prefix+" Est. Savings", appaws.FormatMoney(opt.SavingsOpportunity.EstimatedMonthlySavings.Value, string(opt.SavingsOpportunity.EstimatedMonthlySavings.Currency)))
 				}
 			}
 		}
@@ -371,7 +371,7 @@ func renderECSDetail(d *render.DetailBuilder, rec types.ECSServiceRecommendation
 			if opt.SavingsOpportunity != nil {
 				d.Field(prefix+" Savings %", fmt.Sprintf("%.2f%%", opt.SavingsOpportunity.SavingsOpportunityPercentage))
 				if opt.SavingsOpportunity.EstimatedMonthlySavings != nil {
-					d.Field(prefix+" Est. Savings", fmt.Sprintf("$%.2f", opt.SavingsOpportunity.EstimatedMonthlySavings.Value))
+					d.Field(prefix+" Est. Savings", appaws.FormatMoney(opt.SavingsOpportunity.EstimatedMonthlySavings.Value, string(opt.SavingsOpportunity.EstimatedMonthlySavings.Currency)))
 				}
 			}
 		}
