@@ -112,6 +112,8 @@ func defaultAliases() map[string]string {
 		"waf":           "wafv2",
 		"ce":            "costexplorer",
 		"cost-explorer": "costexplorer",
+		"ta":            "trustedadvisor",
+		"co":            "computeoptimizer",
 		"sftp":          "transfer",
 		"aa":            "accessanalyzer",
 		"analyzer":      "accessanalyzer",
