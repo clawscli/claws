@@ -139,6 +139,7 @@ func (r *RecommendationRenderer) RenderDetail(resource dao.Resource) string {
 	return d.String()
 }
 
+// renderEC2Detail adds EC2-specific recommendation details to the detail view.
 func renderEC2Detail(d *render.DetailBuilder, rec types.InstanceRecommendation) {
 	// Finding Reason Codes
 	if len(rec.FindingReasonCodes) > 0 {
@@ -184,6 +185,7 @@ func renderEC2Detail(d *render.DetailBuilder, rec types.InstanceRecommendation) 
 	d.Tags(appaws.TagsToMap(rec.Tags))
 }
 
+// renderASGDetail adds Auto Scaling Group-specific recommendation details.
 func renderASGDetail(d *render.DetailBuilder, rec types.AutoScalingGroupRecommendation) {
 	// Current Configuration
 	if rec.CurrentConfiguration != nil {
@@ -239,6 +241,7 @@ func renderASGDetail(d *render.DetailBuilder, rec types.AutoScalingGroupRecommen
 	}
 }
 
+// renderEBSDetail adds EBS volume-specific recommendation details.
 func renderEBSDetail(d *render.DetailBuilder, rec types.VolumeRecommendation) {
 	// Current Configuration
 	if rec.CurrentConfiguration != nil {
@@ -285,6 +288,7 @@ func renderEBSDetail(d *render.DetailBuilder, rec types.VolumeRecommendation) {
 	}
 }
 
+// renderLambdaDetail adds Lambda function-specific recommendation details.
 func renderLambdaDetail(d *render.DetailBuilder, rec types.LambdaFunctionRecommendation) {
 	// Current Configuration
 	d.Section("Current Lambda Configuration")
@@ -330,6 +334,7 @@ func renderLambdaDetail(d *render.DetailBuilder, rec types.LambdaFunctionRecomme
 	}
 }
 
+// renderECSDetail adds ECS service-specific recommendation details.
 func renderECSDetail(d *render.DetailBuilder, rec types.ECSServiceRecommendation) {
 	// Current Configuration
 	if rec.CurrentServiceConfiguration != nil {

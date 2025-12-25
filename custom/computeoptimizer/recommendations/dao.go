@@ -57,8 +57,8 @@ func (d *RecommendationDAO) List(ctx context.Context) ([]dao.Resource, error) {
 		errs      []error
 	)
 
-	// Shadow ctx intentionally: we want partial results even if some APIs fail,
-	// so goroutines return nil and context cancellation doesn't stop others.
+	// Use errgroup for parallel execution. We tolerate partial failures,
+	// so goroutines always return nil to avoid early cancellation.
 	g, ctx := errgroup.WithContext(ctx)
 	for _, f := range fetchers {
 		f := f // capture for goroutine
@@ -85,16 +85,8 @@ func (d *RecommendationDAO) List(ctx context.Context) ([]dao.Resource, error) {
 
 	// Sort for stable ordering: by type, then by savings (descending)
 	sort.Slice(resources, func(i, j int) bool {
-		ri, ok := resources[i].(*RecommendationResource)
-		if !ok {
-			log.Warn("unexpected resource type in sort", "index", i)
-			return false
-		}
-		rj, ok := resources[j].(*RecommendationResource)
-		if !ok {
-			log.Warn("unexpected resource type in sort", "index", j)
-			return false
-		}
+		ri := resources[i].(*RecommendationResource)
+		rj := resources[j].(*RecommendationResource)
 		if ri.resourceType != rj.resourceType {
 			return ri.resourceType < rj.resourceType
 		}
