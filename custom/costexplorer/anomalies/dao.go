@@ -32,8 +32,8 @@ func NewAnomalyDAO(ctx context.Context) (dao.DAO, error) {
 
 // List returns cost anomalies from the last 90 days.
 func (d *AnomalyDAO) List(ctx context.Context) ([]dao.Resource, error) {
-	// Get last 90 days of anomalies
-	now := time.Now()
+	// Get last 90 days of anomalies (use UTC for consistency)
+	now := time.Now().UTC()
 	start := now.AddDate(0, 0, -90).Format("2006-01-02")
 	end := now.Format("2006-01-02")
 

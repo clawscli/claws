@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/service/computeoptimizer"
 	"github.com/aws/aws-sdk-go-v2/service/computeoptimizer/types"
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/log"
+	"golang.org/x/sync/errgroup"
 )
 
 // RecommendationDAO provides data access for Compute Optimizer Recommendations.
@@ -30,62 +32,51 @@ func NewRecommendationDAO(ctx context.Context) (dao.DAO, error) {
 	}, nil
 }
 
-// numRecommendationAPIs is the number of recommendation APIs we call.
-const numRecommendationAPIs = 5
+// recommendationFetcher represents a function that fetches recommendations for a specific resource type.
+type recommendationFetcher struct {
+	name  string
+	fetch func(context.Context) ([]dao.Resource, error)
+}
 
 // List returns all recommendations from multiple resource types.
+// Fetches are executed in parallel for better performance.
 // Partial failures are logged but don't prevent returning results from successful APIs.
 func (d *RecommendationDAO) List(ctx context.Context) ([]dao.Resource, error) {
-	var resources []dao.Resource
-	var errs []error
-
-	// Fetch EC2 recommendations
-	ec2Recs, err := d.listEC2Recommendations(ctx)
-	if err != nil {
-		log.Warn("failed to list EC2 recommendations", "error", err)
-		errs = append(errs, fmt.Errorf("ec2: %w", err))
-	} else {
-		resources = append(resources, ec2Recs...)
+	fetchers := []recommendationFetcher{
+		{"EC2", d.listEC2Recommendations},
+		{"ASG", d.listASGRecommendations},
+		{"EBS", d.listEBSRecommendations},
+		{"Lambda", d.listLambdaRecommendations},
+		{"ECS", d.listECSRecommendations},
 	}
 
-	// Fetch ASG recommendations
-	asgRecs, err := d.listASGRecommendations(ctx)
-	if err != nil {
-		log.Warn("failed to list ASG recommendations", "error", err)
-		errs = append(errs, fmt.Errorf("asg: %w", err))
-	} else {
-		resources = append(resources, asgRecs...)
+	var (
+		mu        sync.Mutex
+		resources []dao.Resource
+		errs      []error
+	)
+
+	g, ctx := errgroup.WithContext(ctx)
+	for _, f := range fetchers {
+		f := f // capture for goroutine
+		g.Go(func() error {
+			recs, err := f.fetch(ctx)
+			mu.Lock()
+			defer mu.Unlock()
+			if err != nil {
+				log.Warn("failed to list recommendations", "type", f.name, "error", err)
+				errs = append(errs, fmt.Errorf("%s: %w", f.name, err))
+			} else {
+				resources = append(resources, recs...)
+			}
+			return nil // always return nil to continue fetching other types
+		})
 	}
 
-	// Fetch EBS recommendations
-	ebsRecs, err := d.listEBSRecommendations(ctx)
-	if err != nil {
-		log.Warn("failed to list EBS recommendations", "error", err)
-		errs = append(errs, fmt.Errorf("ebs: %w", err))
-	} else {
-		resources = append(resources, ebsRecs...)
-	}
-
-	// Fetch Lambda recommendations
-	lambdaRecs, err := d.listLambdaRecommendations(ctx)
-	if err != nil {
-		log.Warn("failed to list Lambda recommendations", "error", err)
-		errs = append(errs, fmt.Errorf("lambda: %w", err))
-	} else {
-		resources = append(resources, lambdaRecs...)
-	}
-
-	// Fetch ECS recommendations
-	ecsRecs, err := d.listECSRecommendations(ctx)
-	if err != nil {
-		log.Warn("failed to list ECS recommendations", "error", err)
-		errs = append(errs, fmt.Errorf("ecs: %w", err))
-	} else {
-		resources = append(resources, ecsRecs...)
-	}
+	_ = g.Wait() // errors are collected in errs, not returned by goroutines
 
 	// If all APIs failed, return combined error
-	if len(errs) == numRecommendationAPIs {
+	if len(errs) == len(fetchers) {
 		return nil, errors.Join(errs...)
 	}
 
@@ -271,14 +262,6 @@ func (r *RecommendationResource) SavingsPercent() float64 {
 // SavingsValue returns the estimated monthly savings.
 func (r *RecommendationResource) SavingsValue() float64 {
 	return r.savingsValue
-}
-
-// SavingsCurrency returns the currency for savings.
-func (r *RecommendationResource) SavingsCurrency() string {
-	if r.savingsCurrency == "" {
-		return "USD"
-	}
-	return r.savingsCurrency
 }
 
 // PerformanceRisk returns the current performance risk level.

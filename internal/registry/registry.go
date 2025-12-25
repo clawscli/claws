@@ -429,55 +429,56 @@ func (r *Registry) ListResources(service string) []string {
 	return resources
 }
 
+// subResourceSet contains resources that are only accessible via navigation.
+// These resources require a parent context (e.g., stack name, log group name)
+// and should only be accessed via navigation from their parent resource.
+// Format: "service/resource"
+var subResourceSet = map[string]struct{}{
+	"cloudformation/events":            {},
+	"cloudformation/outputs":           {},
+	"cloudformation/resources":         {},
+	"cloudwatch/log-streams":           {},
+	"service-quotas/quotas":            {},
+	"route53/record-sets":              {},
+	"apigateway/stages":                {},
+	"apigateway/stages-v2":             {},
+	"elbv2/targets":                    {},
+	"s3vectors/indexes":                {},
+	"guardduty/findings":               {},
+	"cognito/users":                    {},
+	"codepipeline/executions":          {},
+	"sfn/executions":                   {},
+	"codebuild/builds":                 {},
+	"backup/recovery-points":           {},
+	"backup/selections":                {},
+	"ecr/images":                       {},
+	"autoscaling/activities":           {},
+	"bedrock-agent/data-sources":       {},
+	"bedrock-agentcore/endpoints":      {},
+	"bedrock-agentcore/versions":       {},
+	"glue/tables":                      {},
+	"glue/job-runs":                    {},
+	"athena/query-executions":          {},
+	"apprunner/operations":             {},
+	"budgets/notifications":            {},
+	"vpc/tgw-attachments":              {},
+	"directconnect/virtual-interfaces": {},
+	"transfer/users":                   {},
+	"accessanalyzer/findings":          {},
+	"detective/investigations":         {},
+	"datasync/task-executions":         {},
+	"batch/jobs":                       {},
+	"emr/steps":                        {},
+	"organizations/ous":                {},
+	"license-manager/grants":           {},
+	"appsync/data-sources":             {},
+	"redshift/snapshots":               {},
+}
+
 // isSubResource returns true if the resource is only accessible via navigation
 func isSubResource(service, resource string) bool {
-	// These resources require a parent context (e.g., stack name, log group name)
-	// and should only be accessed via navigation from their parent resource
-	// Format: "service/resource"
-	subResources := []string{
-		"cloudformation/events",
-		"cloudformation/outputs",
-		"cloudformation/resources",
-		"cloudwatch/log-streams",
-		"service-quotas/quotas",
-		"route53/record-sets",
-		"apigateway/stages",
-		"apigateway/stages-v2",
-		"elbv2/targets",
-		"s3vectors/indexes",
-		// New sub-resources
-		"guardduty/findings",
-		"cognito/users",
-		"codepipeline/executions",
-		"sfn/executions",
-		"codebuild/builds",
-		"backup/recovery-points",
-		"backup/selections",
-		"ecr/images",
-		"autoscaling/activities",
-		"bedrock-agent/data-sources",
-		"bedrock-agentcore/endpoints",
-		"bedrock-agentcore/versions",
-		// Sub-resources for new services
-		"glue/tables",
-		"glue/job-runs",
-		"athena/query-executions",
-		"apprunner/operations",
-		"budgets/notifications",
-		"vpc/tgw-attachments",
-		"directconnect/virtual-interfaces",
-		"transfer/users",
-		"accessanalyzer/findings",
-		"detective/investigations",
-		"datasync/task-executions",
-		"batch/jobs",
-		"emr/steps",
-		"organizations/ous",
-		"license-manager/grants",
-		"appsync/data-sources",
-		"redshift/snapshots",
-	}
-	return slices.Contains(subResources, service+"/"+resource)
+	_, ok := subResourceSet[service+"/"+resource]
+	return ok
 }
 
 // Global is the default global registry
