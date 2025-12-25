@@ -18,21 +18,21 @@ func init() {
 			Shortcut:  "E",
 			Type:      action.ActionTypeAPI,
 			Operation: "EnableRule",
-			Confirm:   true,
+			Confirm:   action.ConfirmSimple,
 		},
 		{
 			Name:      "Disable",
 			Shortcut:  "X",
 			Type:      action.ActionTypeAPI,
 			Operation: "DisableRule",
-			Confirm:   true,
+			Confirm:   action.ConfirmSimple,
 		},
 		{
 			Name:      "Delete",
 			Shortcut:  "D",
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteRule",
-			Confirm:   true,
+			Confirm:   action.ConfirmSimple,
 		},
 	})
 

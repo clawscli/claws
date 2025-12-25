@@ -17,7 +17,7 @@ func init() {
 			Shortcut: "v",
 			Type:     action.ActionTypeExec,
 			Command:  `aws secretsmanager get-secret-value --secret-id "${ID}" --query 'SecretString' --output text | less`,
-			Confirm:  true,
+			Confirm:  action.ConfirmSimple,
 		},
 		{
 			Name:     "Describe (JSON)",
@@ -30,7 +30,7 @@ func init() {
 			Shortcut:  "D",
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteSecret",
-			Confirm:   true,
+			Confirm:   action.ConfirmSimple,
 		},
 	})
 

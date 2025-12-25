@@ -17,7 +17,7 @@ func init() {
 			Shortcut:  "D",
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteEventBus",
-			Confirm:   true,
+			Confirm:   action.ConfirmSimple,
 		},
 	})
 

@@ -18,7 +18,7 @@ func init() {
 			Shortcut:  "D",
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteCluster",
-			Confirm:   true,
+			Confirm:   action.ConfirmSimple,
 		},
 	})
 

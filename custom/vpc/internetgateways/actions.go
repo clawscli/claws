@@ -17,14 +17,14 @@ func init() {
 			Shortcut:  "X",
 			Type:      action.ActionTypeAPI,
 			Operation: "DetachInternetGateway",
-			Confirm:   true,
+			Confirm:   action.ConfirmSimple,
 		},
 		{
 			Name:      "Delete",
 			Shortcut:  "D",
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteInternetGateway",
-			Confirm:   true,
+			Confirm:   action.ConfirmSimple,
 		},
 	})
 

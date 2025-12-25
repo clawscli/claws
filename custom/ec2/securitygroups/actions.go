@@ -17,7 +17,7 @@ func init() {
 			Shortcut:  "D",
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteSecurityGroup",
-			Confirm:   true,
+			Confirm:   action.ConfirmSimple,
 		},
 	})
 

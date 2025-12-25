@@ -145,7 +145,7 @@ func (m *ActionMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if idx := m.getActionAtPosition(msg.Y); idx >= 0 {
 				m.cursor = idx
 				act := m.actions[idx]
-				if act.Confirm {
+				if act.Confirm != action.ConfirmNone {
 					m.confirming = true
 					m.confirmIdx = idx
 					return m, nil
@@ -186,7 +186,7 @@ func (m *ActionMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			if m.cursor < len(m.actions) {
 				act := m.actions[m.cursor]
-				if act.Confirm {
+				if act.Confirm != action.ConfirmNone {
 					m.confirming = true
 					m.confirmIdx = m.cursor
 					return m, nil
@@ -199,7 +199,7 @@ func (m *ActionMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			for i, act := range m.actions {
 				if msg.String() == act.Shortcut {
 					log.Debug("shortcut matched", "shortcut", act.Shortcut, "action", act.Name)
-					if act.Confirm {
+					if act.Confirm != action.ConfirmNone {
 						m.confirming = true
 						m.confirmIdx = i
 						m.cursor = i

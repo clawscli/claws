@@ -18,21 +18,21 @@ func init() {
 			Shortcut:  "D",
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteVolume",
-			Confirm:   true,
+			Confirm:   action.ConfirmSimple,
 		},
 		{
 			Name:      "Create Snapshot",
 			Shortcut:  "s",
 			Type:      action.ActionTypeAPI,
 			Operation: "CreateSnapshot",
-			Confirm:   true,
+			Confirm:   action.ConfirmSimple,
 		},
 		{
 			Name:      "Detach",
 			Shortcut:  "d",
 			Type:      action.ActionTypeAPI,
 			Operation: "DetachVolume",
-			Confirm:   true,
+			Confirm:   action.ConfirmSimple,
 		},
 	})
 

@@ -37,13 +37,20 @@ func UnknownOperationResult(operation string) ActionResult {
 	return ActionResult{Success: false, Error: UnknownOperationError(operation)}
 }
 
-// ActionType represents the type of action
 type ActionType string
 
 const (
-	ActionTypeExec ActionType = "exec" // Execute external command
-	ActionTypeAPI  ActionType = "api"  // Call AWS API
-	ActionTypeView ActionType = "view" // Navigate to another view
+	ActionTypeExec ActionType = "exec"
+	ActionTypeAPI  ActionType = "api"
+	ActionTypeView ActionType = "view"
+)
+
+type ConfirmLevel int
+
+const (
+	ConfirmNone ConfirmLevel = iota
+	ConfirmSimple
+	ConfirmDangerous
 )
 
 // Action names - used for read-only allowlist and cross-package references
@@ -57,15 +64,14 @@ const (
 	ActionNameViewRecent24h = "View Recent (24h)"
 )
 
-// Action defines an action that can be performed on a resource
 type Action struct {
 	Name      string
 	Shortcut  string
 	Type      ActionType
-	Command   string // For exec type
-	Operation string // For api type
-	Target    string // For view type
-	Confirm   bool   // Require confirmation
+	Command   string
+	Operation string
+	Target    string
+	Confirm   ConfirmLevel
 
 	// SkipAWSEnv skips AWS env injection for exec commands.
 	// Use for commands that need to access ~/.aws files directly (e.g., aws sso login).

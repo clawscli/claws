@@ -29,7 +29,7 @@ func init() {
 			Shortcut:  "D",
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteParameter",
-			Confirm:   true,
+			Confirm:   action.ConfirmSimple,
 		},
 	})
 

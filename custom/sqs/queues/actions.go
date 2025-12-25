@@ -19,21 +19,21 @@ func init() {
 			Shortcut:  "p",
 			Type:      action.ActionTypeAPI,
 			Operation: "PurgeQueue",
-			Confirm:   true,
+			Confirm:   action.ConfirmSimple,
 		},
 		{
 			Name:      "Send Test Message",
 			Shortcut:  "s",
 			Type:      action.ActionTypeAPI,
 			Operation: "SendTestMessage",
-			Confirm:   true,
+			Confirm:   action.ConfirmSimple,
 		},
 		{
 			Name:      "Delete",
 			Shortcut:  "D",
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteQueue",
-			Confirm:   true,
+			Confirm:   action.ConfirmSimple,
 		},
 	})
 

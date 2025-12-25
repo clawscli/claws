@@ -18,21 +18,20 @@ func init() {
 			Shortcut:  "D",
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteStack",
-			Confirm:   true,
+			Confirm:   action.ConfirmSimple,
 		},
 		{
 			Name:      "Detect Drift",
 			Shortcut:  "d",
 			Type:      action.ActionTypeAPI,
 			Operation: "DetectStackDrift",
-			Confirm:   false,
 		},
 		{
 			Name:      "Cancel Update",
 			Shortcut:  "C",
 			Type:      action.ActionTypeAPI,
 			Operation: "CancelUpdateStack",
-			Confirm:   true,
+			Confirm:   action.ConfirmSimple,
 		},
 	})
 

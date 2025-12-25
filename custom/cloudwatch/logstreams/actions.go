@@ -36,7 +36,7 @@ func init() {
 			Shortcut:  "D",
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteLogStream",
-			Confirm:   true,
+			Confirm:   action.ConfirmSimple,
 		},
 	})
 

@@ -518,7 +518,7 @@ func TestAction_Struct(t *testing.T) {
 		Command:   "test cmd",
 		Operation: "TestOp",
 		Target:    "ec2/instances",
-		Confirm:   true,
+		Confirm:   ConfirmSimple,
 	}
 
 	if action.Name != "Test" {
@@ -530,8 +530,8 @@ func TestAction_Struct(t *testing.T) {
 	if action.Type != ActionTypeAPI {
 		t.Errorf("Type = %q, want %q", action.Type, ActionTypeAPI)
 	}
-	if !action.Confirm {
-		t.Error("Confirm should be true")
+	if action.Confirm != ConfirmSimple {
+		t.Errorf("Confirm = %v, want ConfirmSimple", action.Confirm)
 	}
 }
 

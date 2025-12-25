@@ -35,7 +35,7 @@ func init() {
 			Shortcut:  "D",
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteLogGroup",
-			Confirm:   true,
+			Confirm:   action.ConfirmSimple,
 		},
 	})
 

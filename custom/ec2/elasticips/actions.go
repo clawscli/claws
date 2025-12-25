@@ -17,14 +17,14 @@ func init() {
 			Shortcut:  "D",
 			Type:      action.ActionTypeAPI,
 			Operation: "ReleaseAddress",
-			Confirm:   true,
+			Confirm:   action.ConfirmSimple,
 		},
 		{
 			Name:      "Disassociate",
 			Shortcut:  "x",
 			Type:      action.ActionTypeAPI,
 			Operation: "DisassociateAddress",
-			Confirm:   true,
+			Confirm:   action.ConfirmSimple,
 		},
 	})
 

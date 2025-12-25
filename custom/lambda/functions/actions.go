@@ -20,21 +20,20 @@ func init() {
 			Shortcut:  "i",
 			Type:      action.ActionTypeAPI,
 			Operation: "InvokeFunction",
-			Confirm:   true,
+			Confirm:   action.ConfirmSimple,
 		},
 		{
 			Name:      "Invoke (Dry Run)",
 			Shortcut:  "I",
 			Type:      action.ActionTypeAPI,
 			Operation: "InvokeFunctionDryRun",
-			Confirm:   false,
 		},
 		{
 			Name:      "Delete",
 			Shortcut:  "D",
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteFunction",
-			Confirm:   true,
+			Confirm:   action.ConfirmSimple,
 		},
 	})
 
