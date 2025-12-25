@@ -196,7 +196,6 @@ func defaultDisplayNames() map[string]string {
 		"xray":              "X-Ray",
 		"trustedadvisor":    "Trusted Advisor",
 		"computeoptimizer":  "Compute Optimizer",
-		"local":             "Local",
 	}
 }
 
@@ -246,10 +245,6 @@ func defaultCategories() []ServiceCategory {
 		{
 			Name:     "Cost Management",
 			Services: []string{"risp", "costexplorer", "budgets"},
-		},
-		{
-			Name:     "Local",
-			Services: []string{"local"},
 		},
 	}
 }

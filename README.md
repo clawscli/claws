@@ -25,7 +25,7 @@ A terminal UI for AWS resource management 👮
 - **Multi-service support** - EC2, S3, IAM, RDS, Lambda, ECS, and 65+ more services (163 resources total)
 - **Resource actions** - Start/stop instances, delete resources, tail logs
 - **Cross-resource navigation** - Jump from VPC to subnets, from Lambda to CloudWatch Logs
-- **Profile & region switching** - Switch AWS profiles (`P`) and regions (`R`) on the fly, browse profiles with `:local/profile`
+- **Profile & region switching** - Switch AWS profiles (`P`) and regions (`R`) on the fly, browse profiles with `:profile`
 - **Command mode** - Quick navigation with `:ec2/instances` syntax
 - **Filtering** - Fuzzy search with `/`, tag filtering with `:tag Env=prod`
 - **Column sorting** - Sort by any column with `:sort <col>` command
@@ -186,7 +186,7 @@ claws -l debug.log
 | Command | Action |
 |---------|--------|
 | `:login` | AWS console login (creates `claws-<timestamp>` profile) |
-| `:local/profile` | Browse and switch AWS profiles |
+| `:profile` | Browse and switch AWS profiles |
 | `:ec2/instances` | Navigate to EC2 instances |
 | `:sort <col>` | Sort by column |
 | `:tag <filter>` | Filter by tag |
@@ -195,7 +195,7 @@ claws -l debug.log
 
 **Login Details:**
 - `:login` runs `aws login --remote` and creates a temporary profile
-- For SSO profiles, use "SSO Login" action from profile browser (`P` or `:local/profile`)
+- For SSO profiles, use "SSO Login" action from profile browser (`P` or `:profile`)
 - Temporary `claws-*` profiles can be cleaned up from `~/.aws/credentials`
 
 ## Supported Services (69 services, 163 resources)
@@ -304,11 +304,6 @@ claws -l debug.log
 | Trusted Advisor | Recommendations |
 | Budgets | Budgets, Notifications |
 
-### Local
-| Service | Resources |
-|---------|-----------|
-| Profile | AWS Profiles (browse and switch ~/.aws profiles) |
-
 ## Service Aliases
 
 Quick shortcuts for common services:
@@ -346,7 +341,7 @@ Quick shortcuts for common services:
 | `agent` | Bedrock Agent Agents |
 | `models` | Bedrock Foundation Models |
 | `guardrail` | Bedrock Guardrails |
-| `profile`, `profiles` | Local Profiles |
+| `profile`, `profiles` | AWS Profiles |
 
 ## Configuration
 
