@@ -11,6 +11,9 @@ import (
 	"github.com/clawscli/claws/internal/dao"
 )
 
+// AnomalyLookbackDays is the number of days to look back for anomalies.
+const AnomalyLookbackDays = 90
+
 // AnomalyDAO provides data access for Cost Anomaly Detection.
 type AnomalyDAO struct {
 	dao.BaseDAO
@@ -32,9 +35,9 @@ func NewAnomalyDAO(ctx context.Context) (dao.DAO, error) {
 
 // List returns cost anomalies from the last 90 days.
 func (d *AnomalyDAO) List(ctx context.Context) ([]dao.Resource, error) {
-	// Get last 90 days of anomalies (use UTC for consistency)
+	// Get anomalies for lookback period (use UTC for consistency)
 	now := time.Now().UTC()
-	start := now.AddDate(0, 0, -90).Format("2006-01-02")
+	start := now.AddDate(0, 0, -AnomalyLookbackDays).Format("2006-01-02")
 	end := now.Format("2006-01-02")
 
 	anomalies, err := appaws.Paginate(ctx, func(token *string) ([]types.Anomaly, *string, error) {

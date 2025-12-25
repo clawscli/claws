@@ -83,8 +83,14 @@ func (d *RecommendationDAO) List(ctx context.Context) ([]dao.Resource, error) {
 
 	// Sort for stable ordering: by type, then by savings (descending)
 	sort.Slice(resources, func(i, j int) bool {
-		ri := resources[i].(*RecommendationResource)
-		rj := resources[j].(*RecommendationResource)
+		ri, ok := resources[i].(*RecommendationResource)
+		if !ok {
+			return false
+		}
+		rj, ok := resources[j].(*RecommendationResource)
+		if !ok {
+			return false
+		}
 		if ri.resourceType != rj.resourceType {
 			return ri.resourceType < rj.resourceType
 		}
