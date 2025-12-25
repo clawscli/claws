@@ -138,12 +138,11 @@ func (d *DetailView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return model, cmd
 		}
 
-		// Open action menu (only if actions exist)
 		if msg.String() == "a" {
 			if actions := action.Global.Get(d.service, d.resType); len(actions) > 0 {
 				actionMenu := NewActionMenu(d.ctx, d.resource, d.service, d.resType)
 				return d, func() tea.Msg {
-					return NavigateMsg{View: actionMenu}
+					return ShowModalMsg{Modal: &Modal{Content: actionMenu}}
 				}
 			}
 		}

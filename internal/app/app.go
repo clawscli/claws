@@ -58,41 +58,37 @@ type App struct {
 	width    int
 	height   int
 
-	// Current view
 	currentView view.View
 	viewStack   []view.View
 
-	// Command mode
 	commandInput *view.CommandInput
 	commandMode  bool
 
-	// UI components
 	help help.Model
 	keys keyMap
 
-	// Status
 	err error
 
-	// Startup warnings
 	showWarnings  bool
-	warningsReady bool // true after first render, to ignore initial terminal responses
+	warningsReady bool
 
-	// AWS initialization state
 	awsInitializing bool
 
-	// Cached styles
+	modal         *view.Modal
+	modalRenderer *view.ModalRenderer
+
 	styles appStyles
 }
 
-// New creates a new App instance
 func New(ctx context.Context, reg *registry.Registry) *App {
 	return &App{
-		ctx:          ctx,
-		registry:     reg,
-		commandInput: view.NewCommandInput(ctx, reg),
-		help:         help.New(),
-		keys:         defaultKeyMap(),
-		styles:       newAppStyles(0),
+		ctx:           ctx,
+		registry:      reg,
+		commandInput:  view.NewCommandInput(ctx, reg),
+		help:          help.New(),
+		keys:          defaultKeyMap(),
+		modalRenderer: view.NewModalRenderer(),
+		styles:        newAppStyles(0),
 	}
 }
 
@@ -116,16 +112,18 @@ func (a *App) Init() tea.Cmd {
 
 // Update implements tea.Model
 func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// Dismiss warnings on Enter or Space only
 	if a.showWarnings && a.warningsReady {
 		if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
 			if keyMsg.Code == tea.KeyEnter || keyMsg.String() == " " {
 				a.showWarnings = false
 				return a, nil
 			}
-			// Ignore other keys while showing warnings
 			return a, nil
 		}
+	}
+
+	if a.modal != nil {
+		return a.handleModalUpdate(msg)
 	}
 
 	// Handle command mode first
@@ -251,9 +249,12 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			)
 		}
 
+	case view.ShowModalMsg:
+		a.modal = msg.Modal
+		return a, a.modal.SetSize(a.width, a.height)
+
 	case view.NavigateMsg:
 		log.Debug("navigating", "clearStack", msg.ClearStack, "stackDepth", len(a.viewStack))
-		// Push current view to stack (unless ClearStack is set)
 		if msg.ClearStack {
 			a.viewStack = nil
 		} else if a.currentView != nil {
@@ -370,9 +371,7 @@ func newAltScreenView(content string) tea.View {
 	return v
 }
 
-// View implements tea.Model
 func (a *App) View() tea.View {
-	// Show warnings modal if active
 	if a.showWarnings {
 		return newAltScreenView(a.renderWarnings())
 	}
@@ -382,13 +381,11 @@ func (a *App) View() tea.View {
 		content = a.currentView.ViewString()
 	}
 
-	// Command input (replaces status bar when active)
 	if a.commandMode {
 		cmdView := a.commandInput.View()
 		return newAltScreenView(content + "\n" + cmdView)
 	}
 
-	// Status bar (use cached style)
 	var statusContent string
 	if a.err != nil {
 		statusContent = ui.DangerStyle().Render("Error: " + a.err.Error())
@@ -396,20 +393,23 @@ func (a *App) View() tea.View {
 		statusContent = a.currentView.StatusLine()
 	}
 
-	// Add read-only indicator (use cached style)
 	if config.Global().ReadOnly() {
 		roIndicator := a.styles.readOnly.Render("READ-ONLY")
 		statusContent = roIndicator + " " + statusContent
 	}
 
-	// Add AWS initializing indicator
 	if a.awsInitializing {
 		statusContent = ui.DimStyle().Render("AWS initializing...") + " • " + statusContent
 	}
 
 	status := a.styles.status.Render(statusContent)
+	mainView := content + "\n" + status
 
-	return newAltScreenView(content + "\n" + status)
+	if a.modal != nil {
+		return newAltScreenView(a.modalRenderer.Render(a.modal, mainView, a.width, a.height))
+	}
+
+	return newAltScreenView(mainView)
 }
 
 // renderWarnings renders the startup warnings modal
@@ -439,7 +439,47 @@ func (a *App) renderWarnings() string {
 	)
 }
 
-// keyMap defines the key bindings
+func (a *App) handleModalUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case view.HideModalMsg:
+		a.modal = nil
+		return a, nil
+
+	case view.NavigateMsg:
+		a.modal = nil
+		log.Debug("modal navigate", "clearStack", msg.ClearStack, "stackDepth", len(a.viewStack))
+		if msg.ClearStack {
+			a.viewStack = nil
+		} else if a.currentView != nil {
+			a.viewStack = append(a.viewStack, a.currentView)
+		}
+		a.currentView = msg.View
+		return a, tea.Batch(
+			a.currentView.Init(),
+			a.currentView.SetSize(a.width, a.height-2),
+		)
+
+	case tea.KeyPressMsg:
+		if view.IsEscKey(msg) {
+			a.modal = nil
+			return a, nil
+		}
+
+	case tea.WindowSizeMsg:
+		a.width = msg.Width
+		a.height = msg.Height
+		a.styles = newAppStyles(msg.Width)
+		if a.currentView != nil {
+			a.currentView.SetSize(msg.Width, msg.Height-2)
+		}
+		return a, a.modal.SetSize(msg.Width, msg.Height)
+	}
+
+	modal, cmd := a.modal.Update(msg)
+	a.modal = modal
+	return a, cmd
+}
+
 type keyMap struct {
 	Up      key.Binding
 	Down    key.Binding

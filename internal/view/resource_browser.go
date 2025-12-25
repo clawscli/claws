@@ -510,13 +510,12 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case "a":
-			// Show actions menu (only if actions exist)
 			if len(r.filtered) > 0 && r.table.Cursor() < len(r.filtered) {
 				if actions := action.Global.Get(r.service, r.resourceType); len(actions) > 0 {
 					resource := r.filtered[r.table.Cursor()]
 					actionMenu := NewActionMenu(r.ctx, resource, r.service, r.resourceType)
 					return r, func() tea.Msg {
-						return NavigateMsg{View: actionMenu}
+						return ShowModalMsg{Modal: &Modal{Content: actionMenu}}
 					}
 				}
 			}

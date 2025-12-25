@@ -236,3 +236,67 @@ func TestAWSContextReadyMsg_Timeout(t *testing.T) {
 		t.Error("Expected showWarnings to be true after timeout")
 	}
 }
+
+func TestModalShowAndHide(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	app := New(ctx, reg)
+	app.width = 100
+	app.height = 50
+
+	serviceBrowser := &MockView{name: "ServiceBrowser"}
+	app.currentView = serviceBrowser
+	app.viewStack = nil
+
+	modalContent := &MockView{name: "ActionMenu"}
+	showMsg := view.ShowModalMsg{Modal: &view.Modal{Content: modalContent}}
+	app.Update(showMsg)
+
+	if app.modal == nil {
+		t.Error("Expected modal to be set after ShowModalMsg")
+	}
+	if app.modal.Content.StatusLine() != "ActionMenu" {
+		t.Errorf("Expected modal content to be ActionMenu, got %s", app.modal.Content.StatusLine())
+	}
+
+	escMsg := tea.KeyPressMsg{Code: tea.KeyEscape}
+	app.Update(escMsg)
+
+	if app.modal != nil {
+		t.Error("Expected modal to be nil after esc")
+	}
+	if app.currentView.StatusLine() != "ServiceBrowser" {
+		t.Errorf("Expected currentView to remain ServiceBrowser, got %s", app.currentView.StatusLine())
+	}
+}
+
+func TestModalNavigateClosesModal(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	app := New(ctx, reg)
+	app.width = 100
+	app.height = 50
+
+	serviceBrowser := &MockView{name: "ServiceBrowser"}
+	app.currentView = serviceBrowser
+	app.viewStack = nil
+
+	modalContent := &MockView{name: "ActionMenu"}
+	app.modal = &view.Modal{Content: modalContent}
+
+	detailView := &MockView{name: "DetailView"}
+	navMsg := view.NavigateMsg{View: detailView}
+	app.Update(navMsg)
+
+	if app.modal != nil {
+		t.Error("Expected modal to be closed after NavigateMsg")
+	}
+	if app.currentView.StatusLine() != "DetailView" {
+		t.Errorf("Expected currentView to be DetailView, got %s", app.currentView.StatusLine())
+	}
+	if len(app.viewStack) != 1 {
+		t.Errorf("Expected viewStack length 1, got %d", len(app.viewStack))
+	}
+}
