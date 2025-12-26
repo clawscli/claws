@@ -33,7 +33,7 @@ func init() {
 			Shortcut:  "D",
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteFunction",
-			Confirm:   action.ConfirmSimple,
+			Confirm:   action.ConfirmDangerous,
 		},
 	})
 

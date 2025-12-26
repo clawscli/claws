@@ -18,7 +18,7 @@ func init() {
 			Shortcut:  "D",
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteStack",
-			Confirm:   action.ConfirmSimple,
+			Confirm:   action.ConfirmDangerous,
 		},
 		{
 			Name:      "Detect Drift",

@@ -461,6 +461,9 @@ func (a *App) handleModalUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyPressMsg:
 		if view.IsEscKey(msg) || msg.Code == tea.KeyBackspace {
+			if ic, ok := a.modal.Content.(view.InputCapture); ok && ic.HasActiveInput() {
+				break
+			}
 			a.modal = nil
 			return a, nil
 		}

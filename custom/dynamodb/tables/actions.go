@@ -47,7 +47,7 @@ func init() {
 			Shortcut:  "D",
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteTable",
-			Confirm:   action.ConfirmSimple,
+			Confirm:   action.ConfirmDangerous,
 		},
 	})
 
