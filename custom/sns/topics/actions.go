@@ -18,7 +18,7 @@ func init() {
 			Type:         action.ActionTypeAPI,
 			Operation:    "DeleteTopic",
 			Confirm:      action.ConfirmDangerous,
-			ConfirmToken: func(r dao.Resource) string { return r.GetName() },
+			ConfirmToken: action.ConfirmTokenName,
 		},
 	})
 

@@ -45,6 +45,12 @@ func newActionMenuStyles() actionMenuStyles {
 	}
 }
 
+type dangerousState struct {
+	active bool
+	input  string
+	token  string
+}
+
 type ActionMenu struct {
 	ctx            context.Context
 	resource       dao.Resource
@@ -59,10 +65,7 @@ type ActionMenu struct {
 	confirmIdx     int
 	lastExecAction *action.Action
 	styles         actionMenuStyles
-
-	dangerousConfirm bool
-	dangerousInput   string
-	confirmToken     string
+	dangerous      dangerousState
 }
 
 // NewActionMenu creates a new ActionMenu
@@ -122,7 +125,7 @@ func (m *ActionMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.MouseMotionMsg:
-		if !m.confirming && !m.dangerousConfirm {
+		if !m.confirming && !m.dangerous.active {
 			if idx := m.getActionAtPosition(msg.Y); idx >= 0 && idx != m.cursor {
 				m.cursor = idx
 			}
@@ -130,7 +133,7 @@ func (m *ActionMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.MouseClickMsg:
-		if msg.Button == tea.MouseLeft && !m.confirming && !m.dangerousConfirm {
+		if msg.Button == tea.MouseLeft && !m.confirming && !m.dangerous.active {
 			if idx := m.getActionAtPosition(msg.Y); idx >= 0 {
 				m.cursor = idx
 				return m.handleActionConfirm(m.actions[idx], idx)
@@ -139,39 +142,39 @@ func (m *ActionMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyPressMsg:
-		if m.dangerousConfirm {
+		if m.dangerous.active {
 			switch msg.String() {
 			case "enter":
-				if m.dangerousInput == m.confirmToken {
-					m.dangerousConfirm = false
-					m.dangerousInput = ""
-					m.confirmToken = ""
+				if m.dangerous.input == m.dangerous.token {
+					m.dangerous.active = false
+					m.dangerous.input = ""
+					m.dangerous.token = ""
 					if m.confirmIdx < len(m.actions) {
 						return m.executeAction(m.actions[m.confirmIdx])
 					}
 				}
 				return m, nil
 			case "esc":
-				m.dangerousConfirm = false
-				m.dangerousInput = ""
-				m.confirmToken = ""
+				m.dangerous.active = false
+				m.dangerous.input = ""
+				m.dangerous.token = ""
 				return m, nil
 			case "backspace":
 				// Handle terminals that send backspace as "backspace" string
-				if len(m.dangerousInput) > 0 {
-					m.dangerousInput = m.dangerousInput[:len(m.dangerousInput)-1]
+				if len(m.dangerous.input) > 0 {
+					m.dangerous.input = m.dangerous.input[:len(m.dangerous.input)-1]
 				}
 				return m, nil
 			default:
 				// Handle terminals that send backspace as KeyBackspace code
 				if msg.Code == tea.KeyBackspace {
-					if len(m.dangerousInput) > 0 {
-						m.dangerousInput = m.dangerousInput[:len(m.dangerousInput)-1]
+					if len(m.dangerous.input) > 0 {
+						m.dangerous.input = m.dangerous.input[:len(m.dangerous.input)-1]
 					}
 					return m, nil
 				}
 				if len(msg.String()) == 1 {
-					m.dangerousInput += msg.String()
+					m.dangerous.input += msg.String()
 				}
 				return m, nil
 			}
@@ -225,10 +228,10 @@ func (m *ActionMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *ActionMenu) handleActionConfirm(act action.Action, idx int) (tea.Model, tea.Cmd) {
 	switch act.Confirm {
 	case action.ConfirmDangerous:
-		m.dangerousConfirm = true
-		m.dangerousInput = ""
+		m.dangerous.active = true
+		m.dangerous.input = ""
 		m.confirmIdx = idx
-		m.confirmToken = m.getConfirmToken(act)
+		m.dangerous.token = m.getConfirmToken(act)
 		return m, nil
 	case action.ConfirmSimple:
 		m.confirming = true
@@ -315,7 +318,7 @@ func (m *ActionMenu) ViewString() string {
 		out += style.Render(fmt.Sprintf("%s %s", shortcut, act.Name)) + "\n"
 	}
 
-	if m.dangerousConfirm && m.confirmIdx < len(m.actions) {
+	if m.dangerous.active && m.confirmIdx < len(m.actions) {
 		act := m.actions[m.confirmIdx]
 		out += "\n"
 		out += m.renderDangerousConfirm(act)
@@ -337,7 +340,7 @@ func (m *ActionMenu) ViewString() string {
 		}
 	}
 
-	if !m.confirming && !m.dangerousConfirm {
+	if !m.confirming && !m.dangerous.active {
 		out += "\n\n" + ui.DimStyle().Render("Press shortcut key or Enter to execute, Esc to cancel")
 	}
 
@@ -351,14 +354,14 @@ func (m *ActionMenu) renderDangerousConfirm(act action.Action) string {
 	dangerTitle := lipgloss.NewStyle().Bold(true).Foreground(t.Danger).Render("⚠ DANGER")
 	content := dangerTitle + "\n\n"
 	content += fmt.Sprintf("You are about to %s:\n", s.no.Render(act.Name))
-	content += s.bold.Render(m.confirmToken) + "\n\n"
+	content += s.bold.Render(m.dangerous.token) + "\n\n"
 	content += "Type to confirm:\n"
 
 	inputStyle := s.input
-	if m.dangerousInput == m.confirmToken {
+	if m.dangerous.input == m.dangerous.token {
 		inputStyle = inputStyle.BorderForeground(t.Success)
 	}
-	content += inputStyle.Render(m.dangerousInput+"▌") + "\n\n"
+	content += inputStyle.Render(m.dangerous.input+"▌") + "\n\n"
 	content += ui.DimStyle().Render("Press Enter to confirm, Esc to cancel")
 
 	return s.dangerBox.Render(content)
@@ -385,7 +388,10 @@ func (m *ActionMenu) SetSize(width, height int) tea.Cmd {
 }
 
 func (m *ActionMenu) StatusLine() string {
-	if m.dangerousConfirm {
+	if m.dangerous.active {
+		if m.dangerous.input != "" && m.dangerous.input != m.dangerous.token {
+			return "Token does not match"
+		}
 		return "Type resource ID to confirm"
 	}
 	if m.confirming {
@@ -395,5 +401,5 @@ func (m *ActionMenu) StatusLine() string {
 }
 
 func (m *ActionMenu) HasActiveInput() bool {
-	return m.dangerousConfirm
+	return m.dangerous.active
 }

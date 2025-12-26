@@ -1118,10 +1118,10 @@ func TestActionMenuConfirmDangerousCorrectToken(t *testing.T) {
 	menu := NewActionMenu(ctx, resource, "test", "items")
 
 	// Manually set up dangerous confirm state (normally triggered by action selection)
-	menu.dangerousConfirm = true
+	menu.dangerous.active = true
 	menu.confirmIdx = 0
-	menu.confirmToken = "i-12345" // Default: uses GetID()
-	menu.dangerousInput = ""
+	menu.dangerous.token = "i-12345" // Default: uses GetID()
+	menu.dangerous.input = ""
 
 	// Type the correct token character by character
 	for _, r := range "i-12345" {
@@ -1129,8 +1129,8 @@ func TestActionMenuConfirmDangerousCorrectToken(t *testing.T) {
 		menu.Update(msg)
 	}
 
-	if menu.dangerousInput != "i-12345" {
-		t.Errorf("dangerousInput = %q, want %q", menu.dangerousInput, "i-12345")
+	if menu.dangerous.input != "i-12345" {
+		t.Errorf("dangerousInput = %q, want %q", menu.dangerous.input, "i-12345")
 	}
 
 	// Press enter - should accept since input matches token
@@ -1138,14 +1138,14 @@ func TestActionMenuConfirmDangerousCorrectToken(t *testing.T) {
 	menu.Update(enterMsg)
 
 	// Confirm state should be cleared on successful match
-	if menu.dangerousConfirm {
+	if menu.dangerous.active {
 		t.Error("Expected dangerousConfirm to be false after correct token + enter")
 	}
-	if menu.dangerousInput != "" {
-		t.Errorf("Expected dangerousInput to be cleared, got %q", menu.dangerousInput)
+	if menu.dangerous.input != "" {
+		t.Errorf("Expected dangerousInput to be cleared, got %q", menu.dangerous.input)
 	}
-	if menu.confirmToken != "" {
-		t.Errorf("Expected confirmToken to be cleared, got %q", menu.confirmToken)
+	if menu.dangerous.token != "" {
+		t.Errorf("Expected confirmToken to be cleared, got %q", menu.dangerous.token)
 	}
 }
 
@@ -1156,10 +1156,10 @@ func TestActionMenuConfirmDangerousWrongToken(t *testing.T) {
 	menu := NewActionMenu(ctx, resource, "test", "items")
 
 	// Set up dangerous confirm state
-	menu.dangerousConfirm = true
+	menu.dangerous.active = true
 	menu.confirmIdx = 0
-	menu.confirmToken = "i-12345"
-	menu.dangerousInput = ""
+	menu.dangerous.token = "i-12345"
+	menu.dangerous.input = ""
 
 	// Type wrong token
 	for _, r := range "wrong" {
@@ -1167,8 +1167,8 @@ func TestActionMenuConfirmDangerousWrongToken(t *testing.T) {
 		menu.Update(msg)
 	}
 
-	if menu.dangerousInput != "wrong" {
-		t.Errorf("dangerousInput = %q, want %q", menu.dangerousInput, "wrong")
+	if menu.dangerous.input != "wrong" {
+		t.Errorf("dangerousInput = %q, want %q", menu.dangerous.input, "wrong")
 	}
 
 	// Press enter - should NOT accept since input doesn't match token
@@ -1176,11 +1176,11 @@ func TestActionMenuConfirmDangerousWrongToken(t *testing.T) {
 	menu.Update(enterMsg)
 
 	// Confirm state should remain (not cleared)
-	if !menu.dangerousConfirm {
+	if !menu.dangerous.active {
 		t.Error("Expected dangerousConfirm to remain true after wrong token + enter")
 	}
-	if menu.dangerousInput != "wrong" {
-		t.Errorf("Expected dangerousInput to remain %q, got %q", "wrong", menu.dangerousInput)
+	if menu.dangerous.input != "wrong" {
+		t.Errorf("Expected dangerousInput to remain %q, got %q", "wrong", menu.dangerous.input)
 	}
 }
 
@@ -1191,24 +1191,24 @@ func TestActionMenuConfirmDangerousEscCancels(t *testing.T) {
 	menu := NewActionMenu(ctx, resource, "test", "items")
 
 	// Set up dangerous confirm state with partial input
-	menu.dangerousConfirm = true
+	menu.dangerous.active = true
 	menu.confirmIdx = 0
-	menu.confirmToken = "i-12345"
-	menu.dangerousInput = "i-123"
+	menu.dangerous.token = "i-12345"
+	menu.dangerous.input = "i-123"
 
 	// Press esc - should cancel
 	escMsg := tea.KeyPressMsg{Code: tea.KeyEscape}
 	menu.Update(escMsg)
 
 	// Confirm state should be cleared
-	if menu.dangerousConfirm {
+	if menu.dangerous.active {
 		t.Error("Expected dangerousConfirm to be false after esc")
 	}
-	if menu.dangerousInput != "" {
-		t.Errorf("Expected dangerousInput to be cleared, got %q", menu.dangerousInput)
+	if menu.dangerous.input != "" {
+		t.Errorf("Expected dangerousInput to be cleared, got %q", menu.dangerous.input)
 	}
-	if menu.confirmToken != "" {
-		t.Errorf("Expected confirmToken to be cleared, got %q", menu.confirmToken)
+	if menu.dangerous.token != "" {
+		t.Errorf("Expected confirmToken to be cleared, got %q", menu.dangerous.token)
 	}
 }
 
@@ -1219,18 +1219,18 @@ func TestActionMenuConfirmDangerousBackspaceString(t *testing.T) {
 	menu := NewActionMenu(ctx, resource, "test", "items")
 
 	// Set up dangerous confirm state with input
-	menu.dangerousConfirm = true
+	menu.dangerous.active = true
 	menu.confirmIdx = 0
-	menu.confirmToken = "i-12345"
-	menu.dangerousInput = "i-123"
+	menu.dangerous.token = "i-12345"
+	menu.dangerous.input = "i-123"
 
 	// Test backspace via msg.String() == "backspace"
 	// This handles terminals that send backspace as a string
 	backspaceMsg := tea.KeyPressMsg{Text: "backspace"}
 	menu.Update(backspaceMsg)
 
-	if menu.dangerousInput != "i-12" {
-		t.Errorf("After string backspace: dangerousInput = %q, want %q", menu.dangerousInput, "i-12")
+	if menu.dangerous.input != "i-12" {
+		t.Errorf("After string backspace: dangerousInput = %q, want %q", menu.dangerous.input, "i-12")
 	}
 }
 
@@ -1241,18 +1241,18 @@ func TestActionMenuConfirmDangerousBackspaceKeyCode(t *testing.T) {
 	menu := NewActionMenu(ctx, resource, "test", "items")
 
 	// Set up dangerous confirm state with input
-	menu.dangerousConfirm = true
+	menu.dangerous.active = true
 	menu.confirmIdx = 0
-	menu.confirmToken = "i-12345"
-	menu.dangerousInput = "i-123"
+	menu.dangerous.token = "i-12345"
+	menu.dangerous.input = "i-123"
 
 	// Test backspace via msg.Code == tea.KeyBackspace
 	// This handles terminals that send backspace as a key code
 	backspaceMsg := tea.KeyPressMsg{Code: tea.KeyBackspace}
 	menu.Update(backspaceMsg)
 
-	if menu.dangerousInput != "i-12" {
-		t.Errorf("After keycode backspace: dangerousInput = %q, want %q", menu.dangerousInput, "i-12")
+	if menu.dangerous.input != "i-12" {
+		t.Errorf("After keycode backspace: dangerousInput = %q, want %q", menu.dangerous.input, "i-12")
 	}
 }
 
@@ -1263,25 +1263,25 @@ func TestActionMenuConfirmDangerousBackspaceEmpty(t *testing.T) {
 	menu := NewActionMenu(ctx, resource, "test", "items")
 
 	// Set up dangerous confirm state with empty input
-	menu.dangerousConfirm = true
+	menu.dangerous.active = true
 	menu.confirmIdx = 0
-	menu.confirmToken = "i-12345"
-	menu.dangerousInput = ""
+	menu.dangerous.token = "i-12345"
+	menu.dangerous.input = ""
 
 	// Backspace on empty input should be safe (not panic)
 	backspaceMsg := tea.KeyPressMsg{Code: tea.KeyBackspace}
 	menu.Update(backspaceMsg)
 
-	if menu.dangerousInput != "" {
-		t.Errorf("After backspace on empty: dangerousInput = %q, want empty", menu.dangerousInput)
+	if menu.dangerous.input != "" {
+		t.Errorf("After backspace on empty: dangerousInput = %q, want empty", menu.dangerous.input)
 	}
 
 	// Also test string backspace on empty
 	backspaceStrMsg := tea.KeyPressMsg{Text: "backspace"}
 	menu.Update(backspaceStrMsg)
 
-	if menu.dangerousInput != "" {
-		t.Errorf("After string backspace on empty: dangerousInput = %q, want empty", menu.dangerousInput)
+	if menu.dangerous.input != "" {
+		t.Errorf("After string backspace on empty: dangerousInput = %q, want empty", menu.dangerous.input)
 	}
 }
 
@@ -1297,7 +1297,7 @@ func TestActionMenuConfirmDangerousHasActiveInput(t *testing.T) {
 	}
 
 	// Enter dangerous confirm mode
-	menu.dangerousConfirm = true
+	menu.dangerous.active = true
 
 	// Now should have active input
 	if !menu.HasActiveInput() {

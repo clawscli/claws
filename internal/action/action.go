@@ -170,6 +170,12 @@ func IsExecAllowedInReadOnly(actionName string) bool {
 	return ReadOnlyExecAllowlist[actionName]
 }
 
+// ConfirmTokenName is a helper for ConfirmToken that returns the resource name.
+// Use when the action operates on Name rather than ID (e.g., CFN stacks, SFN state machines).
+func ConfirmTokenName(r dao.Resource) string {
+	return r.GetName()
+}
+
 // Register registers actions for a resource type.
 func (r *Registry) Register(service, resource string, actions []Action) {
 	r.mu.Lock()
@@ -207,7 +213,13 @@ func RegisterExecutor(service, resource string, executor ExecutorFunc) {
 	Global.RegisterExecutor(service, resource, executor)
 }
 
-// ExecuteWithDAO executes an action with service/resource context for executor lookup
+// ExecuteWithDAO executes an action with service/resource context for executor lookup.
+//
+// Exec path conventions:
+//   - Interactive (TUI): ActionMenu uses tea.Exec(ExecWithHeader) to suspend TUI
+//   - Non-interactive: This function calls executeExec() directly (for programmatic use)
+//
+// API actions always go through this function → registered executor.
 func ExecuteWithDAO(ctx context.Context, action Action, resource dao.Resource, service, resourceType string) ActionResult {
 	log.Info("executing action", "action", action.Name, "type", action.Type, "service", service, "resourceType", resourceType, "resourceID", resource.GetID())
 
@@ -217,6 +229,8 @@ func ExecuteWithDAO(ctx context.Context, action Action, resource dao.Resource, s
 		return ActionResult{Success: false, Error: ErrEmptyOperation}
 	}
 
+	// Defense-in-depth: UI (NewActionMenu) already filters actions, but re-check here
+	// to prevent direct API calls or future code paths from bypassing read-only protection.
 	if config.Global().ReadOnly() && !IsAllowedInReadOnly(action) {
 		log.Info("read-only denied action", "action", action.Name, "type", action.Type)
 		return ActionResult{Success: false, Error: ErrReadOnlyDenied}

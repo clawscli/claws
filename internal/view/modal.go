@@ -9,13 +9,6 @@ import (
 	"github.com/clawscli/claws/internal/ui"
 )
 
-type ModalStyle int
-
-const (
-	ModalStyleNormal ModalStyle = iota
-	ModalStyleWarning
-)
-
 const (
 	modalBoxPadding     = 6 // border (1*2) + padding (2*2)
 	modalScreenMargin   = 10
@@ -26,7 +19,6 @@ const (
 
 type Modal struct {
 	Content      View
-	Style        ModalStyle
 	Width        int
 	screenWidth  int
 	screenHeight int
@@ -39,8 +31,7 @@ type ShowModalMsg struct {
 type HideModalMsg struct{}
 
 type modalStyles struct {
-	box     lipgloss.Style
-	warning lipgloss.Style
+	box lipgloss.Style
 }
 
 func newModalStyles() modalStyles {
@@ -49,10 +40,6 @@ func newModalStyles() modalStyles {
 		box: lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(t.Border).
-			Padding(1, 2),
-		warning: lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(t.Warning).
 			Padding(1, 2),
 	}
 }
@@ -73,14 +60,7 @@ func (r *ModalRenderer) Render(modal *Modal, bg string, width, height int) strin
 	}
 
 	content := modal.Content.ViewString()
-
-	var boxStyle lipgloss.Style
-	switch modal.Style {
-	case ModalStyleWarning:
-		boxStyle = r.styles.warning
-	default:
-		boxStyle = r.styles.box
-	}
+	boxStyle := r.styles.box
 
 	modalWidth := modal.Width
 	if modalWidth == 0 {

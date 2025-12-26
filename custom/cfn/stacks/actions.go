@@ -18,7 +18,7 @@ func init() {
 			Type:         action.ActionTypeAPI,
 			Operation:    "DeleteStack",
 			Confirm:      action.ConfirmDangerous,
-			ConfirmToken: func(r dao.Resource) string { return r.GetName() },
+			ConfirmToken: action.ConfirmTokenName,
 		},
 		{
 			Name:      "Detect Drift",
