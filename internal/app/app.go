@@ -469,10 +469,12 @@ func (a *App) handleModalUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.width = msg.Width
 		a.height = msg.Height
 		a.styles = newAppStyles(msg.Width)
+		var viewCmd tea.Cmd
 		if a.currentView != nil {
-			a.currentView.SetSize(msg.Width, msg.Height-2)
+			viewCmd = a.currentView.SetSize(msg.Width, msg.Height-2)
 		}
-		return a, a.modal.SetSize(msg.Width, msg.Height)
+		modalCmd := a.modal.SetSize(msg.Width, msg.Height)
+		return a, tea.Batch(viewCmd, modalCmd)
 	}
 
 	modal, cmd := a.modal.Update(msg)

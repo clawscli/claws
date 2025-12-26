@@ -142,12 +142,20 @@ Actions are defined in Go code within each resource's `actions.go` file:
 ```go
 func init() {
     action.Global.Register("ec2", "instances", []action.Action{
-        {Name: "Stop Instance", Shortcut: "S", Type: action.ActionTypeAPI, Confirm: true, Dangerous: true},
+        {Name: "Stop Instance", Shortcut: "S", Type: action.ActionTypeAPI, Confirm: action.ConfirmSimple},
         {Name: "SSH", Shortcut: "s", Type: action.ActionTypeExec},
     })
     action.RegisterExecutor("ec2", "instances", ExecuteAction)
 }
 ```
+
+**ConfirmLevel**: Actions can specify confirmation requirements:
+
+| Level | Description |
+|-------|-------------|
+| `ConfirmNone` | No confirmation (default) |
+| `ConfirmSimple` | Yes/No confirmation |
+| `ConfirmDangerous` | Requires typing resource ID (destructive actions) |
 
 ### Navigation
 
