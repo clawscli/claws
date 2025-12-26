@@ -86,6 +86,11 @@ type Action struct {
 	// If nil, no follow-up message is sent.
 	// Example: profile switch after SSO login returns msg.ProfileChangedMsg.
 	PostExecFollowUp func(resource dao.Resource) any
+
+	// ConfirmToken returns the string the user must type to confirm dangerous actions.
+	// If nil, defaults to resource.GetID().
+	// Use when the action operates on a different identifier (e.g., Name vs ARN).
+	ConfirmToken func(resource dao.Resource) string
 }
 
 // ActionResult represents the result of an action
@@ -146,6 +151,25 @@ var ReadOnlyExecAllowlist = map[string]bool{
 	ActionNameViewRecent24h: true,
 }
 
+// IsAllowedInReadOnly returns whether the action can be executed in read-only mode.
+func IsAllowedInReadOnly(act Action) bool {
+	switch act.Type {
+	case ActionTypeView:
+		return true
+	case ActionTypeExec:
+		return ReadOnlyExecAllowlist[act.Name]
+	case ActionTypeAPI:
+		return ReadOnlyAllowlist[act.Operation]
+	default:
+		return false
+	}
+}
+
+// IsExecAllowedInReadOnly checks if an exec action name is allowed in read-only mode.
+func IsExecAllowedInReadOnly(actionName string) bool {
+	return ReadOnlyExecAllowlist[actionName]
+}
+
 // Register registers actions for a resource type.
 func (r *Registry) Register(service, resource string, actions []Action) {
 	r.mu.Lock()
@@ -193,22 +217,9 @@ func ExecuteWithDAO(ctx context.Context, action Action, resource dao.Resource, s
 		return ActionResult{Success: false, Error: ErrEmptyOperation}
 	}
 
-	// Read-only enforcement at execution layer
-	if config.Global().ReadOnly() {
-		switch action.Type {
-		case ActionTypeView:
-			// always allowed
-		case ActionTypeExec:
-			if !ReadOnlyExecAllowlist[action.Name] {
-				log.Info("read-only denied exec action", "action", action.Name)
-				return ActionResult{Success: false, Error: ErrReadOnlyDenied}
-			}
-		case ActionTypeAPI:
-			if !ReadOnlyAllowlist[action.Operation] {
-				log.Info("read-only denied API action", "operation", action.Operation)
-				return ActionResult{Success: false, Error: ErrReadOnlyDenied}
-			}
-		}
+	if config.Global().ReadOnly() && !IsAllowedInReadOnly(action) {
+		log.Info("read-only denied action", "action", action.Name, "type", action.Type)
+		return ActionResult{Success: false, Error: ErrReadOnlyDenied}
 	}
 
 	var result ActionResult

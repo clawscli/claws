@@ -57,42 +57,26 @@ type ActionMenu struct {
 	result         *action.ActionResult
 	confirming     bool
 	confirmIdx     int
-	lastExecAction *action.Action // Last executed exec action for PostExecFollowUp
+	lastExecAction *action.Action
 	styles         actionMenuStyles
 
 	dangerousConfirm bool
 	dangerousInput   string
+	confirmToken     string
 }
 
 // NewActionMenu creates a new ActionMenu
 func NewActionMenu(ctx context.Context, resource dao.Resource, service, resType string) *ActionMenu {
 	actions := action.Global.Get(service, resType)
 
-	// Filter actions based on resource and read-only mode
 	filtered := make([]action.Action, 0, len(actions))
 	readOnly := config.Global().ReadOnly()
 	for _, act := range actions {
-		// Apply per-action filter
 		if act.Filter != nil && !act.Filter(resource) {
 			continue
 		}
-		// Read-only mode filtering:
-		// - View actions: always allowed
-		// - Exec actions: allowed only if in ReadOnlyExecAllowlist (auth workflows)
-		// - API actions: allowed only if in ReadOnlyAllowlist
-		if readOnly {
-			switch act.Type {
-			case action.ActionTypeView:
-				// always allowed
-			case action.ActionTypeExec:
-				if !action.ReadOnlyExecAllowlist[act.Name] {
-					continue // deny arbitrary shells (ECS Exec, SSM Session, etc.)
-				}
-			case action.ActionTypeAPI:
-				if !action.ReadOnlyAllowlist[act.Operation] {
-					continue
-				}
-			}
+		if readOnly && !action.IsAllowedInReadOnly(act) {
+			continue
 		}
 		filtered = append(filtered, act)
 	}
@@ -158,9 +142,10 @@ func (m *ActionMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.dangerousConfirm {
 			switch msg.String() {
 			case "enter":
-				if m.dangerousInput == m.resource.GetID() {
+				if m.dangerousInput == m.confirmToken {
 					m.dangerousConfirm = false
 					m.dangerousInput = ""
+					m.confirmToken = ""
 					if m.confirmIdx < len(m.actions) {
 						return m.executeAction(m.actions[m.confirmIdx])
 					}
@@ -169,6 +154,7 @@ func (m *ActionMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "esc":
 				m.dangerousConfirm = false
 				m.dangerousInput = ""
+				m.confirmToken = ""
 				return m, nil
 			case "backspace":
 				if len(m.dangerousInput) > 0 {
@@ -176,6 +162,12 @@ func (m *ActionMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 			default:
+				if msg.Code == tea.KeyBackspace {
+					if len(m.dangerousInput) > 0 {
+						m.dangerousInput = m.dangerousInput[:len(m.dangerousInput)-1]
+					}
+					return m, nil
+				}
 				if len(msg.String()) == 1 {
 					m.dangerousInput += msg.String()
 				}
@@ -234,6 +226,7 @@ func (m *ActionMenu) handleActionConfirm(act action.Action, idx int) (tea.Model,
 		m.dangerousConfirm = true
 		m.dangerousInput = ""
 		m.confirmIdx = idx
+		m.confirmToken = m.getConfirmToken(act)
 		return m, nil
 	case action.ConfirmSimple:
 		m.confirming = true
@@ -242,6 +235,13 @@ func (m *ActionMenu) handleActionConfirm(act action.Action, idx int) (tea.Model,
 	default:
 		return m.executeAction(act)
 	}
+}
+
+func (m *ActionMenu) getConfirmToken(act action.Action) string {
+	if act.ConfirmToken != nil {
+		return act.ConfirmToken(m.resource)
+	}
+	return m.resource.GetID()
 }
 
 func (m *ActionMenu) executeAction(act action.Action) (tea.Model, tea.Cmd) {
@@ -349,11 +349,11 @@ func (m *ActionMenu) renderDangerousConfirm(act action.Action) string {
 	dangerTitle := lipgloss.NewStyle().Bold(true).Foreground(t.Danger).Render("⚠ DANGER")
 	content := dangerTitle + "\n\n"
 	content += fmt.Sprintf("You are about to %s:\n", s.no.Render(act.Name))
-	content += s.bold.Render(m.resource.GetID()) + "\n\n"
-	content += "Type the resource ID to confirm:\n"
+	content += s.bold.Render(m.confirmToken) + "\n\n"
+	content += "Type to confirm:\n"
 
 	inputStyle := s.input
-	if m.dangerousInput == m.resource.GetID() {
+	if m.dangerousInput == m.confirmToken {
 		inputStyle = inputStyle.BorderForeground(t.Success)
 	}
 	content += inputStyle.Render(m.dangerousInput+"▌") + "\n\n"

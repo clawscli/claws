@@ -11,14 +11,14 @@ import (
 )
 
 func init() {
-	// Register actions for stacks
 	action.Global.Register("cloudformation", "stacks", []action.Action{
 		{
-			Name:      "Delete",
-			Shortcut:  "D",
-			Type:      action.ActionTypeAPI,
-			Operation: "DeleteStack",
-			Confirm:   action.ConfirmDangerous,
+			Name:         "Delete",
+			Shortcut:     "D",
+			Type:         action.ActionTypeAPI,
+			Operation:    "DeleteStack",
+			Confirm:      action.ConfirmDangerous,
+			ConfirmToken: func(r dao.Resource) string { return r.GetName() },
 		},
 		{
 			Name:      "Detect Drift",

@@ -45,8 +45,7 @@ func (e *SimpleExec) SetStderr(w io.Writer) { e.stderr = w }
 
 // Run executes the command
 func (e *SimpleExec) Run() error {
-	// Read-only enforcement at execution layer
-	if config.Global().ReadOnly() && !ReadOnlyExecAllowlist[e.ActionName] {
+	if config.Global().ReadOnly() && !IsExecAllowedInReadOnly(e.ActionName) {
 		return ErrReadOnlyDenied
 	}
 
@@ -110,8 +109,7 @@ func (e *ExecWithHeader) SetStderr(w io.Writer) {
 
 // Run executes the command with a fixed header at the top
 func (e *ExecWithHeader) Run() error {
-	// Read-only enforcement at execution layer
-	if config.Global().ReadOnly() && !ReadOnlyExecAllowlist[e.ActionName] {
+	if config.Global().ReadOnly() && !IsExecAllowedInReadOnly(e.ActionName) {
 		return ErrReadOnlyDenied
 	}
 
