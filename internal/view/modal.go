@@ -17,6 +17,13 @@ const (
 	ModalStyleDanger
 )
 
+const (
+	// modalBoxPadding: border (1*2) + padding (2*2) = 6
+	modalBoxPadding   = 6
+	modalScreenMargin = 10
+	modalDefaultWidth = 60
+)
+
 type Modal struct {
 	Content View
 	Style   ModalStyle
@@ -83,7 +90,7 @@ func (r *ModalRenderer) Render(modal *Modal, bg string, width, height int) strin
 
 	modalWidth := modal.Width
 	if modalWidth == 0 {
-		modalWidth = min(lipgloss.Width(content)+6, width-10)
+		modalWidth = min(lipgloss.Width(content)+modalBoxPadding, width-modalScreenMargin)
 	}
 	boxStyle = boxStyle.Width(modalWidth)
 
@@ -171,9 +178,9 @@ func (m *Modal) SetSize(width, height int) tea.Cmd {
 	}
 	modalWidth := m.Width
 	if modalWidth == 0 {
-		modalWidth = min(60, width-10)
+		modalWidth = min(modalDefaultWidth, width-modalScreenMargin)
 	}
-	contentWidth := modalWidth - 6
+	contentWidth := modalWidth - modalBoxPadding
 	contentHeight := height - 10
 	return m.Content.SetSize(contentWidth, contentHeight)
 }
