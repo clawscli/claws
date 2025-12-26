@@ -931,7 +931,7 @@ func TestConfirmSuffix(t *testing.T) {
 		{"abcdefg", "bcdefg"},
 		{"i-1234567890abcdef0", "bcdef0"},
 		{"arn:aws:iam::123456789012:policy/MyPolicy", "Policy"},
-		{"", ""},
+		{"", "CONFIRM"},
 	}
 
 	for _, tt := range tests {
@@ -958,7 +958,8 @@ func TestConfirmMatches(t *testing.T) {
 		{"wrong suffix", "i-1234567890abcdef0", "wrong", false},
 		{"partial suffix", "i-1234567890abcdef0", "def0", false},
 		{"empty input", "abcdef", "", false},
-		{"empty token", "", "", true},
+		{"empty token requires CONFIRM", "", "CONFIRM", true},
+		{"empty token rejects empty input", "", "", false},
 		{"full token when suffix expected", "i-1234567890abcdef0", "i-1234567890abcdef0", false},
 	}
 

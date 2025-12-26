@@ -181,9 +181,13 @@ func ConfirmTokenName(r dao.Resource) string {
 const MinConfirmChars = 6
 
 // ConfirmSuffix returns the suffix of the token that the user must type.
+// For empty tokens, returns "CONFIRM" as a fallback to prevent accidental confirmation.
 // For tokens <= MinConfirmChars, returns the full token.
 // For longer tokens, returns the last MinConfirmChars characters.
 func ConfirmSuffix(token string) string {
+	if token == "" {
+		return "CONFIRM"
+	}
 	if len(token) <= MinConfirmChars {
 		return token
 	}
