@@ -138,8 +138,7 @@ func (m *ActionMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.MouseMotionMsg:
-		// Hover: update cursor
-		if !m.confirming {
+		if !m.confirming && !m.dangerousConfirm {
 			if idx := m.getActionAtPosition(msg.Y); idx >= 0 && idx != m.cursor {
 				m.cursor = idx
 			}
