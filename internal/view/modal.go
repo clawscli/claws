@@ -14,7 +14,6 @@ type ModalStyle int
 const (
 	ModalStyleNormal ModalStyle = iota
 	ModalStyleWarning
-	ModalStyleDanger
 )
 
 const (
@@ -29,7 +28,6 @@ type Modal struct {
 	Content      View
 	Style        ModalStyle
 	Width        int
-	Height       int
 	screenWidth  int
 	screenHeight int
 }
@@ -43,7 +41,6 @@ type HideModalMsg struct{}
 type modalStyles struct {
 	box     lipgloss.Style
 	warning lipgloss.Style
-	danger  lipgloss.Style
 }
 
 func newModalStyles() modalStyles {
@@ -56,10 +53,6 @@ func newModalStyles() modalStyles {
 		warning: lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(t.Warning).
-			Padding(1, 2),
-		danger: lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(t.Danger).
 			Padding(1, 2),
 	}
 }
@@ -85,8 +78,6 @@ func (r *ModalRenderer) Render(modal *Modal, bg string, width, height int) strin
 	switch modal.Style {
 	case ModalStyleWarning:
 		boxStyle = r.styles.warning
-	case ModalStyleDanger:
-		boxStyle = r.styles.danger
 	default:
 		boxStyle = r.styles.box
 	}

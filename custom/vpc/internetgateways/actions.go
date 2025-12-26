@@ -17,7 +17,7 @@ func init() {
 			Shortcut:  "X",
 			Type:      action.ActionTypeAPI,
 			Operation: "DetachInternetGateway",
-			Confirm:   action.ConfirmSimple,
+			Confirm:   action.ConfirmDangerous,
 		},
 		{
 			Name:      "Delete",
