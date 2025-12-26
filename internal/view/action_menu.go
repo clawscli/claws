@@ -366,12 +366,9 @@ func (m *ActionMenu) View() tea.View {
 	return tea.NewView(m.ViewString())
 }
 
-// getActionAtPosition returns the action index at given Y position, or -1 if none
 func (m *ActionMenu) getActionAtPosition(y int) int {
-	// Layout: title (1) + margin (1) + empty (1) = 3 lines before actions
-	headerHeight := 3
-	idx := y - headerHeight
-
+	actionMenuHeaderHeight := 3
+	idx := y - actionMenuHeaderHeight
 	if idx >= 0 && idx < len(m.actions) {
 		return idx
 	}

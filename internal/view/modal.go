@@ -18,17 +18,20 @@ const (
 )
 
 const (
-	// modalBoxPadding: border (1*2) + padding (2*2) = 6
-	modalBoxPadding   = 6
-	modalScreenMargin = 10
-	modalDefaultWidth = 60
+	modalBoxPadding     = 6 // border (1*2) + padding (2*2)
+	modalScreenMargin   = 10
+	modalDefaultWidth   = 60
+	modalContentOffsetX = 3
+	modalContentOffsetY = 2
 )
 
 type Modal struct {
-	Content View
-	Style   ModalStyle
-	Width   int
-	Height  int
+	Content      View
+	Style        ModalStyle
+	Width        int
+	Height       int
+	screenWidth  int
+	screenHeight int
 }
 
 type ShowModalMsg struct {
@@ -165,6 +168,28 @@ func (m *Modal) Update(msg tea.Msg) (*Modal, tea.Cmd) {
 	if m.Content == nil {
 		return m, nil
 	}
+
+	switch msg := msg.(type) {
+	case tea.MouseClickMsg:
+		startX, startY := m.getModalPosition()
+		msg.X -= startX + modalContentOffsetX
+		msg.Y -= startY + modalContentOffsetY
+		model, cmd := m.Content.Update(msg)
+		if v, ok := model.(View); ok {
+			m.Content = v
+		}
+		return m, cmd
+	case tea.MouseMotionMsg:
+		startX, startY := m.getModalPosition()
+		msg.X -= startX + modalContentOffsetX
+		msg.Y -= startY + modalContentOffsetY
+		model, cmd := m.Content.Update(msg)
+		if v, ok := model.(View); ok {
+			m.Content = v
+		}
+		return m, cmd
+	}
+
 	model, cmd := m.Content.Update(msg)
 	if v, ok := model.(View); ok {
 		m.Content = v
@@ -172,10 +197,40 @@ func (m *Modal) Update(msg tea.Msg) (*Modal, tea.Cmd) {
 	return m, cmd
 }
 
+func (m *Modal) getModalPosition() (x, y int) {
+	if m.Content == nil || m.screenWidth == 0 || m.screenHeight == 0 {
+		return 0, 0
+	}
+
+	content := m.Content.ViewString()
+	modalWidth := m.Width
+	if modalWidth == 0 {
+		modalWidth = min(lipgloss.Width(content)+modalBoxPadding, m.screenWidth-modalScreenMargin)
+	}
+
+	modalVerticalChrome := 4
+	fgHeight := strings.Count(content, "\n") + 1 + modalVerticalChrome
+	fgWidth := modalWidth + 2
+
+	startX := (m.screenWidth - fgWidth) / 2
+	startY := (m.screenHeight - fgHeight) / 2
+
+	if startX < 0 {
+		startX = 0
+	}
+	if startY < 0 {
+		startY = 0
+	}
+
+	return startX, startY
+}
+
 func (m *Modal) SetSize(width, height int) tea.Cmd {
 	if m.Content == nil {
 		return nil
 	}
+	m.screenWidth = width
+	m.screenHeight = height
 	modalWidth := m.Width
 	if modalWidth == 0 {
 		modalWidth = min(modalDefaultWidth, width-modalScreenMargin)
