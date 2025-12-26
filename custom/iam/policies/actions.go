@@ -13,11 +13,12 @@ import (
 func init() {
 	action.Global.Register("iam", "policies", []action.Action{
 		{
-			Name:      "Delete",
-			Shortcut:  "D",
-			Type:      action.ActionTypeAPI,
-			Operation: "DeletePolicy",
-			Confirm:   action.ConfirmSimple,
+			Name:         "Delete",
+			Shortcut:     "D",
+			Type:         action.ActionTypeAPI,
+			Operation:    "DeletePolicy",
+			Confirm:      action.ConfirmDangerous,
+			ConfirmToken: action.ConfirmTokenName,
 		},
 	})
 

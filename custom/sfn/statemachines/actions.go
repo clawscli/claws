@@ -13,11 +13,12 @@ import (
 func init() {
 	action.Global.Register("sfn", "state-machines", []action.Action{
 		{
-			Name:      "Delete",
-			Shortcut:  "D",
-			Type:      action.ActionTypeAPI,
-			Operation: "DeleteStateMachine",
-			Confirm:   action.ConfirmSimple,
+			Name:         "Delete",
+			Shortcut:     "D",
+			Type:         action.ActionTypeAPI,
+			Operation:    "DeleteStateMachine",
+			Confirm:      action.ConfirmDangerous,
+			ConfirmToken: action.ConfirmTokenName,
 		},
 	})
 

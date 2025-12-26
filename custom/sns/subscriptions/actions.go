@@ -13,11 +13,12 @@ import (
 func init() {
 	action.Global.Register("sns", "subscriptions", []action.Action{
 		{
-			Name:      "Unsubscribe",
-			Shortcut:  "D",
-			Type:      action.ActionTypeAPI,
-			Operation: "Unsubscribe",
-			Confirm:   action.ConfirmSimple,
+			Name:         "Unsubscribe",
+			Shortcut:     "D",
+			Type:         action.ActionTypeAPI,
+			Operation:    "Unsubscribe",
+			Confirm:      action.ConfirmDangerous,
+			ConfirmToken: action.ConfirmTokenName,
 		},
 	})
 

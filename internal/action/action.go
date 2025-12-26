@@ -86,6 +86,11 @@ type Action struct {
 	// If nil, no follow-up message is sent.
 	// Example: profile switch after SSO login returns msg.ProfileChangedMsg.
 	PostExecFollowUp func(resource dao.Resource) any
+
+	// ConfirmToken returns the string the user must type to confirm dangerous actions.
+	// If nil, defaults to resource.GetID().
+	// Use when the action operates on a different identifier (e.g., Name vs ARN).
+	ConfirmToken func(resource dao.Resource) string
 }
 
 // ActionResult represents the result of an action
@@ -146,6 +151,55 @@ var ReadOnlyExecAllowlist = map[string]bool{
 	ActionNameViewRecent24h: true,
 }
 
+// IsAllowedInReadOnly returns whether the action can be executed in read-only mode.
+func IsAllowedInReadOnly(act Action) bool {
+	switch act.Type {
+	case ActionTypeView:
+		return true
+	case ActionTypeExec:
+		return ReadOnlyExecAllowlist[act.Name]
+	case ActionTypeAPI:
+		return ReadOnlyAllowlist[act.Operation]
+	default:
+		return false
+	}
+}
+
+// IsExecAllowedInReadOnly checks if an exec action name is allowed in read-only mode.
+func IsExecAllowedInReadOnly(actionName string) bool {
+	return ReadOnlyExecAllowlist[actionName]
+}
+
+// ConfirmTokenName is a helper for ConfirmToken that returns the resource name.
+// Use when the action operates on Name rather than ID (e.g., CFN stacks, SFN state machines).
+func ConfirmTokenName(r dao.Resource) string {
+	return r.GetName()
+}
+
+// MinConfirmChars is the minimum number of characters required for dangerous confirmation.
+// For tokens longer than this, only the last MinConfirmChars characters need to be typed.
+const MinConfirmChars = 6
+
+// ConfirmSuffix returns the suffix of the token that the user must type.
+// For empty tokens, returns "CONFIRM" as a fallback to prevent accidental confirmation.
+// For tokens <= MinConfirmChars, returns the full token.
+// For longer tokens, returns the last MinConfirmChars characters.
+func ConfirmSuffix(token string) string {
+	if token == "" {
+		return "CONFIRM"
+	}
+	if len(token) <= MinConfirmChars {
+		return token
+	}
+	return token[len(token)-MinConfirmChars:]
+}
+
+// ConfirmMatches checks if the user input matches the required confirmation.
+// Returns true if input equals the suffix returned by ConfirmSuffix.
+func ConfirmMatches(token, input string) bool {
+	return input == ConfirmSuffix(token)
+}
+
 // Register registers actions for a resource type.
 func (r *Registry) Register(service, resource string, actions []Action) {
 	r.mu.Lock()
@@ -183,7 +237,13 @@ func RegisterExecutor(service, resource string, executor ExecutorFunc) {
 	Global.RegisterExecutor(service, resource, executor)
 }
 
-// ExecuteWithDAO executes an action with service/resource context for executor lookup
+// ExecuteWithDAO executes an action with service/resource context for executor lookup.
+//
+// Exec path conventions:
+//   - Interactive (TUI): ActionMenu uses tea.Exec(ExecWithHeader) to suspend TUI
+//   - Non-interactive: This function calls executeExec() directly (for programmatic use)
+//
+// API actions always go through this function → registered executor.
 func ExecuteWithDAO(ctx context.Context, action Action, resource dao.Resource, service, resourceType string) ActionResult {
 	log.Info("executing action", "action", action.Name, "type", action.Type, "service", service, "resourceType", resourceType, "resourceID", resource.GetID())
 
@@ -193,22 +253,11 @@ func ExecuteWithDAO(ctx context.Context, action Action, resource dao.Resource, s
 		return ActionResult{Success: false, Error: ErrEmptyOperation}
 	}
 
-	// Read-only enforcement at execution layer
-	if config.Global().ReadOnly() {
-		switch action.Type {
-		case ActionTypeView:
-			// always allowed
-		case ActionTypeExec:
-			if !ReadOnlyExecAllowlist[action.Name] {
-				log.Info("read-only denied exec action", "action", action.Name)
-				return ActionResult{Success: false, Error: ErrReadOnlyDenied}
-			}
-		case ActionTypeAPI:
-			if !ReadOnlyAllowlist[action.Operation] {
-				log.Info("read-only denied API action", "operation", action.Operation)
-				return ActionResult{Success: false, Error: ErrReadOnlyDenied}
-			}
-		}
+	// Defense-in-depth: UI (NewActionMenu) already filters actions, but re-check here
+	// to prevent direct API calls or future code paths from bypassing read-only protection.
+	if config.Global().ReadOnly() && !IsAllowedInReadOnly(action) {
+		log.Info("read-only denied action", "action", action.Name, "type", action.Type)
+		return ActionResult{Success: false, Error: ErrReadOnlyDenied}
 	}
 
 	var result ActionResult
