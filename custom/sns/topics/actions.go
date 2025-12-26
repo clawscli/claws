@@ -13,11 +13,12 @@ import (
 func init() {
 	action.Global.Register("sns", "topics", []action.Action{
 		{
-			Name:      "Delete",
-			Shortcut:  "D",
-			Type:      action.ActionTypeAPI,
-			Operation: "DeleteTopic",
-			Confirm:   action.ConfirmDangerous,
+			Name:         "Delete",
+			Shortcut:     "D",
+			Type:         action.ActionTypeAPI,
+			Operation:    "DeleteTopic",
+			Confirm:      action.ConfirmDangerous,
+			ConfirmToken: func(r dao.Resource) string { return r.GetName() },
 		},
 	})
 

@@ -1109,6 +1109,202 @@ func TestActionMenuMouseHover(t *testing.T) {
 	t.Logf("Cursor after hover: %d (was %d)", menu.cursor, initialCursor)
 }
 
+// ConfirmDangerous state machine tests
+
+func TestActionMenuConfirmDangerousCorrectToken(t *testing.T) {
+	ctx := context.Background()
+	resource := &mockResource{id: "i-12345", name: "test-instance"}
+
+	menu := NewActionMenu(ctx, resource, "test", "items")
+
+	// Manually set up dangerous confirm state (normally triggered by action selection)
+	menu.dangerousConfirm = true
+	menu.confirmIdx = 0
+	menu.confirmToken = "i-12345" // Default: uses GetID()
+	menu.dangerousInput = ""
+
+	// Type the correct token character by character
+	for _, r := range "i-12345" {
+		msg := tea.KeyPressMsg{Text: string(r), Code: r}
+		menu.Update(msg)
+	}
+
+	if menu.dangerousInput != "i-12345" {
+		t.Errorf("dangerousInput = %q, want %q", menu.dangerousInput, "i-12345")
+	}
+
+	// Press enter - should accept since input matches token
+	enterMsg := tea.KeyPressMsg{Code: tea.KeyEnter}
+	menu.Update(enterMsg)
+
+	// Confirm state should be cleared on successful match
+	if menu.dangerousConfirm {
+		t.Error("Expected dangerousConfirm to be false after correct token + enter")
+	}
+	if menu.dangerousInput != "" {
+		t.Errorf("Expected dangerousInput to be cleared, got %q", menu.dangerousInput)
+	}
+	if menu.confirmToken != "" {
+		t.Errorf("Expected confirmToken to be cleared, got %q", menu.confirmToken)
+	}
+}
+
+func TestActionMenuConfirmDangerousWrongToken(t *testing.T) {
+	ctx := context.Background()
+	resource := &mockResource{id: "i-12345", name: "test-instance"}
+
+	menu := NewActionMenu(ctx, resource, "test", "items")
+
+	// Set up dangerous confirm state
+	menu.dangerousConfirm = true
+	menu.confirmIdx = 0
+	menu.confirmToken = "i-12345"
+	menu.dangerousInput = ""
+
+	// Type wrong token
+	for _, r := range "wrong" {
+		msg := tea.KeyPressMsg{Text: string(r), Code: r}
+		menu.Update(msg)
+	}
+
+	if menu.dangerousInput != "wrong" {
+		t.Errorf("dangerousInput = %q, want %q", menu.dangerousInput, "wrong")
+	}
+
+	// Press enter - should NOT accept since input doesn't match token
+	enterMsg := tea.KeyPressMsg{Code: tea.KeyEnter}
+	menu.Update(enterMsg)
+
+	// Confirm state should remain (not cleared)
+	if !menu.dangerousConfirm {
+		t.Error("Expected dangerousConfirm to remain true after wrong token + enter")
+	}
+	if menu.dangerousInput != "wrong" {
+		t.Errorf("Expected dangerousInput to remain %q, got %q", "wrong", menu.dangerousInput)
+	}
+}
+
+func TestActionMenuConfirmDangerousEscCancels(t *testing.T) {
+	ctx := context.Background()
+	resource := &mockResource{id: "i-12345", name: "test-instance"}
+
+	menu := NewActionMenu(ctx, resource, "test", "items")
+
+	// Set up dangerous confirm state with partial input
+	menu.dangerousConfirm = true
+	menu.confirmIdx = 0
+	menu.confirmToken = "i-12345"
+	menu.dangerousInput = "i-123"
+
+	// Press esc - should cancel
+	escMsg := tea.KeyPressMsg{Code: tea.KeyEscape}
+	menu.Update(escMsg)
+
+	// Confirm state should be cleared
+	if menu.dangerousConfirm {
+		t.Error("Expected dangerousConfirm to be false after esc")
+	}
+	if menu.dangerousInput != "" {
+		t.Errorf("Expected dangerousInput to be cleared, got %q", menu.dangerousInput)
+	}
+	if menu.confirmToken != "" {
+		t.Errorf("Expected confirmToken to be cleared, got %q", menu.confirmToken)
+	}
+}
+
+func TestActionMenuConfirmDangerousBackspaceString(t *testing.T) {
+	ctx := context.Background()
+	resource := &mockResource{id: "i-12345", name: "test-instance"}
+
+	menu := NewActionMenu(ctx, resource, "test", "items")
+
+	// Set up dangerous confirm state with input
+	menu.dangerousConfirm = true
+	menu.confirmIdx = 0
+	menu.confirmToken = "i-12345"
+	menu.dangerousInput = "i-123"
+
+	// Test backspace via msg.String() == "backspace"
+	// This handles terminals that send backspace as a string
+	backspaceMsg := tea.KeyPressMsg{Text: "backspace"}
+	menu.Update(backspaceMsg)
+
+	if menu.dangerousInput != "i-12" {
+		t.Errorf("After string backspace: dangerousInput = %q, want %q", menu.dangerousInput, "i-12")
+	}
+}
+
+func TestActionMenuConfirmDangerousBackspaceKeyCode(t *testing.T) {
+	ctx := context.Background()
+	resource := &mockResource{id: "i-12345", name: "test-instance"}
+
+	menu := NewActionMenu(ctx, resource, "test", "items")
+
+	// Set up dangerous confirm state with input
+	menu.dangerousConfirm = true
+	menu.confirmIdx = 0
+	menu.confirmToken = "i-12345"
+	menu.dangerousInput = "i-123"
+
+	// Test backspace via msg.Code == tea.KeyBackspace
+	// This handles terminals that send backspace as a key code
+	backspaceMsg := tea.KeyPressMsg{Code: tea.KeyBackspace}
+	menu.Update(backspaceMsg)
+
+	if menu.dangerousInput != "i-12" {
+		t.Errorf("After keycode backspace: dangerousInput = %q, want %q", menu.dangerousInput, "i-12")
+	}
+}
+
+func TestActionMenuConfirmDangerousBackspaceEmpty(t *testing.T) {
+	ctx := context.Background()
+	resource := &mockResource{id: "i-12345", name: "test-instance"}
+
+	menu := NewActionMenu(ctx, resource, "test", "items")
+
+	// Set up dangerous confirm state with empty input
+	menu.dangerousConfirm = true
+	menu.confirmIdx = 0
+	menu.confirmToken = "i-12345"
+	menu.dangerousInput = ""
+
+	// Backspace on empty input should be safe (not panic)
+	backspaceMsg := tea.KeyPressMsg{Code: tea.KeyBackspace}
+	menu.Update(backspaceMsg)
+
+	if menu.dangerousInput != "" {
+		t.Errorf("After backspace on empty: dangerousInput = %q, want empty", menu.dangerousInput)
+	}
+
+	// Also test string backspace on empty
+	backspaceStrMsg := tea.KeyPressMsg{Text: "backspace"}
+	menu.Update(backspaceStrMsg)
+
+	if menu.dangerousInput != "" {
+		t.Errorf("After string backspace on empty: dangerousInput = %q, want empty", menu.dangerousInput)
+	}
+}
+
+func TestActionMenuConfirmDangerousHasActiveInput(t *testing.T) {
+	ctx := context.Background()
+	resource := &mockResource{id: "i-12345", name: "test-instance"}
+
+	menu := NewActionMenu(ctx, resource, "test", "items")
+
+	// Initially no active input
+	if menu.HasActiveInput() {
+		t.Error("Expected HasActiveInput() to be false initially")
+	}
+
+	// Enter dangerous confirm mode
+	menu.dangerousConfirm = true
+
+	// Now should have active input
+	if !menu.HasActiveInput() {
+		t.Error("Expected HasActiveInput() to be true when dangerousConfirm is active")
+	}
+}
+
 func TestRegionSelectorMouseHover(t *testing.T) {
 	ctx := context.Background()
 

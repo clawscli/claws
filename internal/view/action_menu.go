@@ -157,11 +157,13 @@ func (m *ActionMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.confirmToken = ""
 				return m, nil
 			case "backspace":
+				// Handle terminals that send backspace as "backspace" string
 				if len(m.dangerousInput) > 0 {
 					m.dangerousInput = m.dangerousInput[:len(m.dangerousInput)-1]
 				}
 				return m, nil
 			default:
+				// Handle terminals that send backspace as KeyBackspace code
 				if msg.Code == tea.KeyBackspace {
 					if len(m.dangerousInput) > 0 {
 						m.dangerousInput = m.dangerousInput[:len(m.dangerousInput)-1]
