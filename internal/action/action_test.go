@@ -921,6 +921,57 @@ func TestExecuteWithDAO_EmptyOperation_BeforeReadOnlyCheck(t *testing.T) {
 	})
 }
 
+func TestConfirmSuffix(t *testing.T) {
+	tests := []struct {
+		token    string
+		expected string
+	}{
+		{"abc", "abc"},
+		{"abcdef", "abcdef"},
+		{"abcdefg", "bcdefg"},
+		{"i-1234567890abcdef0", "bcdef0"},
+		{"arn:aws:iam::123456789012:policy/MyPolicy", "Policy"},
+		{"", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.token, func(t *testing.T) {
+			result := ConfirmSuffix(tt.token)
+			if result != tt.expected {
+				t.Errorf("ConfirmSuffix(%q) = %q, want %q", tt.token, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestConfirmMatches(t *testing.T) {
+	tests := []struct {
+		name     string
+		token    string
+		input    string
+		expected bool
+	}{
+		{"exact match short", "abc", "abc", true},
+		{"exact match 6 chars", "abcdef", "abcdef", true},
+		{"suffix match long token", "i-1234567890abcdef0", "bcdef0", true},
+		{"suffix match ARN", "arn:aws:iam::123456789012:policy/MyPolicy", "Policy", true},
+		{"wrong suffix", "i-1234567890abcdef0", "wrong", false},
+		{"partial suffix", "i-1234567890abcdef0", "def0", false},
+		{"empty input", "abcdef", "", false},
+		{"empty token", "", "", true},
+		{"full token when suffix expected", "i-1234567890abcdef0", "i-1234567890abcdef0", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ConfirmMatches(tt.token, tt.input)
+			if result != tt.expected {
+				t.Errorf("ConfirmMatches(%q, %q) = %v, want %v", tt.token, tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
 func TestReadOnlyEnforcement_ExecWithHeader(t *testing.T) {
 	t.Run("read-only blocks non-allowlisted exec", func(t *testing.T) {
 		// Enable read-only mode

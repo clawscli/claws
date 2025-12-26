@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/clawscli/claws/internal/action"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/registry"
 	"github.com/clawscli/claws/internal/render"
@@ -1123,17 +1124,18 @@ func TestActionMenuConfirmDangerousCorrectToken(t *testing.T) {
 	menu.dangerous.token = "i-12345" // Default: uses GetID()
 	menu.dangerous.input = ""
 
-	// Type the correct token character by character
-	for _, r := range "i-12345" {
+	// Type the correct suffix (last 6 chars of "i-12345" = "-12345")
+	suffix := action.ConfirmSuffix("i-12345")
+	for _, r := range suffix {
 		msg := tea.KeyPressMsg{Text: string(r), Code: r}
 		menu.Update(msg)
 	}
 
-	if menu.dangerous.input != "i-12345" {
-		t.Errorf("dangerousInput = %q, want %q", menu.dangerous.input, "i-12345")
+	if menu.dangerous.input != suffix {
+		t.Errorf("dangerousInput = %q, want %q", menu.dangerous.input, suffix)
 	}
 
-	// Press enter - should accept since input matches token
+	// Press enter - should accept since input matches suffix
 	enterMsg := tea.KeyPressMsg{Code: tea.KeyEnter}
 	menu.Update(enterMsg)
 

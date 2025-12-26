@@ -176,6 +176,26 @@ func ConfirmTokenName(r dao.Resource) string {
 	return r.GetName()
 }
 
+// MinConfirmChars is the minimum number of characters required for dangerous confirmation.
+// For tokens longer than this, only the last MinConfirmChars characters need to be typed.
+const MinConfirmChars = 6
+
+// ConfirmSuffix returns the suffix of the token that the user must type.
+// For tokens <= MinConfirmChars, returns the full token.
+// For longer tokens, returns the last MinConfirmChars characters.
+func ConfirmSuffix(token string) string {
+	if len(token) <= MinConfirmChars {
+		return token
+	}
+	return token[len(token)-MinConfirmChars:]
+}
+
+// ConfirmMatches checks if the user input matches the required confirmation.
+// Returns true if input equals the suffix returned by ConfirmSuffix.
+func ConfirmMatches(token, input string) bool {
+	return input == ConfirmSuffix(token)
+}
+
 // Register registers actions for a resource type.
 func (r *Registry) Register(service, resource string, actions []Action) {
 	r.mu.Lock()

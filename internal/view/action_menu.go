@@ -3,6 +3,7 @@ package view
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -145,7 +146,7 @@ func (m *ActionMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.dangerous.active {
 			switch msg.String() {
 			case "enter":
-				if m.dangerous.input == m.dangerous.token {
+				if action.ConfirmMatches(m.dangerous.token, m.dangerous.input) {
 					m.dangerous.active = false
 					m.dangerous.input = ""
 					m.dangerous.token = ""
@@ -355,11 +356,20 @@ func (m *ActionMenu) renderDangerousConfirm(act action.Action) string {
 	content := dangerTitle + "\n\n"
 	content += fmt.Sprintf("You are about to %s:\n", s.no.Render(act.Name))
 	content += s.bold.Render(m.dangerous.token) + "\n\n"
-	content += "Type to confirm:\n"
+
+	suffix := action.ConfirmSuffix(m.dangerous.token)
+	if len(suffix) < len(m.dangerous.token) {
+		content += fmt.Sprintf("Type last %d chars: ...%s\n", len(suffix), suffix)
+	} else {
+		content += "Type to confirm:\n"
+	}
 
 	inputStyle := s.input
-	if m.dangerous.input == m.dangerous.token {
+	matched := action.ConfirmMatches(m.dangerous.token, m.dangerous.input)
+	if matched {
 		inputStyle = inputStyle.BorderForeground(t.Success)
+	} else if len(m.dangerous.input) > 0 && strings.HasPrefix(suffix, m.dangerous.input) {
+		inputStyle = inputStyle.BorderForeground(t.Warning)
 	}
 	content += inputStyle.Render(m.dangerous.input+"▌") + "\n\n"
 	content += ui.DimStyle().Render("Press Enter to confirm, Esc to cancel")
@@ -389,8 +399,12 @@ func (m *ActionMenu) SetSize(width, height int) tea.Cmd {
 
 func (m *ActionMenu) StatusLine() string {
 	if m.dangerous.active {
-		if m.dangerous.input != "" && m.dangerous.input != m.dangerous.token {
+		suffix := action.ConfirmSuffix(m.dangerous.token)
+		if m.dangerous.input != "" && !strings.HasPrefix(suffix, m.dangerous.input) {
 			return "Token does not match"
+		}
+		if len(suffix) < len(m.dangerous.token) {
+			return fmt.Sprintf("Type last %d chars to confirm", len(suffix))
 		}
 		return "Type resource ID to confirm"
 	}
