@@ -117,6 +117,9 @@ const (
 	minCostNameWidth   = 15 // Minimum service name width
 	costNameWidthRatio = 60 // Name takes 60% of available space, bar 40%
 
+	// Bullet list indent: "  • " = 2 spaces + bullet + space
+	bulletIndentWidth = 4
+
 	// Dashboard fetches first N items for summary display
 	dashboardMaxRecords = 100
 )
@@ -261,7 +264,7 @@ func (d *DashboardView) loadAlarms() tea.Msg {
 		return alarmErrorMsg{err: err}
 	}
 
-	var items []alarmItem
+	items := make([]alarmItem, 0, len(output.MetricAlarms)+len(output.CompositeAlarms))
 	for _, a := range output.MetricAlarms {
 		name := appaws.Str(a.AlarmName)
 		if name != "" {
@@ -678,7 +681,7 @@ func (d *DashboardView) renderOpsContent(contentWidth, contentHeight int) string
 		lines = append(lines, s.danger.Render(fmt.Sprintf("Alarms: %d in ALARM", len(d.alarms))))
 		maxShow := min(len(d.alarms), contentHeight-3)
 		for i := 0; i < maxShow; i++ {
-			lines = append(lines, "  "+s.danger.Render("• ")+truncateValue(d.alarms[i].name, contentWidth-4))
+			lines = append(lines, "  "+s.danger.Render("• ")+truncateValue(d.alarms[i].name, contentWidth-bulletIndentWidth))
 		}
 	} else {
 		lines = append(lines, "Alarms: "+s.success.Render("0 ✓"))
@@ -694,7 +697,7 @@ func (d *DashboardView) renderOpsContent(contentWidth, contentHeight int) string
 		maxShow := min(len(d.healthItems), remaining)
 		for i := 0; i < maxShow; i++ {
 			h := d.healthItems[i]
-			lines = append(lines, "  "+s.warning.Render("• ")+truncateValue(h.service+": "+h.eventType, contentWidth-4))
+			lines = append(lines, "  "+s.warning.Render("• ")+truncateValue(h.service+": "+h.eventType, contentWidth-bulletIndentWidth))
 		}
 	} else {
 		lines = append(lines, "Health: "+s.success.Render("0 open ✓"))
@@ -733,7 +736,7 @@ func (d *DashboardView) renderSecurityContent(contentWidth, contentHeight int) s
 			if item.severity == "CRITICAL" {
 				style = s.danger
 			}
-			lines = append(lines, "  "+style.Render("• ")+truncateValue(item.title, contentWidth-4))
+			lines = append(lines, "  "+style.Render("• ")+truncateValue(item.title, contentWidth-bulletIndentWidth))
 		}
 	} else {
 		lines = append(lines, s.success.Render("No critical/high ✓"))
@@ -776,7 +779,7 @@ func (d *DashboardView) renderOptimizationContent(contentWidth, contentHeight in
 				if item.status == "error" {
 					style = s.danger
 				}
-				lines = append(lines, "  "+style.Render("• ")+truncateValue(item.name, contentWidth-4))
+				lines = append(lines, "  "+style.Render("• ")+truncateValue(item.name, contentWidth-bulletIndentWidth))
 			}
 		}
 		if len(lines) == 0 {
