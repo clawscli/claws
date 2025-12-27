@@ -30,12 +30,7 @@ tasks:
   localstack:start:
     desc: Start LocalStack container
     cmds:
-      - |
-        if docker ps -a --format '{{.Names}}' | grep -q "^{{.LOCALSTACK_CONTAINER}}$"; then
-          docker start {{.LOCALSTACK_CONTAINER}}
-        else
-          docker run -d --name {{.LOCALSTACK_CONTAINER}} -p 4566:4566 localstack/localstack
-        fi
+      - docker start {{.LOCALSTACK_CONTAINER}} 2>/dev/null || docker run -d --name {{.LOCALSTACK_CONTAINER}} -p 4566:4566 localstack/localstack
       - echo "Waiting for LocalStack to be ready..."
       - sleep 3
       - echo "LocalStack started at http://localhost:4566"
@@ -81,6 +76,55 @@ tasks:
         fi
 
         echo "LocalStack test resources created!"
+
+  localstack:demo-setup:
+    desc: Create demo resources in LocalStack (VPCs, EC2, S3)
+    deps: [localstack:start]
+    env:
+      AWS_ENDPOINT_URL: http://localhost:4566
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_EC2_METADATA_DISABLED: "true"
+    cmds:
+      - ./scripts/localstack-demo-setup.sh
+
+  localstack:demo-cleanup:
+    desc: Cleanup demo resources from LocalStack
+    env:
+      AWS_ENDPOINT_URL: http://localhost:4566
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_EC2_METADATA_DISABLED: "true"
+    cmds:
+      - ./scripts/localstack-demo-cleanup.sh
+
+  localstack:demo:
+    desc: Run claws against LocalStack
+    deps: [build, localstack:start]
+    env:
+      AWS_ENDPOINT_URL: http://localhost:4566
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_EC2_METADATA_DISABLED: "true"
+    cmds:
+      - ./claws
+
+  demo:record:
+    desc: Record demo.gif using VHS + LocalStack
+    deps: [build, localstack:start, localstack:demo-setup]
+    cmds:
+      - |
+        docker run --rm --network host \
+          -v "$(pwd)":/vhs \
+          -e AWS_ENDPOINT_URL=http://localhost:4566 \
+          -e AWS_ACCESS_KEY_ID=test \
+          -e AWS_SECRET_ACCESS_KEY=test \
+          -e AWS_DEFAULT_REGION=us-east-1 \
+          -e AWS_EC2_METADATA_DISABLED=true \
+          ghcr.io/charmbracelet/vhs cassette.tape
 
   test-localstack:
     desc: Run integration tests with LocalStack
