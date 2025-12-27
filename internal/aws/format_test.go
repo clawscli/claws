@@ -16,7 +16,7 @@ func TestFormatMoney(t *testing.T) {
 		{"EUR currency", 50.00, "EUR", "50.00 EUR"},
 		{"JPY currency", 1000.00, "JPY", "1000.00 JPY"},
 		{"zero value", 0.00, "USD", "$0.00"},
-		{"negative value", -10.50, "USD", "$-10.50"}, // Go's fmt.Sprintf produces $-10.50, not -$10.50
+		{"negative value", -10.50, "USD", "-$10.50"},
 		{"large value", 1234567.89, "USD", "$1234567.89"},
 		{"small decimals", 0.01, "", "$0.01"},
 	}

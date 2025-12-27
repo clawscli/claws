@@ -199,4 +199,40 @@ func TestPaginateMarker(t *testing.T) {
 			t.Errorf("expected 3 items, got %d", len(items))
 		}
 	})
+
+	t.Run("marker passed correctly between pages", func(t *testing.T) {
+		var receivedMarkers []*string
+		page := 0
+		_, err := PaginateMarker(context.Background(), func(marker *string) ([]int, *string, error) {
+			receivedMarkers = append(receivedMarkers, marker)
+			page++
+			switch page {
+			case 1:
+				next := "page2"
+				return []int{1}, &next, nil
+			case 2:
+				next := "page3"
+				return []int{2}, &next, nil
+			case 3:
+				return []int{3}, nil, nil
+			default:
+				return nil, nil, nil
+			}
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(receivedMarkers) != 3 {
+			t.Fatalf("expected 3 calls, got %d", len(receivedMarkers))
+		}
+		if receivedMarkers[0] != nil {
+			t.Error("first call should receive nil marker")
+		}
+		if receivedMarkers[1] == nil || *receivedMarkers[1] != "page2" {
+			t.Errorf("second call should receive 'page2', got %v", receivedMarkers[1])
+		}
+		if receivedMarkers[2] == nil || *receivedMarkers[2] != "page3" {
+			t.Errorf("third call should receive 'page3', got %v", receivedMarkers[2])
+		}
+	})
 }

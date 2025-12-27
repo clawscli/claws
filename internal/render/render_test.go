@@ -483,8 +483,17 @@ func TestDetailBuilder_Tags(t *testing.T) {
 func TestDetailBuilder_Styles(t *testing.T) {
 	d := NewDetailBuilder()
 	styles := d.Styles()
-	_ = styles.Title.Render("test")
-	_ = styles.Section.Render("test")
-	_ = styles.Label.Render("test")
-	_ = styles.Value.Render("test")
+
+	if styles.Title.Render("test") == "" {
+		t.Error("Title.Render() returned empty string")
+	}
+	if styles.Section.Render("test") == "" {
+		t.Error("Section.Render() returned empty string")
+	}
+	if styles.Label.Render("test") == "" {
+		t.Error("Label.Render() returned empty string")
+	}
+	if styles.Value.Render("test") == "" {
+		t.Error("Value.Render() returned empty string")
+	}
 }
