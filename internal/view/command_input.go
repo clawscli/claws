@@ -211,8 +211,14 @@ func (c *CommandInput) SetDiffProvider(provider DiffCompletionProvider) {
 func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 	input := strings.TrimSpace(c.textInput.Value())
 
-	// Empty input - go to service list (home)
-	if input == "" {
+	// Empty input or home/pulse - go to dashboard
+	if input == "" || input == "home" || input == "pulse" {
+		dashboard := NewDashboardView(c.ctx, c.registry)
+		return nil, &NavigateMsg{View: dashboard, ClearStack: true}
+	}
+
+	// Handle services/browse command - go to service browser
+	if input == "services" || input == "browse" {
 		browser := NewServiceBrowser(c.ctx, c.registry)
 		return nil, &NavigateMsg{View: browser, ClearStack: true}
 	}
@@ -406,7 +412,13 @@ func (c *CommandInput) GetSuggestions() []string {
 		}
 	} else {
 		// Suggest services and special commands
-		// Add "login" command
+		// Add navigation commands
+		if strings.HasPrefix("home", input) {
+			suggestions = append(suggestions, "home")
+		}
+		if strings.HasPrefix("services", input) {
+			suggestions = append(suggestions, "services")
+		}
 		if strings.HasPrefix("login", input) {
 			suggestions = append(suggestions, "login")
 		}

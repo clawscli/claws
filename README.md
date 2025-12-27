@@ -138,7 +138,8 @@ claws -l debug.log
 | `h` / `l` | Navigate within category (service list) |
 | `Enter` / `d` | View resource details |
 | `:` | Command mode (e.g., `:ec2/instances`) |
-| `:` + `Enter` | Go to service list (home) |
+| `:` + `Enter` | Go to dashboard (home) |
+| `:services` | Go to service browser |
 | `:sort <col>` | Sort by column (ascending) |
 | `:sort desc <col>` | Sort by column (descending) |
 | `:tag <filter>` | Filter by tag (e.g., `:tag Env=prod`) |
