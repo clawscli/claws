@@ -108,11 +108,8 @@ func maskAccessKey(key string) string {
 	if key == "" {
 		return ""
 	}
-	if config.Global().DemoMode() {
-		return "AKIA************"
-	}
 	if len(key) <= 8 {
-		return "****" // Always mask short keys for security
+		return "****"
 	}
 	return key[:4] + "****" + key[len(key)-4:]
 }
@@ -211,7 +208,7 @@ func (r *ProfileRenderer) RenderDetail(resource dao.Resource) string {
 			d.Field("SSO Region", data.SSORegion)
 		}
 		if data.SSOAccountID != "" {
-			d.Field("Account ID", config.Global().MaskAccountID(data.SSOAccountID))
+			d.Field("Account ID", data.SSOAccountID)
 		}
 		if data.SSORoleName != "" {
 			d.Field("Role Name", data.SSORoleName)

@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	appaws "github.com/clawscli/claws/internal/aws"
-	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/render"
 )
@@ -112,7 +111,7 @@ func (r *VPCRenderer) RenderDetail(resource dao.Resource) string {
 	d.Field("Default VPC", fmt.Sprintf("%v", vr.IsDefault()))
 	d.Field("Tenancy", vr.Tenancy())
 	if vr.Item.OwnerId != nil {
-		d.Field("Owner ID", config.Global().MaskAccountID(*vr.Item.OwnerId))
+		d.Field("Owner ID", *vr.Item.OwnerId)
 	}
 
 	// DNS Settings
@@ -187,7 +186,7 @@ func (r *VPCRenderer) RenderSummary(resource dao.Resource) []render.SummaryField
 	}
 
 	if vr.Item.OwnerId != nil {
-		fields = append(fields, render.SummaryField{Label: "Owner", Value: config.Global().MaskAccountID(*vr.Item.OwnerId)})
+		fields = append(fields, render.SummaryField{Label: "Owner", Value: *vr.Item.OwnerId})
 	}
 
 	return fields

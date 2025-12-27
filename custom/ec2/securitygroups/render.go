@@ -6,7 +6,6 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	appaws "github.com/clawscli/claws/internal/aws"
-	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/render"
 )
@@ -113,7 +112,7 @@ func (r *SecurityGroupRenderer) RenderDetail(resource dao.Resource) string {
 	d.Field("Group Name", sg.GetName())
 	d.Field("VPC ID", sg.VpcID())
 	if sg.Item.OwnerId != nil {
-		d.Field("Owner ID", config.Global().MaskAccountID(*sg.Item.OwnerId))
+		d.Field("Owner ID", *sg.Item.OwnerId)
 	}
 	d.Field("Description", sg.Description())
 
@@ -254,7 +253,7 @@ func (r *SecurityGroupRenderer) RenderSummary(resource dao.Resource) []render.Su
 
 	// Row 4: Owner ID if available
 	if sg.Item.OwnerId != nil {
-		fields = append(fields, render.SummaryField{Label: "Owner", Value: config.Global().MaskAccountID(*sg.Item.OwnerId)})
+		fields = append(fields, render.SummaryField{Label: "Owner", Value: *sg.Item.OwnerId})
 	}
 
 	return fields

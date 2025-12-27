@@ -5,7 +5,6 @@ import (
 
 	"charm.land/lipgloss/v2"
 	appaws "github.com/clawscli/claws/internal/aws"
-	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/render"
 )
@@ -161,7 +160,7 @@ func (r *SubnetRenderer) RenderDetail(resource dao.Resource) string {
 	// Owner
 	if sr.Item.OwnerId != nil {
 		d.Section("Owner")
-		d.Field("Owner ID", config.Global().MaskAccountID(*sr.Item.OwnerId))
+		d.Field("Owner ID", *sr.Item.OwnerId)
 	}
 
 	// Tags

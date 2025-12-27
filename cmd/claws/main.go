@@ -326,14 +326,7 @@ func main() {
 			opts.readOnly = true
 		}
 	}
-	if !opts.demoMode {
-		if v := os.Getenv("CLAWS_DEMO"); v == "1" || v == "true" {
-			opts.demoMode = true
-		}
-	}
-
 	cfg.SetReadOnly(opts.readOnly)
-	cfg.SetDemoMode(opts.demoMode)
 	if opts.envCreds {
 		// Use environment credentials, ignore ~/.aws config
 		cfg.UseEnvOnly()
@@ -377,8 +370,7 @@ type cliOptions struct {
 	profile  string
 	region   string
 	readOnly bool
-	demoMode bool
-	envCreds bool // Use environment credentials (ignore ~/.aws config)
+	envCreds bool
 	logFile  string
 }
 
@@ -404,8 +396,6 @@ func parseFlags() cliOptions {
 			}
 		case arg == "-ro" || arg == "--read-only":
 			opts.readOnly = true
-		case arg == "--demo":
-			opts.demoMode = true
 		case arg == "-e" || arg == "--env":
 			opts.envCreds = true
 		case arg == "-l" || arg == "--log-file":
@@ -448,8 +438,6 @@ func printUsage() {
 	fmt.Println("        Useful for instance profiles, ECS task roles, Lambda, etc.")
 	fmt.Println("  -ro, --read-only")
 	fmt.Println("        Run in read-only mode (disable dangerous actions)")
-	fmt.Println("  --demo")
-	fmt.Println("        Demo mode (mask account IDs)")
 	fmt.Println("  -l, --log-file <path>")
 	fmt.Println("        Enable debug logging to specified file")
 	fmt.Println("  -v, --version")
@@ -459,5 +447,4 @@ func printUsage() {
 	fmt.Println()
 	fmt.Println("Environment Variables:")
 	fmt.Println("  CLAWS_READ_ONLY=1|true   Enable read-only mode")
-	fmt.Println("  CLAWS_DEMO=1|true        Enable demo mode")
 }

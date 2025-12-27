@@ -5,9 +5,6 @@ import (
 	"sync"
 )
 
-// DemoAccountID is the masked account ID shown in demo mode
-const DemoAccountID = "123456789012"
-
 // Profile resource ID constants for stable identification
 const (
 	// ProfileIDSDKDefault is the resource ID for SDK default credential mode
@@ -134,7 +131,6 @@ type Config struct {
 	accountID string
 	warnings  []string
 	readOnly  bool
-	demoMode  bool
 }
 
 var (
@@ -193,13 +189,10 @@ func (c *Config) UseProfile(name string) {
 	c.SetSelection(NamedProfile(name))
 }
 
-// AccountID returns the current AWS account ID (masked in demo mode)
+// AccountID returns the current AWS account ID
 func (c *Config) AccountID() string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	if c.demoMode {
-		return DemoAccountID
-	}
 	return c.accountID
 }
 
@@ -208,30 +201,6 @@ func (c *Config) SetAccountID(id string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.accountID = id
-}
-
-// SetDemoMode enables or disables demo mode
-func (c *Config) SetDemoMode(enabled bool) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.demoMode = enabled
-}
-
-// DemoMode returns whether demo mode is enabled
-func (c *Config) DemoMode() bool {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return c.demoMode
-}
-
-// MaskAccountID masks an account ID if demo mode is enabled
-func (c *Config) MaskAccountID(id string) string {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	if c.demoMode && id != "" {
-		return DemoAccountID
-	}
-	return id
 }
 
 // Warnings returns any startup warnings

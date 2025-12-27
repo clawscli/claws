@@ -2,7 +2,6 @@ package internetgateways
 
 import (
 	appaws "github.com/clawscli/claws/internal/aws"
-	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/render"
 )
@@ -65,7 +64,7 @@ func NewInternetGatewayRenderer() render.Renderer {
 					Width: 14,
 					Getter: func(r dao.Resource) string {
 						if igwr, ok := r.(*InternetGatewayResource); ok {
-							return config.Global().MaskAccountID(igwr.OwnerId())
+							return igwr.OwnerId()
 						}
 						return ""
 					},
@@ -92,7 +91,7 @@ func (r *InternetGatewayRenderer) RenderDetail(resource dao.Resource) string {
 	d.Field("Internet Gateway ID", igwr.GetID())
 	d.FieldStyled("State", igwr.AttachmentState(), render.StateColorer()(igwr.AttachmentState()))
 	if igwr.Item.OwnerId != nil {
-		d.Field("Owner ID", config.Global().MaskAccountID(*igwr.Item.OwnerId))
+		d.Field("Owner ID", *igwr.Item.OwnerId)
 	}
 
 	// Attachments
@@ -130,7 +129,7 @@ func (r *InternetGatewayRenderer) RenderSummary(resource dao.Resource) []render.
 	}
 
 	if igwr.Item.OwnerId != nil {
-		fields = append(fields, render.SummaryField{Label: "Owner", Value: config.Global().MaskAccountID(*igwr.Item.OwnerId)})
+		fields = append(fields, render.SummaryField{Label: "Owner", Value: *igwr.Item.OwnerId})
 	}
 
 	return fields

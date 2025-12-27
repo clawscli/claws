@@ -122,34 +122,3 @@ func TestGlobal(t *testing.T) {
 		t.Error("Global() should return same instance")
 	}
 }
-
-func TestConfig_DemoMode(t *testing.T) {
-	cfg := &Config{accountID: "111122223333"}
-
-	// Demo mode disabled - should return real account ID
-	if cfg.AccountID() != "111122223333" {
-		t.Errorf("AccountID() = %q, want %q", cfg.AccountID(), "111122223333")
-	}
-
-	// Enable demo mode
-	cfg.SetDemoMode(true)
-	if !cfg.DemoMode() {
-		t.Error("DemoMode() = false, want true")
-	}
-
-	// Should return masked account ID
-	if cfg.AccountID() != DemoAccountID {
-		t.Errorf("AccountID() = %q, want %q (demo mode)", cfg.AccountID(), DemoAccountID)
-	}
-
-	// MaskAccountID should also mask
-	if cfg.MaskAccountID("999988887777") != DemoAccountID {
-		t.Errorf("MaskAccountID() = %q, want %q", cfg.MaskAccountID("999988887777"), DemoAccountID)
-	}
-
-	// Disable demo mode
-	cfg.SetDemoMode(false)
-	if cfg.AccountID() != "111122223333" {
-		t.Errorf("AccountID() = %q, want %q after disabling demo mode", cfg.AccountID(), "111122223333")
-	}
-}

@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
-	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/ui"
 )
 
@@ -135,9 +134,8 @@ func (d *DetailBuilder) Tag(key, value string) *DetailBuilder {
 
 // Tags renders a "Tags" section with all tags from a map.
 // Keys are sorted alphabetically for consistent display.
-// Tags are hidden in demo mode to avoid exposing sensitive information.
 func (d *DetailBuilder) Tags(tags map[string]string) *DetailBuilder {
-	if len(tags) == 0 || config.Global().DemoMode() {
+	if len(tags) == 0 {
 		return d
 	}
 	d.Section("Tags")
