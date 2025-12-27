@@ -42,7 +42,7 @@ tasks:
       - |
         echo "Waiting for LocalStack to be ready..."
         for i in $(seq 1 30); do
-          if curl -s http://localhost:4566/_localstack/health | grep -q '"s3": "running"'; then
+          if curl -s --connect-timeout 2 --max-time 5 http://localhost:4566/_localstack/health 2>/dev/null | grep -q '"s3": "running"'; then
             echo "LocalStack started at http://localhost:4566"
             exit 0
           fi

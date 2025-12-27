@@ -11,6 +11,8 @@ log() { echo -e "${GREEN}[+]${NC} $1"; }
 warn() { echo -e "${YELLOW}[!]${NC} $1"; }
 error() { echo -e "${RED}[x]${NC} $1"; exit 1; }
 
+command -v aws >/dev/null 2>&1 || error "aws CLI not found"
+
 ERRORS=0
 track_error() { ((ERRORS++)) || true; warn "$1"; }
 

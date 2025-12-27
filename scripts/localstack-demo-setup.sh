@@ -16,6 +16,9 @@ log() { echo -e "${GREEN}[+]${NC} $1"; }
 warn() { echo -e "${YELLOW}[!]${NC} $1"; }
 error() { echo -e "${RED}[x]${NC} $1"; exit 1; }
 
+# Check required tools
+command -v aws >/dev/null 2>&1 || error "aws CLI not found. Install: https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html"
+
 # Safety check: Only allow localhost:4566
 if [[ "${AWS_ENDPOINT_URL:-}" != "http://localhost:4566" ]]; then
     error "AWS_ENDPOINT_URL must be http://localhost:4566 (got: ${AWS_ENDPOINT_URL:-<not set>})"
@@ -98,7 +101,7 @@ create_vpc_a() {
     aws_cmd ec2 create-tags --resources "$SG_DB" --tags Key=Name,Value=claws-demo-sg-db ${DEMO_TAG} ${DEMO_TAG2}
     aws_cmd ec2 authorize-security-group-ingress --group-id "$SG_DB" --protocol tcp --port 3306 --source-group "$SG_APP" || true
     
-    # EC2 Instances (LocalStack accepts dummy AMI)
+    # LocalStack accepts any AMI ID for EC2 simulation
     AMI="ami-12345678"
     
     log "Creating EC2 instances in VPC A..."
