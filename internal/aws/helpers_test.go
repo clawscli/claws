@@ -170,3 +170,25 @@ func TestExtractResourceName(t *testing.T) {
 		})
 	}
 }
+
+func TestFloat64(t *testing.T) {
+	float64Ptr := func(f float64) *float64 { return &f }
+	tests := []struct {
+		name string
+		p    *float64
+		want float64
+	}{
+		{"nil pointer", nil, 0},
+		{"zero", float64Ptr(0), 0},
+		{"positive", float64Ptr(3.14159), 3.14159},
+		{"negative", float64Ptr(-1.5), -1.5},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Float64(tt.p); got != tt.want {
+				t.Errorf("Float64() = %f, want %f", got, tt.want)
+			}
+		})
+	}
+}

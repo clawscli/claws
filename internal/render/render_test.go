@@ -347,3 +347,144 @@ func TestDetailBuilderPlaceholdersMatchable(t *testing.T) {
 		}
 	}
 }
+
+func TestFormatDuration(t *testing.T) {
+	tests := []struct {
+		name string
+		d    time.Duration
+		want string
+	}{
+		{"milliseconds", 500 * time.Millisecond, "500ms"},
+		{"seconds only", 30 * time.Second, "30s"},
+		{"minutes only", 5 * time.Minute, "5m"},
+		{"minutes and seconds", 5*time.Minute + 30*time.Second, "5m30s"},
+		{"hours only", 2 * time.Hour, "2h"},
+		{"hours and minutes", 2*time.Hour + 30*time.Minute, "2h30m"},
+		{"zero", 0, "0ms"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := FormatDuration(tt.d)
+			if got != tt.want {
+				t.Errorf("FormatDuration(%v) = %q, want %q", tt.d, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestDetailBuilder_Title(t *testing.T) {
+	d := NewDetailBuilder()
+	d.Title("Instance", "i-12345")
+	result := d.String()
+	if !strings.Contains(result, "Instance") || !strings.Contains(result, "i-12345") {
+		t.Errorf("Title() should contain resource type and name, got: %s", result)
+	}
+}
+
+func TestDetailBuilder_Section(t *testing.T) {
+	d := NewDetailBuilder()
+	d.Section("Configuration")
+	result := d.String()
+	if !strings.Contains(result, "Configuration") {
+		t.Errorf("Section() should contain section name, got: %s", result)
+	}
+}
+
+func TestDetailBuilder_FieldStyled(t *testing.T) {
+	d := NewDetailBuilder()
+	d.FieldStyled("Status", "running", SuccessStyle())
+	result := d.String()
+	if !strings.Contains(result, "Status") {
+		t.Errorf("FieldStyled() should contain label, got: %s", result)
+	}
+}
+
+func TestDetailBuilder_FieldIf(t *testing.T) {
+	d := NewDetailBuilder()
+	val := "test-value"
+	d.FieldIf("Present", &val)
+	d.FieldIf("Missing", nil)
+	empty := ""
+	d.FieldIf("Empty", &empty)
+	result := d.String()
+
+	if !strings.Contains(result, "Present") {
+		t.Error("FieldIf() should include field when pointer is non-nil")
+	}
+	if strings.Contains(result, "Missing") {
+		t.Error("FieldIf() should not include field when pointer is nil")
+	}
+	if strings.Contains(result, "Empty:") {
+		t.Error("FieldIf() should not include field when value is empty string")
+	}
+}
+
+func TestDetailBuilder_Line(t *testing.T) {
+	d := NewDetailBuilder()
+	d.Line("raw text line")
+	result := d.String()
+	if !strings.Contains(result, "raw text line") {
+		t.Errorf("Line() should contain text, got: %s", result)
+	}
+}
+
+func TestDetailBuilder_Dim(t *testing.T) {
+	d := NewDetailBuilder()
+	d.Dim("dimmed text")
+	result := d.String()
+	if result == "" {
+		t.Error("Dim() should produce output")
+	}
+}
+
+func TestDetailBuilder_DimIndent(t *testing.T) {
+	d := NewDetailBuilder()
+	d.DimIndent("indented dimmed text")
+	result := d.String()
+	if !strings.Contains(result, "  ") {
+		t.Error("DimIndent() should contain indentation")
+	}
+}
+
+func TestDetailBuilder_Tag(t *testing.T) {
+	d := NewDetailBuilder()
+	d.Tag("Environment", "production")
+	result := d.String()
+	if !strings.Contains(result, "Environment") {
+		t.Error("Tag() should contain key")
+	}
+}
+
+func TestDetailBuilder_Tags(t *testing.T) {
+	t.Run("with tags", func(t *testing.T) {
+		d := NewDetailBuilder()
+		tags := map[string]string{"Env": "prod", "Team": "platform"}
+		d.Tags(tags)
+		result := d.String()
+		if !strings.Contains(result, "Tags") {
+			t.Error("Tags() should add Tags section")
+		}
+		if !strings.Contains(result, "Env") || !strings.Contains(result, "Team") {
+			t.Error("Tags() should contain all tag keys")
+		}
+	})
+
+	t.Run("empty tags", func(t *testing.T) {
+		d := NewDetailBuilder()
+		d.Tags(map[string]string{})
+		result := d.String()
+		if strings.Contains(result, "Tags") {
+			t.Error("Tags() should not add section for empty tags")
+		}
+	})
+}
+
+func TestDetailBuilder_Styles(t *testing.T) {
+	d := NewDetailBuilder()
+	styles := d.Styles()
+	_ = styles.Title.Render("test")
+	_ = styles.Section.Render("test")
+	_ = styles.Label.Render("test")
+	_ = styles.Value.Render("test")
+}

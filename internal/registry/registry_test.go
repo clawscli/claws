@@ -352,3 +352,93 @@ func TestRegistry_AddServiceDeduplication(t *testing.T) {
 		t.Errorf("ListResources() returned %d resources, want 1 (should deduplicate)", len(resources))
 	}
 }
+
+func TestRegistry_GetDisplayName(t *testing.T) {
+	reg := New()
+
+	tests := []struct {
+		service string
+		want    string
+	}{
+		{"cloudformation", "CloudFormation"},
+		{"ec2", "EC2"},
+		{"s3", "S3"},
+		{"iam", "IAM"},
+		{"unknown-service", "unknown-service"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.service, func(t *testing.T) {
+			got := reg.GetDisplayName(tt.service)
+			if got != tt.want {
+				t.Errorf("GetDisplayName(%q) = %q, want %q", tt.service, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRegistry_HasResource(t *testing.T) {
+	reg := New()
+
+	reg.RegisterCustom("ec2", "instances", Entry{})
+	reg.RegisterGenerated("s3", "buckets", Entry{})
+
+	tests := []struct {
+		service  string
+		resource string
+		want     bool
+	}{
+		{"ec2", "instances", true},
+		{"s3", "buckets", true},
+		{"ec2", "volumes", false},
+		{"nonexistent", "resource", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.service+"/"+tt.resource, func(t *testing.T) {
+			got := reg.HasResource(tt.service, tt.resource)
+			if got != tt.want {
+				t.Errorf("HasResource(%q, %q) = %v, want %v", tt.service, tt.resource, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRegistry_ListServicesByCategory(t *testing.T) {
+	reg := New()
+
+	reg.RegisterCustom("ec2", "instances", Entry{})
+	reg.RegisterCustom("lambda", "functions", Entry{})
+	reg.RegisterCustom("s3", "buckets", Entry{})
+	reg.RegisterCustom("iam", "roles", Entry{})
+
+	categories := reg.ListServicesByCategory()
+
+	if len(categories) == 0 {
+		t.Fatal("ListServicesByCategory() returned empty list")
+	}
+
+	foundCompute := false
+	for _, cat := range categories {
+		if cat.Name == "Compute" {
+			foundCompute = true
+			hasEC2 := false
+			hasLambda := false
+			for _, svc := range cat.Services {
+				if svc == "ec2" {
+					hasEC2 = true
+				}
+				if svc == "lambda" {
+					hasLambda = true
+				}
+			}
+			if !hasEC2 || !hasLambda {
+				t.Errorf("Compute category should include ec2 and lambda, got %v", cat.Services)
+			}
+		}
+	}
+
+	if !foundCompute {
+		t.Error("ListServicesByCategory() should include Compute category")
+	}
+}

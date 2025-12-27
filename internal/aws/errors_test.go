@@ -147,3 +147,28 @@ func TestGetErrorMessage(t *testing.T) {
 		})
 	}
 }
+
+func TestIsValidationError(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		expected bool
+	}{
+		{"nil error", nil, false},
+		{"ValidationError", &mockAPIError{code: "ValidationError"}, true},
+		{"InvalidParameterException", &mockAPIError{code: "InvalidParameterException"}, true},
+		{"InvalidParameterValue", &mockAPIError{code: "InvalidParameterValue"}, true},
+		{"MalformedInput", &mockAPIError{code: "MalformedInput"}, true},
+		{"InvalidInput", &mockAPIError{code: "InvalidInput"}, true},
+		{"other error", &mockAPIError{code: "SomeOtherError"}, false},
+		{"plain error with ValidationError in message", errors.New("ValidationError: bad input"), true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsValidationError(tt.err); got != tt.expected {
+				t.Errorf("IsValidationError() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}

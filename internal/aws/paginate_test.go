@@ -176,3 +176,27 @@ func TestCollectWithLimit(t *testing.T) {
 		}
 	})
 }
+
+func TestPaginateMarker(t *testing.T) {
+	t.Run("works like Paginate", func(t *testing.T) {
+		page := 0
+		items, err := PaginateMarker(context.Background(), func(marker *string) ([]int, *string, error) {
+			page++
+			switch page {
+			case 1:
+				next := "marker2"
+				return []int{1, 2}, &next, nil
+			case 2:
+				return []int{3}, nil, nil
+			default:
+				return nil, nil, nil
+			}
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(items) != 3 {
+			t.Errorf("expected 3 items, got %d", len(items))
+		}
+	})
+}

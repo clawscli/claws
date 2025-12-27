@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"testing"
 )
 
@@ -120,5 +121,126 @@ func TestGlobal(t *testing.T) {
 	cfg2 := Global()
 	if cfg != cfg2 {
 		t.Error("Global() should return same instance")
+	}
+}
+
+func TestProfileSelectionFromID(t *testing.T) {
+	tests := []struct {
+		id       string
+		wantMode CredentialMode
+		wantName string
+	}{
+		{ProfileIDSDKDefault, ModeSDKDefault, ""},
+		{ProfileIDEnvOnly, ModeEnvOnly, ""},
+		{"my-profile", ModeNamedProfile, "my-profile"},
+		{"production", ModeNamedProfile, "production"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.id, func(t *testing.T) {
+			sel := ProfileSelectionFromID(tt.id)
+			if sel.Mode != tt.wantMode {
+				t.Errorf("Mode = %v, want %v", sel.Mode, tt.wantMode)
+			}
+			if sel.ProfileName != tt.wantName {
+				t.Errorf("ProfileName = %q, want %q", sel.ProfileName, tt.wantName)
+			}
+		})
+	}
+}
+
+func TestCredentialMode_String(t *testing.T) {
+	tests := []struct {
+		mode CredentialMode
+		want string
+	}{
+		{ModeSDKDefault, "SDK Default"},
+		{ModeNamedProfile, ""},
+		{ModeEnvOnly, "Env/IMDS Only"},
+		{CredentialMode(99), "Unknown"},
+	}
+
+	for _, tt := range tests {
+		got := tt.mode.String()
+		if got != tt.want {
+			t.Errorf("CredentialMode(%d).String() = %q, want %q", tt.mode, got, tt.want)
+		}
+	}
+}
+
+func TestProfileSelection_DisplayName(t *testing.T) {
+	// Test without AWS_PROFILE env var
+	sel := SDKDefault()
+	if got := sel.DisplayName(); got != "SDK Default" {
+		t.Errorf("SDKDefault().DisplayName() = %q, want %q", got, "SDK Default")
+	}
+
+	sel = EnvOnly()
+	if got := sel.DisplayName(); got != "Env/IMDS Only" {
+		t.Errorf("EnvOnly().DisplayName() = %q, want %q", got, "Env/IMDS Only")
+	}
+
+	sel = NamedProfile("production")
+	if got := sel.DisplayName(); got != "production" {
+		t.Errorf("NamedProfile(production).DisplayName() = %q, want %q", got, "production")
+	}
+
+	// Unknown mode
+	sel = ProfileSelection{Mode: CredentialMode(99)}
+	if got := sel.DisplayName(); got != "Unknown" {
+		t.Errorf("Unknown mode DisplayName() = %q, want %q", got, "Unknown")
+	}
+}
+
+func TestProfileSelection_DisplayName_WithAWSProfile(t *testing.T) {
+	// Save and restore AWS_PROFILE
+	orig := os.Getenv("AWS_PROFILE")
+	defer os.Setenv("AWS_PROFILE", orig)
+
+	os.Setenv("AWS_PROFILE", "test-profile")
+	sel := SDKDefault()
+	want := "SDK Default (AWS_PROFILE=test-profile)"
+	if got := sel.DisplayName(); got != want {
+		t.Errorf("SDKDefault().DisplayName() with AWS_PROFILE = %q, want %q", got, want)
+	}
+}
+
+func TestProfileSelection_ID(t *testing.T) {
+	tests := []struct {
+		sel  ProfileSelection
+		want string
+	}{
+		{SDKDefault(), ProfileIDSDKDefault},
+		{EnvOnly(), ProfileIDEnvOnly},
+		{NamedProfile("production"), "production"},
+		{ProfileSelection{Mode: CredentialMode(99)}, ""},
+	}
+
+	for _, tt := range tests {
+		got := tt.sel.ID()
+		if got != tt.want {
+			t.Errorf("ProfileSelection.ID() = %q, want %q", got, tt.want)
+		}
+	}
+}
+
+func TestConfig_SetAccountID(t *testing.T) {
+	cfg := &Config{}
+
+	// Initial should be empty
+	if cfg.AccountID() != "" {
+		t.Errorf("AccountID() = %q, want empty", cfg.AccountID())
+	}
+
+	// Set and verify
+	cfg.SetAccountID("123456789012")
+	if cfg.AccountID() != "123456789012" {
+		t.Errorf("AccountID() = %q, want %q", cfg.AccountID(), "123456789012")
+	}
+
+	// Update
+	cfg.SetAccountID("987654321098")
+	if cfg.AccountID() != "987654321098" {
+		t.Errorf("AccountID() = %q, want %q", cfg.AccountID(), "987654321098")
 	}
 }

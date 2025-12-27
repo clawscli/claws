@@ -2,6 +2,7 @@ package log
 
 import (
 	"bytes"
+	"context"
 	"log/slog"
 	"strings"
 	"testing"
@@ -97,5 +98,55 @@ func TestWith(t *testing.T) {
 	output := buf.String()
 	if !strings.Contains(output, "service=test") {
 		t.Error("expected 'service=test' in output")
+	}
+}
+
+func TestEnableFile(t *testing.T) {
+	tmpFile := t.TempDir() + "/test.log"
+
+	err := EnableFile(tmpFile)
+	if err != nil {
+		t.Fatalf("EnableFile() error = %v", err)
+	}
+	defer Disable()
+
+	if !IsEnabled() {
+		t.Error("expected logging to be enabled after EnableFile()")
+	}
+
+	Info("file log message")
+}
+
+func TestEnableFile_InvalidPath(t *testing.T) {
+	err := EnableFile("/nonexistent/path/test.log")
+	if err == nil {
+		t.Error("expected error for invalid path")
+	}
+}
+
+func TestContextFunctions(t *testing.T) {
+	var buf bytes.Buffer
+	Enable(&buf)
+	defer Disable()
+
+	ctx := context.Background()
+
+	DebugContext(ctx, "debug context msg")
+	InfoContext(ctx, "info context msg")
+	WarnContext(ctx, "warn context msg")
+	ErrorContext(ctx, "error context msg")
+
+	output := buf.String()
+	if !strings.Contains(output, "debug context msg") {
+		t.Error("expected debug context message")
+	}
+	if !strings.Contains(output, "info context msg") {
+		t.Error("expected info context message")
+	}
+	if !strings.Contains(output, "warn context msg") {
+		t.Error("expected warn context message")
+	}
+	if !strings.Contains(output, "error context msg") {
+		t.Error("expected error context message")
 	}
 }
