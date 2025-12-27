@@ -22,7 +22,7 @@ A terminal UI for AWS resource management 👮
 
 - **Interactive TUI** - Navigate AWS resources with vim-style keybindings
 - **Mouse support** - Click, scroll, hover for navigation
-- **Multi-service support** - EC2, S3, IAM, RDS, Lambda, ECS, and 65+ more services (163 resources total)
+- **Multi-service support** - EC2, S3, IAM, RDS, Lambda, ECS, and 65+ more services (164 resources total)
 - **Resource actions** - Start/stop instances, delete resources, tail logs
 - **Cross-resource navigation** - Jump from VPC to subnets, from Lambda to CloudWatch Logs
 - **Profile & region switching** - Switch AWS profiles (`P`) and regions (`R`) on the fly, browse profiles with `:profile`
@@ -199,7 +199,7 @@ claws -l debug.log
 - For SSO profiles, use "SSO Login" action from profile browser (`P` or `:profile`)
 - Temporary `claws-*` profiles can be cleaned up from `~/.aws/credentials`
 
-## Supported Services (69 services, 163 resources)
+## Supported Services (69 services, 164 resources)
 
 ### Compute
 | Service | Resources |
@@ -284,7 +284,7 @@ claws -l debug.log
 | Service | Resources |
 |---------|-----------|
 | CloudFormation | Stacks, Events, Resources, Outputs |
-| CloudWatch | Log Groups, Log Streams |
+| CloudWatch | Alarms, Log Groups, Log Streams |
 | CloudTrail | Trails, Events |
 | AWS Config | Rules |
 | AWS Health | Events |
