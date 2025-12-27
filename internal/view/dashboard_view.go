@@ -489,19 +489,12 @@ func (d *DashboardView) hitTestIdx(x, y int) int {
 }
 
 func (d *DashboardView) navigateTo(target string) (tea.Model, tea.Cmd) {
-	var service, resource string
-	for i, c := range target {
-		if c == '/' {
-			service = target[:i]
-			resource = target[i+1:]
-			break
-		}
-	}
-	if service == "" || resource == "" {
+	parts := strings.SplitN(target, "/", 2)
+	if len(parts) != 2 {
 		return d, nil
 	}
 
-	browser := NewResourceBrowserWithType(d.ctx, d.registry, service, resource)
+	browser := NewResourceBrowserWithType(d.ctx, d.registry, parts[0], parts[1])
 	return d, func() tea.Msg {
 		return NavigateMsg{View: browser}
 	}
@@ -514,10 +507,11 @@ func (d *DashboardView) isLoading() bool {
 
 func (d *DashboardView) ViewString() string {
 	header := d.headerPanel.RenderHome()
+	headerHeight := d.headerPanel.Height(header)
 	t := ui.Current()
 
 	panelWidth := d.calcPanelWidth()
-	panelHeight := d.calcPanelHeight()
+	panelHeight := d.calcPanelHeight(headerHeight)
 	contentWidth := panelWidth - 4
 	contentHeight := panelHeight - 3
 
@@ -538,15 +532,14 @@ func (d *DashboardView) ViewString() string {
 
 	hint := d.styles.dim.Render("s:services • Ctrl+r:refresh")
 
-	d.buildHitAreas(panelWidth, panelHeight)
+	d.buildHitAreas(panelWidth, panelHeight, headerHeight)
 
 	return header + "\n" + grid + "\n" + hint
 }
 
-func (d *DashboardView) buildHitAreas(panelWidth, panelHeight int) {
+func (d *DashboardView) buildHitAreas(panelWidth, panelHeight, headerHeight int) {
 	d.hitAreas = d.hitAreas[:0]
 
-	headerHeight := 3
 	topRowY := headerHeight + 1
 	bottomRowY := topRowY + panelHeight
 
@@ -565,8 +558,7 @@ func (d *DashboardView) calcPanelWidth() int {
 	return max((d.width-panelGap)/2, minPanelWidth)
 }
 
-func (d *DashboardView) calcPanelHeight() int {
-	headerHeight := 3
+func (d *DashboardView) calcPanelHeight(headerHeight int) int {
 	hintHeight := 2
 	available := d.height - headerHeight - hintHeight
 	return max(available/2, minPanelHeight)
@@ -607,7 +599,7 @@ func (d *DashboardView) renderCostContent(contentWidth, contentHeight int) strin
 			for i := 0; i < showCount; i++ {
 				c := d.costTop[i]
 				bar := renderBar(c.cost, maxCost, barWidth, t)
-				name := truncate(c.service, nameWidth)
+				name := truncateValue(c.service, nameWidth)
 				lines = append(lines, fmt.Sprintf("%-*s %s %8.0f", nameWidth, name, bar, c.cost))
 			}
 		}
@@ -638,7 +630,7 @@ func (d *DashboardView) renderOpsContent(contentWidth, contentHeight int) string
 		lines = append(lines, s.danger.Render(fmt.Sprintf("Alarms: %d in ALARM", len(d.alarms))))
 		maxShow := min(len(d.alarms), contentHeight-3)
 		for i := 0; i < maxShow; i++ {
-			lines = append(lines, "  "+s.danger.Render("• ")+truncate(d.alarms[i].name, contentWidth-4))
+			lines = append(lines, "  "+s.danger.Render("• ")+truncateValue(d.alarms[i].name, contentWidth-4))
 		}
 	} else {
 		lines = append(lines, "Alarms: "+s.success.Render("0 ✓"))
@@ -654,7 +646,7 @@ func (d *DashboardView) renderOpsContent(contentWidth, contentHeight int) string
 		maxShow := min(len(d.healthItems), remaining)
 		for i := 0; i < maxShow; i++ {
 			h := d.healthItems[i]
-			lines = append(lines, "  "+s.warning.Render("• ")+truncate(h.service+": "+h.eventType, contentWidth-4))
+			lines = append(lines, "  "+s.warning.Render("• ")+truncateValue(h.service+": "+h.eventType, contentWidth-4))
 		}
 	} else {
 		lines = append(lines, "Health: "+s.success.Render("0 open ✓"))
@@ -693,7 +685,7 @@ func (d *DashboardView) renderSecurityContent(contentWidth, contentHeight int) s
 			if item.severity == "CRITICAL" {
 				style = s.danger
 			}
-			lines = append(lines, "  "+style.Render("• ")+truncate(item.title, contentWidth-4))
+			lines = append(lines, "  "+style.Render("• ")+truncateValue(item.title, contentWidth-4))
 		}
 	} else {
 		lines = append(lines, s.success.Render("No critical/high ✓"))
@@ -736,7 +728,7 @@ func (d *DashboardView) renderOptimizationContent(contentWidth, contentHeight in
 				if item.status == "error" {
 					style = s.danger
 				}
-				lines = append(lines, "  "+style.Render("• ")+truncate(item.name, contentWidth-4))
+				lines = append(lines, "  "+style.Render("• ")+truncateValue(item.name, contentWidth-4))
 			}
 		}
 		if len(lines) == 0 {
@@ -745,13 +737,6 @@ func (d *DashboardView) renderOptimizationContent(contentWidth, contentHeight in
 	}
 
 	return strings.Join(lines, "\n")
-}
-
-func truncate(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	return s[:maxLen-1] + "…"
 }
 
 func (d *DashboardView) View() tea.View {
