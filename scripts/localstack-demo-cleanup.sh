@@ -43,6 +43,7 @@ if [[ -n "$INSTANCES" ]]; then
     done
     log "  Waiting for instances to terminate..."
     for i in $(seq 1 30); do
+        # shellcheck disable=SC2086 # Word splitting intended for multiple IDs
         REMAINING=$(aws_cmd ec2 describe-instances \
             --instance-ids $INSTANCES \
             --filters "Name=instance-state-name,Values=pending,running,shutting-down,stopping,stopped" \

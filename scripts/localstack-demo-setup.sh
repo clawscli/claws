@@ -38,7 +38,7 @@ aws_cmd() {
 # Wait for LocalStack to be ready
 wait_localstack() {
     log "Waiting for LocalStack..."
-    for i in {1..30}; do
+    for _ in {1..30}; do
         if aws_cmd ec2 describe-vpcs --query 'Vpcs[0].VpcId' --output text 2>/dev/null; then
             log "LocalStack is ready"
             return 0
