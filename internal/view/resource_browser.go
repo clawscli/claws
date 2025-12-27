@@ -522,13 +522,13 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			r.cycleResourceType(-1)
 			return r, tea.Batch(r.loadResources, r.spinner.Tick)
 		case "1", "2", "3", "4", "5", "6", "7", "8", "9":
-			// Switch to resource type by number
 			idx := int(msg.String()[0] - '1')
 			if idx < len(r.resourceTypes) {
 				r.resourceType = r.resourceTypes[idx]
 				r.loading = true
 				r.filterText = ""
 				r.filterInput.SetValue("")
+				r.markedResource = nil
 				return r, tea.Batch(r.loadResources, r.spinner.Tick)
 			}
 		case "N":
@@ -876,6 +876,7 @@ func (r *ResourceBrowser) switchToTab(idx int) (tea.Model, tea.Cmd) {
 		return r, nil
 	}
 	r.resourceType = r.resourceTypes[idx]
+	r.markedResource = nil
 	return r, r.loadResources
 }
 

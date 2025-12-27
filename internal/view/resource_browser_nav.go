@@ -44,6 +44,7 @@ func (r *ResourceBrowser) cycleResourceType(delta int) {
 	r.loading = true
 	r.filterText = ""
 	r.filterInput.SetValue("")
+	r.markedResource = nil
 }
 
 // StatusLine implements View interface
@@ -68,14 +69,21 @@ func (r *ResourceBrowser) StatusLine() string {
 	sortInfo := r.getSortInfo()
 
 	markInfo := ""
+	markInFiltered := false
 	if r.markedResource != nil {
 		markInfo = fmt.Sprintf(" [◆ %s]", r.markedResource.GetName())
+		for _, res := range r.filtered {
+			if res.GetID() == r.markedResource.GetID() {
+				markInFiltered = true
+				break
+			}
+		}
 	}
 
 	navInfo := r.getNavigationShortcuts()
 
 	dHint := "d:describe"
-	if r.markedResource != nil {
+	if r.markedResource != nil && markInFiltered {
 		dHint = "d:diff"
 	}
 
