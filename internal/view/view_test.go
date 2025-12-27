@@ -1629,6 +1629,47 @@ func TestResourceBrowserEscClearsMark(t *testing.T) {
 	}
 }
 
+func TestResourceBrowserDiffNavigation(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	browser := NewResourceBrowser(ctx, reg, "ec2")
+	browser.SetSize(100, 50)
+	browser.renderer = &mockRenderer{detail: "test"}
+	browser.loading = false
+
+	browser.resources = []dao.Resource{
+		&mockResource{id: "i-1", name: "instance-1"},
+		&mockResource{id: "i-2", name: "instance-2"},
+	}
+	browser.applyFilter()
+	browser.buildTable()
+
+	browser.table.SetCursor(0)
+	browser.Update(tea.KeyPressMsg{Code: 'm'})
+
+	if browser.markedResource == nil {
+		t.Fatal("Expected resource to be marked")
+	}
+
+	browser.table.SetCursor(1)
+	_, cmd := browser.Update(tea.KeyPressMsg{Code: 'd'})
+
+	if cmd == nil {
+		t.Fatal("Expected cmd from 'd' press with mark set")
+	}
+
+	msg := cmd()
+	navMsg, ok := msg.(NavigateMsg)
+	if !ok {
+		t.Fatalf("Expected NavigateMsg, got %T", msg)
+	}
+
+	if _, isDiff := navMsg.View.(*DiffView); !isDiff {
+		t.Errorf("Expected DiffView, got %T", navMsg.View)
+	}
+}
+
 func TestTagBrowserMouseHover(t *testing.T) {
 	ctx := context.Background()
 	reg := registry.New()
