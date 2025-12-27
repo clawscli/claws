@@ -95,6 +95,14 @@ func newDashboardStyles() dashboardStyles {
 	}
 }
 
+// Panel indices for hover detection (must be 0-3 to match hitAreas order)
+const (
+	panelCost = iota
+	panelOperations
+	panelSecurity
+	panelOptimization
+)
+
 const (
 	minPanelWidth  = 30
 	minPanelHeight = 6
@@ -104,11 +112,6 @@ const (
 	targetOperations   = "health/events"
 	targetSecurity     = "securityhub/findings"
 	targetOptimization = "trustedadvisor/recommendations"
-
-	panelCost = iota
-	panelOperations
-	panelSecurity
-	panelOptimization
 
 	// Cost panel layout constants
 	costValueWidth     = 9  // Width for cost value display (e.g., "   12345")
