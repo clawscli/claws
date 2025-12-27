@@ -79,29 +79,19 @@ type taLoadedMsg struct {
 type taErrorMsg struct{ err error }
 
 type dashboardStyles struct {
-	title   lipgloss.Style
-	section lipgloss.Style
-	label   lipgloss.Style
-	value   lipgloss.Style
 	warning lipgloss.Style
 	danger  lipgloss.Style
 	success lipgloss.Style
 	dim     lipgloss.Style
-	hover   lipgloss.Style
 }
 
 func newDashboardStyles() dashboardStyles {
 	t := ui.Current()
 	return dashboardStyles{
-		title:   lipgloss.NewStyle().Bold(true).Foreground(t.Primary),
-		section: lipgloss.NewStyle().Foreground(t.TextDim).Bold(true),
-		label:   lipgloss.NewStyle().Foreground(t.TextDim).Width(32),
-		value:   lipgloss.NewStyle().Foreground(t.Text),
 		warning: lipgloss.NewStyle().Foreground(t.Warning),
 		danger:  lipgloss.NewStyle().Foreground(t.Danger),
 		success: lipgloss.NewStyle().Foreground(t.Success),
 		dim:     lipgloss.NewStyle().Foreground(t.TextMuted),
-		hover:   lipgloss.NewStyle().Background(t.Selection).Foreground(t.SelectionText),
 	}
 }
 
@@ -574,7 +564,7 @@ func (d *DashboardView) renderCostContent(contentWidth, contentHeight int) strin
 	} else if d.costErr != nil {
 		lines = append(lines, s.dim.Render("N/A"))
 	} else {
-		lines = append(lines, fmt.Sprintf("MTD: $%.2f", d.costMTD))
+		lines = append(lines, "MTD: "+appaws.FormatMoney(d.costMTD, ""))
 
 		if len(d.costTop) > 0 {
 			maxCost := d.costTop[0].cost
