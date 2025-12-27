@@ -169,7 +169,7 @@ func newResourceBrowser(ctx context.Context, reg *registry.Registry, service, re
 		spinner:       ui.NewSpinner(),
 		styles:        newResourceBrowserStyles(),
 		pageSize:      100,
-		sortColumn:    -1,
+		sortColumn:    -1, // -1 = no sort
 		sortAscending: true,
 	}
 }
@@ -473,6 +473,7 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			r.buildTable()
 			return r, nil
 		case "esc":
+			// Clear mark if set, otherwise let app handle back navigation
 			if r.markedResource != nil {
 				r.markedResource = nil
 				r.buildTable()
@@ -646,7 +647,7 @@ func (r *ResourceBrowser) buildTable() {
 	currentCursor := r.table.Cursor()
 	cols := r.renderer.Columns()
 
-	const markColWidth = 2
+	const markColWidth = 2 // mark indicator + space (e.g., "◆ ")
 	tableCols := make([]table.Column, len(cols)+1)
 	tableCols[0] = table.Column{Title: " ", Width: markColWidth}
 

@@ -1382,6 +1382,253 @@ func TestRegionSelectorEmptyFilter(t *testing.T) {
 	}
 }
 
+// Mark/Unmark and Diff behavior tests
+
+func TestResourceBrowserMarkUnmark(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	browser := NewResourceBrowser(ctx, reg, "ec2")
+	browser.SetSize(100, 50)
+	browser.renderer = &mockRenderer{detail: "test"}
+
+	browser.resources = []dao.Resource{
+		&mockResource{id: "i-1", name: "instance-1"},
+		&mockResource{id: "i-2", name: "instance-2"},
+	}
+	browser.applyFilter()
+	browser.buildTable()
+
+	// Initially no mark
+	if browser.markedResource != nil {
+		t.Error("Expected no marked resource initially")
+	}
+
+	// Mark first resource
+	browser.table.SetCursor(0)
+	mMsg := tea.KeyPressMsg{Code: 'm'}
+	browser.Update(mMsg)
+
+	if browser.markedResource == nil {
+		t.Fatal("Expected resource to be marked after 'm'")
+	}
+	if browser.markedResource.GetID() != "i-1" {
+		t.Errorf("Expected marked resource i-1, got %s", browser.markedResource.GetID())
+	}
+
+	// Mark same resource again (should unmark)
+	browser.Update(mMsg)
+
+	if browser.markedResource != nil {
+		t.Error("Expected mark to be cleared when marking same resource")
+	}
+
+	// Mark first, then mark second (should replace)
+	browser.table.SetCursor(0)
+	browser.Update(mMsg)
+	browser.table.SetCursor(1)
+	browser.Update(mMsg)
+
+	if browser.markedResource == nil {
+		t.Fatal("Expected resource to be marked")
+	}
+	if browser.markedResource.GetID() != "i-2" {
+		t.Errorf("Expected marked resource i-2, got %s", browser.markedResource.GetID())
+	}
+}
+
+func TestResourceBrowserMarkClearedOnResourceTypeSwitch(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	reg.RegisterCustom("ec2", "instances", registry.Entry{})
+	reg.RegisterCustom("ec2", "volumes", registry.Entry{})
+
+	browser := NewResourceBrowserWithType(ctx, reg, "ec2", "instances")
+	browser.SetSize(100, 50)
+	browser.renderer = &mockRenderer{detail: "test"}
+
+	browser.resources = []dao.Resource{
+		&mockResource{id: "i-1", name: "instance-1"},
+	}
+	browser.applyFilter()
+	browser.buildTable()
+
+	browser.table.SetCursor(0)
+	mMsg := tea.KeyPressMsg{Code: 'm'}
+	browser.Update(mMsg)
+
+	if browser.markedResource == nil {
+		t.Fatal("Expected resource to be marked")
+	}
+
+	// Switch resource type with Tab
+	browser.cycleResourceType(1)
+
+	if browser.markedResource != nil {
+		t.Error("Expected mark to be cleared after Tab (cycleResourceType)")
+	}
+
+	browser.resourceType = "instances"
+	browser.renderer = &mockRenderer{detail: "test"}
+	browser.resources = []dao.Resource{
+		&mockResource{id: "i-1", name: "instance-1"},
+	}
+	browser.applyFilter()
+	browser.buildTable()
+	browser.table.SetCursor(0)
+	browser.Update(mMsg)
+
+	if browser.markedResource == nil {
+		t.Fatal("Expected resource to be marked again")
+	}
+
+	// Switch with number key (simulated via direct resourceType change + clear)
+	// The actual key handling clears markedResource, so we test that path
+	numMsg := tea.KeyPressMsg{Code: '2'}
+	browser.Update(numMsg)
+
+	if browser.markedResource != nil {
+		t.Error("Expected mark to be cleared after number key switch")
+	}
+}
+
+func TestResourceBrowserMarkClearedOnFilter(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	browser := NewResourceBrowser(ctx, reg, "ec2")
+	browser.SetSize(100, 50)
+	browser.renderer = &mockRenderer{detail: "test"}
+
+	browser.resources = []dao.Resource{
+		&mockResource{id: "i-1", name: "web-server"},
+		&mockResource{id: "i-2", name: "db-server"},
+	}
+	browser.applyFilter()
+	browser.buildTable()
+
+	// Mark the first resource
+	browser.table.SetCursor(0)
+	mMsg := tea.KeyPressMsg{Code: 'm'}
+	browser.Update(mMsg)
+
+	if browser.markedResource == nil {
+		t.Fatal("Expected resource to be marked")
+	}
+
+	// Apply filter that excludes marked resource
+	browser.filterText = "db"
+	browser.applyFilter()
+	browser.buildTable()
+
+	// Mark should be cleared when marked resource is filtered out
+	if browser.markedResource != nil {
+		t.Error("Expected mark to be cleared when marked resource is filtered out")
+	}
+}
+
+func TestResourceBrowserDiffHintVisibility(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	browser := NewResourceBrowser(ctx, reg, "ec2")
+	browser.SetSize(100, 50)
+	browser.renderer = &mockRenderer{detail: "test"}
+
+	browser.resources = []dao.Resource{
+		&mockResource{id: "i-1", name: "web-server"},
+		&mockResource{id: "i-2", name: "db-server"},
+	}
+	browser.applyFilter()
+	browser.buildTable()
+
+	// No mark: should show "d:describe"
+	status := browser.StatusLine()
+	if !strings.Contains(status, "d:describe") {
+		t.Errorf("Expected 'd:describe' in status line without mark, got: %s", status)
+	}
+	if strings.Contains(status, "d:diff") {
+		t.Errorf("Unexpected 'd:diff' in status line without mark, got: %s", status)
+	}
+
+	// Mark a resource: should show "d:diff"
+	browser.table.SetCursor(0)
+	mMsg := tea.KeyPressMsg{Code: 'm'}
+	browser.Update(mMsg)
+
+	status = browser.StatusLine()
+	if !strings.Contains(status, "d:diff") {
+		t.Errorf("Expected 'd:diff' in status line with mark, got: %s", status)
+	}
+}
+
+func TestResourceBrowserMarkColumnRendering(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	browser := NewResourceBrowser(ctx, reg, "ec2")
+	browser.SetSize(100, 50)
+	browser.renderer = &mockRenderer{detail: "test"}
+	browser.loading = false
+
+	browser.resources = []dao.Resource{
+		&mockResource{id: "i-1", name: "instance-1"},
+		&mockResource{id: "i-2", name: "instance-2"},
+	}
+	browser.applyFilter()
+	browser.buildTable()
+
+	view := browser.ViewString()
+	if view == "" {
+		t.Error("Expected non-empty view")
+	}
+
+	browser.table.SetCursor(0)
+	mMsg := tea.KeyPressMsg{Code: 'm'}
+	browser.Update(mMsg)
+
+	view = browser.ViewString()
+	if !strings.Contains(view, "◆") {
+		t.Errorf("Expected mark indicator '◆' in view, got: %s", view)
+	}
+}
+
+func TestResourceBrowserEscClearsMark(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	browser := NewResourceBrowser(ctx, reg, "ec2")
+	browser.SetSize(100, 50)
+	browser.renderer = &mockRenderer{detail: "test"}
+
+	browser.resources = []dao.Resource{
+		&mockResource{id: "i-1", name: "instance-1"},
+	}
+	browser.applyFilter()
+	browser.buildTable()
+
+	// Mark a resource
+	browser.table.SetCursor(0)
+	mMsg := tea.KeyPressMsg{Code: 'm'}
+	browser.Update(mMsg)
+
+	if browser.markedResource == nil {
+		t.Fatal("Expected resource to be marked")
+	}
+
+	// Press Esc - should clear mark and consume key
+	escMsg := tea.KeyPressMsg{Code: tea.KeyEscape}
+	_, cmd := browser.Update(escMsg)
+
+	if browser.markedResource != nil {
+		t.Error("Expected mark to be cleared after Esc")
+	}
+	if cmd != nil {
+		t.Error("Expected nil cmd (Esc consumed by mark clear)")
+	}
+}
+
 func TestTagBrowserMouseHover(t *testing.T) {
 	ctx := context.Background()
 	reg := registry.New()

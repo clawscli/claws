@@ -64,6 +64,20 @@ func (r *ResourceBrowser) applyFilter() {
 	}
 
 	r.applySorting()
+
+	// Clear mark if marked resource is no longer in filtered list
+	if r.markedResource != nil {
+		found := false
+		for _, res := range r.filtered {
+			if res.GetID() == r.markedResource.GetID() {
+				found = true
+				break
+			}
+		}
+		if !found {
+			r.markedResource = nil
+		}
+	}
 }
 
 // matchesTagFilter checks if a resource matches the tag filter.
