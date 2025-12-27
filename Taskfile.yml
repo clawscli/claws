@@ -3,6 +3,14 @@ version: '3'
 vars:
   LOCALSTACK_CONTAINER: claws-localstack
 
+# Shared environment for LocalStack tasks
+env: &localstack-env
+  AWS_ENDPOINT_URL: http://localhost:4566
+  AWS_ACCESS_KEY_ID: test
+  AWS_SECRET_ACCESS_KEY: test
+  AWS_DEFAULT_REGION: us-east-1
+  AWS_EC2_METADATA_DISABLED: "true"
+
 tasks:
   build:
     desc: Build the claws binary
@@ -61,35 +69,20 @@ tasks:
   localstack:demo-setup:
     desc: Create demo resources in LocalStack (VPCs, EC2, S3)
     deps: [localstack:start]
-    env:
-      AWS_ENDPOINT_URL: http://localhost:4566
-      AWS_ACCESS_KEY_ID: test
-      AWS_SECRET_ACCESS_KEY: test
-      AWS_DEFAULT_REGION: us-east-1
-      AWS_EC2_METADATA_DISABLED: "true"
+    env: *localstack-env
     cmds:
       - ./scripts/localstack-demo-setup.sh
 
   localstack:demo-cleanup:
     desc: Cleanup demo resources from LocalStack
-    env:
-      AWS_ENDPOINT_URL: http://localhost:4566
-      AWS_ACCESS_KEY_ID: test
-      AWS_SECRET_ACCESS_KEY: test
-      AWS_DEFAULT_REGION: us-east-1
-      AWS_EC2_METADATA_DISABLED: "true"
+    env: *localstack-env
     cmds:
       - ./scripts/localstack-demo-cleanup.sh
 
   localstack:demo:
     desc: Run claws against LocalStack
     deps: [build, localstack:start]
-    env:
-      AWS_ENDPOINT_URL: http://localhost:4566
-      AWS_ACCESS_KEY_ID: test
-      AWS_SECRET_ACCESS_KEY: test
-      AWS_DEFAULT_REGION: us-east-1
-      AWS_EC2_METADATA_DISABLED: "true"
+    env: *localstack-env
     cmds:
       - ./claws
 
@@ -111,12 +104,7 @@ tasks:
   test-localstack:
     desc: Run integration tests with LocalStack
     deps: [localstack:start]
-    env:
-      AWS_ENDPOINT_URL: http://localhost:4566
-      AWS_ACCESS_KEY_ID: test
-      AWS_SECRET_ACCESS_KEY: test
-      AWS_DEFAULT_REGION: us-east-1
-      AWS_EC2_METADATA_DISABLED: "true"
+    env: *localstack-env
     cmds:
       - go test -v ./... -tags=integration -timeout 60s
 

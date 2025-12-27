@@ -118,7 +118,7 @@ create_vpc_a() {
     DB1=$(aws_cmd ec2 run-instances --image-id "$AMI" --instance-type t2.medium --subnet-id "$SUBNET_A3" --security-group-ids "$SG_DB" --query 'Instances[0].InstanceId' --output text)
     aws_cmd ec2 create-tags --resources "$DB1" --tags Key=Name,Value=claws-demo-db-1 Key=Role,Value=db ${DEMO_TAG} ${DEMO_TAG2}
     
-    echo "$VPC_A"
+    log "VPC A created: $VPC_A"
 }
 
 # ============================================
@@ -171,7 +171,7 @@ create_vpc_b() {
     STAGING1=$(aws_cmd ec2 run-instances --image-id "$AMI" --instance-type t2.small --subnet-id "$SUBNET_B2" --security-group-ids "$SG_STAGING" --query 'Instances[0].InstanceId' --output text)
     aws_cmd ec2 create-tags --resources "$STAGING1" --tags Key=Name,Value=claws-demo-staging Key=Role,Value=staging ${DEMO_TAG} ${DEMO_TAG2}
     
-    echo "$VPC_B"
+    log "VPC B created: $VPC_B"
 }
 
 # ============================================
