@@ -31,9 +31,17 @@ tasks:
     desc: Start LocalStack container
     cmds:
       - docker start {{.LOCALSTACK_CONTAINER}} 2>/dev/null || docker run -d --name {{.LOCALSTACK_CONTAINER}} -p 4566:4566 localstack/localstack
-      - echo "Waiting for LocalStack to be ready..."
-      - sleep 3
-      - echo "LocalStack started at http://localhost:4566"
+      - |
+        echo "Waiting for LocalStack to be ready..."
+        for i in $(seq 1 30); do
+          if curl -s http://localhost:4566/_localstack/health | grep -q '"s3": "running"'; then
+            echo "LocalStack started at http://localhost:4566"
+            exit 0
+          fi
+          sleep 1
+        done
+        echo "LocalStack failed to start within 30s"
+        exit 1
 
   localstack:stop:
     desc: Stop LocalStack container
@@ -49,33 +57,6 @@ tasks:
     desc: Show LocalStack logs
     cmds:
       - docker logs -f {{.LOCALSTACK_CONTAINER}}
-
-  localstack:setup:
-    desc: Create test resources in LocalStack
-    cmds:
-      - |
-        export AWS_ENDPOINT_URL=http://localhost:4566
-        export AWS_ACCESS_KEY_ID=test
-        export AWS_SECRET_ACCESS_KEY=test
-        export AWS_DEFAULT_REGION=us-east-1
-
-        echo "Creating S3 bucket..."
-        aws s3 mb s3://test-bucket 2>/dev/null || true
-
-        echo "Creating VPC..."
-        VPC_ID=$(aws ec2 create-vpc --cidr-block 10.0.0.0/16 --query 'Vpc.VpcId' --output text 2>/dev/null || echo "")
-        if [ -n "$VPC_ID" ]; then
-          aws ec2 create-tags --resources $VPC_ID --tags Key=Name,Value=test-vpc
-          echo "Created VPC: $VPC_ID"
-        fi
-
-        echo "Creating Security Group..."
-        SG_ID=$(aws ec2 create-security-group --group-name test-sg --description "Test SG" --vpc-id $VPC_ID --query 'GroupId' --output text 2>/dev/null || echo "")
-        if [ -n "$SG_ID" ]; then
-          echo "Created Security Group: $SG_ID"
-        fi
-
-        echo "LocalStack test resources created!"
 
   localstack:demo-setup:
     desc: Create demo resources in LocalStack (VPCs, EC2, S3)
@@ -113,10 +94,11 @@ tasks:
       - ./claws
 
   demo:record:
-    desc: Record demo.gif using VHS + LocalStack
+    desc: Record demo.gif using VHS + LocalStack (Linux only - --network host required)
     deps: [build, localstack:start, localstack:demo-setup]
     cmds:
       - |
+        # NOTE: --network host is Linux-only; macOS Docker Desktop ignores it
         docker run --rm --network host \
           -v "$(pwd)":/vhs \
           -e AWS_ENDPOINT_URL=http://localhost:4566 \
@@ -134,6 +116,7 @@ tasks:
       AWS_ACCESS_KEY_ID: test
       AWS_SECRET_ACCESS_KEY: test
       AWS_DEFAULT_REGION: us-east-1
+      AWS_EC2_METADATA_DISABLED: "true"
     cmds:
       - go test -v ./... -tags=integration -timeout 60s
 

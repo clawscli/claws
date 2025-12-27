@@ -195,7 +195,7 @@ main() {
     wait_localstack
     
     # Clean up any existing demo resources first
-    if command -v "$(dirname "$0")/localstack-demo-cleanup.sh" &> /dev/null; then
+    if [ -x "$(dirname "$0")/localstack-demo-cleanup.sh" ]; then
         warn "Running cleanup first..."
         "$(dirname "$0")/localstack-demo-cleanup.sh" 2>/dev/null || true
     fi
