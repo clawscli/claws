@@ -48,6 +48,12 @@ type taItem struct {
 	savings float64
 }
 
+type hitArea struct {
+	y1, y2 int
+	x1, x2 int
+	target string
+}
+
 type alarmLoadedMsg struct{ items []alarmItem }
 type alarmErrorMsg struct{ err error }
 
@@ -81,6 +87,7 @@ type dashboardStyles struct {
 	danger  lipgloss.Style
 	success lipgloss.Style
 	dim     lipgloss.Style
+	hover   lipgloss.Style
 }
 
 func newDashboardStyles() dashboardStyles {
@@ -94,6 +101,7 @@ func newDashboardStyles() dashboardStyles {
 		danger:  lipgloss.NewStyle().Foreground(t.Danger),
 		success: lipgloss.NewStyle().Foreground(t.Success),
 		dim:     lipgloss.NewStyle().Foreground(t.TextMuted),
+		hover:   lipgloss.NewStyle().Background(t.Selection).Foreground(t.SelectionText),
 	}
 }
 
@@ -103,15 +111,21 @@ const (
 	panelGap       = 1
 )
 
-func renderPanel(title, content string, width, height int, t *ui.Theme) string {
+func renderPanel(title, content string, width, height int, t *ui.Theme, hovered bool) string {
 	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(t.Primary)
 	boxHeight := height - 1
 	if boxHeight < 3 {
 		boxHeight = 3
 	}
+
+	borderColor := t.Border
+	if hovered {
+		borderColor = t.Primary
+	}
+
 	borderStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(t.Border).
+		BorderForeground(borderColor).
 		Padding(0, 1).
 		Width(width).
 		Height(boxHeight)
@@ -152,6 +166,9 @@ type DashboardView struct {
 	headerPanel *HeaderPanel
 	spinner     spinner.Model
 	styles      dashboardStyles
+
+	hitAreas []hitArea
+	hoverIdx int
 
 	alarms       []alarmItem
 	alarmLoading bool
@@ -196,6 +213,7 @@ func NewDashboardView(ctx context.Context, reg *registry.Registry) *DashboardVie
 		healthLoading:  true,
 		secLoading:     true,
 		taLoading:      true,
+		hoverIdx:       -1,
 	}
 }
 
@@ -437,9 +455,56 @@ func (d *DashboardView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		d.secErr = nil
 		d.taErr = nil
 		return d, d.Init()
+
+	case tea.MouseClickMsg:
+		if msg.Button == tea.MouseLeft {
+			if target := d.hitTest(msg.X, msg.Y); target != "" {
+				return d.navigateTo(target)
+			}
+		}
+
+	case tea.MouseMotionMsg:
+		d.hoverIdx = d.hitTestIdx(msg.X, msg.Y)
 	}
 
 	return d, nil
+}
+
+func (d *DashboardView) hitTest(x, y int) string {
+	for _, h := range d.hitAreas {
+		if y >= h.y1 && y <= h.y2 && x >= h.x1 && x <= h.x2 {
+			return h.target
+		}
+	}
+	return ""
+}
+
+func (d *DashboardView) hitTestIdx(x, y int) int {
+	for i, h := range d.hitAreas {
+		if y >= h.y1 && y <= h.y2 && x >= h.x1 && x <= h.x2 {
+			return i
+		}
+	}
+	return -1
+}
+
+func (d *DashboardView) navigateTo(target string) (tea.Model, tea.Cmd) {
+	var service, resource string
+	for i, c := range target {
+		if c == '/' {
+			service = target[:i]
+			resource = target[i+1:]
+			break
+		}
+	}
+	if service == "" || resource == "" {
+		return d, nil
+	}
+
+	browser := NewResourceBrowserWithType(d.ctx, d.registry, service, resource)
+	return d, func() tea.Msg {
+		return NavigateMsg{View: browser}
+	}
 }
 
 func (d *DashboardView) isLoading() bool {
@@ -461,10 +526,10 @@ func (d *DashboardView) ViewString() string {
 	secContent := d.renderSecurityContent(contentWidth, contentHeight)
 	optContent := d.renderOptimizationContent(contentWidth, contentHeight)
 
-	costPanel := renderPanel("Cost", costContent, panelWidth, panelHeight, t)
-	opsPanel := renderPanel("Operations", opsContent, panelWidth, panelHeight, t)
-	secPanel := renderPanel("Security", secContent, panelWidth, panelHeight, t)
-	optPanel := renderPanel("Optimization", optContent, panelWidth, panelHeight, t)
+	costPanel := renderPanel("Cost", costContent, panelWidth, panelHeight, t, d.hoverIdx == 0)
+	opsPanel := renderPanel("Operations", opsContent, panelWidth, panelHeight, t, d.hoverIdx == 1)
+	secPanel := renderPanel("Security", secContent, panelWidth, panelHeight, t, d.hoverIdx == 2)
+	optPanel := renderPanel("Optimization", optContent, panelWidth, panelHeight, t, d.hoverIdx == 3)
 
 	gap := strings.Repeat(" ", panelGap)
 	topRow := lipgloss.JoinHorizontal(lipgloss.Top, costPanel, gap, opsPanel)
@@ -473,7 +538,27 @@ func (d *DashboardView) ViewString() string {
 
 	hint := d.styles.dim.Render("s:services • Ctrl+r:refresh")
 
+	d.buildHitAreas(panelWidth, panelHeight)
+
 	return header + "\n" + grid + "\n" + hint
+}
+
+func (d *DashboardView) buildHitAreas(panelWidth, panelHeight int) {
+	d.hitAreas = d.hitAreas[:0]
+
+	headerHeight := 3
+	topRowY := headerHeight + 1
+	bottomRowY := topRowY + panelHeight
+
+	leftX1, leftX2 := 0, panelWidth
+	rightX1, rightX2 := panelWidth+panelGap, panelWidth+panelGap+panelWidth
+
+	d.hitAreas = append(d.hitAreas,
+		hitArea{y1: topRowY, y2: topRowY + panelHeight - 1, x1: leftX1, x2: leftX2, target: "costexplorer/costs"},
+		hitArea{y1: topRowY, y2: topRowY + panelHeight - 1, x1: rightX1, x2: rightX2, target: "health/events"},
+		hitArea{y1: bottomRowY, y2: bottomRowY + panelHeight - 1, x1: leftX1, x2: leftX2, target: "securityhub/findings"},
+		hitArea{y1: bottomRowY, y2: bottomRowY + panelHeight - 1, x1: rightX1, x2: rightX2, target: "trustedadvisor/recommendations"},
+	)
 }
 
 func (d *DashboardView) calcPanelWidth() int {
