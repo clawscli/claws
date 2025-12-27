@@ -89,9 +89,11 @@ tasks:
   demo:record:
     desc: Record demo.gif using VHS + LocalStack (Linux only - --network host required)
     deps: [build, localstack:start, localstack:demo-setup]
+    preconditions:
+      - sh: '[ "$(uname -s)" = "Linux" ]'
+        msg: "demo:record requires Linux (--network host not supported on macOS/Windows)"
     cmds:
       - |
-        # NOTE: --network host is Linux-only; macOS Docker Desktop ignores it
         docker run --rm --network host \
           -v "$(pwd)":/vhs \
           -e AWS_ENDPOINT_URL=http://localhost:4566 \
