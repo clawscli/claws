@@ -95,6 +95,36 @@ func TestMatchesTagFilter(t *testing.T) {
 			filter: "Name~prod",
 			want:   false,
 		},
+		{
+			name:   "malformed partial match - trailing tilde",
+			tags:   map[string]string{"key": "value"},
+			filter: "key~",
+			want:   true,
+		},
+		{
+			name:   "malformed partial match - only tilde",
+			tags:   map[string]string{"key": "value"},
+			filter: "~",
+			want:   false,
+		},
+		{
+			name:   "malformed exact match - trailing equals",
+			tags:   map[string]string{"key": "value"},
+			filter: "key=",
+			want:   false,
+		},
+		{
+			name:   "malformed exact match - only equals",
+			tags:   map[string]string{"key": "value"},
+			filter: "=",
+			want:   false,
+		},
+		{
+			name:   "exact match key not found",
+			tags:   map[string]string{"other": "value"},
+			filter: "key=value",
+			want:   false,
+		},
 	}
 
 	for _, tt := range tests {

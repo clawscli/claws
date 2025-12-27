@@ -247,6 +247,28 @@ func TestRegistry(t *testing.T) {
 	}
 }
 
+func TestIsAllowedInReadOnly(t *testing.T) {
+	tests := []struct {
+		name string
+		act  Action
+		want bool
+	}{
+		{"view type allowed", Action{Type: ActionTypeView}, true},
+		{"exec allowlisted", Action{Type: ActionTypeExec, Name: ActionNameLogin}, true},
+		{"exec not allowlisted", Action{Type: ActionTypeExec, Name: "SomeExec"}, false},
+		{"api allowlisted", Action{Type: ActionTypeAPI, Operation: "SwitchProfile"}, true},
+		{"api not allowlisted", Action{Type: ActionTypeAPI, Operation: "DeleteStack"}, false},
+		{"unknown type", Action{Type: ActionType("unknown")}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsAllowedInReadOnly(tt.act); got != tt.want {
+				t.Errorf("IsAllowedInReadOnly() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestReadOnlyAllowlist(t *testing.T) {
 	// Verify expected operations are in the allowlist
 	expected := []string{
@@ -921,6 +943,60 @@ func TestExecuteWithDAO_EmptyOperation_BeforeReadOnlyCheck(t *testing.T) {
 	})
 }
 
+func TestUnknownOperationError(t *testing.T) {
+	err := UnknownOperationError("TestOp")
+	if err == nil {
+		t.Fatal("UnknownOperationError should return non-nil error")
+	}
+	if !strings.Contains(err.Error(), "TestOp") {
+		t.Errorf("error should contain operation name, got: %s", err.Error())
+	}
+	if !strings.Contains(err.Error(), "unknown operation") {
+		t.Errorf("error should contain 'unknown operation', got: %s", err.Error())
+	}
+}
+
+func TestInvalidResourceResult(t *testing.T) {
+	result := InvalidResourceResult()
+	if result.Success {
+		t.Error("InvalidResourceResult should return Success=false")
+	}
+	if result.Error != ErrInvalidResourceType {
+		t.Errorf("Error = %v, want %v", result.Error, ErrInvalidResourceType)
+	}
+}
+
+func TestUnknownOperationResult(t *testing.T) {
+	result := UnknownOperationResult("MyOp")
+	if result.Success {
+		t.Error("UnknownOperationResult should return Success=false")
+	}
+	if result.Error == nil {
+		t.Fatal("UnknownOperationResult should return non-nil error")
+	}
+	if !strings.Contains(result.Error.Error(), "MyOp") {
+		t.Errorf("error should contain operation name, got: %s", result.Error.Error())
+	}
+}
+
+func TestConfirmTokenName(t *testing.T) {
+	tests := []struct {
+		name     string
+		resource *mockResource
+		want     string
+	}{
+		{"with name", &mockResource{id: "i-123", name: "my-instance"}, "my-instance"},
+		{"empty name", &mockResource{id: "id-only", name: ""}, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ConfirmTokenName(tt.resource); got != tt.want {
+				t.Errorf("ConfirmTokenName() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestConfirmSuffix(t *testing.T) {
 	tests := []struct {
 		token    string
@@ -1014,4 +1090,52 @@ func TestReadOnlyEnforcement_ExecWithHeader(t *testing.T) {
 			t.Error("read-only should not block allowlisted exec")
 		}
 	})
+}
+
+func TestSimpleExec_SetIO(t *testing.T) {
+	e := &SimpleExec{Command: "echo test", ActionName: "test"}
+
+	var stdout, stderr strings.Builder
+	stdinReader := strings.NewReader("input")
+
+	e.SetStdin(stdinReader)
+	e.SetStdout(&stdout)
+	e.SetStderr(&stderr)
+
+	if e.stdin != stdinReader {
+		t.Error("SetStdin did not set stdin")
+	}
+	if e.stdout != &stdout {
+		t.Error("SetStdout did not set stdout")
+	}
+	if e.stderr != &stderr {
+		t.Error("SetStderr did not set stderr")
+	}
+}
+
+func TestExecWithHeader_SetIO(t *testing.T) {
+	e := &ExecWithHeader{
+		Command:    "echo test",
+		ActionName: "test",
+		Resource:   &mockResource{id: "test", name: "test"},
+		Service:    "test",
+		ResType:    "test",
+	}
+
+	var stdout, stderr strings.Builder
+	stdinReader := strings.NewReader("input")
+
+	e.SetStdin(stdinReader)
+	e.SetStdout(&stdout)
+	e.SetStderr(&stderr)
+
+	if e.stdin != stdinReader {
+		t.Error("SetStdin did not set stdin")
+	}
+	if e.stdout != &stdout {
+		t.Error("SetStdout did not set stdout")
+	}
+	if e.stderr != &stderr {
+		t.Error("SetStderr did not set stderr")
+	}
 }
