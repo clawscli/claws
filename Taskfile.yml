@@ -101,7 +101,7 @@ tasks:
           -e AWS_SECRET_ACCESS_KEY=test \
           -e AWS_DEFAULT_REGION=us-east-1 \
           -e AWS_EC2_METADATA_DISABLED=true \
-          ghcr.io/charmbracelet/vhs:0.10.0 cassette.tape
+          ghcr.io/charmbracelet/vhs:v0.10.0 cassette.tape
 
   test-localstack:
     desc: Run integration tests with LocalStack
