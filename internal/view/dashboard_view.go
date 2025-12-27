@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"strings"
 
 	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
@@ -21,8 +22,33 @@ import (
 	"github.com/clawscli/claws/internal/ui"
 )
 
-// Widget messages
-type alarmLoadedMsg struct{ count int }
+type alarmItem struct {
+	name  string
+	state string
+}
+
+type costItem struct {
+	service string
+	cost    float64
+}
+
+type healthItem struct {
+	service   string
+	eventType string
+}
+
+type securityItem struct {
+	title    string
+	severity string
+}
+
+type taItem struct {
+	name    string
+	status  string
+	savings float64
+}
+
+type alarmLoadedMsg struct{ items []alarmItem }
 type alarmErrorMsg struct{ err error }
 
 type costLoadedMsg struct {
@@ -34,29 +60,17 @@ type costErrorMsg struct{ err error }
 type anomalyLoadedMsg struct{ count int }
 type anomalyErrorMsg struct{ err error }
 
-type healthLoadedMsg struct {
-	openCount   int
-	recentEvent string
-}
+type healthLoadedMsg struct{ items []healthItem }
 type healthErrorMsg struct{ err error }
 
-type securityLoadedMsg struct {
-	criticalCount int
-	highCount     int
-}
+type securityLoadedMsg struct{ items []securityItem }
 type securityErrorMsg struct{ err error }
 
 type taLoadedMsg struct {
-	errorCount   int
-	warningCount int
-	savings      float64
+	items   []taItem
+	savings float64
 }
 type taErrorMsg struct{ err error }
-
-type costItem struct {
-	service string
-	cost    float64
-}
 
 type dashboardStyles struct {
 	title   lipgloss.Style
@@ -83,6 +97,53 @@ func newDashboardStyles() dashboardStyles {
 	}
 }
 
+const (
+	minPanelWidth  = 30
+	minPanelHeight = 6
+	panelGap       = 1
+)
+
+func renderPanel(title, content string, width, height int, t *ui.Theme) string {
+	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(t.Primary)
+	boxHeight := height - 1
+	if boxHeight < 3 {
+		boxHeight = 3
+	}
+	borderStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(t.Border).
+		Padding(0, 1).
+		Width(width).
+		Height(boxHeight)
+
+	return lipgloss.JoinVertical(lipgloss.Left,
+		titleStyle.Render(title),
+		borderStyle.Render(content))
+}
+
+func renderBar(value, max float64, width int, t *ui.Theme) string {
+	if max <= 0 || width <= 0 {
+		return ""
+	}
+	ratio := value / max
+	if ratio > 1 {
+		ratio = 1
+	}
+	filled := int(ratio * float64(width))
+	if filled < 0 {
+		filled = 0
+	}
+	if filled > width {
+		filled = width
+	}
+
+	barStyle := lipgloss.NewStyle().Foreground(t.Accent)
+	emptyStyle := lipgloss.NewStyle().Foreground(t.TextMuted)
+
+	return barStyle.Render(strings.Repeat("█", filled)) +
+		emptyStyle.Render(strings.Repeat("░", width-filled))
+}
+
 type DashboardView struct {
 	ctx         context.Context
 	registry    *registry.Registry
@@ -92,40 +153,31 @@ type DashboardView struct {
 	spinner     spinner.Model
 	styles      dashboardStyles
 
-	// Alarm widget
-	alarmCount   int
+	alarms       []alarmItem
 	alarmLoading bool
 	alarmErr     error
 
-	// Cost widget
 	costMTD     float64
 	costTop     []costItem
 	costLoading bool
 	costErr     error
 
-	// Anomaly widget
 	anomalyCount   int
 	anomalyLoading bool
 	anomalyErr     error
 
-	// Health widget
-	healthOpen    int
-	healthRecent  string
+	healthItems   []healthItem
 	healthLoading bool
 	healthErr     error
 
-	// Security Hub widget
-	secCritical int
-	secHigh     int
-	secLoading  bool
-	secErr      error
+	secItems   []securityItem
+	secLoading bool
+	secErr     error
 
-	// Trusted Advisor widget
-	taErrors   int
-	taWarnings int
-	taSavings  float64
-	taLoading  bool
-	taErr      error
+	taItems   []taItem
+	taSavings float64
+	taLoading bool
+	taErr     error
 }
 
 func NewDashboardView(ctx context.Context, reg *registry.Registry) *DashboardView {
@@ -173,8 +225,14 @@ func (d *DashboardView) loadAlarms() tea.Msg {
 		return alarmErrorMsg{err: err}
 	}
 
-	count := len(output.MetricAlarms) + len(output.CompositeAlarms)
-	return alarmLoadedMsg{count: count}
+	var items []alarmItem
+	for _, a := range output.MetricAlarms {
+		items = append(items, alarmItem{name: *a.AlarmName, state: string(a.StateValue)})
+	}
+	for _, a := range output.CompositeAlarms {
+		items = append(items, alarmItem{name: *a.AlarmName, state: string(a.StateValue)})
+	}
+	return alarmLoadedMsg{items: items}
 }
 
 func (d *DashboardView) loadCosts() tea.Msg {
@@ -204,12 +262,7 @@ func (d *DashboardView) loadCosts() tea.Msg {
 		return items[i].cost > items[j].cost
 	})
 
-	top := items
-	if len(top) > 3 {
-		top = top[:3]
-	}
-
-	return costLoadedMsg{mtd: total, topCosts: top}
+	return costLoadedMsg{mtd: total, topCosts: items}
 }
 
 func (d *DashboardView) loadAnomalies() tea.Msg {
@@ -237,20 +290,15 @@ func (d *DashboardView) loadHealth() tea.Msg {
 		return healthErrorMsg{err: err}
 	}
 
-	var openCount int
-	var recentEvent string
+	var items []healthItem
 	for _, r := range resources {
 		if er, ok := r.(*events.EventResource); ok {
 			if er.StatusCode() != "closed" {
-				openCount++
-				if recentEvent == "" {
-					recentEvent = fmt.Sprintf("%s: %s", er.Service(), er.EventTypeCode())
-				}
+				items = append(items, healthItem{service: er.Service(), eventType: er.EventTypeCode()})
 			}
 		}
 	}
-
-	return healthLoadedMsg{openCount: openCount, recentEvent: recentEvent}
+	return healthLoadedMsg{items: items}
 }
 
 func (d *DashboardView) loadSecurity() tea.Msg {
@@ -264,19 +312,16 @@ func (d *DashboardView) loadSecurity() tea.Msg {
 		return securityErrorMsg{err: err}
 	}
 
-	var critical, high int
+	var items []securityItem
 	for _, r := range resources {
 		if fr, ok := r.(*findings.FindingResource); ok {
-			switch fr.Severity() {
-			case "CRITICAL":
-				critical++
-			case "HIGH":
-				high++
+			sev := fr.Severity()
+			if sev == "CRITICAL" || sev == "HIGH" {
+				items = append(items, securityItem{title: fr.Title(), severity: sev})
 			}
 		}
 	}
-
-	return securityLoadedMsg{criticalCount: critical, highCount: high}
+	return securityLoadedMsg{items: items}
 }
 
 func (d *DashboardView) loadTrustedAdvisor() tea.Msg {
@@ -290,28 +335,25 @@ func (d *DashboardView) loadTrustedAdvisor() tea.Msg {
 		return taErrorMsg{err: err}
 	}
 
-	var errors, warnings int
-	var savings float64
+	var items []taItem
+	var totalSavings float64
 	for _, r := range resources {
 		if rr, ok := r.(*recommendations.RecommendationResource); ok {
-			switch rr.Status() {
-			case "error":
-				errors++
-			case "warning":
-				warnings++
+			status := rr.Status()
+			if status == "error" || status == "warning" {
+				items = append(items, taItem{name: rr.Name(), status: status, savings: rr.EstimatedMonthlySavings()})
 			}
-			savings += rr.EstimatedMonthlySavings()
+			totalSavings += rr.EstimatedMonthlySavings()
 		}
 	}
-
-	return taLoadedMsg{errorCount: errors, warningCount: warnings, savings: savings}
+	return taLoadedMsg{items: items, savings: totalSavings}
 }
 
 func (d *DashboardView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case alarmLoadedMsg:
 		d.alarmLoading = false
-		d.alarmCount = msg.count
+		d.alarms = msg.items
 		return d, nil
 	case alarmErrorMsg:
 		d.alarmLoading = false
@@ -339,8 +381,7 @@ func (d *DashboardView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case healthLoadedMsg:
 		d.healthLoading = false
-		d.healthOpen = msg.openCount
-		d.healthRecent = msg.recentEvent
+		d.healthItems = msg.items
 		return d, nil
 	case healthErrorMsg:
 		d.healthLoading = false
@@ -349,8 +390,7 @@ func (d *DashboardView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case securityLoadedMsg:
 		d.secLoading = false
-		d.secCritical = msg.criticalCount
-		d.secHigh = msg.highCount
+		d.secItems = msg.items
 		return d, nil
 	case securityErrorMsg:
 		d.secLoading = false
@@ -359,8 +399,7 @@ func (d *DashboardView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case taLoadedMsg:
 		d.taLoading = false
-		d.taErrors = msg.errorCount
-		d.taWarnings = msg.warningCount
+		d.taItems = msg.items
 		d.taSavings = msg.savings
 		return d, nil
 	case taErrorMsg:
@@ -410,114 +449,224 @@ func (d *DashboardView) isLoading() bool {
 
 func (d *DashboardView) ViewString() string {
 	header := d.headerPanel.RenderHome()
-	s := d.styles
+	t := ui.Current()
 
-	var body string
+	panelWidth := d.calcPanelWidth()
+	panelHeight := d.calcPanelHeight()
+	contentWidth := panelWidth - 4
+	contentHeight := panelHeight - 3
 
-	// Cost Section
-	body += "\n" + s.section.Render("── Cost ──") + "\n"
-	body += d.renderWidget("  MTD Spend", d.costLoading, d.costErr, func() string {
-		return fmt.Sprintf("$%.2f", d.costMTD)
-	})
-	body += d.renderWidget("  Top Services", d.costLoading, d.costErr, func() string {
-		if len(d.costTop) == 0 {
-			return s.dim.Render("none")
-		}
-		var out string
-		for i, c := range d.costTop {
-			if i > 0 {
-				out += ", "
-			}
-			out += fmt.Sprintf("%s ($%.0f)", c.service, c.cost)
-		}
-		return out
-	})
-	body += d.renderWidget("  Anomalies (90d)", d.anomalyLoading, d.anomalyErr, func() string {
-		if d.anomalyCount > 0 {
-			return s.warning.Render(fmt.Sprintf("%d", d.anomalyCount))
-		}
-		return s.success.Render("0")
-	})
+	costContent := d.renderCostContent(contentWidth, contentHeight)
+	opsContent := d.renderOpsContent(contentWidth, contentHeight)
+	secContent := d.renderSecurityContent(contentWidth, contentHeight)
+	optContent := d.renderOptimizationContent(contentWidth, contentHeight)
 
-	// Operations Section
-	body += "\n" + s.section.Render("── Operations ──") + "\n"
-	body += d.renderWidget("  CloudWatch Alarms", d.alarmLoading, d.alarmErr, func() string {
-		if d.alarmCount > 0 {
-			return s.danger.Render(fmt.Sprintf("%d in ALARM", d.alarmCount))
-		}
-		return s.success.Render("0 ✓")
-	})
-	body += d.renderWidget("  Health Events", d.healthLoading, d.healthErr, func() string {
-		if d.healthOpen > 0 {
-			out := s.warning.Render(fmt.Sprintf("%d open", d.healthOpen))
-			if d.healthRecent != "" {
-				out += s.dim.Render(" · " + d.healthRecent)
-			}
-			return out
-		}
-		return s.success.Render("0 open")
-	})
+	costPanel := renderPanel("Cost", costContent, panelWidth, panelHeight, t)
+	opsPanel := renderPanel("Operations", opsContent, panelWidth, panelHeight, t)
+	secPanel := renderPanel("Security", secContent, panelWidth, panelHeight, t)
+	optPanel := renderPanel("Optimization", optContent, panelWidth, panelHeight, t)
 
-	// Security Section
-	body += "\n" + s.section.Render("── Security ──") + "\n"
-	body += d.renderWidget("  Security Hub", d.secLoading, d.secErr, func() string {
-		if d.secCritical > 0 || d.secHigh > 0 {
-			parts := []string{}
-			if d.secCritical > 0 {
-				parts = append(parts, s.danger.Render(fmt.Sprintf("%d CRITICAL", d.secCritical)))
-			}
-			if d.secHigh > 0 {
-				parts = append(parts, s.warning.Render(fmt.Sprintf("%d HIGH", d.secHigh)))
-			}
-			out := parts[0]
-			if len(parts) > 1 {
-				out += ", " + parts[1]
-			}
-			return out
-		}
-		return s.success.Render("0 critical/high")
-	})
+	gap := strings.Repeat(" ", panelGap)
+	topRow := lipgloss.JoinHorizontal(lipgloss.Top, costPanel, gap, opsPanel)
+	bottomRow := lipgloss.JoinHorizontal(lipgloss.Top, secPanel, gap, optPanel)
+	grid := lipgloss.JoinVertical(lipgloss.Left, topRow, bottomRow)
 
-	// Optimization Section
-	body += "\n" + s.section.Render("── Optimization ──") + "\n"
-	body += d.renderWidget("  Trusted Advisor", d.taLoading, d.taErr, func() string {
-		parts := []string{}
-		if d.taErrors > 0 {
-			parts = append(parts, s.danger.Render(fmt.Sprintf("%d errors", d.taErrors)))
-		}
-		if d.taWarnings > 0 {
-			parts = append(parts, s.warning.Render(fmt.Sprintf("%d warnings", d.taWarnings)))
-		}
-		if d.taSavings > 0 {
-			parts = append(parts, s.success.Render(fmt.Sprintf("$%.0f/mo savings", d.taSavings)))
-		}
-		if len(parts) == 0 {
-			return s.success.Render("all good")
-		}
-		out := parts[0]
-		for i := 1; i < len(parts); i++ {
-			out += " · " + parts[i]
-		}
-		return out
-	})
+	hint := d.styles.dim.Render("s:services • Ctrl+r:refresh")
 
-	// Navigation hint
-	body += "\n" + s.dim.Render("  s:services • Ctrl+r:refresh")
-
-	return header + body
+	return header + "\n" + grid + "\n" + hint
 }
 
-func (d *DashboardView) renderWidget(label string, loading bool, err error, valueFn func() string) string {
+func (d *DashboardView) calcPanelWidth() int {
+	return max((d.width-panelGap)/2, minPanelWidth)
+}
+
+func (d *DashboardView) calcPanelHeight() int {
+	headerHeight := 3
+	hintHeight := 2
+	available := d.height - headerHeight - hintHeight
+	return max(available/2, minPanelHeight)
+}
+
+func (d *DashboardView) renderCostContent(contentWidth, contentHeight int) string {
 	s := d.styles
-	line := s.label.Render(label + ":")
-	if loading {
-		line += d.spinner.View() + " loading..."
-	} else if err != nil {
-		line += s.dim.Render("N/A")
+	t := ui.Current()
+	var lines []string
+
+	if d.costLoading {
+		lines = append(lines, d.spinner.View()+" loading...")
+	} else if d.costErr != nil {
+		lines = append(lines, s.dim.Render("N/A"))
 	} else {
-		line += valueFn()
+		lines = append(lines, fmt.Sprintf("MTD: $%.2f", d.costMTD))
+
+		if len(d.costTop) > 0 {
+			maxCost := d.costTop[0].cost
+			const costWidth = 9
+			const minBarWidth = 8
+			const minNameWidth = 15
+			available := contentWidth - costWidth - 2
+			nameWidth := available * 60 / 100
+			barWidth := available - nameWidth
+			if nameWidth < minNameWidth {
+				nameWidth = minNameWidth
+			}
+			if barWidth < minBarWidth {
+				barWidth = minBarWidth
+			}
+			maxServices := contentHeight - 2
+			if maxServices < 3 {
+				maxServices = 3
+			}
+			showCount := min(len(d.costTop), maxServices)
+
+			for i := 0; i < showCount; i++ {
+				c := d.costTop[i]
+				bar := renderBar(c.cost, maxCost, barWidth, t)
+				name := truncate(c.service, nameWidth)
+				lines = append(lines, fmt.Sprintf("%-*s %s %8.0f", nameWidth, name, bar, c.cost))
+			}
+		}
+
+		if d.anomalyLoading {
+			lines = append(lines, "Anomalies: "+d.spinner.View())
+		} else if d.anomalyErr != nil {
+			lines = append(lines, "Anomalies: "+s.dim.Render("N/A"))
+		} else if d.anomalyCount > 0 {
+			lines = append(lines, "Anomalies: "+s.warning.Render(fmt.Sprintf("%d", d.anomalyCount)))
+		} else {
+			lines = append(lines, "Anomalies: "+s.success.Render("0"))
+		}
 	}
-	return line + "\n"
+
+	return strings.Join(lines, "\n")
+}
+
+func (d *DashboardView) renderOpsContent(contentWidth, contentHeight int) string {
+	s := d.styles
+	var lines []string
+
+	if d.alarmLoading {
+		lines = append(lines, "Alarms: "+d.spinner.View())
+	} else if d.alarmErr != nil {
+		lines = append(lines, "Alarms: "+s.dim.Render("N/A"))
+	} else if len(d.alarms) > 0 {
+		lines = append(lines, s.danger.Render(fmt.Sprintf("Alarms: %d in ALARM", len(d.alarms))))
+		maxShow := min(len(d.alarms), contentHeight-3)
+		for i := 0; i < maxShow; i++ {
+			lines = append(lines, "  "+s.danger.Render("• ")+truncate(d.alarms[i].name, contentWidth-4))
+		}
+	} else {
+		lines = append(lines, "Alarms: "+s.success.Render("0 ✓"))
+	}
+
+	if d.healthLoading {
+		lines = append(lines, "Health: "+d.spinner.View())
+	} else if d.healthErr != nil {
+		lines = append(lines, "Health: "+s.dim.Render("N/A"))
+	} else if len(d.healthItems) > 0 {
+		lines = append(lines, s.warning.Render(fmt.Sprintf("Health: %d open", len(d.healthItems))))
+		remaining := contentHeight - len(lines) - 1
+		maxShow := min(len(d.healthItems), remaining)
+		for i := 0; i < maxShow; i++ {
+			h := d.healthItems[i]
+			lines = append(lines, "  "+s.warning.Render("• ")+truncate(h.service+": "+h.eventType, contentWidth-4))
+		}
+	} else {
+		lines = append(lines, "Health: "+s.success.Render("0 open ✓"))
+	}
+
+	return strings.Join(lines, "\n")
+}
+
+func (d *DashboardView) renderSecurityContent(contentWidth, contentHeight int) string {
+	s := d.styles
+	var lines []string
+
+	if d.secLoading {
+		lines = append(lines, d.spinner.View()+" loading...")
+	} else if d.secErr != nil {
+		lines = append(lines, s.dim.Render("N/A"))
+	} else if len(d.secItems) > 0 {
+		var critical, high int
+		for _, item := range d.secItems {
+			if item.severity == "CRITICAL" {
+				critical++
+			} else {
+				high++
+			}
+		}
+		if critical > 0 {
+			lines = append(lines, s.danger.Render(fmt.Sprintf("Critical: %d 🔴", critical)))
+		}
+		if high > 0 {
+			lines = append(lines, s.warning.Render(fmt.Sprintf("High: %d 🟠", high)))
+		}
+		maxShow := min(len(d.secItems), contentHeight-len(lines)-1)
+		for i := 0; i < maxShow; i++ {
+			item := d.secItems[i]
+			style := s.warning
+			if item.severity == "CRITICAL" {
+				style = s.danger
+			}
+			lines = append(lines, "  "+style.Render("• ")+truncate(item.title, contentWidth-4))
+		}
+	} else {
+		lines = append(lines, s.success.Render("No critical/high ✓"))
+	}
+
+	return strings.Join(lines, "\n")
+}
+
+func (d *DashboardView) renderOptimizationContent(contentWidth, contentHeight int) string {
+	s := d.styles
+	var lines []string
+
+	if d.taLoading {
+		lines = append(lines, d.spinner.View()+" loading...")
+	} else if d.taErr != nil {
+		lines = append(lines, s.dim.Render("N/A"))
+	} else {
+		var errors, warnings int
+		for _, item := range d.taItems {
+			if item.status == "error" {
+				errors++
+			} else {
+				warnings++
+			}
+		}
+		if errors > 0 {
+			lines = append(lines, s.danger.Render(fmt.Sprintf("Errors: %d", errors)))
+		}
+		if warnings > 0 {
+			lines = append(lines, s.warning.Render(fmt.Sprintf("Warnings: %d", warnings)))
+		}
+		if d.taSavings > 0 {
+			lines = append(lines, s.success.Render(fmt.Sprintf("Savings: $%.0f/mo 💰", d.taSavings)))
+		}
+		if len(d.taItems) > 0 {
+			maxShow := min(len(d.taItems), contentHeight-len(lines)-1)
+			for i := 0; i < maxShow; i++ {
+				item := d.taItems[i]
+				style := s.warning
+				if item.status == "error" {
+					style = s.danger
+				}
+				lines = append(lines, "  "+style.Render("• ")+truncate(item.name, contentWidth-4))
+			}
+		}
+		if len(lines) == 0 {
+			lines = append(lines, s.success.Render("All good ✓"))
+		}
+	}
+
+	return strings.Join(lines, "\n")
+}
+
+func truncate(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen-1] + "…"
 }
 
 func (d *DashboardView) View() tea.View {
