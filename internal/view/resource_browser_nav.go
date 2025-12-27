@@ -67,16 +67,13 @@ func (r *ResourceBrowser) StatusLine() string {
 	// Build sort info
 	sortInfo := r.getSortInfo()
 
-	// Build mark info
 	markInfo := ""
 	if r.markedResource != nil {
 		markInfo = fmt.Sprintf(" [◆ %s]", r.markedResource.GetName())
 	}
 
-	// Build navigation shortcuts string
 	navInfo := r.getNavigationShortcuts()
 
-	// d key hint: "diff" if marked, "describe" otherwise
 	dHint := "d:describe"
 	if r.markedResource != nil {
 		dHint = "d:diff"

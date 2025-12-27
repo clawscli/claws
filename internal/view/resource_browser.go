@@ -168,8 +168,8 @@ func newResourceBrowser(ctx context.Context, reg *registry.Registry, service, re
 		headerPanel:   hp,
 		spinner:       ui.NewSpinner(),
 		styles:        newResourceBrowserStyles(),
-		pageSize:      100, // default page size for paginated resources
-		sortColumn:    -1,  // no sorting by default
+		pageSize:      100,
+		sortColumn:    -1,
 		sortAscending: true,
 	}
 }
@@ -464,7 +464,6 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			r.err = nil
 			return r, tea.Batch(r.loadResources, r.spinner.Tick)
 		case "c":
-			// Clear all filters (text filter, field filter, and mark)
 			r.filterText = ""
 			r.filterInput.SetValue("")
 			r.fieldFilter = ""
@@ -474,36 +473,31 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			r.buildTable()
 			return r, nil
 		case "esc":
-			// Clear mark if set, otherwise let app handle navigation
 			if r.markedResource != nil {
 				r.markedResource = nil
 				r.buildTable()
 				return r, nil
 			}
 		case "m":
-			// Mark/unmark current resource for diff
 			if len(r.filtered) > 0 && r.table.Cursor() < len(r.filtered) {
 				resource := r.filtered[r.table.Cursor()]
 				if r.markedResource != nil && r.markedResource.GetID() == resource.GetID() {
-					// Unmark if same resource
 					r.markedResource = nil
 				} else {
 					r.markedResource = resource
 				}
-				r.buildTable() // Rebuild to update mark indicator
+				r.buildTable()
 			}
 			return r, nil
 		case "d", "enter":
 			if len(r.filtered) > 0 && r.table.Cursor() < len(r.filtered) {
 				resource := r.filtered[r.table.Cursor()]
-				// If marked resource exists and different from current, show diff
 				if r.markedResource != nil && r.markedResource.GetID() != resource.GetID() {
 					diffView := NewDiffView(r.ctx, r.markedResource, resource, r.renderer, r.service, r.resourceType)
 					return r, func() tea.Msg {
 						return NavigateMsg{View: diffView}
 					}
 				}
-				// Otherwise show detail view
 				detailView := NewDetailView(r.ctx, resource, r.renderer, r.service, r.resourceType, r.registry, r.dao)
 				return r, func() tea.Msg {
 					return NavigateMsg{View: detailView}
@@ -649,19 +643,18 @@ func (r *ResourceBrowser) buildTable() {
 		return
 	}
 
-	// Save current cursor position before rebuilding
 	currentCursor := r.table.Cursor()
-
 	cols := r.renderer.Columns()
-	tableCols := make([]table.Column, len(cols))
 
-	// Calculate total width of defined columns
-	totalColWidth := 0
+	const markColWidth = 2
+	tableCols := make([]table.Column, len(cols)+1)
+	tableCols[0] = table.Column{Title: " ", Width: markColWidth}
+
+	totalColWidth := markColWidth
 	for _, col := range cols {
 		totalColWidth += col.Width
 	}
 
-	// Expand last column to fill remaining screen width
 	extraWidth := r.width - totalColWidth
 	if extraWidth < 0 {
 		extraWidth = 0
@@ -671,9 +664,9 @@ func (r *ResourceBrowser) buildTable() {
 		title := col.Name + r.getSortIndicator(i)
 		width := col.Width
 		if i == len(cols)-1 {
-			width += extraWidth // Last column fills remaining space
+			width += extraWidth
 		}
-		tableCols[i] = table.Column{
+		tableCols[i+1] = table.Column{
 			Title: title,
 			Width: width,
 		}
@@ -682,14 +675,14 @@ func (r *ResourceBrowser) buildTable() {
 	rows := make([]table.Row, len(r.filtered))
 	for i, res := range r.filtered {
 		row := r.renderer.RenderRow(res, cols)
-		// Add mark indicator to first cell if this resource is marked
-		// Note: Don't apply lipgloss style - ANSI reset breaks row highlight
+		markIndicator := "  "
 		if r.markedResource != nil && r.markedResource.GetID() == res.GetID() {
-			if len(row) > 0 {
-				row[0] = "◆ " + row[0]
-			}
+			markIndicator = "◆ "
 		}
-		rows[i] = row
+		fullRow := make(table.Row, len(row)+1)
+		fullRow[0] = markIndicator
+		copy(fullRow[1:], row)
+		rows[i] = fullRow
 	}
 
 	// Calculate header height dynamically
