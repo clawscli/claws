@@ -104,6 +104,11 @@ const (
 	targetOperations   = "health/events"
 	targetSecurity     = "securityhub/findings"
 	targetOptimization = "trustedadvisor/recommendations"
+
+	panelCost = iota
+	panelOperations
+	panelSecurity
+	panelOptimization
 )
 
 func renderPanel(title, content string, width, height int, t *ui.Theme, hovered bool) string {
@@ -526,10 +531,10 @@ func (d *DashboardView) ViewString() string {
 	secContent := d.renderSecurityContent(contentWidth, contentHeight)
 	optContent := d.renderOptimizationContent(contentWidth, contentHeight)
 
-	costPanel := renderPanel("Cost", costContent, panelWidth, panelHeight, t, d.hoverIdx == 0)
-	opsPanel := renderPanel("Operations", opsContent, panelWidth, panelHeight, t, d.hoverIdx == 1)
-	secPanel := renderPanel("Security", secContent, panelWidth, panelHeight, t, d.hoverIdx == 2)
-	optPanel := renderPanel("Optimization", optContent, panelWidth, panelHeight, t, d.hoverIdx == 3)
+	costPanel := renderPanel("Cost", costContent, panelWidth, panelHeight, t, d.hoverIdx == panelCost)
+	opsPanel := renderPanel("Operations", opsContent, panelWidth, panelHeight, t, d.hoverIdx == panelOperations)
+	secPanel := renderPanel("Security", secContent, panelWidth, panelHeight, t, d.hoverIdx == panelSecurity)
+	optPanel := renderPanel("Optimization", optContent, panelWidth, panelHeight, t, d.hoverIdx == panelOptimization)
 
 	gap := strings.Repeat(" ", panelGap)
 	topRow := lipgloss.JoinHorizontal(lipgloss.Top, costPanel, gap, opsPanel)
@@ -679,7 +684,7 @@ func (d *DashboardView) renderSecurityContent(contentWidth, contentHeight int) s
 		for _, item := range d.secItems {
 			if item.severity == "CRITICAL" {
 				critical++
-			} else {
+			} else if item.severity == "HIGH" {
 				high++
 			}
 		}
