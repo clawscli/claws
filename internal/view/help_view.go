@@ -84,6 +84,9 @@ func (h *HelpView) renderContent() string {
 	// Command Mode
 	out += "\n" + s.section.Render("Command Mode") + "\n"
 	out += s.key.Render(":") + s.desc.Render("Enter command mode") + "\n"
+	out += s.key.Render(": + Enter") + s.desc.Render("Go to dashboard (home)") + "\n"
+	out += s.key.Render(":home") + s.desc.Render("Go to dashboard") + "\n"
+	out += s.key.Render(":services") + s.desc.Render("Browse services") + "\n"
 	out += s.key.Render("Tab") + s.desc.Render("Cycle through suggestions") + "\n"
 	out += s.key.Render("Shift+Tab") + s.desc.Render("Cycle backward") + "\n"
 	out += s.key.Render("Enter") + s.desc.Render("Execute command") + "\n"

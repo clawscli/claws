@@ -94,8 +94,8 @@ func New(ctx context.Context, reg *registry.Registry) *App {
 
 // Init implements tea.Model
 func (a *App) Init() tea.Cmd {
-	// Start with the service browser view immediately (no blocking on AWS calls)
-	a.currentView = view.NewServiceBrowser(a.ctx, a.registry)
+	// Start with the dashboard view immediately (no blocking on AWS calls)
+	a.currentView = view.NewDashboardView(a.ctx, a.registry)
 	a.awsInitializing = true
 
 	// Initialize AWS context in background (region detection, account ID fetch)
@@ -302,8 +302,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				)
 			}
 		}
-		// Fallback to service browser if no refreshable view found
-		a.currentView = view.NewServiceBrowser(a.ctx, a.registry)
+		// Fallback to dashboard if no refreshable view found
+		a.currentView = view.NewDashboardView(a.ctx, a.registry)
 		return a, tea.Batch(
 			a.currentView.Init(),
 			a.currentView.SetSize(a.width, a.height-2),
@@ -332,8 +332,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				)
 			}
 		}
-		// Fallback to service browser if no refreshable view found
-		a.currentView = view.NewServiceBrowser(a.ctx, a.registry)
+		// Fallback to dashboard if no refreshable view found
+		a.currentView = view.NewDashboardView(a.ctx, a.registry)
 		return a, tea.Batch(
 			a.currentView.Init(),
 			a.currentView.SetSize(a.width, a.height-2),
