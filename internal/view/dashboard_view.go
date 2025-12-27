@@ -228,6 +228,7 @@ func (d *DashboardView) loadAlarms() tea.Msg {
 	client := cloudwatch.NewFromConfig(cfg)
 	output, err := client.DescribeAlarms(d.ctx, &cloudwatch.DescribeAlarmsInput{
 		StateValue: types.StateValueAlarm,
+		MaxRecords: appaws.Int32Ptr(100),
 	})
 	if err != nil {
 		return alarmErrorMsg{err: err}
@@ -235,10 +236,14 @@ func (d *DashboardView) loadAlarms() tea.Msg {
 
 	var items []alarmItem
 	for _, a := range output.MetricAlarms {
-		items = append(items, alarmItem{name: *a.AlarmName, state: string(a.StateValue)})
+		if a.AlarmName != nil {
+			items = append(items, alarmItem{name: *a.AlarmName, state: string(a.StateValue)})
+		}
 	}
 	for _, a := range output.CompositeAlarms {
-		items = append(items, alarmItem{name: *a.AlarmName, state: string(a.StateValue)})
+		if a.AlarmName != nil {
+			items = append(items, alarmItem{name: *a.AlarmName, state: string(a.StateValue)})
+		}
 	}
 	return alarmLoadedMsg{items: items}
 }
@@ -258,7 +263,10 @@ func (d *DashboardView) loadCosts() tea.Msg {
 	var total float64
 	for _, r := range resources {
 		if cr, ok := r.(*costs.CostResource); ok {
-			c, _ := strconv.ParseFloat(cr.Cost, 64)
+			c, err := strconv.ParseFloat(cr.Cost, 64)
+			if err != nil {
+				continue
+			}
 			if c > 0 {
 				items = append(items, costItem{service: cr.ServiceName, cost: c})
 				total += c
