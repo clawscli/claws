@@ -99,6 +99,11 @@ const (
 	minPanelWidth  = 30
 	minPanelHeight = 6
 	panelGap       = 1
+
+	targetCost         = "costexplorer/costs"
+	targetOperations   = "health/events"
+	targetSecurity     = "securityhub/findings"
+	targetOptimization = "trustedadvisor/recommendations"
 )
 
 func renderPanel(title, content string, width, height int, t *ui.Theme, hovered bool) string {
@@ -157,8 +162,11 @@ type DashboardView struct {
 	spinner     spinner.Model
 	styles      dashboardStyles
 
-	hitAreas []hitArea
-	hoverIdx int
+	hitAreas         []hitArea
+	hoverIdx         int
+	lastPanelWidth   int
+	lastPanelHeight  int
+	lastHeaderHeight int
 
 	alarms       []alarmItem
 	alarmLoading bool
@@ -530,7 +538,12 @@ func (d *DashboardView) ViewString() string {
 
 	hint := d.styles.dim.Render("s:services • Ctrl+r:refresh")
 
-	d.buildHitAreas(panelWidth, panelHeight, headerHeight)
+	if panelWidth != d.lastPanelWidth || panelHeight != d.lastPanelHeight || headerHeight != d.lastHeaderHeight {
+		d.buildHitAreas(panelWidth, panelHeight, headerHeight)
+		d.lastPanelWidth = panelWidth
+		d.lastPanelHeight = panelHeight
+		d.lastHeaderHeight = headerHeight
+	}
 
 	return header + "\n" + grid + "\n" + hint
 }
@@ -545,10 +558,10 @@ func (d *DashboardView) buildHitAreas(panelWidth, panelHeight, headerHeight int)
 	rightX1, rightX2 := panelWidth+panelGap, panelWidth+panelGap+panelWidth
 
 	d.hitAreas = append(d.hitAreas,
-		hitArea{y1: topRowY, y2: topRowY + panelHeight - 1, x1: leftX1, x2: leftX2, target: "costexplorer/costs"},
-		hitArea{y1: topRowY, y2: topRowY + panelHeight - 1, x1: rightX1, x2: rightX2, target: "health/events"},
-		hitArea{y1: bottomRowY, y2: bottomRowY + panelHeight - 1, x1: leftX1, x2: leftX2, target: "securityhub/findings"},
-		hitArea{y1: bottomRowY, y2: bottomRowY + panelHeight - 1, x1: rightX1, x2: rightX2, target: "trustedadvisor/recommendations"},
+		hitArea{y1: topRowY, y2: topRowY + panelHeight - 1, x1: leftX1, x2: leftX2, target: targetCost},
+		hitArea{y1: topRowY, y2: topRowY + panelHeight - 1, x1: rightX1, x2: rightX2, target: targetOperations},
+		hitArea{y1: bottomRowY, y2: bottomRowY + panelHeight - 1, x1: leftX1, x2: leftX2, target: targetSecurity},
+		hitArea{y1: bottomRowY, y2: bottomRowY + panelHeight - 1, x1: rightX1, x2: rightX2, target: targetOptimization},
 	)
 }
 
