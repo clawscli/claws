@@ -109,6 +109,16 @@ const (
 	panelOperations
 	panelSecurity
 	panelOptimization
+
+	// Cost panel layout constants
+	costValueWidth     = 9  // Width for cost value display (e.g., "   12345")
+	costPadding        = 2  // Padding between name and bar
+	minCostBarWidth    = 8  // Minimum bar graph width
+	minCostNameWidth   = 15 // Minimum service name width
+	costNameWidthRatio = 60 // Name takes 60% of available space, bar 40%
+
+	// Dashboard fetches first N items for summary display
+	dashboardMaxRecords = 100
 )
 
 func renderPanel(title, content string, width, height int, t *ui.Theme, hovered bool) string {
@@ -233,6 +243,10 @@ func (d *DashboardView) Init() tea.Cmd {
 }
 
 func (d *DashboardView) loadAlarms() tea.Msg {
+	if d.ctx.Err() != nil {
+		return alarmErrorMsg{err: d.ctx.Err()}
+	}
+
 	cfg, err := appaws.NewConfig(d.ctx)
 	if err != nil {
 		return alarmErrorMsg{err: err}
@@ -241,7 +255,7 @@ func (d *DashboardView) loadAlarms() tea.Msg {
 	client := cloudwatch.NewFromConfig(cfg)
 	output, err := client.DescribeAlarms(d.ctx, &cloudwatch.DescribeAlarmsInput{
 		StateValue: types.StateValueAlarm,
-		MaxRecords: appaws.Int32Ptr(100),
+		MaxRecords: appaws.Int32Ptr(dashboardMaxRecords),
 	})
 	if err != nil {
 		return alarmErrorMsg{err: err}
@@ -249,19 +263,25 @@ func (d *DashboardView) loadAlarms() tea.Msg {
 
 	var items []alarmItem
 	for _, a := range output.MetricAlarms {
-		if a.AlarmName != nil {
-			items = append(items, alarmItem{name: *a.AlarmName, state: string(a.StateValue)})
+		name := appaws.Str(a.AlarmName)
+		if name != "" {
+			items = append(items, alarmItem{name: name, state: string(a.StateValue)})
 		}
 	}
 	for _, a := range output.CompositeAlarms {
-		if a.AlarmName != nil {
-			items = append(items, alarmItem{name: *a.AlarmName, state: string(a.StateValue)})
+		name := appaws.Str(a.AlarmName)
+		if name != "" {
+			items = append(items, alarmItem{name: name, state: string(a.StateValue)})
 		}
 	}
 	return alarmLoadedMsg{items: items}
 }
 
 func (d *DashboardView) loadCosts() tea.Msg {
+	if d.ctx.Err() != nil {
+		return costErrorMsg{err: d.ctx.Err()}
+	}
+
 	dao, err := costs.NewCostDAO(d.ctx)
 	if err != nil {
 		return costErrorMsg{err: err}
@@ -295,6 +315,10 @@ func (d *DashboardView) loadCosts() tea.Msg {
 }
 
 func (d *DashboardView) loadAnomalies() tea.Msg {
+	if d.ctx.Err() != nil {
+		return anomalyErrorMsg{err: d.ctx.Err()}
+	}
+
 	dao, err := anomalies.NewAnomalyDAO(d.ctx)
 	if err != nil {
 		return anomalyErrorMsg{err: err}
@@ -309,6 +333,10 @@ func (d *DashboardView) loadAnomalies() tea.Msg {
 }
 
 func (d *DashboardView) loadHealth() tea.Msg {
+	if d.ctx.Err() != nil {
+		return healthErrorMsg{err: d.ctx.Err()}
+	}
+
 	dao, err := events.NewEventDAO(d.ctx)
 	if err != nil {
 		return healthErrorMsg{err: err}
@@ -331,6 +359,10 @@ func (d *DashboardView) loadHealth() tea.Msg {
 }
 
 func (d *DashboardView) loadSecurity() tea.Msg {
+	if d.ctx.Err() != nil {
+		return securityErrorMsg{err: d.ctx.Err()}
+	}
+
 	dao, err := findings.NewFindingDAO(d.ctx)
 	if err != nil {
 		return securityErrorMsg{err: err}
@@ -354,6 +386,10 @@ func (d *DashboardView) loadSecurity() tea.Msg {
 }
 
 func (d *DashboardView) loadTrustedAdvisor() tea.Msg {
+	if d.ctx.Err() != nil {
+		return taErrorMsg{err: d.ctx.Err()}
+	}
+
 	dao, err := recommendations.NewRecommendationDAO(d.ctx)
 	if err != nil {
 		return taErrorMsg{err: err}
@@ -526,7 +562,7 @@ func (d *DashboardView) ViewString() string {
 	contentWidth := panelWidth - 4
 	contentHeight := panelHeight - 3
 
-	costContent := d.renderCostContent(contentWidth, contentHeight)
+	costContent := d.renderCostContent(contentWidth, contentHeight, t)
 	opsContent := d.renderOpsContent(contentWidth, contentHeight)
 	secContent := d.renderSecurityContent(contentWidth, contentHeight)
 	optContent := d.renderOptimizationContent(contentWidth, contentHeight)
@@ -580,31 +616,27 @@ func (d *DashboardView) calcPanelHeight(headerHeight int) int {
 	return max(available/2, minPanelHeight)
 }
 
-func (d *DashboardView) renderCostContent(contentWidth, contentHeight int) string {
+func (d *DashboardView) renderCostContent(contentWidth, contentHeight int, t *ui.Theme) string {
 	s := d.styles
-	t := ui.Current()
 	var lines []string
 
 	if d.costLoading {
 		lines = append(lines, d.spinner.View()+" loading...")
 	} else if d.costErr != nil {
-		lines = append(lines, s.dim.Render("N/A"))
+		lines = append(lines, s.dim.Render("Cost: N/A"))
 	} else {
 		lines = append(lines, "MTD: "+appaws.FormatMoney(d.costMTD, ""))
 
 		if len(d.costTop) > 0 {
 			maxCost := d.costTop[0].cost
-			const costWidth = 9
-			const minBarWidth = 8
-			const minNameWidth = 15
-			available := contentWidth - costWidth - 2
-			nameWidth := available * 60 / 100
+			available := contentWidth - costValueWidth - costPadding
+			nameWidth := available * costNameWidthRatio / 100
 			barWidth := available - nameWidth
-			if nameWidth < minNameWidth {
-				nameWidth = minNameWidth
+			if nameWidth < minCostNameWidth {
+				nameWidth = minCostNameWidth
 			}
-			if barWidth < minBarWidth {
-				barWidth = minBarWidth
+			if barWidth < minCostBarWidth {
+				barWidth = minCostBarWidth
 			}
 			maxServices := contentHeight - 2
 			if maxServices < 3 {
@@ -641,7 +673,7 @@ func (d *DashboardView) renderOpsContent(contentWidth, contentHeight int) string
 	if d.alarmLoading {
 		lines = append(lines, "Alarms: "+d.spinner.View())
 	} else if d.alarmErr != nil {
-		lines = append(lines, "Alarms: "+s.dim.Render("N/A"))
+		lines = append(lines, s.dim.Render("Alarms: N/A"))
 	} else if len(d.alarms) > 0 {
 		lines = append(lines, s.danger.Render(fmt.Sprintf("Alarms: %d in ALARM", len(d.alarms))))
 		maxShow := min(len(d.alarms), contentHeight-3)
@@ -655,7 +687,7 @@ func (d *DashboardView) renderOpsContent(contentWidth, contentHeight int) string
 	if d.healthLoading {
 		lines = append(lines, "Health: "+d.spinner.View())
 	} else if d.healthErr != nil {
-		lines = append(lines, "Health: "+s.dim.Render("N/A"))
+		lines = append(lines, s.dim.Render("Health: N/A"))
 	} else if len(d.healthItems) > 0 {
 		lines = append(lines, s.warning.Render(fmt.Sprintf("Health: %d open", len(d.healthItems))))
 		remaining := contentHeight - len(lines) - 1
@@ -678,7 +710,7 @@ func (d *DashboardView) renderSecurityContent(contentWidth, contentHeight int) s
 	if d.secLoading {
 		lines = append(lines, d.spinner.View()+" loading...")
 	} else if d.secErr != nil {
-		lines = append(lines, s.dim.Render("N/A"))
+		lines = append(lines, s.dim.Render("Security: N/A"))
 	} else if len(d.secItems) > 0 {
 		var critical, high int
 		for _, item := range d.secItems {
@@ -717,7 +749,7 @@ func (d *DashboardView) renderOptimizationContent(contentWidth, contentHeight in
 	if d.taLoading {
 		lines = append(lines, d.spinner.View()+" loading...")
 	} else if d.taErr != nil {
-		lines = append(lines, s.dim.Render("N/A"))
+		lines = append(lines, s.dim.Render("Optimization: N/A"))
 	} else {
 		var errors, warnings int
 		for _, item := range d.taItems {
@@ -734,7 +766,7 @@ func (d *DashboardView) renderOptimizationContent(contentWidth, contentHeight in
 			lines = append(lines, s.warning.Render(fmt.Sprintf("Warnings: %d", warnings)))
 		}
 		if d.taSavings > 0 {
-			lines = append(lines, s.success.Render(fmt.Sprintf("Savings: $%.0f/mo 💰", d.taSavings)))
+			lines = append(lines, s.success.Render("Savings: "+appaws.FormatMoney(d.taSavings, "")+"/mo 💰"))
 		}
 		if len(d.taItems) > 0 {
 			maxShow := min(len(d.taItems), contentHeight-len(lines)-1)
