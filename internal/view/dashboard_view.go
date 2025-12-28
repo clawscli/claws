@@ -498,9 +498,9 @@ func (d *DashboardView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+r":
 			return d.Update(RefreshMsg{})
 		case "h", "left":
-			d.movePanelFocus(-1, 0)
+			d.cyclePanelFocus(-1)
 		case "l", "right":
-			d.movePanelFocus(1, 0)
+			d.cyclePanelFocus(1)
 		case "j", "down":
 			d.moveRowFocus(1)
 		case "k", "up":
@@ -550,15 +550,6 @@ func (d *DashboardView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return d, nil
 }
 
-func (d *DashboardView) hitTest(x, y int) string {
-	for _, h := range d.hitAreas {
-		if y >= h.y1 && y <= h.y2 && x >= h.x1 && x <= h.x2 {
-			return h.target
-		}
-	}
-	return ""
-}
-
 func (d *DashboardView) hitTestIdx(x, y int) int {
 	for i, h := range d.hitAreas {
 		if y >= h.y1 && y <= h.y2 && x >= h.x1 && x <= h.x2 {
@@ -575,7 +566,7 @@ func (d *DashboardView) hitTestRow(x, y int) (panelIdx, rowIdx int) {
 	}
 
 	h := d.hitAreas[panelIdx]
-	contentStartY := h.y1 + 2
+	contentStartY := h.y1 + 1
 
 	rowY := y - contentStartY
 	if rowY < 0 {
@@ -713,17 +704,6 @@ func (d *DashboardView) clampFocusedRow() {
 	}
 }
 
-func (d *DashboardView) movePanelFocus(dx, dy int) {
-	col := d.focusedPanel % 2
-	row := d.focusedPanel / 2
-
-	col = (col + dx + 2) % 2
-	row = (row + dy + 2) % 2
-
-	d.focusedPanel = row*2 + col
-	d.clampFocusedRow()
-}
-
 func (d *DashboardView) moveRowFocus(delta int) {
 	count := d.getRowCount(d.focusedPanel)
 	if count == 0 {
@@ -747,6 +727,7 @@ func (d *DashboardView) moveRowFocus(delta int) {
 
 func (d *DashboardView) cyclePanelFocus(delta int) {
 	d.focusedPanel = (d.focusedPanel + delta + 4) % 4
+	d.hoverIdx = d.focusedPanel
 	d.clampFocusedRow()
 }
 
@@ -872,8 +853,6 @@ func (d *DashboardView) ViewString() string {
 	bottomRow := lipgloss.JoinHorizontal(lipgloss.Top, secPanel, gap, optPanel)
 	grid := lipgloss.JoinVertical(lipgloss.Left, topRow, bottomRow)
 
-	hint := d.styles.dim.Render("h/l:panel • j/k:row • enter:select • s:services • Ctrl+r:refresh")
-
 	if panelWidth != d.lastPanelWidth || panelHeight != d.lastPanelHeight || headerHeight != d.lastHeaderHeight {
 		d.buildHitAreas(panelWidth, panelHeight, headerHeight)
 		d.lastPanelWidth = panelWidth
@@ -881,7 +860,7 @@ func (d *DashboardView) ViewString() string {
 		d.lastHeaderHeight = headerHeight
 	}
 
-	return header + "\n" + grid + "\n" + hint
+	return header + "\n" + grid
 }
 
 func (d *DashboardView) buildHitAreas(panelWidth, panelHeight, headerHeight int) {
@@ -906,8 +885,7 @@ func (d *DashboardView) calcPanelWidth() int {
 }
 
 func (d *DashboardView) calcPanelHeight(headerHeight int) int {
-	hintHeight := 2
-	available := d.height - headerHeight - hintHeight
+	available := d.height - headerHeight + 1
 	return max(available/2, minPanelHeight)
 }
 

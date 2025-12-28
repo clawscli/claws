@@ -67,33 +67,27 @@ func TestDashboardView_HitTest(t *testing.T) {
 	leftX2 := panelWidth
 	rightX1 := panelWidth + panelGap
 
+	// Panel indices: 0=cost, 1=operations, 2=security, 3=optimization
 	tests := []struct {
-		name   string
-		x, y   int
-		want   string
-		wantOK bool
+		name string
+		x, y int
+		want int
 	}{
-		{"top-left panel (cost)", 10, topRowY1 + 2, targetCost, true},
-		{"top-right panel (operations)", rightX1 + 5, topRowY1 + 2, targetOperations, true},
-		{"bottom-left panel (security)", 10, bottomRowY1 + 2, targetSecurity, true},
-		{"bottom-right panel (optimization)", rightX1 + 5, bottomRowY1 + 2, targetOptimization, true},
-		{"header area (no hit)", 50, headerHeight - 1, "", false},
-		{"below all panels (no hit)", 50, bottomRowY2 + 5, "", false},
-		{"left edge of cost panel", 0, topRowY1, targetCost, true},
-		{"right edge of cost panel", leftX2, topRowY1, targetCost, true},
+		{"top-left panel (cost)", 10, topRowY1 + 2, 0},
+		{"top-right panel (operations)", rightX1 + 5, topRowY1 + 2, 1},
+		{"bottom-left panel (security)", 10, bottomRowY1 + 2, 2},
+		{"bottom-right panel (optimization)", rightX1 + 5, bottomRowY1 + 2, 3},
+		{"header area (no hit)", 50, headerHeight - 1, -1},
+		{"below all panels (no hit)", 50, bottomRowY2 + 5, -1},
+		{"left edge of cost panel", 0, topRowY1, 0},
+		{"right edge of cost panel", leftX2, topRowY1, 0},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := dv.hitTest(tt.x, tt.y)
-			if tt.wantOK {
-				if got != tt.want {
-					t.Errorf("hitTest(%d, %d) = %q, want %q", tt.x, tt.y, got, tt.want)
-				}
-			} else {
-				if got != "" {
-					t.Errorf("hitTest(%d, %d) = %q, want empty", tt.x, tt.y, got)
-				}
+			got := dv.hitTestIdx(tt.x, tt.y)
+			if got != tt.want {
+				t.Errorf("hitTestIdx(%d, %d) = %d, want %d", tt.x, tt.y, got, tt.want)
 			}
 		})
 	}
