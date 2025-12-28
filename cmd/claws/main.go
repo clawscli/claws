@@ -59,6 +59,7 @@ import (
 	_ "github.com/clawscli/claws/custom/sqs/queues"
 
 	// CloudWatch
+	_ "github.com/clawscli/claws/custom/cloudwatch/alarms"
 	_ "github.com/clawscli/claws/custom/cloudwatch/loggroups"
 	_ "github.com/clawscli/claws/custom/cloudwatch/logstreams"
 

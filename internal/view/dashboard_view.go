@@ -10,14 +10,14 @@ import (
 	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
-	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
+	"github.com/clawscli/claws/custom/cloudwatch/alarms"
 	"github.com/clawscli/claws/custom/costexplorer/anomalies"
 	"github.com/clawscli/claws/custom/costexplorer/costs"
 	"github.com/clawscli/claws/custom/health/events"
 	"github.com/clawscli/claws/custom/securityhub/findings"
 	"github.com/clawscli/claws/custom/trustedadvisor/recommendations"
 	appaws "github.com/clawscli/claws/internal/aws"
+	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/registry"
 	"github.com/clawscli/claws/internal/ui"
 )
@@ -108,6 +108,8 @@ const (
 	minPanelHeight = 6
 	panelGap       = 1
 
+	dashboardMaxRecords = 100
+
 	targetCost         = "costexplorer/costs"
 	targetOperations   = "health/events"
 	targetSecurity     = "securityhub/findings"
@@ -120,11 +122,7 @@ const (
 	minCostNameWidth   = 15 // Minimum service name width
 	costNameWidthRatio = 60 // Name takes 60% of available space, bar 40%
 
-	// Bullet list indent: "  • " = 2 spaces + bullet + space
 	bulletIndentWidth = 4
-
-	// Dashboard fetches first N items for summary display
-	dashboardMaxRecords = 100
 )
 
 func renderPanel(title, content string, width, height int, t *ui.Theme, hovered bool) string {
@@ -253,31 +251,25 @@ func (d *DashboardView) loadAlarms() tea.Msg {
 		return alarmErrorMsg{err: d.ctx.Err()}
 	}
 
-	cfg, err := appaws.NewConfig(d.ctx)
+	alarmDAO, err := alarms.NewAlarmDAO(d.ctx)
 	if err != nil {
 		return alarmErrorMsg{err: err}
 	}
 
-	client := cloudwatch.NewFromConfig(cfg)
-	output, err := client.DescribeAlarms(d.ctx, &cloudwatch.DescribeAlarmsInput{
-		StateValue: types.StateValueAlarm,
-		MaxRecords: appaws.Int32Ptr(dashboardMaxRecords),
-	})
+	ctx := dao.WithFilter(d.ctx, "StateValue", "ALARM")
+	resources, err := alarmDAO.List(ctx)
 	if err != nil {
 		return alarmErrorMsg{err: err}
 	}
 
-	items := make([]alarmItem, 0, len(output.MetricAlarms)+len(output.CompositeAlarms))
-	for _, a := range output.MetricAlarms {
-		name := appaws.Str(a.AlarmName)
-		if name != "" {
-			items = append(items, alarmItem{name: name, state: string(a.StateValue)})
-		}
+	if len(resources) > dashboardMaxRecords {
+		resources = resources[:dashboardMaxRecords]
 	}
-	for _, a := range output.CompositeAlarms {
-		name := appaws.Str(a.AlarmName)
-		if name != "" {
-			items = append(items, alarmItem{name: name, state: string(a.StateValue)})
+
+	items := make([]alarmItem, 0, len(resources))
+	for _, r := range resources {
+		if ar, ok := r.(*alarms.AlarmResource); ok {
+			items = append(items, alarmItem{name: ar.GetName(), state: ar.StateValue})
 		}
 	}
 	return alarmLoadedMsg{items: items}
@@ -492,6 +484,8 @@ func (d *DashboardView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return d, func() tea.Msg {
 				return NavigateMsg{View: browser}
 			}
+		case "ctrl+r":
+			return d.Update(RefreshMsg{})
 		}
 
 	case RefreshMsg:
