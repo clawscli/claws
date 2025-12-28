@@ -8,7 +8,8 @@ import (
 var sparkBlocks = []rune{'▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'}
 
 const (
-	sparklineWidth    = 7
+	SparklineWidth    = 7
+	ColumnWidth       = 13
 	noDataPlaceholder = "·······"
 )
 
@@ -18,8 +19,8 @@ func RenderSparkline(result *MetricResult) string {
 	}
 
 	values := result.Values
-	if len(values) > sparklineWidth {
-		values = values[len(values)-sparklineWidth:]
+	if len(values) > SparklineWidth {
+		values = values[len(values)-SparklineWidth:]
 	}
 
 	minVal, maxVal := values[0], values[0]
@@ -49,7 +50,7 @@ func RenderSparkline(result *MetricResult) string {
 		spark += string(sparkBlocks[idx])
 	}
 
-	for len(spark) < sparklineWidth {
+	for len(spark) < SparklineWidth {
 		spark = "·" + spark
 	}
 

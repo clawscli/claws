@@ -322,9 +322,16 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		r.hasMorePages = msg.hasMorePages
 		r.applyFilter()
 		r.buildTable()
-		// Schedule next tick if auto-reload is enabled
+
+		var cmds []tea.Cmd
 		if r.autoReload {
-			return r, r.tickCmd()
+			cmds = append(cmds, r.tickCmd())
+		}
+		if r.metricsEnabled && r.metricsLoading {
+			cmds = append(cmds, r.loadMetrics)
+		}
+		if len(cmds) > 0 {
+			return r, tea.Batch(cmds...)
 		}
 		return r, nil
 
@@ -483,13 +490,11 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+r":
 			r.loading = true
 			r.err = nil
-			cmds := []tea.Cmd{r.loadResources, r.spinner.Tick}
 			if r.metricsEnabled {
 				r.metricsLoading = true
 				r.metricsData = nil
-				cmds = append(cmds, r.loadMetrics)
 			}
-			return r, tea.Batch(cmds...)
+			return r, tea.Batch(r.loadResources, r.spinner.Tick)
 		case "c":
 			r.filterText = ""
 			r.filterInput.SetValue("")
@@ -567,6 +572,8 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				r.filterText = ""
 				r.filterInput.SetValue("")
 				r.markedResource = nil
+				r.metricsEnabled = false
+				r.metricsData = nil
 				return r, tea.Batch(r.loadResources, r.spinner.Tick)
 			}
 		case "N":
@@ -715,10 +722,11 @@ func (r *ResourceBrowser) buildTable() {
 	cols := r.renderer.Columns()
 
 	const markColWidth = 2
-	const metricsColWidth = 13
+	metricsColWidth := metrics.ColumnWidth
 
+	effectiveMetricsEnabled := r.metricsEnabled && r.getMetricSpec() != nil
 	numCols := len(cols) + 1
-	if r.metricsEnabled {
+	if effectiveMetricsEnabled {
 		numCols++
 	}
 	tableCols := make([]table.Column, numCols)
@@ -728,7 +736,7 @@ func (r *ResourceBrowser) buildTable() {
 	for _, col := range cols {
 		totalColWidth += col.Width
 	}
-	if r.metricsEnabled {
+	if effectiveMetricsEnabled {
 		totalColWidth += metricsColWidth
 	}
 
@@ -740,7 +748,7 @@ func (r *ResourceBrowser) buildTable() {
 	for i, col := range cols {
 		title := col.Name + r.getSortIndicator(i)
 		width := col.Width
-		if i == len(cols)-1 && !r.metricsEnabled {
+		if i == len(cols)-1 && !effectiveMetricsEnabled {
 			width += extraWidth
 		}
 		tableCols[i+1] = table.Column{
@@ -749,7 +757,7 @@ func (r *ResourceBrowser) buildTable() {
 		}
 	}
 
-	if r.metricsEnabled {
+	if effectiveMetricsEnabled {
 		spec := r.getMetricSpec()
 		header := "METRICS"
 		if spec != nil {
@@ -771,9 +779,8 @@ func (r *ResourceBrowser) buildTable() {
 		fullRow := make(table.Row, numCols)
 		fullRow[0] = markIndicator
 		copy(fullRow[1:], row)
-		if r.metricsEnabled {
-			metricResult := r.metricsData.Get(res.GetID())
-			fullRow[len(cols)+1] = metrics.RenderSparkline(metricResult)
+		if effectiveMetricsEnabled {
+			fullRow[len(cols)+1] = metrics.RenderSparkline(r.metricsData.Get(res.GetID()))
 		}
 		rows[i] = fullRow
 	}
@@ -970,6 +977,8 @@ func (r *ResourceBrowser) switchToTab(idx int) (tea.Model, tea.Cmd) {
 	}
 	r.resourceType = r.resourceTypes[idx]
 	r.markedResource = nil
+	r.metricsEnabled = false
+	r.metricsData = nil
 	return r, r.loadResources
 }
 
