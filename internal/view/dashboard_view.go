@@ -108,6 +108,8 @@ const (
 	minPanelHeight = 6
 	panelGap       = 1
 
+	dashboardMaxRecords = 100
+
 	targetCost         = "costexplorer/costs"
 	targetOperations   = "health/events"
 	targetSecurity     = "securityhub/findings"
@@ -258,6 +260,10 @@ func (d *DashboardView) loadAlarms() tea.Msg {
 	resources, err := alarmDAO.List(ctx)
 	if err != nil {
 		return alarmErrorMsg{err: err}
+	}
+
+	if len(resources) > dashboardMaxRecords {
+		resources = resources[:dashboardMaxRecords]
 	}
 
 	items := make([]alarmItem, 0, len(resources))

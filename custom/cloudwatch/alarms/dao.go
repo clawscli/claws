@@ -40,6 +40,7 @@ func (d *AlarmDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	var allMetricAlarms []types.MetricAlarm
 	var allCompositeAlarms []types.CompositeAlarm
 
+	// Manual pagination: API returns both MetricAlarms and CompositeAlarms
 	paginator := cloudwatch.NewDescribeAlarmsPaginator(d.client, input)
 	for paginator.HasMorePages() {
 		output, err := paginator.NextPage(ctx)
@@ -180,12 +181,9 @@ func NewMetricAlarmResource(a types.MetricAlarm) *AlarmResource {
 		Metrics:                          a.Metrics,
 	}
 
-	r.AlarmActions = make([]string, len(a.AlarmActions))
-	copy(r.AlarmActions, a.AlarmActions)
-	r.OKActions = make([]string, len(a.OKActions))
-	copy(r.OKActions, a.OKActions)
-	r.InsufficientDataActions = make([]string, len(a.InsufficientDataActions))
-	copy(r.InsufficientDataActions, a.InsufficientDataActions)
+	r.AlarmActions = a.AlarmActions
+	r.OKActions = a.OKActions
+	r.InsufficientDataActions = a.InsufficientDataActions
 
 	return r
 }
@@ -217,12 +215,9 @@ func NewCompositeAlarmResource(a types.CompositeAlarm) *AlarmResource {
 		ActionsSuppressorWaitPeriod:      appaws.Int32(a.ActionsSuppressorWaitPeriod),
 	}
 
-	r.AlarmActions = make([]string, len(a.AlarmActions))
-	copy(r.AlarmActions, a.AlarmActions)
-	r.OKActions = make([]string, len(a.OKActions))
-	copy(r.OKActions, a.OKActions)
-	r.InsufficientDataActions = make([]string, len(a.InsufficientDataActions))
-	copy(r.InsufficientDataActions, a.InsufficientDataActions)
+	r.AlarmActions = a.AlarmActions
+	r.OKActions = a.OKActions
+	r.InsufficientDataActions = a.InsufficientDataActions
 
 	return r
 }
@@ -244,7 +239,7 @@ func (r *AlarmResource) ActionsEnabledStr() string {
 
 func (r *AlarmResource) StateUpdatedStr() string {
 	if r.StateUpdatedTimestamp != nil {
-		return r.StateUpdatedTimestamp.Format("2006-01-02 15:04:05")
+		return r.StateUpdatedTimestamp.Format("2006-01-02 15:04:05 MST")
 	}
 	return ""
 }
