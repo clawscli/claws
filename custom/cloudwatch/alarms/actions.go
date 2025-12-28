@@ -21,14 +21,14 @@ func init() {
 		},
 		{
 			Name:      "Disable",
-			Shortcut:  "D",
+			Shortcut:  "X",
 			Type:      action.ActionTypeAPI,
 			Operation: "DisableAlarmActions",
 			Confirm:   action.ConfirmSimple,
 		},
 		{
 			Name:      "Delete",
-			Shortcut:  "X",
+			Shortcut:  "D",
 			Type:      action.ActionTypeAPI,
 			Operation: "DeleteAlarms",
 			Confirm:   action.ConfirmDangerous,

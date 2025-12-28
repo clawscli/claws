@@ -93,6 +93,9 @@ func (d *AlarmDAO) Delete(ctx context.Context, id string) error {
 
 	_, err := d.client.DeleteAlarms(ctx, input)
 	if err != nil {
+		if appaws.IsNotFound(err) {
+			return nil // Already deleted
+		}
 		return fmt.Errorf("delete alarm %s: %w", id, err)
 	}
 
