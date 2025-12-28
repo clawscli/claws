@@ -139,6 +139,7 @@ claws -l debug.log
 | `Enter` / `d` | View resource details |
 | `:` | Command mode (e.g., `:ec2/instances`) |
 | `:` + `Enter` | Go to dashboard (home) |
+| `~` | Go to dashboard (from service browser) |
 | `:services` | Go to service browser |
 | `:sort <col>` | Sort by column (ascending) |
 | `:sort desc <col>` | Sort by column (descending) |
