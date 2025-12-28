@@ -23,29 +23,34 @@ import (
 )
 
 type alarmItem struct {
-	name  string
-	state string
+	name     string
+	state    string
+	resource *alarms.AlarmResource
 }
 
 type costItem struct {
 	service string
 	cost    float64
+	// No resource ref needed; use ServiceName for filter
 }
 
 type healthItem struct {
 	service   string
 	eventType string
+	resource  *events.EventResource
 }
 
 type securityItem struct {
 	title    string
 	severity string
+	resource *findings.FindingResource
 }
 
 type taItem struct {
-	name    string
-	status  string
-	savings float64
+	name     string
+	status   string
+	savings  float64
+	resource *recommendations.RecommendationResource
 }
 
 type hitArea struct {
@@ -79,19 +84,21 @@ type taLoadedMsg struct {
 type taErrorMsg struct{ err error }
 
 type dashboardStyles struct {
-	warning lipgloss.Style
-	danger  lipgloss.Style
-	success lipgloss.Style
-	dim     lipgloss.Style
+	warning   lipgloss.Style
+	danger    lipgloss.Style
+	success   lipgloss.Style
+	dim       lipgloss.Style
+	highlight lipgloss.Style
 }
 
 func newDashboardStyles() dashboardStyles {
 	t := ui.Current()
 	return dashboardStyles{
-		warning: lipgloss.NewStyle().Foreground(t.Warning),
-		danger:  lipgloss.NewStyle().Foreground(t.Danger),
-		success: lipgloss.NewStyle().Foreground(t.Success),
-		dim:     lipgloss.NewStyle().Foreground(t.TextMuted),
+		warning:   lipgloss.NewStyle().Foreground(t.Warning),
+		danger:    lipgloss.NewStyle().Foreground(t.Danger),
+		success:   lipgloss.NewStyle().Foreground(t.Success),
+		dim:       lipgloss.NewStyle().Foreground(t.TextMuted),
+		highlight: lipgloss.NewStyle().Background(t.Selection).Foreground(t.SelectionText),
 	}
 }
 
@@ -183,6 +190,8 @@ type DashboardView struct {
 
 	hitAreas         []hitArea
 	hoverIdx         int
+	focusedPanel     int
+	focusedRow       int
 	lastPanelWidth   int
 	lastPanelHeight  int
 	lastHeaderHeight int
@@ -231,6 +240,8 @@ func NewDashboardView(ctx context.Context, reg *registry.Registry) *DashboardVie
 		secLoading:     true,
 		taLoading:      true,
 		hoverIdx:       -1,
+		focusedPanel:   panelCost,
+		focusedRow:     -1,
 	}
 }
 
@@ -269,7 +280,7 @@ func (d *DashboardView) loadAlarms() tea.Msg {
 	items := make([]alarmItem, 0, len(resources))
 	for _, r := range resources {
 		if ar, ok := r.(*alarms.AlarmResource); ok {
-			items = append(items, alarmItem{name: ar.GetName(), state: ar.StateValue})
+			items = append(items, alarmItem{name: ar.GetName(), state: ar.StateValue, resource: ar})
 		}
 	}
 	return alarmLoadedMsg{items: items}
@@ -349,7 +360,7 @@ func (d *DashboardView) loadHealth() tea.Msg {
 	for _, r := range resources {
 		if er, ok := r.(*events.EventResource); ok {
 			if er.StatusCode() != "closed" {
-				items = append(items, healthItem{service: er.Service(), eventType: er.EventTypeCode()})
+				items = append(items, healthItem{service: er.Service(), eventType: er.EventTypeCode(), resource: er})
 			}
 		}
 	}
@@ -376,7 +387,7 @@ func (d *DashboardView) loadSecurity() tea.Msg {
 		if fr, ok := r.(*findings.FindingResource); ok {
 			sev := fr.Severity()
 			if sev == "CRITICAL" || sev == "HIGH" {
-				items = append(items, securityItem{title: fr.Title(), severity: sev})
+				items = append(items, securityItem{title: fr.Title(), severity: sev, resource: fr})
 			}
 		}
 	}
@@ -404,7 +415,7 @@ func (d *DashboardView) loadTrustedAdvisor() tea.Msg {
 		if rr, ok := r.(*recommendations.RecommendationResource); ok {
 			status := rr.Status()
 			if status == "error" || status == "warning" {
-				items = append(items, taItem{name: rr.Name(), status: status, savings: rr.EstimatedMonthlySavings()})
+				items = append(items, taItem{name: rr.Name(), status: status, savings: rr.EstimatedMonthlySavings(), resource: rr})
 			}
 			totalSavings += rr.EstimatedMonthlySavings()
 		}
@@ -486,6 +497,20 @@ func (d *DashboardView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "ctrl+r":
 			return d.Update(RefreshMsg{})
+		case "h", "left":
+			d.movePanelFocus(-1, 0)
+		case "l", "right":
+			d.movePanelFocus(1, 0)
+		case "j", "down":
+			d.moveRowFocus(1)
+		case "k", "up":
+			d.moveRowFocus(-1)
+		case "tab":
+			d.cyclePanelFocus(1)
+		case "shift+tab":
+			d.cyclePanelFocus(-1)
+		case "enter":
+			return d.activateCurrentRow()
 		}
 
 	case RefreshMsg:
@@ -505,13 +530,21 @@ func (d *DashboardView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.MouseClickMsg:
 		if msg.Button == tea.MouseLeft {
-			if target := d.hitTest(msg.X, msg.Y); target != "" {
-				return d.navigateTo(target)
+			panelIdx, rowIdx := d.hitTestRow(msg.X, msg.Y)
+			if panelIdx >= 0 {
+				d.focusedPanel = panelIdx
+				d.focusedRow = rowIdx
+				return d.activateCurrentRow()
 			}
 		}
 
 	case tea.MouseMotionMsg:
-		d.hoverIdx = d.hitTestIdx(msg.X, msg.Y)
+		panelIdx, rowIdx := d.hitTestRow(msg.X, msg.Y)
+		d.hoverIdx = panelIdx
+		if panelIdx >= 0 {
+			d.focusedPanel = panelIdx
+			d.focusedRow = rowIdx
+		}
 	}
 
 	return d, nil
@@ -535,6 +568,107 @@ func (d *DashboardView) hitTestIdx(x, y int) int {
 	return -1
 }
 
+func (d *DashboardView) hitTestRow(x, y int) (panelIdx, rowIdx int) {
+	panelIdx = d.hitTestIdx(x, y)
+	if panelIdx < 0 {
+		return -1, -1
+	}
+
+	h := d.hitAreas[panelIdx]
+	contentStartY := h.y1 + 2
+
+	rowY := y - contentStartY
+	if rowY < 0 {
+		return panelIdx, -1
+	}
+
+	rowIdx = d.computeRowFromContentLine(panelIdx, rowY)
+	return panelIdx, rowIdx
+}
+
+func (d *DashboardView) computeRowFromContentLine(panelIdx, lineY int) int {
+	switch panelIdx {
+	case panelCost:
+		if lineY == 0 {
+			return -1
+		}
+		rowIdx := lineY - 1
+		if rowIdx >= 0 && rowIdx < len(d.costTop) {
+			return rowIdx
+		}
+
+	case panelOperations:
+		line := 0
+		if len(d.alarms) > 0 {
+			line++
+			for i := 0; i < len(d.alarms); i++ {
+				if lineY == line {
+					return i
+				}
+				line++
+			}
+		} else {
+			line++
+		}
+		if len(d.healthItems) > 0 {
+			line++
+			alarmCount := len(d.alarms)
+			for i := 0; i < len(d.healthItems); i++ {
+				if lineY == line {
+					return alarmCount + i
+				}
+				line++
+			}
+		}
+
+	case panelSecurity:
+		headerLines := 0
+		for _, item := range d.secItems {
+			if item.severity == "CRITICAL" {
+				headerLines = 1
+				break
+			}
+		}
+		for _, item := range d.secItems {
+			if item.severity == "HIGH" {
+				if headerLines == 0 {
+					headerLines = 1
+				} else {
+					headerLines = 2
+				}
+				break
+			}
+		}
+		rowIdx := lineY - headerLines
+		if rowIdx >= 0 && rowIdx < len(d.secItems) {
+			return rowIdx
+		}
+
+	case panelOptimization:
+		headerLines := 0
+		for _, item := range d.taItems {
+			if item.status == "error" {
+				headerLines++
+				break
+			}
+		}
+		for _, item := range d.taItems {
+			if item.status == "warning" {
+				headerLines++
+				break
+			}
+		}
+		if d.taSavings > 0 {
+			headerLines++
+		}
+		rowIdx := lineY - headerLines
+		if rowIdx >= 0 && rowIdx < len(d.taItems) {
+			return rowIdx
+		}
+	}
+	return -1
+}
+
 func (d *DashboardView) navigateTo(target string) (tea.Model, tea.Cmd) {
 	parts := strings.SplitN(target, "/", 2)
 	if len(parts) != 2 {
@@ -545,6 +679,153 @@ func (d *DashboardView) navigateTo(target string) (tea.Model, tea.Cmd) {
 	return d, func() tea.Msg {
 		return NavigateMsg{View: browser}
 	}
+}
+
+func (d *DashboardView) navigateToFiltered(service, resType, filterKey, filterVal string) (tea.Model, tea.Cmd) {
+	browser := NewResourceBrowserWithFilter(d.ctx, d.registry, service, resType, filterKey, filterVal)
+	return d, func() tea.Msg {
+		return NavigateMsg{View: browser}
+	}
+}
+
+func (d *DashboardView) getRowCount(panelIdx int) int {
+	switch panelIdx {
+	case panelCost:
+		return len(d.costTop)
+	case panelOperations:
+		return len(d.alarms) + len(d.healthItems)
+	case panelSecurity:
+		return len(d.secItems)
+	case panelOptimization:
+		return len(d.taItems)
+	}
+	return 0
+}
+
+func (d *DashboardView) clampFocusedRow() {
+	count := d.getRowCount(d.focusedPanel)
+	if count == 0 {
+		d.focusedRow = -1
+	} else if d.focusedRow >= count {
+		d.focusedRow = count - 1
+	} else if d.focusedRow < 0 {
+		d.focusedRow = 0
+	}
+}
+
+func (d *DashboardView) movePanelFocus(dx, dy int) {
+	col := d.focusedPanel % 2
+	row := d.focusedPanel / 2
+
+	col = (col + dx + 2) % 2
+	row = (row + dy + 2) % 2
+
+	d.focusedPanel = row*2 + col
+	d.clampFocusedRow()
+}
+
+func (d *DashboardView) moveRowFocus(delta int) {
+	count := d.getRowCount(d.focusedPanel)
+	if count == 0 {
+		return
+	}
+	if d.focusedRow < 0 {
+		if delta > 0 {
+			d.focusedRow = 0
+		} else {
+			d.focusedRow = count - 1
+		}
+		return
+	}
+	d.focusedRow += delta
+	if d.focusedRow < 0 {
+		d.focusedRow = 0
+	} else if d.focusedRow >= count {
+		d.focusedRow = count - 1
+	}
+}
+
+func (d *DashboardView) cyclePanelFocus(delta int) {
+	d.focusedPanel = (d.focusedPanel + delta + 4) % 4
+	d.clampFocusedRow()
+}
+
+func (d *DashboardView) panelTarget(panelIdx int) string {
+	switch panelIdx {
+	case panelCost:
+		return targetCost
+	case panelOperations:
+		return targetOperations
+	case panelSecurity:
+		return targetSecurity
+	case panelOptimization:
+		return targetOptimization
+	}
+	return ""
+}
+
+func (d *DashboardView) openDetailViewForResource(resource dao.Resource, service, resType string) (tea.Model, tea.Cmd) {
+	renderer, err := d.registry.GetRenderer(service, resType)
+	if err != nil {
+		return d.navigateTo(service + "/" + resType)
+	}
+	daoInst, err := d.registry.GetDAO(d.ctx, service, resType)
+	if err != nil {
+		daoInst = nil
+	}
+	detailView := NewDetailView(d.ctx, resource, renderer, service, resType, d.registry, daoInst)
+	return d, func() tea.Msg {
+		return NavigateMsg{View: detailView}
+	}
+}
+
+func (d *DashboardView) activateCurrentRow() (tea.Model, tea.Cmd) {
+	if d.focusedRow < 0 {
+		return d.navigateTo(d.panelTarget(d.focusedPanel))
+	}
+
+	switch d.focusedPanel {
+	case panelCost:
+		if d.focusedRow < len(d.costTop) {
+			item := d.costTop[d.focusedRow]
+			return d.navigateToFiltered("costexplorer", "costs", "ServiceName", item.service)
+		}
+
+	case panelOperations:
+		alarmCount := len(d.alarms)
+		if d.focusedRow < alarmCount {
+			item := d.alarms[d.focusedRow]
+			if item.resource != nil {
+				return d.openDetailViewForResource(item.resource, "cloudwatch", "alarms")
+			}
+		} else {
+			healthIdx := d.focusedRow - alarmCount
+			if healthIdx < len(d.healthItems) {
+				item := d.healthItems[healthIdx]
+				if item.resource != nil {
+					return d.openDetailViewForResource(item.resource, "health", "events")
+				}
+			}
+		}
+
+	case panelSecurity:
+		if d.focusedRow < len(d.secItems) {
+			item := d.secItems[d.focusedRow]
+			if item.resource != nil {
+				return d.openDetailViewForResource(item.resource, "securityhub", "findings")
+			}
+		}
+
+	case panelOptimization:
+		if d.focusedRow < len(d.taItems) {
+			item := d.taItems[d.focusedRow]
+			if item.resource != nil {
+				return d.openDetailViewForResource(item.resource, "trustedadvisor", "recommendations")
+			}
+		}
+	}
+
+	return d.navigateTo(d.panelTarget(d.focusedPanel))
 }
 
 func (d *DashboardView) isLoading() bool {
@@ -562,10 +843,24 @@ func (d *DashboardView) ViewString() string {
 	contentWidth := panelWidth - 4
 	contentHeight := panelHeight - 3
 
-	costContent := d.renderCostContent(contentWidth, contentHeight, t)
-	opsContent := d.renderOpsContent(contentWidth, contentHeight)
-	secContent := d.renderSecurityContent(contentWidth, contentHeight)
-	optContent := d.renderOptimizationContent(contentWidth, contentHeight)
+	costFocusRow := -1
+	opsFocusRow := -1
+	secFocusRow := -1
+	optFocusRow := -1
+	if d.focusedPanel == panelCost {
+		costFocusRow = d.focusedRow
+	} else if d.focusedPanel == panelOperations {
+		opsFocusRow = d.focusedRow
+	} else if d.focusedPanel == panelSecurity {
+		secFocusRow = d.focusedRow
+	} else if d.focusedPanel == panelOptimization {
+		optFocusRow = d.focusedRow
+	}
+
+	costContent := d.renderCostContent(contentWidth, contentHeight, t, costFocusRow)
+	opsContent := d.renderOpsContent(contentWidth, contentHeight, opsFocusRow)
+	secContent := d.renderSecurityContent(contentWidth, contentHeight, secFocusRow)
+	optContent := d.renderOptimizationContent(contentWidth, contentHeight, optFocusRow)
 
 	costPanel := renderPanel("Cost", costContent, panelWidth, panelHeight, t, d.hoverIdx == panelCost)
 	opsPanel := renderPanel("Operations", opsContent, panelWidth, panelHeight, t, d.hoverIdx == panelOperations)
@@ -577,7 +872,7 @@ func (d *DashboardView) ViewString() string {
 	bottomRow := lipgloss.JoinHorizontal(lipgloss.Top, secPanel, gap, optPanel)
 	grid := lipgloss.JoinVertical(lipgloss.Left, topRow, bottomRow)
 
-	hint := d.styles.dim.Render("s:services • Ctrl+r:refresh")
+	hint := d.styles.dim.Render("h/l:panel • j/k:row • enter:select • s:services • Ctrl+r:refresh")
 
 	if panelWidth != d.lastPanelWidth || panelHeight != d.lastPanelHeight || headerHeight != d.lastHeaderHeight {
 		d.buildHitAreas(panelWidth, panelHeight, headerHeight)
@@ -616,7 +911,7 @@ func (d *DashboardView) calcPanelHeight(headerHeight int) int {
 	return max(available/2, minPanelHeight)
 }
 
-func (d *DashboardView) renderCostContent(contentWidth, contentHeight int, t *ui.Theme) string {
+func (d *DashboardView) renderCostContent(contentWidth, contentHeight int, t *ui.Theme, focusRow int) string {
 	s := d.styles
 	var lines []string
 
@@ -648,7 +943,11 @@ func (d *DashboardView) renderCostContent(contentWidth, contentHeight int, t *ui
 				c := d.costTop[i]
 				bar := renderBar(c.cost, maxCost, barWidth, t)
 				name := truncateValue(c.service, nameWidth)
-				lines = append(lines, fmt.Sprintf("%-*s %s %8.0f", nameWidth, name, bar, c.cost))
+				line := fmt.Sprintf("%-*s %s %8.0f", nameWidth, name, bar, c.cost)
+				if i == focusRow {
+					line = s.highlight.Render(line)
+				}
+				lines = append(lines, line)
 			}
 		}
 
@@ -666,19 +965,24 @@ func (d *DashboardView) renderCostContent(contentWidth, contentHeight int, t *ui
 	return strings.Join(lines, "\n")
 }
 
-func (d *DashboardView) renderOpsContent(contentWidth, contentHeight int) string {
+func (d *DashboardView) renderOpsContent(contentWidth, contentHeight int, focusRow int) string {
 	s := d.styles
 	var lines []string
+	alarmCount := len(d.alarms)
 
 	if d.alarmLoading {
 		lines = append(lines, "Alarms: "+d.spinner.View())
 	} else if d.alarmErr != nil {
 		lines = append(lines, s.dim.Render("Alarms: N/A"))
-	} else if len(d.alarms) > 0 {
-		lines = append(lines, s.danger.Render(fmt.Sprintf("Alarms: %d in ALARM", len(d.alarms))))
-		maxShow := min(len(d.alarms), contentHeight-3)
+	} else if alarmCount > 0 {
+		lines = append(lines, s.danger.Render(fmt.Sprintf("Alarms: %d in ALARM", alarmCount)))
+		maxShow := min(alarmCount, contentHeight-3)
 		for i := 0; i < maxShow; i++ {
-			lines = append(lines, "  "+s.danger.Render("• ")+truncateValue(d.alarms[i].name, contentWidth-bulletIndentWidth))
+			line := "  " + s.danger.Render("• ") + truncateValue(d.alarms[i].name, contentWidth-bulletIndentWidth)
+			if i == focusRow {
+				line = s.highlight.Render(line)
+			}
+			lines = append(lines, line)
 		}
 	} else {
 		lines = append(lines, "Alarms: "+s.success.Render("0 ✓"))
@@ -694,7 +998,11 @@ func (d *DashboardView) renderOpsContent(contentWidth, contentHeight int) string
 		maxShow := min(len(d.healthItems), remaining)
 		for i := 0; i < maxShow; i++ {
 			h := d.healthItems[i]
-			lines = append(lines, "  "+s.warning.Render("• ")+truncateValue(h.service+": "+h.eventType, contentWidth-bulletIndentWidth))
+			line := "  " + s.warning.Render("• ") + truncateValue(h.service+": "+h.eventType, contentWidth-bulletIndentWidth)
+			if alarmCount+i == focusRow {
+				line = s.highlight.Render(line)
+			}
+			lines = append(lines, line)
 		}
 	} else {
 		lines = append(lines, "Health: "+s.success.Render("0 open ✓"))
@@ -703,7 +1011,7 @@ func (d *DashboardView) renderOpsContent(contentWidth, contentHeight int) string
 	return strings.Join(lines, "\n")
 }
 
-func (d *DashboardView) renderSecurityContent(contentWidth, contentHeight int) string {
+func (d *DashboardView) renderSecurityContent(contentWidth, contentHeight int, focusRow int) string {
 	s := d.styles
 	var lines []string
 
@@ -733,7 +1041,11 @@ func (d *DashboardView) renderSecurityContent(contentWidth, contentHeight int) s
 			if item.severity == "CRITICAL" {
 				style = s.danger
 			}
-			lines = append(lines, "  "+style.Render("• ")+truncateValue(item.title, contentWidth-bulletIndentWidth))
+			line := "  " + style.Render("• ") + truncateValue(item.title, contentWidth-bulletIndentWidth)
+			if i == focusRow {
+				line = s.highlight.Render(line)
+			}
+			lines = append(lines, line)
 		}
 	} else {
 		lines = append(lines, s.success.Render("No critical/high ✓"))
@@ -742,7 +1054,7 @@ func (d *DashboardView) renderSecurityContent(contentWidth, contentHeight int) s
 	return strings.Join(lines, "\n")
 }
 
-func (d *DashboardView) renderOptimizationContent(contentWidth, contentHeight int) string {
+func (d *DashboardView) renderOptimizationContent(contentWidth, contentHeight int, focusRow int) string {
 	s := d.styles
 	var lines []string
 
@@ -776,7 +1088,11 @@ func (d *DashboardView) renderOptimizationContent(contentWidth, contentHeight in
 				if item.status == "error" {
 					style = s.danger
 				}
-				lines = append(lines, "  "+style.Render("• ")+truncateValue(item.name, contentWidth-bulletIndentWidth))
+				line := "  " + style.Render("• ") + truncateValue(item.name, contentWidth-bulletIndentWidth)
+				if i == focusRow {
+					line = s.highlight.Render(line)
+				}
+				lines = append(lines, line)
 			}
 		}
 		if len(lines) == 0 {
@@ -799,7 +1115,7 @@ func (d *DashboardView) SetSize(width, height int) tea.Cmd {
 }
 
 func (d *DashboardView) StatusLine() string {
-	return "s:services • R:region • P:profile • Ctrl+r:refresh • ?:help"
+	return "h/l:panel • j/k:row • enter:select • s:services • R:region • P:profile • Ctrl+r:refresh • ?:help"
 }
 
 func (d *DashboardView) CanRefresh() bool {
