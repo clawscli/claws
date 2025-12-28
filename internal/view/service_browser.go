@@ -663,12 +663,12 @@ func (s *ServiceBrowser) SetSize(width, height int) tea.Cmd {
 // StatusLine implements View
 func (s *ServiceBrowser) StatusLine() string {
 	if s.filterActive {
-		return "Type to filter • Enter to confirm • Esc to cancel"
+		return "type to filter • enter:confirm • esc:cancel"
 	}
 	if s.filterText != "" {
-		return "~ home • c clear • Enter select • ? help"
+		return "~:home • c:clear • enter:select • ?:help"
 	}
-	return "~ home • / filter • Enter select • ? help"
+	return "~:home • /:filter • enter:select • ?:help"
 }
 
 // HasActiveInput implements InputCapture
