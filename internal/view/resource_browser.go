@@ -372,7 +372,9 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return r, nil
 
 	case autoReloadTickMsg:
-		// Silent reload (don't show loading state to avoid flicker)
+		if r.metricsEnabled && r.getMetricSpec() != nil {
+			return r, tea.Batch(r.reloadResources, r.loadMetrics)
+		}
 		return r, r.reloadResources
 
 	case RefreshMsg:
