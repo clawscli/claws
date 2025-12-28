@@ -67,6 +67,13 @@ func (h *HelpView) renderContent() string {
 	out += s.key.Render("Esc") + s.desc.Render("Go back / cancel") + "\n"
 	out += s.key.Render("q") + s.desc.Render("Quit") + "\n"
 
+	// Service Browser
+	out += "\n" + s.section.Render("Service Browser") + "\n"
+	out += s.key.Render("←/h, →/l") + s.desc.Render("Move within category") + "\n"
+	out += s.key.Render("↑/k, ↓/j") + s.desc.Render("Move between categories") + "\n"
+	out += s.key.Render("~") + s.desc.Render("Go to dashboard (home)") + "\n"
+	out += s.key.Render("/") + s.desc.Render("Filter services") + "\n"
+
 	// Resource Browser
 	out += "\n" + s.section.Render("Resource Browser") + "\n"
 	out += s.key.Render("Tab") + s.desc.Render("Next resource type") + "\n"

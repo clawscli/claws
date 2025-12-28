@@ -666,7 +666,7 @@ func (s *ServiceBrowser) StatusLine() string {
 		return "Type to filter • Enter to confirm • Esc to cancel"
 	}
 	if s.filterText != "" {
-		return "/ to filter • c to clear • Enter to select • ? for help"
+		return "~ home • c clear • Enter select • ? help"
 	}
 	return "~ home • / filter • Enter select • ? help"
 }
