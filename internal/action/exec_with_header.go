@@ -15,11 +15,12 @@ import (
 	"golang.org/x/term"
 )
 
-// setAWSEnv configures AWS environment variables on the command.
-// Delegates to aws.BuildSubprocessEnv for consistent handling.
-func setAWSEnv(cmd *exec.Cmd) {
+func setAWSEnv(cmd *exec.Cmd, region string) {
 	cfg := config.Global()
-	cmd.Env = aws.BuildSubprocessEnv(cmd.Env, cfg.Selection(), cfg.Region())
+	if region == "" {
+		region = cfg.Region()
+	}
+	cmd.Env = aws.BuildSubprocessEnv(cmd.Env, cfg.Selection(), region)
 }
 
 // SimpleExec represents a simple exec command without header.
@@ -71,7 +72,7 @@ func (e *SimpleExec) Run() error {
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 	if !e.SkipAWSEnv {
-		setAWSEnv(cmd)
+		setAWSEnv(cmd, "")
 	}
 
 	return cmd.Run()
@@ -81,11 +82,12 @@ func (e *SimpleExec) Run() error {
 // Implements tea.ExecCommand interface
 type ExecWithHeader struct {
 	Command    string
-	ActionName string // Action name for read-only allowlist check
+	ActionName string
 	Resource   dao.Resource
 	Service    string
 	ResType    string
-	SkipAWSEnv bool // If true, don't inject AWS env vars
+	Region     string
+	SkipAWSEnv bool
 
 	stdin  io.Reader
 	stdout io.Writer
@@ -169,7 +171,7 @@ func (e *ExecWithHeader) Run() error {
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 	if !e.SkipAWSEnv {
-		setAWSEnv(cmd)
+		setAWSEnv(cmd, e.Region)
 	}
 
 	// Run the command
@@ -201,7 +203,10 @@ func (e *ExecWithHeader) Run() error {
 
 func (e *ExecWithHeader) buildHeader(_ int) string {
 	profileDisplay := config.Global().Selection().DisplayName()
-	region := config.Global().Region()
+	region := e.Region
+	if region == "" {
+		region = config.Global().Region()
+	}
 	accountID := config.Global().AccountID()
 
 	// Styles

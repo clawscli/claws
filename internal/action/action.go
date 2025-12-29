@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/log"
@@ -299,7 +300,7 @@ func executeExec(ctx context.Context, action Action, resource dao.Resource) Acti
 	execCmd.Stdout = os.Stdout
 	execCmd.Stderr = os.Stderr
 	if !action.SkipAWSEnv {
-		setAWSEnv(execCmd)
+		setAWSEnv(execCmd, aws.GetRegionFromContext(ctx))
 	}
 
 	err = execCmd.Run()

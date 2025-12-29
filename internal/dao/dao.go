@@ -121,6 +121,11 @@ type RegionalResource struct {
 
 func (r *RegionalResource) GetRegion() string { return r.Region }
 
+// GetID returns region-qualified ID to avoid collisions across regions
+func (r *RegionalResource) GetID() string { return r.Region + ":" + r.Resource.GetID() }
+
+func (r *RegionalResource) GetName() string { return r.Resource.GetName() }
+
 // WrapWithRegion wraps a resource with region metadata
 func WrapWithRegion(res Resource, region string) *RegionalResource {
 	return &RegionalResource{Resource: res, Region: region}

@@ -98,10 +98,11 @@ type ResourceBrowser struct {
 	autoReloadInterval time.Duration
 
 	// Pagination (for PaginatedDAO)
-	nextPageToken string // token for next page (empty = no more pages)
-	hasMorePages  bool   // whether more pages are available
-	isLoadingMore bool   // whether currently loading next page
-	pageSize      int    // items per page (default: 100)
+	nextPageToken  string
+	nextPageTokens map[string]string
+	hasMorePages   bool
+	isLoadingMore  bool
+	pageSize       int
 
 	// Sorting
 	sortColumn    int  // column index to sort by (-1 = no sort)
@@ -233,14 +234,16 @@ func (r *ResourceBrowser) listResources(d dao.DAO) listResourcesResult {
 }
 
 type multiRegionFetchResult struct {
-	resources []dao.Resource
-	errors    []string
+	resources  []dao.Resource
+	errors     []string
+	pageTokens map[string]string
 }
 
-func (r *ResourceBrowser) fetchMultiRegionResources(regions []string) multiRegionFetchResult {
+func (r *ResourceBrowser) fetchMultiRegionResources(regions []string, existingTokens map[string]string) multiRegionFetchResult {
 	type regionResult struct {
 		region    string
 		resources []dao.Resource
+		nextToken string
 		err       error
 	}
 
@@ -259,17 +262,32 @@ func (r *ResourceBrowser) fetchMultiRegionResources(regions []string) multiRegio
 				return
 			}
 
-			result := r.listResourcesWithContext(regionCtx, d)
-			if result.err != nil {
-				results <- regionResult{region: region, err: result.err}
+			var listResult listResourcesResult
+			if pagDAO, ok := d.(dao.PaginatedDAO); ok {
+				token := ""
+				if existingTokens != nil {
+					token = existingTokens[region]
+				}
+				listCtx := regionCtx
+				if r.fieldFilter != "" && r.fieldFilterValue != "" {
+					listCtx = dao.WithFilter(regionCtx, r.fieldFilter, r.fieldFilterValue)
+				}
+				resources, nextToken, err := pagDAO.ListPage(listCtx, r.pageSize, token)
+				listResult = listResourcesResult{resources: resources, nextToken: nextToken, err: err}
+			} else {
+				listResult = r.listResourcesWithContext(regionCtx, d)
+			}
+
+			if listResult.err != nil {
+				results <- regionResult{region: region, err: listResult.err}
 				return
 			}
 
-			wrapped := make([]dao.Resource, len(result.resources))
-			for i, res := range result.resources {
+			wrapped := make([]dao.Resource, len(listResult.resources))
+			for i, res := range listResult.resources {
 				wrapped[i] = dao.WrapWithRegion(res, region)
 			}
-			results <- regionResult{region: region, resources: wrapped}
+			results <- regionResult{region: region, resources: wrapped, nextToken: listResult.nextToken}
 		}(region)
 	}
 
@@ -280,16 +298,20 @@ func (r *ResourceBrowser) fetchMultiRegionResources(regions []string) multiRegio
 
 	var allResources []dao.Resource
 	var errors []string
+	pageTokens := make(map[string]string)
 	for result := range results {
 		if result.err != nil {
 			errors = append(errors, fmt.Sprintf("%s: %v", result.region, result.err))
 			log.Warn("failed to fetch from region", "region", result.region, "error", result.err)
 		} else {
 			allResources = append(allResources, result.resources...)
+			if result.nextToken != "" {
+				pageTokens[result.region] = result.nextToken
+			}
 		}
 	}
 
-	return multiRegionFetchResult{resources: allResources, errors: errors}
+	return multiRegionFetchResult{resources: allResources, errors: errors, pageTokens: pageTokens}
 }
 
 func (r *ResourceBrowser) loadResources() tea.Msg {
@@ -329,7 +351,7 @@ func (r *ResourceBrowser) loadResources() tea.Msg {
 		}
 	}
 
-	fetchResult := r.fetchMultiRegionResources(regions)
+	fetchResult := r.fetchMultiRegionResources(regions, nil)
 	if len(fetchResult.resources) == 0 && len(fetchResult.errors) > 0 {
 		return resourcesErrorMsg{err: fmt.Errorf("all regions failed: %s", strings.Join(fetchResult.errors, "; "))}
 	}
@@ -338,11 +360,11 @@ func (r *ResourceBrowser) loadResources() tea.Msg {
 		"regions", len(regions), "errors", len(fetchResult.errors), "duration", time.Since(start))
 
 	return resourcesLoadedMsg{
-		dao:          nil,
-		renderer:     renderer,
-		resources:    fetchResult.resources,
-		nextToken:    "",
-		hasMorePages: false,
+		dao:            nil,
+		renderer:       renderer,
+		resources:      fetchResult.resources,
+		nextPageTokens: fetchResult.pageTokens,
+		hasMorePages:   len(fetchResult.pageTokens) > 0,
 	}
 }
 
@@ -374,33 +396,34 @@ func (r *ResourceBrowser) reloadResources() tea.Msg {
 		}
 	}
 
-	fetchResult := r.fetchMultiRegionResources(regions)
+	fetchResult := r.fetchMultiRegionResources(regions, nil)
 	if len(fetchResult.resources) == 0 && len(fetchResult.errors) > 0 {
 		return resourcesErrorMsg{err: fmt.Errorf("all regions failed: %s", strings.Join(fetchResult.errors, "; "))}
 	}
 
 	return resourcesLoadedMsg{
-		dao:          nil,
-		renderer:     r.renderer,
-		resources:    fetchResult.resources,
-		nextToken:    "",
-		hasMorePages: false,
+		dao:            nil,
+		renderer:       r.renderer,
+		resources:      fetchResult.resources,
+		nextPageTokens: fetchResult.pageTokens,
+		hasMorePages:   len(fetchResult.pageTokens) > 0,
 	}
 }
 
 type resourcesLoadedMsg struct {
-	dao          dao.DAO
-	renderer     render.Renderer
-	resources    []dao.Resource
-	nextToken    string // for pagination
-	hasMorePages bool   // for pagination
+	dao            dao.DAO
+	renderer       render.Renderer
+	resources      []dao.Resource
+	nextToken      string
+	nextPageTokens map[string]string
+	hasMorePages   bool
 }
 
-// nextPageLoadedMsg is sent when additional resources are loaded via pagination
 type nextPageLoadedMsg struct {
-	resources    []dao.Resource
-	nextToken    string
-	hasMorePages bool
+	resources      []dao.Resource
+	nextToken      string
+	nextPageTokens map[string]string
+	hasMorePages   bool
 }
 
 type resourcesErrorMsg struct {
@@ -422,6 +445,7 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		r.renderer = msg.renderer
 		r.resources = msg.resources
 		r.nextPageToken = msg.nextToken
+		r.nextPageTokens = msg.nextPageTokens
 		r.hasMorePages = msg.hasMorePages
 		r.applyFilter()
 		r.buildTable()
@@ -442,6 +466,7 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		r.isLoadingMore = false
 		r.resources = append(r.resources, msg.resources...)
 		r.nextPageToken = msg.nextToken
+		r.nextPageTokens = msg.nextPageTokens
 		r.hasMorePages = msg.hasMorePages
 		r.applyFilter()
 		r.buildTable()
@@ -450,10 +475,10 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case resourcesErrorMsg:
 		r.loading = false
 		r.isLoadingMore = false
-		// If we were loading more pages, just stop pagination instead of showing error
 		if r.hasMorePages && len(r.resources) > 0 {
 			r.hasMorePages = false
 			r.nextPageToken = ""
+			r.nextPageTokens = nil
 			log.Warn("pagination stopped due to error", "error", msg.err)
 			return r, nil
 		}
@@ -484,7 +509,6 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return r, r.reloadResources
 
 	case RefreshMsg:
-		// Reload resources (e.g., after region/profile change)
 		r.loading = true
 		r.err = nil
 		return r, tea.Batch(r.loadResources, r.spinner.Tick)
@@ -551,7 +575,7 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return r, nil // Left not found or same resource
 		}
 
-		diffView := NewDiffView(r.ctx, leftRes, rightRes, r.renderer, r.service, r.resourceType)
+		diffView := NewDiffView(r.ctx, dao.UnwrapResource(leftRes), dao.UnwrapResource(rightRes), r.renderer, r.service, r.resourceType)
 		return r, func() tea.Msg {
 			return NavigateMsg{View: diffView}
 		}
@@ -642,14 +666,14 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return r, nil
 		case "d", "enter":
 			if len(r.filtered) > 0 && r.table.Cursor() < len(r.filtered) {
-				resource := dao.UnwrapResource(r.filtered[r.table.Cursor()])
+				ctx, resource := r.contextForResource(r.filtered[r.table.Cursor()])
 				if r.markedResource != nil && r.markedResource.GetID() != resource.GetID() {
-					diffView := NewDiffView(r.ctx, dao.UnwrapResource(r.markedResource), resource, r.renderer, r.service, r.resourceType)
+					diffView := NewDiffView(ctx, dao.UnwrapResource(r.markedResource), resource, r.renderer, r.service, r.resourceType)
 					return r, func() tea.Msg {
 						return NavigateMsg{View: diffView}
 					}
 				}
-				detailView := NewDetailView(r.ctx, resource, r.renderer, r.service, r.resourceType, r.registry, r.dao)
+				detailView := NewDetailView(ctx, resource, r.renderer, r.service, r.resourceType, r.registry, r.dao)
 				return r, func() tea.Msg {
 					return NavigateMsg{View: detailView}
 				}
@@ -657,8 +681,8 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "a":
 			if len(r.filtered) > 0 && r.table.Cursor() < len(r.filtered) {
 				if actions := action.Global.Get(r.service, r.resourceType); len(actions) > 0 {
-					resource := dao.UnwrapResource(r.filtered[r.table.Cursor()])
-					actionMenu := NewActionMenu(r.ctx, resource, r.service, r.resourceType)
+					ctx, resource := r.contextForResource(r.filtered[r.table.Cursor()])
+					actionMenu := NewActionMenu(ctx, resource, r.service, r.resourceType)
 					return r, func() tea.Msg {
 						return ShowModalMsg{Modal: &Modal{Content: actionMenu}}
 					}
@@ -685,8 +709,7 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return r, tea.Batch(r.loadResources, r.spinner.Tick)
 			}
 		case "N":
-			// Manual next page load (useful when filter is active)
-			if r.hasMorePages && !r.isLoadingMore && r.nextPageToken != "" {
+			if r.hasMorePages && !r.isLoadingMore && (r.nextPageToken != "" || len(r.nextPageTokens) > 0) {
 				r.isLoadingMore = true
 				return r, r.loadNextPage
 			}
@@ -739,25 +762,28 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return r, cmd
 }
 
-// shouldLoadNextPage checks if cursor is near bottom and more pages are available
 func (r *ResourceBrowser) shouldLoadNextPage() bool {
-	if !r.hasMorePages || r.isLoadingMore || r.loading || r.nextPageToken == "" {
+	if !r.hasMorePages || r.isLoadingMore || r.loading {
 		return false
 	}
-	// Don't auto-load if filter is active and matches are few
-	// (prevents fetching all pages when searching for non-existent items)
+	if r.nextPageToken == "" && len(r.nextPageTokens) == 0 {
+		return false
+	}
 	if r.filterText != "" && len(r.filtered) < 10 {
 		return false
 	}
 	if len(r.filtered) == 0 {
 		return false
 	}
-	buffer := 10 // load more when within 10 rows of bottom
+	buffer := 10
 	return r.table.Cursor() >= len(r.filtered)-buffer
 }
 
-// loadNextPage loads the next page of resources for PaginatedDAO
 func (r *ResourceBrowser) loadNextPage() tea.Msg {
+	if len(r.nextPageTokens) > 0 {
+		return r.loadNextPageMultiRegion()
+	}
+
 	if r.nextPageToken == "" {
 		return nil
 	}
@@ -790,6 +816,26 @@ func (r *ResourceBrowser) loadNextPage() tea.Msg {
 	}
 }
 
+func (r *ResourceBrowser) loadNextPageMultiRegion() tea.Msg {
+	regions := make([]string, 0, len(r.nextPageTokens))
+	for region := range r.nextPageTokens {
+		regions = append(regions, region)
+	}
+
+	start := time.Now()
+	log.Debug("loading next page multi-region", "service", r.service, "resourceType", r.resourceType, "regions", len(regions))
+
+	fetchResult := r.fetchMultiRegionResources(regions, r.nextPageTokens)
+
+	log.Debug("next page multi-region loaded", "count", len(fetchResult.resources), "hasMore", len(fetchResult.pageTokens) > 0, "duration", time.Since(start))
+
+	return nextPageLoadedMsg{
+		resources:      fetchResult.resources,
+		nextPageTokens: fetchResult.pageTokens,
+		hasMorePages:   len(fetchResult.pageTokens) > 0,
+	}
+}
+
 // loadMetricsCmd captures resource IDs and type synchronously before returning the tea.Cmd,
 // avoiding race conditions where r.resources could be modified while the goroutine iterates.
 func (r *ResourceBrowser) loadMetricsCmd() tea.Cmd {
@@ -798,27 +844,67 @@ func (r *ResourceBrowser) loadMetricsCmd() tea.Cmd {
 		return nil
 	}
 
-	resourceIDs := make([]string, len(r.resources))
+	type resourceInfo struct {
+		fullID      string
+		unwrappedID string
+		region      string
+	}
+	infos := make([]resourceInfo, len(r.resources))
 	for i, res := range r.resources {
-		resourceIDs[i] = res.GetID()
+		infos[i] = resourceInfo{
+			fullID:      res.GetID(),
+			unwrappedID: dao.UnwrapResource(res).GetID(),
+			region:      dao.GetResourceRegion(res),
+		}
 	}
 	resourceType := r.resourceType
+	baseCtx := r.ctx
 
 	return func() tea.Msg {
-		if r.ctx.Err() != nil {
+		if baseCtx.Err() != nil {
 			return nil
 		}
 
-		ctx, cancel := context.WithTimeout(r.ctx, metricsLoadTimeout)
+		ctx, cancel := context.WithTimeout(baseCtx, metricsLoadTimeout)
 		defer cancel()
 
-		fetcher, err := metrics.NewFetcher(ctx)
-		if err != nil {
-			return metricsLoadedMsg{err: err, resourceType: resourceType}
+		byRegion := make(map[string][]resourceInfo)
+		for _, info := range infos {
+			byRegion[info.region] = append(byRegion[info.region], info)
 		}
 
-		data, err := fetcher.Fetch(ctx, resourceIDs, spec)
-		return metricsLoadedMsg{data: data, err: err, resourceType: resourceType}
+		data := metrics.NewMetricData(spec)
+
+		for region, regionInfos := range byRegion {
+			regionCtx := ctx
+			if region != "" {
+				regionCtx = aws.WithRegionOverride(ctx, region)
+			}
+
+			fetcher, err := metrics.NewFetcher(regionCtx)
+			if err != nil {
+				continue
+			}
+
+			unwrappedIDs := make([]string, len(regionInfos))
+			for i, info := range regionInfos {
+				unwrappedIDs[i] = info.unwrappedID
+			}
+
+			regionData, err := fetcher.Fetch(regionCtx, unwrappedIDs, spec)
+			if err != nil {
+				continue
+			}
+
+			for i, info := range regionInfos {
+				if result := regionData.Get(unwrappedIDs[i]); result != nil {
+					result.ResourceID = info.fullID
+					data.Results[info.fullID] = result
+				}
+			}
+		}
+
+		return metricsLoadedMsg{data: data, err: nil, resourceType: resourceType}
 	}
 }
 
@@ -1141,11 +1227,18 @@ func (r *ResourceBrowser) openDetailView() (tea.Model, tea.Cmd) {
 	if len(r.filtered) == 0 || cursor < 0 || cursor >= len(r.filtered) {
 		return r, nil
 	}
-	resource := dao.UnwrapResource(r.filtered[cursor])
-	detailView := NewDetailView(r.ctx, resource, r.renderer, r.service, r.resourceType, r.registry, r.dao)
+	ctx, resource := r.contextForResource(r.filtered[cursor])
+	detailView := NewDetailView(ctx, resource, r.renderer, r.service, r.resourceType, r.registry, r.dao)
 	return r, func() tea.Msg {
 		return NavigateMsg{View: detailView}
 	}
+}
+
+func (r *ResourceBrowser) contextForResource(res dao.Resource) (context.Context, dao.Resource) {
+	if region := dao.GetResourceRegion(res); region != "" {
+		return aws.WithRegionOverride(r.ctx, region), dao.UnwrapResource(res)
+	}
+	return r.ctx, dao.UnwrapResource(res)
 }
 
 func (r *ResourceBrowser) renderTabs() string {

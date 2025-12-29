@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/clawscli/claws/internal/action"
+	"github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/log"
@@ -261,6 +262,7 @@ func (m *ActionMenu) executeAction(act action.Action) (tea.Model, tea.Cmd) {
 			Resource:   m.resource,
 			Service:    m.service,
 			ResType:    m.resType,
+			Region:     aws.GetRegionFromContext(m.ctx),
 			SkipAWSEnv: act.SkipAWSEnv,
 		}
 		return m, tea.Exec(exec, func(err error) tea.Msg {

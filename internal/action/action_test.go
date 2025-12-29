@@ -678,7 +678,7 @@ func TestSetAWSEnv(t *testing.T) {
 			cmd := &exec.Cmd{Env: tt.baseEnv}
 
 			// Call setAWSEnv
-			setAWSEnv(cmd)
+			setAWSEnv(cmd, "")
 
 			// Parse resulting env into map
 			envMap := make(map[string]string)
