@@ -15,6 +15,7 @@ import (
 	"github.com/clawscli/claws/internal/action"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/log"
+	"github.com/clawscli/claws/internal/metrics"
 	"github.com/clawscli/claws/internal/registry"
 	"github.com/clawscli/claws/internal/render"
 	"github.com/clawscli/claws/internal/ui"
@@ -23,8 +24,8 @@ import (
 // ResourceBrowser displays resources of a specific type
 
 const (
-	// logTokenMaxLen is the max length of pagination token shown in debug logs
-	logTokenMaxLen = 20
+	logTokenMaxLen     = 20
+	metricsLoadTimeout = 30 * time.Second
 )
 
 // resourceBrowserStyles holds cached lipgloss styles for performance
@@ -111,6 +112,11 @@ type ResourceBrowser struct {
 
 	// Diff mark (for comparing two resources)
 	markedResource dao.Resource
+
+	// Inline metrics
+	metricsEnabled bool
+	metricsLoading bool
+	metricsData    *metrics.MetricData
 }
 
 // NewResourceBrowser creates a new ResourceBrowser
@@ -299,6 +305,12 @@ type resourcesErrorMsg struct {
 	err error
 }
 
+type metricsLoadedMsg struct {
+	data         *metrics.MetricData
+	err          error
+	resourceType string
+}
+
 // Update implements tea.Model
 func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -311,9 +323,16 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		r.hasMorePages = msg.hasMorePages
 		r.applyFilter()
 		r.buildTable()
-		// Schedule next tick if auto-reload is enabled
+
+		var cmds []tea.Cmd
 		if r.autoReload {
-			return r, r.tickCmd()
+			cmds = append(cmds, r.tickCmd())
+		}
+		if r.metricsEnabled && r.metricsLoading {
+			cmds = append(cmds, r.loadMetricsCmd())
+		}
+		if len(cmds) > 0 {
+			return r, tea.Batch(cmds...)
 		}
 		return r, nil
 
@@ -343,8 +362,23 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return r, nil
 
+	case metricsLoadedMsg:
+		r.metricsLoading = false
+		if msg.resourceType != r.resourceType {
+			return r, nil
+		}
+		if msg.err != nil {
+			log.Warn("failed to load metrics", "error", msg.err, "service", r.service, "resource", r.resourceType)
+		} else {
+			r.metricsData = msg.data
+		}
+		r.buildTable()
+		return r, nil
+
 	case autoReloadTickMsg:
-		// Silent reload (don't show loading state to avoid flicker)
+		if r.metricsEnabled && r.getMetricSpec() != nil {
+			return r, tea.Batch(r.reloadResources, r.loadMetricsCmd())
+		}
 		return r, r.reloadResources
 
 	case RefreshMsg:
@@ -462,6 +496,10 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+r":
 			r.loading = true
 			r.err = nil
+			if r.metricsEnabled {
+				r.metricsLoading = true
+				r.metricsData = nil
+			}
 			return r, tea.Batch(r.loadResources, r.spinner.Tick)
 		case "c":
 			r.filterText = ""
@@ -486,6 +524,16 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					r.markedResource = nil
 				} else {
 					r.markedResource = resource
+				}
+				r.buildTable()
+			}
+			return r, nil
+		case "M":
+			if r.getMetricSpec() != nil {
+				r.metricsEnabled = !r.metricsEnabled
+				if r.metricsEnabled && r.metricsData == nil {
+					r.metricsLoading = true
+					return r, r.loadMetricsCmd()
 				}
 				r.buildTable()
 			}
@@ -530,6 +578,8 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				r.filterText = ""
 				r.filterInput.SetValue("")
 				r.markedResource = nil
+				r.metricsEnabled = false
+				r.metricsData = nil
 				return r, tea.Batch(r.loadResources, r.spinner.Tick)
 			}
 		case "N":
@@ -638,6 +688,48 @@ func (r *ResourceBrowser) loadNextPage() tea.Msg {
 	}
 }
 
+// loadMetricsCmd captures resource IDs and type synchronously before returning the tea.Cmd,
+// avoiding race conditions where r.resources could be modified while the goroutine iterates.
+func (r *ResourceBrowser) loadMetricsCmd() tea.Cmd {
+	spec := r.getMetricSpec()
+	if spec == nil {
+		return nil
+	}
+
+	resourceIDs := make([]string, len(r.resources))
+	for i, res := range r.resources {
+		resourceIDs[i] = res.GetID()
+	}
+	resourceType := r.resourceType
+
+	return func() tea.Msg {
+		if r.ctx.Err() != nil {
+			return nil
+		}
+
+		ctx, cancel := context.WithTimeout(r.ctx, metricsLoadTimeout)
+		defer cancel()
+
+		fetcher, err := metrics.NewFetcher(ctx)
+		if err != nil {
+			return metricsLoadedMsg{err: err, resourceType: resourceType}
+		}
+
+		data, err := fetcher.Fetch(ctx, resourceIDs, spec)
+		return metricsLoadedMsg{data: data, err: err, resourceType: resourceType}
+	}
+}
+
+func (r *ResourceBrowser) getMetricSpec() *render.MetricSpec {
+	if r.renderer == nil {
+		return nil
+	}
+	if provider, ok := r.renderer.(render.MetricSpecProvider); ok {
+		return provider.MetricSpec()
+	}
+	return nil
+}
+
 // buildTable rebuilds the table with current filtered resources
 func (r *ResourceBrowser) buildTable() {
 	if r.renderer == nil {
@@ -647,13 +739,23 @@ func (r *ResourceBrowser) buildTable() {
 	currentCursor := r.table.Cursor()
 	cols := r.renderer.Columns()
 
-	const markColWidth = 2 // mark indicator + space (e.g., "◆ ")
-	tableCols := make([]table.Column, len(cols)+1)
+	const markColWidth = 2
+	metricsColWidth := metrics.ColumnWidth
+
+	effectiveMetricsEnabled := r.metricsEnabled && r.getMetricSpec() != nil
+	numCols := len(cols) + 1
+	if effectiveMetricsEnabled {
+		numCols++
+	}
+	tableCols := make([]table.Column, numCols)
 	tableCols[0] = table.Column{Title: " ", Width: markColWidth}
 
 	totalColWidth := markColWidth
 	for _, col := range cols {
 		totalColWidth += col.Width
+	}
+	if effectiveMetricsEnabled {
+		totalColWidth += metricsColWidth
 	}
 
 	extraWidth := r.width - totalColWidth
@@ -664,12 +766,24 @@ func (r *ResourceBrowser) buildTable() {
 	for i, col := range cols {
 		title := col.Name + r.getSortIndicator(i)
 		width := col.Width
-		if i == len(cols)-1 {
+		if i == len(cols)-1 && !effectiveMetricsEnabled {
 			width += extraWidth
 		}
 		tableCols[i+1] = table.Column{
 			Title: title,
 			Width: width,
+		}
+	}
+
+	if effectiveMetricsEnabled {
+		spec := r.getMetricSpec()
+		header := "METRICS"
+		if spec != nil {
+			header = spec.ColumnHeader
+		}
+		tableCols[len(cols)+1] = table.Column{
+			Title: header,
+			Width: metricsColWidth + extraWidth,
 		}
 	}
 
@@ -680,9 +794,18 @@ func (r *ResourceBrowser) buildTable() {
 		if r.markedResource != nil && r.markedResource.GetID() == res.GetID() {
 			markIndicator = "◆ "
 		}
-		fullRow := make(table.Row, len(row)+1)
+		fullRow := make(table.Row, numCols)
 		fullRow[0] = markIndicator
 		copy(fullRow[1:], row)
+		if effectiveMetricsEnabled && r.metricsData != nil {
+			unit := ""
+			if r.metricsData.Spec != nil {
+				unit = r.metricsData.Spec.Unit
+			}
+			fullRow[len(cols)+1] = metrics.RenderSparkline(r.metricsData.Get(res.GetID()), unit)
+		} else if effectiveMetricsEnabled {
+			fullRow[len(cols)+1] = metrics.RenderSparkline(nil, "")
+		}
 		rows[i] = fullRow
 	}
 
@@ -878,6 +1001,8 @@ func (r *ResourceBrowser) switchToTab(idx int) (tea.Model, tea.Cmd) {
 	}
 	r.resourceType = r.resourceTypes[idx]
 	r.markedResource = nil
+	r.metricsEnabled = false
+	r.metricsData = nil
 	return r, r.loadResources
 }
 

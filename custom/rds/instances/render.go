@@ -9,8 +9,10 @@ import (
 	"github.com/clawscli/claws/internal/render"
 )
 
-// Ensure InstanceRenderer implements render.Navigator
-var _ render.Navigator = (*InstanceRenderer)(nil)
+var (
+	_ render.Navigator          = (*InstanceRenderer)(nil)
+	_ render.MetricSpecProvider = (*InstanceRenderer)(nil)
+)
 
 // InstanceRenderer renders RDS instances with custom columns
 type InstanceRenderer struct {
@@ -302,4 +304,15 @@ func (r *InstanceRenderer) Navigations(resource dao.Resource) []render.Navigatio
 	}
 
 	return navs
+}
+
+func (r *InstanceRenderer) MetricSpec() *render.MetricSpec {
+	return &render.MetricSpec{
+		Namespace:     "AWS/RDS",
+		MetricName:    "CPUUtilization",
+		DimensionName: "DBInstanceIdentifier",
+		Stat:          "Average",
+		ColumnHeader:  "CPU(15m)",
+		Unit:          "%",
+	}
 }

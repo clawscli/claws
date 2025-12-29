@@ -11,8 +11,10 @@ import (
 )
 
 // FunctionRenderer renders Lambda functions
-// Ensure FunctionRenderer implements render.Navigator
-var _ render.Navigator = (*FunctionRenderer)(nil)
+var (
+	_ render.Navigator          = (*FunctionRenderer)(nil)
+	_ render.MetricSpecProvider = (*FunctionRenderer)(nil)
+)
 
 type FunctionRenderer struct {
 	render.BaseRenderer
@@ -368,4 +370,15 @@ func (r *FunctionRenderer) Navigations(resource dao.Resource) []render.Navigatio
 	}
 
 	return navs
+}
+
+func (r *FunctionRenderer) MetricSpec() *render.MetricSpec {
+	return &render.MetricSpec{
+		Namespace:     "AWS/Lambda",
+		MetricName:    "Invocations",
+		DimensionName: "FunctionName",
+		Stat:          "Sum",
+		ColumnHeader:  "INVOC(15m)",
+		Unit:          "",
+	}
 }

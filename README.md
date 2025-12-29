@@ -153,7 +153,8 @@ claws -l debug.log
 | `d` | Describe (or diff if marked) |
 | `c` | Clear filter and mark |
 | `N` | Load next page (pagination) |
-| `Ctrl+r` | Refresh |
+| `M` | Toggle inline metrics (EC2, RDS, Lambda) |
+| `Ctrl+r` | Refresh (including metrics) |
 | `R` | Switch AWS region |
 | `P` | Switch AWS profile |
 | `?` | Show help |
@@ -355,6 +356,8 @@ claws uses your standard AWS configuration:
 - Environment variables: `AWS_PROFILE`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, etc.
 
 Configuration is stored in `~/.config/claws/config.yaml` for profile preferences.
+
+For required IAM permissions, see [docs/iam-permissions.md](docs/iam-permissions.md).
 
 ## Architecture
 

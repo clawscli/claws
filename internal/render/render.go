@@ -66,6 +66,21 @@ type Navigator interface {
 	Navigations(resource dao.Resource) []Navigation
 }
 
+// MetricSpecProvider is an optional interface for renderers that support inline metrics.
+type MetricSpecProvider interface {
+	MetricSpec() *MetricSpec
+}
+
+// MetricSpec defines which CloudWatch metric to fetch for inline display.
+type MetricSpec struct {
+	Namespace     string
+	MetricName    string
+	DimensionName string
+	Stat          string
+	ColumnHeader  string
+	Unit          string // Display unit (e.g., "%", "", "ms"). Empty for count-based metrics.
+}
+
 // BaseRenderer provides a default implementation
 type BaseRenderer struct {
 	Service  string

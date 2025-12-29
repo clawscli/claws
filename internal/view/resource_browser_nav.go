@@ -45,6 +45,8 @@ func (r *ResourceBrowser) cycleResourceType(delta int) {
 	r.filterText = ""
 	r.filterInput.SetValue("")
 	r.markedResource = nil
+	r.metricsEnabled = false
+	r.metricsData = nil
 }
 
 // StatusLine implements View interface
@@ -87,12 +89,23 @@ func (r *ResourceBrowser) StatusLine() string {
 		dHint = "d:diff"
 	}
 
+	metricsHint := ""
+	if r.getMetricSpec() != nil {
+		if r.metricsLoading {
+			metricsHint = " M:metrics(loading)"
+		} else if r.metricsEnabled {
+			metricsHint = " M:metrics(on)"
+		} else {
+			metricsHint = " M:metrics"
+		}
+	}
+
 	if r.filterText != "" || filterInfo != "" {
 		base := fmt.Sprintf("%s/%s%s%s%s%s • %d/%d items • c:clear", r.service, r.resourceType, filterInfo, sortInfo, markInfo, autoReloadInfo, shown, total)
 		if hasActions {
 			base += " a:actions"
 		}
-		base += " m:mark"
+		base += " m:mark" + metricsHint
 		if navInfo != "" {
 			base += " " + navInfo
 		}
@@ -103,7 +116,7 @@ func (r *ResourceBrowser) StatusLine() string {
 	if hasActions {
 		base += " a:actions"
 	}
-	base += " m:mark"
+	base += " m:mark" + metricsHint
 	if navInfo != "" {
 		base += " " + navInfo
 	}
