@@ -400,6 +400,10 @@ func (v *TagSearchView) navigateToResource() (tea.Model, tea.Cmd) {
 		return v, nil
 	}
 
+	if v.registry.IsSubResource(service, resourceType) {
+		return v, nil
+	}
+
 	ctx := v.ctx
 	if res.Region != "" {
 		ctx = aws.WithRegionOverride(ctx, res.Region)

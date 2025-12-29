@@ -160,6 +160,7 @@ var arnToRegistryService = map[string]string{
 	"elasticloadbalancing": "elbv2",
 	"execute-api":          "apigateway",
 	"cognito-idp":          "cognito",
+	"events":               "eventbridge",
 }
 
 // normalizeResourceType maps ARN resource types to claws registry resource types.
@@ -202,7 +203,7 @@ var arnToRegistryType = map[string]string{
 	"ec2/route-table":                   "route-tables",
 	"ec2/internet-gateway":              "internet-gateways",
 	"ec2/nat-gateway":                   "nat-gateways",
-	"ec2/vpc-endpoint":                  "vpc-endpoints",
+	"ec2/vpc-endpoint":                  "endpoints",
 	"ec2/transit-gateway":               "transit-gateways",
 	"lambda/function":                   "functions",
 	"ecs/cluster":                       "clusters",
@@ -229,7 +230,7 @@ var arnToRegistryType = map[string]string{
 	"kms/key":                           "keys",
 	"events/event-bus":                  "buses",
 	"events/rule":                       "rules",
-	"apigateway/restapis":               "restapis",
+	"apigateway/restapis":               "rest-apis",
 	"cloudformation/stack":              "stacks",
 	"autoscaling/autoScalingGroup":      "groups",
 	"elasticloadbalancing/loadbalancer": "load-balancers",

@@ -499,5 +499,11 @@ func isSubResource(service, resource string) bool {
 	return ok
 }
 
+// IsSubResource returns true if the resource requires parent context (sub-resource).
+// Sub-resources cannot be directly navigated to from tag search results.
+func (r *Registry) IsSubResource(service, resource string) bool {
+	return isSubResource(service, resource)
+}
+
 // Global is the default global registry
 var Global = New()

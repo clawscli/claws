@@ -295,6 +295,18 @@ func TestARN_ServiceResourceType(t *testing.T) {
 			wantService:      "elbv2",
 			wantResourceType: "load-balancers",
 		},
+		{
+			name:             "EventBridge event bus",
+			arn:              "arn:aws:events:us-east-1:123456789012:event-bus/my-bus",
+			wantService:      "eventbridge",
+			wantResourceType: "buses",
+		},
+		{
+			name:             "VPC endpoint",
+			arn:              "arn:aws:ec2:us-east-1:123456789012:vpc-endpoint/vpce-1234",
+			wantService:      "vpc",
+			wantResourceType: "endpoints",
+		},
 	}
 
 	for _, tt := range tests {
