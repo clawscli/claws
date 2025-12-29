@@ -351,10 +351,8 @@ func (r *Registry) HasResource(service, resource string) bool {
 	return ok
 }
 
-// GetDAO creates a DAO instance for the given service/resource
-
-// GetDAO creates a DAO instance for the given service/resource
-// Automatically wraps the DAO for multi-region support if region override is present in context
+// GetDAO creates a DAO instance for the given service/resource.
+// Automatically wraps the DAO for multi-region support if region override is present in context.
 func (r *Registry) GetDAO(ctx context.Context, service, resource string) (dao.DAO, error) {
 	entry, ok := r.Get(service, resource)
 	if !ok {
