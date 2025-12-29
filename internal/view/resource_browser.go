@@ -703,6 +703,10 @@ func (r *ResourceBrowser) loadMetricsCmd() tea.Cmd {
 	resourceType := r.resourceType
 
 	return func() tea.Msg {
+		if r.ctx.Err() != nil {
+			return nil
+		}
+
 		ctx, cancel := context.WithTimeout(r.ctx, metricsLoadTimeout)
 		defer cancel()
 
