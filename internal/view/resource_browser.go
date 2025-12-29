@@ -328,7 +328,7 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, r.tickCmd())
 		}
 		if r.metricsEnabled && r.metricsLoading {
-			cmds = append(cmds, r.loadMetrics)
+			cmds = append(cmds, r.loadMetricsCmd())
 		}
 		if len(cmds) > 0 {
 			return r, tea.Batch(cmds...)
@@ -373,7 +373,7 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case autoReloadTickMsg:
 		if r.metricsEnabled && r.getMetricSpec() != nil {
-			return r, tea.Batch(r.reloadResources, r.loadMetrics)
+			return r, tea.Batch(r.reloadResources, r.loadMetricsCmd())
 		}
 		return r, r.reloadResources
 
@@ -529,7 +529,7 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				r.metricsEnabled = !r.metricsEnabled
 				if r.metricsEnabled && r.metricsData == nil {
 					r.metricsLoading = true
-					return r, r.loadMetrics
+					return r, r.loadMetricsCmd()
 				}
 				r.buildTable()
 			}
@@ -684,18 +684,12 @@ func (r *ResourceBrowser) loadNextPage() tea.Msg {
 	}
 }
 
-func (r *ResourceBrowser) loadMetrics() tea.Msg {
+// loadMetricsCmd captures resource IDs synchronously before returning the tea.Cmd,
+// avoiding a race condition where r.resources could be modified while the goroutine iterates.
+func (r *ResourceBrowser) loadMetricsCmd() tea.Cmd {
 	spec := r.getMetricSpec()
 	if spec == nil {
-		return metricsLoadedMsg{}
-	}
-
-	ctx, cancel := context.WithTimeout(r.ctx, metricsLoadTimeout)
-	defer cancel()
-
-	fetcher, err := metrics.NewFetcher(ctx)
-	if err != nil {
-		return metricsLoadedMsg{err: err}
+		return nil
 	}
 
 	resourceIDs := make([]string, len(r.resources))
@@ -703,8 +697,18 @@ func (r *ResourceBrowser) loadMetrics() tea.Msg {
 		resourceIDs[i] = res.GetID()
 	}
 
-	data, err := fetcher.Fetch(ctx, resourceIDs, spec)
-	return metricsLoadedMsg{data: data, err: err}
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(r.ctx, metricsLoadTimeout)
+		defer cancel()
+
+		fetcher, err := metrics.NewFetcher(ctx)
+		if err != nil {
+			return metricsLoadedMsg{err: err}
+		}
+
+		data, err := fetcher.Fetch(ctx, resourceIDs, spec)
+		return metricsLoadedMsg{data: data, err: err}
+	}
 }
 
 func (r *ResourceBrowser) getMetricSpec() *render.MetricSpec {
