@@ -260,13 +260,13 @@ func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 		}, nil
 	}
 
-	// Handle tags command: :tags, :tags <filter> - cross-service tag browser
+	// Handle tags command: :tags, :tags <filter> - cross-service tag search via Tagging API
 	if input == "tags" || strings.HasPrefix(input, "tags ") {
 		tagFilter := ""
 		if strings.HasPrefix(input, "tags ") {
 			tagFilter = strings.TrimPrefix(input, "tags ")
 		}
-		browser := NewTagBrowser(c.ctx, c.registry, tagFilter)
+		browser := NewTagSearchView(c.ctx, c.registry, tagFilter)
 		return nil, &NavigateMsg{View: browser}
 	}
 
