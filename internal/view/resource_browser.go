@@ -24,8 +24,8 @@ import (
 // ResourceBrowser displays resources of a specific type
 
 const (
-	// logTokenMaxLen is the max length of pagination token shown in debug logs
-	logTokenMaxLen = 20
+	logTokenMaxLen     = 20
+	metricsLoadTimeout = 30 * time.Second
 )
 
 // resourceBrowserStyles holds cached lipgloss styles for performance
@@ -690,7 +690,10 @@ func (r *ResourceBrowser) loadMetrics() tea.Msg {
 		return metricsLoadedMsg{}
 	}
 
-	fetcher, err := metrics.NewFetcher(r.ctx)
+	ctx, cancel := context.WithTimeout(r.ctx, metricsLoadTimeout)
+	defer cancel()
+
+	fetcher, err := metrics.NewFetcher(ctx)
 	if err != nil {
 		return metricsLoadedMsg{err: err}
 	}
@@ -700,7 +703,7 @@ func (r *ResourceBrowser) loadMetrics() tea.Msg {
 		resourceIDs[i] = res.GetID()
 	}
 
-	data, err := fetcher.Fetch(r.ctx, resourceIDs, spec)
+	data, err := fetcher.Fetch(ctx, resourceIDs, spec)
 	return metricsLoadedMsg{data: data, err: err}
 }
 
