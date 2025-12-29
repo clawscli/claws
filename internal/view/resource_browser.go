@@ -232,43 +232,12 @@ func (r *ResourceBrowser) listResources(d dao.DAO) listResourcesResult {
 	return r.listResourcesWithContext(r.ctx, d)
 }
 
-func (r *ResourceBrowser) loadResources() tea.Msg {
-	start := time.Now()
-	regions := config.Global().Regions()
-	isMultiRegion := len(regions) > 1
+type multiRegionFetchResult struct {
+	resources []dao.Resource
+	errors    []string
+}
 
-	log.Debug("loading resources", "service", r.service, "resourceType", r.resourceType,
-		"regions", regions, "multiRegion", isMultiRegion)
-
-	renderer, err := r.registry.GetRenderer(r.service, r.resourceType)
-	if err != nil {
-		log.Error("failed to get renderer", "service", r.service, "resourceType", r.resourceType, "error", err)
-		return resourcesErrorMsg{err: err}
-	}
-
-	if !isMultiRegion {
-		d, err := r.registry.GetDAO(r.ctx, r.service, r.resourceType)
-		if err != nil {
-			log.Error("failed to get DAO", "service", r.service, "resourceType", r.resourceType, "error", err)
-			return resourcesErrorMsg{err: err}
-		}
-
-		result := r.listResources(d)
-		if result.err != nil {
-			log.Error("failed to list resources", "error", result.err, "duration", time.Since(start))
-			return resourcesErrorMsg{err: result.err}
-		}
-		log.Debug("resources loaded", "count", len(result.resources), "duration", time.Since(start))
-
-		return resourcesLoadedMsg{
-			dao:          d,
-			renderer:     renderer,
-			resources:    result.resources,
-			nextToken:    result.nextToken,
-			hasMorePages: result.nextToken != "",
-		}
-	}
-
+func (r *ResourceBrowser) fetchMultiRegionResources(regions []string) multiRegionFetchResult {
 	type regionResult struct {
 		region    string
 		resources []dao.Resource
@@ -320,23 +289,63 @@ func (r *ResourceBrowser) loadResources() tea.Msg {
 		}
 	}
 
-	if len(allResources) == 0 && len(errors) > 0 {
-		return resourcesErrorMsg{err: fmt.Errorf("all regions failed: %s", strings.Join(errors, "; "))}
+	return multiRegionFetchResult{resources: allResources, errors: errors}
+}
+
+func (r *ResourceBrowser) loadResources() tea.Msg {
+	start := time.Now()
+	regions := config.Global().Regions()
+	isMultiRegion := len(regions) > 1
+
+	log.Debug("loading resources", "service", r.service, "resourceType", r.resourceType,
+		"regions", regions, "multiRegion", isMultiRegion)
+
+	renderer, err := r.registry.GetRenderer(r.service, r.resourceType)
+	if err != nil {
+		log.Error("failed to get renderer", "service", r.service, "resourceType", r.resourceType, "error", err)
+		return resourcesErrorMsg{err: err}
 	}
 
-	log.Debug("multi-region resources loaded", "count", len(allResources),
-		"regions", len(regions), "errors", len(errors), "duration", time.Since(start))
+	if !isMultiRegion {
+		d, err := r.registry.GetDAO(r.ctx, r.service, r.resourceType)
+		if err != nil {
+			log.Error("failed to get DAO", "service", r.service, "resourceType", r.resourceType, "error", err)
+			return resourcesErrorMsg{err: err}
+		}
+
+		result := r.listResources(d)
+		if result.err != nil {
+			log.Error("failed to list resources", "error", result.err, "duration", time.Since(start))
+			return resourcesErrorMsg{err: result.err}
+		}
+		log.Debug("resources loaded", "count", len(result.resources), "duration", time.Since(start))
+
+		return resourcesLoadedMsg{
+			dao:          d,
+			renderer:     renderer,
+			resources:    result.resources,
+			nextToken:    result.nextToken,
+			hasMorePages: result.nextToken != "",
+		}
+	}
+
+	fetchResult := r.fetchMultiRegionResources(regions)
+	if len(fetchResult.resources) == 0 && len(fetchResult.errors) > 0 {
+		return resourcesErrorMsg{err: fmt.Errorf("all regions failed: %s", strings.Join(fetchResult.errors, "; "))}
+	}
+
+	log.Debug("multi-region resources loaded", "count", len(fetchResult.resources),
+		"regions", len(regions), "errors", len(fetchResult.errors), "duration", time.Since(start))
 
 	return resourcesLoadedMsg{
 		dao:          nil,
 		renderer:     renderer,
-		resources:    allResources,
+		resources:    fetchResult.resources,
 		nextToken:    "",
 		hasMorePages: false,
 	}
 }
 
-// reloadResources reloads resources without changing loading state (for auto-reload)
 func (r *ResourceBrowser) reloadResources() tea.Msg {
 	regions := config.Global().Regions()
 	isMultiRegion := len(regions) > 1
@@ -365,65 +374,15 @@ func (r *ResourceBrowser) reloadResources() tea.Msg {
 		}
 	}
 
-	type regionResult struct {
-		region    string
-		resources []dao.Resource
-		err       error
-	}
-
-	results := make(chan regionResult, len(regions))
-	var wg sync.WaitGroup
-
-	for _, region := range regions {
-		wg.Add(1)
-		go func(region string) {
-			defer wg.Done()
-
-			regionCtx := aws.WithRegionOverride(r.ctx, region)
-			d, err := r.registry.GetDAO(regionCtx, r.service, r.resourceType)
-			if err != nil {
-				results <- regionResult{region: region, err: err}
-				return
-			}
-
-			result := r.listResourcesWithContext(regionCtx, d)
-			if result.err != nil {
-				results <- regionResult{region: region, err: result.err}
-				return
-			}
-
-			wrapped := make([]dao.Resource, len(result.resources))
-			for i, res := range result.resources {
-				wrapped[i] = dao.WrapWithRegion(res, region)
-			}
-			results <- regionResult{region: region, resources: wrapped}
-		}(region)
-	}
-
-	go func() {
-		wg.Wait()
-		close(results)
-	}()
-
-	var allResources []dao.Resource
-	var errors []string
-	for result := range results {
-		if result.err != nil {
-			errors = append(errors, fmt.Sprintf("%s: %v", result.region, result.err))
-			log.Warn("reload: failed to fetch from region", "region", result.region, "error", result.err)
-		} else {
-			allResources = append(allResources, result.resources...)
-		}
-	}
-
-	if len(allResources) == 0 && len(errors) > 0 {
-		return resourcesErrorMsg{err: fmt.Errorf("all regions failed: %s", strings.Join(errors, "; "))}
+	fetchResult := r.fetchMultiRegionResources(regions)
+	if len(fetchResult.resources) == 0 && len(fetchResult.errors) > 0 {
+		return resourcesErrorMsg{err: fmt.Errorf("all regions failed: %s", strings.Join(fetchResult.errors, "; "))}
 	}
 
 	return resourcesLoadedMsg{
 		dao:          nil,
 		renderer:     r.renderer,
-		resources:    allResources,
+		resources:    fetchResult.resources,
 		nextToken:    "",
 		hasMorePages: false,
 	}
@@ -954,7 +913,7 @@ func (r *ResourceBrowser) buildTable() {
 
 	rows := make([]table.Row, len(r.filtered))
 	for i, res := range r.filtered {
-		row := r.renderer.RenderRow(res, cols)
+		row := r.renderer.RenderRow(dao.UnwrapResource(res), cols)
 		markIndicator := "  "
 		if r.markedResource != nil && r.markedResource.GetID() == res.GetID() {
 			markIndicator = "◆ "
@@ -983,7 +942,7 @@ func (r *ResourceBrowser) buildTable() {
 	// Calculate header height dynamically
 	var summaryFields []render.SummaryField
 	if len(r.filtered) > 0 && currentCursor >= 0 && currentCursor < len(r.filtered) {
-		summaryFields = r.renderer.RenderSummary(r.filtered[currentCursor])
+		summaryFields = r.renderer.RenderSummary(dao.UnwrapResource(r.filtered[currentCursor]))
 	}
 	headerStr := r.headerPanel.Render(r.service, r.resourceType, summaryFields)
 	headerHeight := r.headerPanel.Height(headerStr)
@@ -1047,7 +1006,7 @@ func (r *ResourceBrowser) ViewString() string {
 	// Get selected resource summary fields
 	var summaryFields []render.SummaryField
 	if len(r.filtered) > 0 && r.table.Cursor() < len(r.filtered) && r.renderer != nil {
-		selectedResource := r.filtered[r.table.Cursor()]
+		selectedResource := dao.UnwrapResource(r.filtered[r.table.Cursor()])
 		summaryFields = r.renderer.RenderSummary(selectedResource)
 	}
 

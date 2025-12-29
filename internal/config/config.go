@@ -156,11 +156,10 @@ func (c *Config) Region() string {
 	return c.regions[0]
 }
 
-// Regions returns all selected regions
 func (c *Config) Regions() []string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.regions
+	return append([]string(nil), c.regions...)
 }
 
 // SetRegion sets a single region
@@ -170,11 +169,10 @@ func (c *Config) SetRegion(region string) {
 	c.regions = []string{region}
 }
 
-// SetRegions sets multiple regions
 func (c *Config) SetRegions(regions []string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.regions = regions
+	c.regions = append([]string(nil), regions...)
 }
 
 // IsMultiRegion returns true if multiple regions are selected
