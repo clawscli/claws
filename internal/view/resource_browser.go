@@ -286,11 +286,9 @@ func (r *ResourceBrowser) fetchMultiRegionResources(regions []string, existingTo
 				return
 			}
 
-			wrapped := make([]dao.Resource, len(listResult.resources))
-			for i, res := range listResult.resources {
-				wrapped[i] = dao.WrapWithRegion(res, region)
-			}
-			results <- regionResult{region: region, resources: wrapped, nextToken: listResult.nextToken}
+			// Resources are already wrapped by RegionalDAOWrapper/PaginatedDAOWrapper
+			// via registry.GetDAO() - no additional wrapping needed
+			results <- regionResult{region: region, resources: listResult.resources, nextToken: listResult.nextToken}
 		}(region)
 	}
 

@@ -352,6 +352,9 @@ func (r *Registry) HasResource(service, resource string) bool {
 }
 
 // GetDAO creates a DAO instance for the given service/resource
+
+// GetDAO creates a DAO instance for the given service/resource
+// Automatically wraps the DAO for multi-region support if region override is present in context
 func (r *Registry) GetDAO(ctx context.Context, service, resource string) (dao.DAO, error) {
 	entry, ok := r.Get(service, resource)
 	if !ok {
@@ -360,7 +363,20 @@ func (r *Registry) GetDAO(ctx context.Context, service, resource string) (dao.DA
 	if entry.DAOFactory == nil {
 		return nil, fmt.Errorf("no DAO factory for %s/%s", service, resource)
 	}
-	return entry.DAOFactory(ctx)
+
+	delegate, err := entry.DAOFactory(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Auto-wrap DAO for multi-region support if region override is present
+	// Check if delegate is a PaginatedDAO first
+	if paginated, ok := delegate.(dao.PaginatedDAO); ok {
+		return NewPaginatedDAOWrapper(ctx, paginated), nil
+	}
+
+	// Otherwise wrap as regular DAO
+	return NewRegionalDAOWrapper(ctx, delegate), nil
 }
 
 // GetRenderer creates a Renderer instance for the given service/resource
