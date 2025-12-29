@@ -131,10 +131,14 @@ func WrapWithRegion(res Resource, region string) *RegionalResource {
 	return &RegionalResource{Resource: res, Region: region}
 }
 
+type regionalResource interface {
+	GetRegion() string
+}
+
 // GetResourceRegion extracts region from a resource (returns "" if not regional)
 func GetResourceRegion(res Resource) string {
-	if rr, ok := res.(*RegionalResource); ok {
-		return rr.Region
+	if rr, ok := res.(regionalResource); ok {
+		return rr.GetRegion()
 	}
 	return ""
 }

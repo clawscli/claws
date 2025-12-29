@@ -102,8 +102,13 @@ func (r *ResourceBrowser) StatusLine() string {
 		}
 	}
 
+	partialWarn := ""
+	if len(r.partialErrors) > 0 {
+		partialWarn = fmt.Sprintf(" ⚠%d region(s) failed", len(r.partialErrors))
+	}
+
 	if r.filterText != "" || filterInfo != "" {
-		base := fmt.Sprintf("%s/%s%s%s%s%s • %d/%d items • c:clear", r.service, r.resourceType, filterInfo, sortInfo, markInfo, autoReloadInfo, shown, total)
+		base := fmt.Sprintf("%s/%s%s%s%s%s%s • %d/%d items • c:clear", r.service, r.resourceType, filterInfo, sortInfo, markInfo, autoReloadInfo, partialWarn, shown, total)
 		if hasActions {
 			base += " a:actions"
 		}
@@ -114,7 +119,7 @@ func (r *ResourceBrowser) StatusLine() string {
 		return base
 	}
 
-	base := fmt.Sprintf("%s/%s%s%s%s • %d items • /:filter %s", r.service, r.resourceType, sortInfo, markInfo, autoReloadInfo, total, dHint)
+	base := fmt.Sprintf("%s/%s%s%s%s%s • %d items • /:filter %s", r.service, r.resourceType, sortInfo, markInfo, autoReloadInfo, partialWarn, total, dHint)
 	if hasActions {
 		base += " a:actions"
 	}

@@ -121,6 +121,9 @@ type ResourceBrowser struct {
 	metricsEnabled bool
 	metricsLoading bool
 	metricsData    *metrics.MetricData
+
+	// Partial region errors (for multi-region queries)
+	partialErrors []string
 }
 
 // NewResourceBrowser creates a new ResourceBrowser
@@ -374,6 +377,7 @@ func (r *ResourceBrowser) loadResources() tea.Msg {
 		resources:      fetchResult.resources,
 		nextPageTokens: fetchResult.pageTokens,
 		hasMorePages:   len(fetchResult.pageTokens) > 0,
+		partialErrors:  fetchResult.errors,
 	}
 }
 
@@ -416,6 +420,7 @@ func (r *ResourceBrowser) reloadResources() tea.Msg {
 		resources:      fetchResult.resources,
 		nextPageTokens: fetchResult.pageTokens,
 		hasMorePages:   len(fetchResult.pageTokens) > 0,
+		partialErrors:  fetchResult.errors,
 	}
 }
 
@@ -426,6 +431,7 @@ type resourcesLoadedMsg struct {
 	nextToken      string
 	nextPageTokens map[string]string
 	hasMorePages   bool
+	partialErrors  []string
 }
 
 type nextPageLoadedMsg struct {
@@ -456,6 +462,7 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		r.nextPageToken = msg.nextToken
 		r.nextPageTokens = msg.nextPageTokens
 		r.hasMorePages = msg.hasMorePages
+		r.partialErrors = msg.partialErrors
 		r.applyFilter()
 		r.buildTable()
 
