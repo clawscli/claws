@@ -367,13 +367,18 @@ func (r *Registry) GetDAO(ctx context.Context, service, resource string) (dao.DA
 		return nil, err
 	}
 
+	// Prevent double-wrapping if delegate is already wrapped
+	if _, ok := delegate.(*RegionalDAOWrapper); ok {
+		return delegate, nil
+	}
+	if _, ok := delegate.(*PaginatedDAOWrapper); ok {
+		return delegate, nil
+	}
+
 	// Auto-wrap DAO for multi-region support if region override is present
-	// Check if delegate is a PaginatedDAO first
 	if paginated, ok := delegate.(dao.PaginatedDAO); ok {
 		return NewPaginatedDAOWrapper(ctx, paginated), nil
 	}
-
-	// Otherwise wrap as regular DAO
 	return NewRegionalDAOWrapper(ctx, delegate), nil
 }
 
