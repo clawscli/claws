@@ -134,6 +134,14 @@ func GetResourceRegion(res Resource) string {
 	return ""
 }
 
+// UnwrapResource returns the inner resource if wrapped, otherwise returns as-is
+func UnwrapResource(res Resource) Resource {
+	if rr, ok := res.(*RegionalResource); ok {
+		return rr.Resource
+	}
+	return res
+}
+
 // Context key types for filter values
 type filterContextKey string
 

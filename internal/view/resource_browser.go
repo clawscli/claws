@@ -616,9 +616,9 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return r, nil
 		case "d", "enter":
 			if len(r.filtered) > 0 && r.table.Cursor() < len(r.filtered) {
-				resource := r.filtered[r.table.Cursor()]
+				resource := dao.UnwrapResource(r.filtered[r.table.Cursor()])
 				if r.markedResource != nil && r.markedResource.GetID() != resource.GetID() {
-					diffView := NewDiffView(r.ctx, r.markedResource, resource, r.renderer, r.service, r.resourceType)
+					diffView := NewDiffView(r.ctx, dao.UnwrapResource(r.markedResource), resource, r.renderer, r.service, r.resourceType)
 					return r, func() tea.Msg {
 						return NavigateMsg{View: diffView}
 					}
@@ -631,7 +631,7 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "a":
 			if len(r.filtered) > 0 && r.table.Cursor() < len(r.filtered) {
 				if actions := action.Global.Get(r.service, r.resourceType); len(actions) > 0 {
-					resource := r.filtered[r.table.Cursor()]
+					resource := dao.UnwrapResource(r.filtered[r.table.Cursor()])
 					actionMenu := NewActionMenu(r.ctx, resource, r.service, r.resourceType)
 					return r, func() tea.Msg {
 						return ShowModalMsg{Modal: &Modal{Content: actionMenu}}
@@ -1110,13 +1110,12 @@ func (r *ResourceBrowser) switchToTab(idx int) (tea.Model, tea.Cmd) {
 	return r, r.loadResources
 }
 
-// openDetailView opens detail view for current cursor position
 func (r *ResourceBrowser) openDetailView() (tea.Model, tea.Cmd) {
 	cursor := r.table.Cursor()
 	if len(r.filtered) == 0 || cursor < 0 || cursor >= len(r.filtered) {
 		return r, nil
 	}
-	resource := r.filtered[cursor]
+	resource := dao.UnwrapResource(r.filtered[cursor])
 	detailView := NewDetailView(r.ctx, resource, r.renderer, r.service, r.resourceType, r.registry, r.dao)
 	return r, func() tea.Msg {
 		return NavigateMsg{View: detailView}

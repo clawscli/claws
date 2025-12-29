@@ -1,7 +1,6 @@
 package view
 
 import (
-	"fmt"
 	"strings"
 
 	"charm.land/lipgloss/v2"
@@ -77,13 +76,10 @@ func (h *HeaderPanel) renderContextLine(service, resourceType string) string {
 
 	var regionDisplay string
 	regions := cfg.Regions()
-	switch len(regions) {
-	case 0:
+	if len(regions) == 0 {
 		regionDisplay = "-"
-	case 1:
-		regionDisplay = regions[0]
-	default:
-		regionDisplay = fmt.Sprintf("%s +%d", regions[0], len(regions)-1)
+	} else {
+		regionDisplay = strings.Join(regions, ", ")
 	}
 
 	line := s.label.Render("Profile: ") + s.value.Render(profileDisplay) +

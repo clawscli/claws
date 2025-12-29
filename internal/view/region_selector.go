@@ -212,7 +212,7 @@ func (r *RegionSelector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				r.updateViewport()
 			}
 			return r, nil
-		case " ":
+		case "space":
 			r.toggleCurrent()
 			r.updateViewport()
 			return r, nil
