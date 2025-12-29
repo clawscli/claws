@@ -364,7 +364,7 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case metricsLoadedMsg:
 		r.metricsLoading = false
 		if msg.err != nil {
-			log.Warn("failed to load metrics", "error", msg.err)
+			log.Warn("failed to load metrics", "error", msg.err, "service", r.service, "resource", r.resourceType)
 		} else {
 			r.metricsData = msg.data
 		}
@@ -785,9 +785,13 @@ func (r *ResourceBrowser) buildTable() {
 		fullRow[0] = markIndicator
 		copy(fullRow[1:], row)
 		if effectiveMetricsEnabled && r.metricsData != nil {
-			fullRow[len(cols)+1] = metrics.RenderSparkline(r.metricsData.Get(res.GetID()))
+			unit := ""
+			if r.metricsData.Spec != nil {
+				unit = r.metricsData.Spec.Unit
+			}
+			fullRow[len(cols)+1] = metrics.RenderSparkline(r.metricsData.Get(res.GetID()), unit)
 		} else if effectiveMetricsEnabled {
-			fullRow[len(cols)+1] = metrics.RenderSparkline(nil)
+			fullRow[len(cols)+1] = metrics.RenderSparkline(nil, "")
 		}
 		rows[i] = fullRow
 	}

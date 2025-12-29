@@ -379,5 +379,6 @@ func (r *FunctionRenderer) MetricSpec() *render.MetricSpec {
 		DimensionName: "FunctionName",
 		Stat:          "Sum",
 		ColumnHeader:  "INVOC(15m)",
+		Unit:          "",
 	}
 }

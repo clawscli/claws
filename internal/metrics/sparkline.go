@@ -13,7 +13,8 @@ const (
 	noDataPlaceholder = "·······"
 )
 
-func RenderSparkline(result *MetricResult) string {
+// RenderSparkline renders a sparkline with the latest value and optional unit suffix.
+func RenderSparkline(result *MetricResult, unit string) string {
 	if result == nil || !result.HasData || len(result.Values) == 0 {
 		return fmt.Sprintf("%s  -", noDataPlaceholder)
 	}
@@ -54,5 +55,5 @@ func RenderSparkline(result *MetricResult) string {
 		spark = "·" + spark
 	}
 
-	return fmt.Sprintf("%s %3.0f%%", spark, result.Latest)
+	return fmt.Sprintf("%s %3.0f%s", spark, result.Latest, unit)
 }

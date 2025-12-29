@@ -78,6 +78,7 @@ type MetricSpec struct {
 	DimensionName string
 	Stat          string
 	ColumnHeader  string
+	Unit          string // Display unit (e.g., "%", "", "ms"). Empty for count-based metrics.
 }
 
 // BaseRenderer provides a default implementation

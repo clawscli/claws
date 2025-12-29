@@ -377,5 +377,6 @@ func (r *InstanceRenderer) MetricSpec() *render.MetricSpec {
 		DimensionName: "InstanceId",
 		Stat:          "Average",
 		ColumnHeader:  "CPU(15m)",
+		Unit:          "%",
 	}
 }
