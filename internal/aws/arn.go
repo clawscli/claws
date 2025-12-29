@@ -124,16 +124,42 @@ func (a *ARN) String() string {
 }
 
 // ServiceResourceType returns a normalized service/resource-type pair for registry lookup.
-// Maps ARN resource types to claws registry resource types.
+// Maps ARN service and resource types to claws registry naming conventions.
 func (a *ARN) ServiceResourceType() (service, resourceType string) {
 	if a == nil {
 		return "", ""
 	}
 
-	service = a.Service
 	resourceType = normalizeResourceType(a.Service, a.ResourceType)
+	service = normalizeService(a.Service, a.ResourceType)
 
 	return service, resourceType
+}
+
+func normalizeService(arnService, resourceType string) string {
+	if arnService == "ec2" && isVPCResource(resourceType) {
+		return "vpc"
+	}
+	if mapped, ok := arnToRegistryService[arnService]; ok {
+		return mapped
+	}
+	return arnService
+}
+
+func isVPCResource(resourceType string) bool {
+	switch resourceType {
+	case "vpc", "subnet", "route-table", "internet-gateway", "nat-gateway", "vpc-endpoint", "transit-gateway":
+		return true
+	}
+	return false
+}
+
+var arnToRegistryService = map[string]string{
+	"logs":                 "cloudwatch",
+	"states":               "sfn",
+	"elasticloadbalancing": "elbv2",
+	"execute-api":          "apigateway",
+	"cognito-idp":          "cognito",
 }
 
 // normalizeResourceType maps ARN resource types to claws registry resource types.
@@ -161,150 +187,78 @@ func normalizeResourceType(service, arnType string) string {
 	}
 }
 
-// arnToRegistryType maps "service/arn-type" to claws registry resourceType.
-// Only include mappings that differ from simple pluralization.
 var arnToRegistryType = map[string]string{
-	// EC2
-	"ec2/instance":             "instances",
-	"ec2/volume":               "volumes",
-	"ec2/security-group":       "securitygroups",
-	"ec2/elastic-ip":           "elasticips",
-	"ec2/key-pair":             "keypairs",
-	"ec2/image":                "images",
-	"ec2/snapshot":             "snapshots",
-	"ec2/launch-template":      "launchtemplates",
-	"ec2/capacity-reservation": "capacityreservations",
-	"ec2/vpc":                  "vpcs",
-	"ec2/subnet":               "subnets",
-	"ec2/route-table":          "routetables",
-	"ec2/internet-gateway":     "internetgateways",
-	"ec2/nat-gateway":          "natgateways",
-	"ec2/vpc-endpoint":         "vpcendpoints",
-	"ec2/transit-gateway":      "transitgateways",
-
-	// Lambda
-	"lambda/function": "functions",
-
-	// ECS
-	"ecs/cluster":                   "clusters",
-	"ecs/service":                   "services",
-	"ecs/task":                      "tasks",
-	"ecs/task-definition":           "taskdefinitions",
-	"ecs/container-instance":        "containerinstances",
-	"ecs/capacity-provider":         "capacityproviders",
-	"ecs/task-set":                  "tasksets",
-	"ecs/cluster-capacity-provider": "clustercapacityproviders",
-
-	// S3
-	"s3/bucket": "buckets",
-
-	// RDS
-	"rds/db":       "instances",
-	"rds/cluster":  "clusters",
-	"rds/snapshot": "snapshots",
-
-	// IAM
-	"iam/user":             "users",
-	"iam/role":             "roles",
-	"iam/policy":           "policies",
-	"iam/group":            "groups",
-	"iam/instance-profile": "instanceprofiles",
-
-	// DynamoDB
-	"dynamodb/table": "tables",
-
-	// SNS
-	"sns/topic": "topics",
-
-	// SQS
-	"sqs/queue": "queues",
-
-	// CloudWatch
-	"logs/log-group": "loggroups",
-
-	// Step Functions
-	"states/stateMachine": "statemachines",
-	"states/execution":    "executions",
-
-	// Secrets Manager
-	"secretsmanager/secret": "secrets",
-
-	// KMS
-	"kms/key": "keys",
-
-	// EventBridge
-	"events/event-bus": "buses",
-	"events/rule":      "rules",
-
-	// API Gateway
-	"apigateway/restapis": "restapis",
-	"execute-api/":        "restapis",
-
-	// CloudFormation
-	"cloudformation/stack": "stacks",
-
-	// Auto Scaling
-	"autoscaling/autoScalingGroup": "groups",
-
-	// ELB
-	"elasticloadbalancing/loadbalancer":  "loadbalancers",
-	"elasticloadbalancing/targetgroup":   "targetgroups",
-	"elasticloadbalancing/app":           "loadbalancers",
-	"elasticloadbalancing/net":           "loadbalancers",
-	"elasticloadbalancing/listener":      "listeners",
-	"elasticloadbalancing/listener-rule": "listenerrules",
-
-	// ECR
-	"ecr/repository": "repositories",
-
-	// Kinesis
-	"kinesis/stream": "streams",
-
-	// Glue
-	"glue/database": "databases",
-	"glue/table":    "tables",
-	"glue/crawler":  "crawlers",
-	"glue/job":      "jobs",
-
-	// Bedrock
-	"bedrock/foundation-model":     "foundationmodels",
-	"bedrock/inference-profile":    "inferenceprofiles",
-	"bedrock/guardrail":            "guardrails",
-	"bedrock-agent/agent":          "agents",
-	"bedrock-agent/knowledge-base": "knowledgebases",
-	"bedrock-agent/flow":           "flows",
-
-	// Route 53
-	"route53/hostedzone": "hostedzones",
-
-	// CloudFront
-	"cloudfront/distribution": "distributions",
-
-	// ACM
-	"acm/certificate": "certificates",
-
-	// SSM
-	"ssm/parameter": "parameters",
-
-	// Cognito
-	"cognito-idp/userpool": "userpools",
-
-	// GuardDuty
-	"guardduty/detector": "detectors",
-
-	// Security Hub
-	"securityhub/hub": "hubs",
-
-	// Config
-	"config/config-rule": "rules",
-
-	// Backup
-	"backup/backup-vault": "vaults",
-	"backup/backup-plan":  "plans",
-
-	// Organizations
-	"organizations/account": "accounts",
-	"organizations/ou":      "ous",
+	"ec2/instance":                      "instances",
+	"ec2/volume":                        "volumes",
+	"ec2/security-group":                "security-groups",
+	"ec2/elastic-ip":                    "elastic-ips",
+	"ec2/key-pair":                      "key-pairs",
+	"ec2/image":                         "images",
+	"ec2/snapshot":                      "snapshots",
+	"ec2/launch-template":               "launch-templates",
+	"ec2/capacity-reservation":          "capacity-reservations",
+	"ec2/vpc":                           "vpcs",
+	"ec2/subnet":                        "subnets",
+	"ec2/route-table":                   "route-tables",
+	"ec2/internet-gateway":              "internet-gateways",
+	"ec2/nat-gateway":                   "nat-gateways",
+	"ec2/vpc-endpoint":                  "vpc-endpoints",
+	"ec2/transit-gateway":               "transit-gateways",
+	"lambda/function":                   "functions",
+	"ecs/cluster":                       "clusters",
+	"ecs/service":                       "services",
+	"ecs/task":                          "tasks",
+	"ecs/task-definition":               "task-definitions",
+	"ecs/container-instance":            "container-instances",
+	"s3/bucket":                         "buckets",
+	"rds/db":                            "instances",
+	"rds/cluster":                       "clusters",
+	"rds/snapshot":                      "snapshots",
+	"iam/user":                          "users",
+	"iam/role":                          "roles",
+	"iam/policy":                        "policies",
+	"iam/group":                         "groups",
+	"iam/instance-profile":              "instance-profiles",
+	"dynamodb/table":                    "tables",
+	"sns/topic":                         "topics",
+	"sqs/queue":                         "queues",
+	"logs/log-group":                    "log-groups",
+	"states/stateMachine":               "state-machines",
+	"states/execution":                  "executions",
+	"secretsmanager/secret":             "secrets",
+	"kms/key":                           "keys",
+	"events/event-bus":                  "buses",
+	"events/rule":                       "rules",
+	"apigateway/restapis":               "restapis",
+	"cloudformation/stack":              "stacks",
+	"autoscaling/autoScalingGroup":      "groups",
+	"elasticloadbalancing/loadbalancer": "load-balancers",
+	"elasticloadbalancing/targetgroup":  "target-groups",
+	"elasticloadbalancing/app":          "load-balancers",
+	"elasticloadbalancing/net":          "load-balancers",
+	"ecr/repository":                    "repositories",
+	"kinesis/stream":                    "streams",
+	"glue/database":                     "databases",
+	"glue/table":                        "tables",
+	"glue/crawler":                      "crawlers",
+	"glue/job":                          "jobs",
+	"bedrock/foundation-model":          "foundation-models",
+	"bedrock/inference-profile":         "inference-profiles",
+	"bedrock/guardrail":                 "guardrails",
+	"bedrock-agent/agent":               "agents",
+	"bedrock-agent/knowledge-base":      "knowledge-bases",
+	"bedrock-agent/flow":                "flows",
+	"route53/hostedzone":                "hosted-zones",
+	"cloudfront/distribution":           "distributions",
+	"acm/certificate":                   "certificates",
+	"ssm/parameter":                     "parameters",
+	"cognito-idp/userpool":              "user-pools",
+	"guardduty/detector":                "detectors",
+	"config/config-rule":                "rules",
+	"backup/backup-vault":               "vaults",
+	"backup/backup-plan":                "plans",
+	"organizations/account":             "accounts",
+	"organizations/ou":                  "ous",
 }
 
 // CanNavigate returns true if this ARN can be navigated to in claws.

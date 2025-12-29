@@ -239,7 +239,7 @@ func TestARN_ServiceResourceType(t *testing.T) {
 			name:             "EC2 security group",
 			arn:              "arn:aws:ec2:us-east-1:123456789012:security-group/sg-1234",
 			wantService:      "ec2",
-			wantResourceType: "securitygroups",
+			wantResourceType: "security-groups",
 		},
 		{
 			name:             "Lambda function",
@@ -274,8 +274,26 @@ func TestARN_ServiceResourceType(t *testing.T) {
 		{
 			name:             "Step Functions state machine",
 			arn:              "arn:aws:states:us-east-1:123456789012:stateMachine:my-sm",
-			wantService:      "states",
-			wantResourceType: "statemachines",
+			wantService:      "sfn",
+			wantResourceType: "state-machines",
+		},
+		{
+			name:             "CloudWatch log group",
+			arn:              "arn:aws:logs:us-east-1:123456789012:log-group:/aws/lambda/fn",
+			wantService:      "cloudwatch",
+			wantResourceType: "log-groups",
+		},
+		{
+			name:             "VPC",
+			arn:              "arn:aws:ec2:us-east-1:123456789012:vpc/vpc-1234",
+			wantService:      "vpc",
+			wantResourceType: "vpcs",
+		},
+		{
+			name:             "ELB load balancer",
+			arn:              "arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/my-alb/1234",
+			wantService:      "elbv2",
+			wantResourceType: "load-balancers",
 		},
 	}
 

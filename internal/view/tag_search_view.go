@@ -671,3 +671,21 @@ func (v *TagSearchView) GetTagValues(key string) []string {
 	sort.Strings(values)
 	return values
 }
+
+// formatTags formats a tag map into a display string with max length
+func formatTags(tags map[string]string, maxLen int) string {
+	if tags == nil {
+		return ""
+	}
+
+	var parts []string
+	for k, v := range tags {
+		parts = append(parts, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	result := strings.Join(parts, ", ")
+	if len(result) > maxLen {
+		result = result[:maxLen-3] + "..."
+	}
+	return result
+}

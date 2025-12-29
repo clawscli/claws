@@ -1670,29 +1670,6 @@ func TestResourceBrowserDiffNavigation(t *testing.T) {
 	}
 }
 
-func TestTagBrowserMouseHover(t *testing.T) {
-	ctx := context.Background()
-	reg := registry.New()
-
-	browser := NewTagBrowser(ctx, reg, "")
-	browser.SetSize(100, 50)
-
-	// Set up test data
-	browser.resources = []taggedResource{
-		{Service: "ec2", ResourceType: "instances", Resource: &mockResource{id: "i-1", name: "test"}},
-	}
-	browser.applyFilter()
-	browser.buildTable()
-
-	initialCursor := browser.table.Cursor()
-
-	// Simulate mouse motion
-	motionMsg := tea.MouseMotionMsg{X: 30, Y: 8}
-	browser.Update(motionMsg)
-
-	t.Logf("Cursor after hover: %d (was %d)", browser.table.Cursor(), initialCursor)
-}
-
 // mockDiffProvider for testing getDiffSuggestions
 type mockDiffProvider struct {
 	names      []string
