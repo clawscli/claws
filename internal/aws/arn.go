@@ -2,11 +2,12 @@ package aws
 
 import (
 	"strings"
+
+	sdkarn "github.com/aws/aws-sdk-go-v2/aws/arn"
 )
 
-// ARN represents a parsed Amazon Resource Name.
-// Format: arn:partition:service:region:account-id:resource
-// Resource can be: resource-type/resource-id, resource-type:resource-id, or just resource
+// ARN represents a parsed Amazon Resource Name with additional resource type/ID extraction.
+// Wraps the AWS SDK's arn.ARN and adds ResourceType/ResourceID parsing for claws navigation.
 type ARN struct {
 	Partition    string // aws, aws-cn, aws-us-gov
 	Service      string // ec2, s3, lambda, etc.
@@ -17,30 +18,28 @@ type ARN struct {
 	Raw          string // original ARN string
 }
 
-// ParseARN parses an ARN string into its components.
+// ParseARN parses an ARN string into its components using the AWS SDK.
 // Returns nil if the string is not a valid ARN.
 func ParseARN(arn string) *ARN {
-	if arn == "" || !strings.HasPrefix(arn, "arn:") {
+	if !sdkarn.IsARN(arn) {
 		return nil
 	}
 
-	// Split by colon: arn:partition:service:region:account:resource
-	parts := strings.SplitN(arn, ":", 6)
-	if len(parts) < 6 {
+	parsed, err := sdkarn.Parse(arn)
+	if err != nil {
 		return nil
 	}
 
 	a := &ARN{
-		Partition: parts[1],
-		Service:   parts[2],
-		Region:    parts[3],
-		AccountID: parts[4],
+		Partition: parsed.Partition,
+		Service:   parsed.Service,
+		Region:    parsed.Region,
+		AccountID: parsed.AccountID,
 		Raw:       arn,
 	}
 
-	// Parse the resource part (parts[5])
-	resource := parts[5]
-	a.parseResource(resource)
+	// Parse the resource part into ResourceType and ResourceID
+	a.parseResource(parsed.Resource)
 
 	return a
 }
