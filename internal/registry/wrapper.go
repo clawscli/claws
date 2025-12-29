@@ -2,10 +2,19 @@ package registry
 
 import (
 	"context"
+	"strings"
 
 	"github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
 )
+
+// stripRegionPrefix removes region prefix from ID if present (format: "region:id" → "id")
+func stripRegionPrefix(id string) string {
+	if idx := strings.Index(id, ":"); idx > 0 {
+		return id[idx+1:]
+	}
+	return id
+}
 
 // RegionalDAOWrapper wraps any DAO to automatically support multi-region queries.
 // It detects region overrides in the context and wraps returned resources with region metadata.
@@ -65,7 +74,7 @@ func (w *RegionalDAOWrapper) List(ctx context.Context) ([]dao.Resource, error) {
 
 // Get wraps the resource with region metadata
 func (w *RegionalDAOWrapper) Get(ctx context.Context, id string) (dao.Resource, error) {
-	res, err := w.delegate.Get(ctx, id)
+	res, err := w.delegate.Get(ctx, stripRegionPrefix(id))
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +83,7 @@ func (w *RegionalDAOWrapper) Get(ctx context.Context, id string) (dao.Resource, 
 
 // Delete delegates to wrapped DAO
 func (w *RegionalDAOWrapper) Delete(ctx context.Context, id string) error {
-	return w.delegate.Delete(ctx, id)
+	return w.delegate.Delete(ctx, stripRegionPrefix(id))
 }
 
 // Supports delegates to wrapped DAO

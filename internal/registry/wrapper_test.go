@@ -12,6 +12,8 @@ import (
 type MockDAO struct {
 	dao.BaseDAO
 	resources []dao.Resource
+	lastGetID string
+	lastDelID string
 }
 
 func NewMockDAO() *MockDAO {
@@ -39,6 +41,7 @@ func (m *MockDAO) List(ctx context.Context) ([]dao.Resource, error) {
 }
 
 func (m *MockDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
+	m.lastGetID = id
 	for _, res := range m.resources {
 		if res.GetID() == id {
 			return res, nil
@@ -48,6 +51,7 @@ func (m *MockDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 }
 
 func (m *MockDAO) Delete(ctx context.Context, id string) error {
+	m.lastDelID = id
 	return nil
 }
 
@@ -241,6 +245,42 @@ func TestPaginatedDAOWrapperListPageWrapsResources(t *testing.T) {
 type CustomTestResource struct {
 	dao.BaseResource
 	CustomField string
+}
+
+func TestRegionalDAOWrapperGetStripsRegionPrefix(t *testing.T) {
+	mockDAO := NewMockDAO()
+	ctx := aws.WithRegionOverride(context.Background(), "us-west-2")
+	wrapper := NewRegionalDAOWrapper(ctx, mockDAO).(*RegionalDAOWrapper)
+
+	_, _ = wrapper.Get(ctx, "us-west-2:res-1")
+
+	if mockDAO.lastGetID != "res-1" {
+		t.Errorf("Get should strip region prefix: got %q, want %q", mockDAO.lastGetID, "res-1")
+	}
+}
+
+func TestRegionalDAOWrapperDeleteStripsRegionPrefix(t *testing.T) {
+	mockDAO := NewMockDAO()
+	ctx := aws.WithRegionOverride(context.Background(), "eu-west-1")
+	wrapper := NewRegionalDAOWrapper(ctx, mockDAO).(*RegionalDAOWrapper)
+
+	_ = wrapper.Delete(ctx, "eu-west-1:res-2")
+
+	if mockDAO.lastDelID != "res-2" {
+		t.Errorf("Delete should strip region prefix: got %q, want %q", mockDAO.lastDelID, "res-2")
+	}
+}
+
+func TestRegionalDAOWrapperGetPassesRawID(t *testing.T) {
+	mockDAO := NewMockDAO()
+	ctx := aws.WithRegionOverride(context.Background(), "us-east-1")
+	wrapper := NewRegionalDAOWrapper(ctx, mockDAO).(*RegionalDAOWrapper)
+
+	_, _ = wrapper.Get(ctx, "res-1")
+
+	if mockDAO.lastGetID != "res-1" {
+		t.Errorf("Get should pass raw ID unchanged: got %q, want %q", mockDAO.lastGetID, "res-1")
+	}
 }
 
 func TestRegionalDAOWrapperSingleWrapTypeAssertion(t *testing.T) {
