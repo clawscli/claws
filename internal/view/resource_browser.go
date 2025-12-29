@@ -306,8 +306,9 @@ type resourcesErrorMsg struct {
 }
 
 type metricsLoadedMsg struct {
-	data *metrics.MetricData
-	err  error
+	data         *metrics.MetricData
+	err          error
+	resourceType string
 }
 
 // Update implements tea.Model
@@ -363,6 +364,9 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case metricsLoadedMsg:
 		r.metricsLoading = false
+		if msg.resourceType != r.resourceType {
+			return r, nil
+		}
 		if msg.err != nil {
 			log.Warn("failed to load metrics", "error", msg.err, "service", r.service, "resource", r.resourceType)
 		} else {
@@ -684,8 +688,8 @@ func (r *ResourceBrowser) loadNextPage() tea.Msg {
 	}
 }
 
-// loadMetricsCmd captures resource IDs synchronously before returning the tea.Cmd,
-// avoiding a race condition where r.resources could be modified while the goroutine iterates.
+// loadMetricsCmd captures resource IDs and type synchronously before returning the tea.Cmd,
+// avoiding race conditions where r.resources could be modified while the goroutine iterates.
 func (r *ResourceBrowser) loadMetricsCmd() tea.Cmd {
 	spec := r.getMetricSpec()
 	if spec == nil {
@@ -696,6 +700,7 @@ func (r *ResourceBrowser) loadMetricsCmd() tea.Cmd {
 	for i, res := range r.resources {
 		resourceIDs[i] = res.GetID()
 	}
+	resourceType := r.resourceType
 
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(r.ctx, metricsLoadTimeout)
@@ -703,11 +708,11 @@ func (r *ResourceBrowser) loadMetricsCmd() tea.Cmd {
 
 		fetcher, err := metrics.NewFetcher(ctx)
 		if err != nil {
-			return metricsLoadedMsg{err: err}
+			return metricsLoadedMsg{err: err, resourceType: resourceType}
 		}
 
 		data, err := fetcher.Fetch(ctx, resourceIDs, spec)
-		return metricsLoadedMsg{data: data, err: err}
+		return metricsLoadedMsg{data: data, err: err, resourceType: resourceType}
 	}
 }
 
