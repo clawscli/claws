@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/clawscli/claws/internal/action"
+	"github.com/clawscli/claws/internal/dao"
 )
 
 // handleNavigation processes navigation key shortcuts
@@ -14,13 +15,14 @@ func (r *ResourceBrowser) handleNavigation(key string) (tea.Model, tea.Cmd) {
 		return nil, nil
 	}
 
+	ctx, resource := r.contextForResource(r.filtered[r.table.Cursor()])
+
 	helper := &NavigationHelper{
-		Ctx:      r.ctx,
+		Ctx:      ctx,
 		Registry: r.registry,
 		Renderer: r.renderer,
 	}
 
-	resource := r.filtered[r.table.Cursor()]
 	if cmd := helper.HandleKey(key, resource); cmd != nil {
 		return r, cmd
 	}
@@ -160,6 +162,6 @@ func (r *ResourceBrowser) getNavigationShortcuts() string {
 	}
 
 	helper := &NavigationHelper{Renderer: r.renderer}
-	resource := r.filtered[r.table.Cursor()]
+	resource := dao.UnwrapResource(r.filtered[r.table.Cursor()])
 	return helper.FormatShortcuts(resource)
 }

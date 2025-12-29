@@ -296,10 +296,19 @@ func (r *ResourceBrowser) fetchMultiRegionResources(regions []string, existingTo
 		close(results)
 	}()
 
+	resultsByRegion := make(map[string]regionResult)
+	for result := range results {
+		resultsByRegion[result.region] = result
+	}
+
 	var allResources []dao.Resource
 	var errors []string
 	pageTokens := make(map[string]string)
-	for result := range results {
+	for _, region := range regions {
+		result, ok := resultsByRegion[region]
+		if !ok {
+			continue
+		}
 		if result.err != nil {
 			errors = append(errors, fmt.Sprintf("%s: %v", result.region, result.err))
 			log.Warn("failed to fetch from region", "region", result.region, "error", result.err)
@@ -817,9 +826,12 @@ func (r *ResourceBrowser) loadNextPage() tea.Msg {
 }
 
 func (r *ResourceBrowser) loadNextPageMultiRegion() tea.Msg {
+	configRegions := config.Global().Regions()
 	regions := make([]string, 0, len(r.nextPageTokens))
-	for region := range r.nextPageTokens {
-		regions = append(regions, region)
+	for _, region := range configRegions {
+		if _, ok := r.nextPageTokens[region]; ok {
+			regions = append(regions, region)
+		}
 	}
 
 	start := time.Now()

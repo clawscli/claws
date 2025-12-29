@@ -30,7 +30,6 @@ func InitContext(ctx context.Context) error {
 }
 
 // RefreshContext re-fetches region and account ID for the current profile selection.
-// Region is updated from the profile's default region if configured.
 func RefreshContext(ctx context.Context) error {
 	sel := appconfig.Global().Selection()
 
@@ -39,12 +38,10 @@ func RefreshContext(ctx context.Context) error {
 		return err
 	}
 
-	// Update region from profile's default (if set)
-	if cfg.Region != "" {
+	if cfg.Region != "" && !appconfig.Global().IsMultiRegion() {
 		appconfig.Global().SetRegion(cfg.Region)
 	}
 
-	// Fetch and set account ID
 	accountID := FetchAccountID(ctx, cfg)
 	appconfig.Global().SetAccountID(accountID)
 
