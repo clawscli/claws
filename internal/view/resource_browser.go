@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"charm.land/bubbles/v2/spinner"
@@ -13,6 +14,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/clawscli/claws/internal/action"
+	"github.com/clawscli/claws/internal/aws"
+	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/log"
 	"github.com/clawscli/claws/internal/metrics"
@@ -208,15 +211,12 @@ type listResourcesResult struct {
 	err       error
 }
 
-// listResources executes the resource listing logic (shared by loadResources and reloadResources)
-func (r *ResourceBrowser) listResources(d dao.DAO) listResourcesResult {
-	// Use context with filter if field filter is set
-	listCtx := r.ctx
+func (r *ResourceBrowser) listResourcesWithContext(ctx context.Context, d dao.DAO) listResourcesResult {
+	listCtx := ctx
 	if r.fieldFilter != "" && r.fieldFilterValue != "" {
-		listCtx = dao.WithFilter(r.ctx, r.fieldFilter, r.fieldFilterValue)
+		listCtx = dao.WithFilter(ctx, r.fieldFilter, r.fieldFilterValue)
 	}
 
-	// Use paginated listing if supported
 	var resources []dao.Resource
 	var nextToken string
 	var err error
@@ -228,15 +228,17 @@ func (r *ResourceBrowser) listResources(d dao.DAO) listResourcesResult {
 	return listResourcesResult{resources: resources, nextToken: nextToken, err: err}
 }
 
+func (r *ResourceBrowser) listResources(d dao.DAO) listResourcesResult {
+	return r.listResourcesWithContext(r.ctx, d)
+}
+
 func (r *ResourceBrowser) loadResources() tea.Msg {
 	start := time.Now()
-	log.Debug("loading resources", "service", r.service, "resourceType", r.resourceType, "filter", r.fieldFilter, "filterValue", r.fieldFilterValue)
+	regions := config.Global().Regions()
+	isMultiRegion := len(regions) > 1
 
-	d, err := r.registry.GetDAO(r.ctx, r.service, r.resourceType)
-	if err != nil {
-		log.Error("failed to get DAO", "service", r.service, "resourceType", r.resourceType, "error", err)
-		return resourcesErrorMsg{err: err}
-	}
+	log.Debug("loading resources", "service", r.service, "resourceType", r.resourceType,
+		"regions", regions, "multiRegion", isMultiRegion)
 
 	renderer, err := r.registry.GetRenderer(r.service, r.resourceType)
 	if err != nil {
@@ -244,19 +246,93 @@ func (r *ResourceBrowser) loadResources() tea.Msg {
 		return resourcesErrorMsg{err: err}
 	}
 
-	result := r.listResources(d)
-	if result.err != nil {
-		log.Error("failed to list resources", "service", r.service, "resourceType", r.resourceType, "error", result.err, "duration", time.Since(start))
-		return resourcesErrorMsg{err: result.err}
+	if !isMultiRegion {
+		d, err := r.registry.GetDAO(r.ctx, r.service, r.resourceType)
+		if err != nil {
+			log.Error("failed to get DAO", "service", r.service, "resourceType", r.resourceType, "error", err)
+			return resourcesErrorMsg{err: err}
+		}
+
+		result := r.listResources(d)
+		if result.err != nil {
+			log.Error("failed to list resources", "error", result.err, "duration", time.Since(start))
+			return resourcesErrorMsg{err: result.err}
+		}
+		log.Debug("resources loaded", "count", len(result.resources), "duration", time.Since(start))
+
+		return resourcesLoadedMsg{
+			dao:          d,
+			renderer:     renderer,
+			resources:    result.resources,
+			nextToken:    result.nextToken,
+			hasMorePages: result.nextToken != "",
+		}
 	}
-	log.Debug("resources loaded", "service", r.service, "resourceType", r.resourceType, "count", len(result.resources), "hasMore", result.nextToken != "", "duration", time.Since(start))
+
+	type regionResult struct {
+		region    string
+		resources []dao.Resource
+		err       error
+	}
+
+	results := make(chan regionResult, len(regions))
+	var wg sync.WaitGroup
+
+	for _, region := range regions {
+		wg.Add(1)
+		go func(region string) {
+			defer wg.Done()
+
+			regionCtx := aws.WithRegionOverride(r.ctx, region)
+			d, err := r.registry.GetDAO(regionCtx, r.service, r.resourceType)
+			if err != nil {
+				results <- regionResult{region: region, err: err}
+				return
+			}
+
+			result := r.listResourcesWithContext(regionCtx, d)
+			if result.err != nil {
+				results <- regionResult{region: region, err: result.err}
+				return
+			}
+
+			wrapped := make([]dao.Resource, len(result.resources))
+			for i, res := range result.resources {
+				wrapped[i] = dao.WrapWithRegion(res, region)
+			}
+			results <- regionResult{region: region, resources: wrapped}
+		}(region)
+	}
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	var allResources []dao.Resource
+	var errors []string
+	for result := range results {
+		if result.err != nil {
+			errors = append(errors, fmt.Sprintf("%s: %v", result.region, result.err))
+			log.Warn("failed to fetch from region", "region", result.region, "error", result.err)
+		} else {
+			allResources = append(allResources, result.resources...)
+		}
+	}
+
+	if len(allResources) == 0 && len(errors) > 0 {
+		return resourcesErrorMsg{err: fmt.Errorf("all regions failed: %s", strings.Join(errors, "; "))}
+	}
+
+	log.Debug("multi-region resources loaded", "count", len(allResources),
+		"regions", len(regions), "errors", len(errors), "duration", time.Since(start))
 
 	return resourcesLoadedMsg{
-		dao:          d,
+		dao:          nil,
 		renderer:     renderer,
-		resources:    result.resources,
-		nextToken:    result.nextToken,
-		hasMorePages: result.nextToken != "",
+		resources:    allResources,
+		nextToken:    "",
+		hasMorePages: false,
 	}
 }
 
@@ -730,7 +806,6 @@ func (r *ResourceBrowser) getMetricSpec() *render.MetricSpec {
 	return nil
 }
 
-// buildTable rebuilds the table with current filtered resources
 func (r *ResourceBrowser) buildTable() {
 	if r.renderer == nil {
 		return
@@ -740,10 +815,16 @@ func (r *ResourceBrowser) buildTable() {
 	cols := r.renderer.Columns()
 
 	const markColWidth = 2
+	const regionColWidth = 14
 	metricsColWidth := metrics.ColumnWidth
 
 	effectiveMetricsEnabled := r.metricsEnabled && r.getMetricSpec() != nil
+	isMultiRegion := config.Global().IsMultiRegion()
+
 	numCols := len(cols) + 1
+	if isMultiRegion {
+		numCols++
+	}
 	if effectiveMetricsEnabled {
 		numCols++
 	}
@@ -754,6 +835,9 @@ func (r *ResourceBrowser) buildTable() {
 	for _, col := range cols {
 		totalColWidth += col.Width
 	}
+	if isMultiRegion {
+		totalColWidth += regionColWidth
+	}
 	if effectiveMetricsEnabled {
 		totalColWidth += metricsColWidth
 	}
@@ -763,16 +847,30 @@ func (r *ResourceBrowser) buildTable() {
 		extraWidth = 0
 	}
 
+	colIdx := 1
 	for i, col := range cols {
 		title := col.Name + r.getSortIndicator(i)
 		width := col.Width
-		if i == len(cols)-1 && !effectiveMetricsEnabled {
+		if i == len(cols)-1 && !isMultiRegion && !effectiveMetricsEnabled {
 			width += extraWidth
 		}
-		tableCols[i+1] = table.Column{
+		tableCols[colIdx] = table.Column{
 			Title: title,
 			Width: width,
 		}
+		colIdx++
+	}
+
+	if isMultiRegion {
+		width := regionColWidth
+		if !effectiveMetricsEnabled {
+			width += extraWidth
+		}
+		tableCols[colIdx] = table.Column{
+			Title: "REGION",
+			Width: width,
+		}
+		colIdx++
 	}
 
 	if effectiveMetricsEnabled {
@@ -781,7 +879,7 @@ func (r *ResourceBrowser) buildTable() {
 		if spec != nil {
 			header = spec.ColumnHeader
 		}
-		tableCols[len(cols)+1] = table.Column{
+		tableCols[colIdx] = table.Column{
 			Title: header,
 			Width: metricsColWidth + extraWidth,
 		}
@@ -797,14 +895,20 @@ func (r *ResourceBrowser) buildTable() {
 		fullRow := make(table.Row, numCols)
 		fullRow[0] = markIndicator
 		copy(fullRow[1:], row)
+
+		rowIdx := len(cols) + 1
+		if isMultiRegion {
+			fullRow[rowIdx] = dao.GetResourceRegion(res)
+			rowIdx++
+		}
 		if effectiveMetricsEnabled && r.metricsData != nil {
 			unit := ""
 			if r.metricsData.Spec != nil {
 				unit = r.metricsData.Spec.Unit
 			}
-			fullRow[len(cols)+1] = metrics.RenderSparkline(r.metricsData.Get(res.GetID()), unit)
+			fullRow[rowIdx] = metrics.RenderSparkline(r.metricsData.Get(res.GetID()), unit)
 		} else if effectiveMetricsEnabled {
-			fullRow[len(cols)+1] = metrics.RenderSparkline(nil, "")
+			fullRow[rowIdx] = metrics.RenderSparkline(nil, "")
 		}
 		rows[i] = fullRow
 	}

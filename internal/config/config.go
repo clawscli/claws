@@ -126,7 +126,7 @@ func (s ProfileSelection) ID() string {
 // Config holds global application configuration
 type Config struct {
 	mu        sync.RWMutex
-	region    string
+	regions   []string
 	selection ProfileSelection
 	accountID string
 	warnings  []string
@@ -146,18 +146,42 @@ func Global() *Config {
 	return global
 }
 
-// Region returns the current region
+// Region returns the first selected region (backward compatible)
 func (c *Config) Region() string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.region
+	if len(c.regions) == 0 {
+		return ""
+	}
+	return c.regions[0]
 }
 
-// SetRegion sets the current region
+// Regions returns all selected regions
+func (c *Config) Regions() []string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.regions
+}
+
+// SetRegion sets a single region
 func (c *Config) SetRegion(region string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.region = region
+	c.regions = []string{region}
+}
+
+// SetRegions sets multiple regions
+func (c *Config) SetRegions(regions []string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.regions = regions
+}
+
+// IsMultiRegion returns true if multiple regions are selected
+func (c *Config) IsMultiRegion() bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return len(c.regions) > 1
 }
 
 // Selection returns the current profile selection

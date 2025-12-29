@@ -19,9 +19,12 @@ func TestProfileChangedMsg(t *testing.T) {
 }
 
 func TestRegionChangedMsg(t *testing.T) {
-	msg := RegionChangedMsg{Region: "us-west-2"}
+	msg := RegionChangedMsg{Regions: []string{"us-west-2", "ap-northeast-1"}}
 
-	if msg.Region != "us-west-2" {
-		t.Errorf("Region = %q, want %q", msg.Region, "us-west-2")
+	if len(msg.Regions) != 2 {
+		t.Errorf("len(Regions) = %d, want 2", len(msg.Regions))
+	}
+	if msg.Regions[0] != "us-west-2" {
+		t.Errorf("Regions[0] = %q, want %q", msg.Regions[0], "us-west-2")
 	}
 }

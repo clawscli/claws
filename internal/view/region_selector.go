@@ -16,26 +16,24 @@ import (
 	"github.com/clawscli/claws/internal/ui"
 )
 
-// regionOrder defines geographic ordering for region prefixes
 var regionOrder = map[string]int{
-	"us":      0, // US
-	"ca":      1, // Canada
-	"sa":      2, // South America
-	"eu":      3, // Europe
-	"me":      4, // Middle East
-	"af":      5, // Africa
-	"ap":      6, // Asia Pacific
-	"il":      7, // Israel
-	"cn":      8, // China
+	"us":      0,
+	"ca":      1,
+	"sa":      2,
+	"eu":      3,
+	"me":      4,
+	"af":      5,
+	"ap":      6,
+	"il":      7,
+	"cn":      8,
 	"default": 9,
 }
 
-// regionSelectorStyles holds cached styles
 type regionSelectorStyles struct {
 	title        lipgloss.Style
 	item         lipgloss.Style
 	itemSelected lipgloss.Style
-	itemCurrent  lipgloss.Style
+	itemChecked  lipgloss.Style
 	filter       lipgloss.Style
 }
 
@@ -45,12 +43,11 @@ func newRegionSelectorStyles() regionSelectorStyles {
 		title:        lipgloss.NewStyle().Background(t.TableHeader).Foreground(t.TableHeaderText).Padding(0, 1),
 		item:         lipgloss.NewStyle().PaddingLeft(2),
 		itemSelected: lipgloss.NewStyle().PaddingLeft(2).Background(t.Selection).Foreground(t.SelectionText),
-		itemCurrent:  lipgloss.NewStyle().PaddingLeft(2).Foreground(t.Success),
+		itemChecked:  lipgloss.NewStyle().PaddingLeft(2).Foreground(t.Success),
 		filter:       lipgloss.NewStyle().Foreground(t.Accent),
 	}
 }
 
-// RegionSelector allows switching AWS regions
 type RegionSelector struct {
 	ctx     context.Context
 	regions []string
@@ -58,14 +55,11 @@ type RegionSelector struct {
 	width   int
 	height  int
 
-	// Current region (for highlighting)
-	currentRegion string
+	selected map[string]bool
 
-	// Viewport for scrolling
 	viewport viewport.Model
 	ready    bool
 
-	// Filter
 	filterInput  textinput.Model
 	filterActive bool
 	filterText   string
@@ -74,22 +68,25 @@ type RegionSelector struct {
 	styles regionSelectorStyles
 }
 
-// NewRegionSelector creates a new region selector
 func NewRegionSelector(ctx context.Context) *RegionSelector {
 	ti := textinput.New()
 	ti.Placeholder = "filter..."
 	ti.Prompt = "/"
 	ti.CharLimit = 50
 
+	selected := make(map[string]bool)
+	for _, r := range config.Global().Regions() {
+		selected[r] = true
+	}
+
 	return &RegionSelector{
-		ctx:           ctx,
-		currentRegion: config.Global().Region(),
-		filterInput:   ti,
-		styles:        newRegionSelectorStyles(),
+		ctx:         ctx,
+		selected:    selected,
+		filterInput: ti,
+		styles:      newRegionSelectorStyles(),
 	}
 }
 
-// Init implements tea.Model
 func (r *RegionSelector) Init() tea.Cmd {
 	return r.loadRegions
 }
@@ -106,10 +103,8 @@ type regionsLoadedMsg struct {
 	regions []string
 }
 
-// sortRegions sorts regions by geographic area then alphabetically
 func sortRegions(regions []string) {
 	sort.Slice(regions, func(i, j int) bool {
-		// Get prefix (e.g., "us" from "us-east-1")
 		pi := strings.Split(regions[i], "-")[0]
 		pj := strings.Split(regions[j], "-")[0]
 
@@ -129,7 +124,6 @@ func sortRegions(regions []string) {
 	})
 }
 
-// Update implements tea.Model
 func (r *RegionSelector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case regionsLoadedMsg:
@@ -137,9 +131,8 @@ func (r *RegionSelector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		sortRegions(r.regions)
 		r.applyFilter()
 		r.clampCursor()
-		// Set cursor to current region if found
 		for i, region := range r.filtered {
-			if region == r.currentRegion {
+			if r.selected[region] {
 				r.cursor = i
 				break
 			}
@@ -153,7 +146,6 @@ func (r *RegionSelector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return r, cmd
 
 	case tea.MouseMotionMsg:
-		// Hover to select
 		if idx := r.getItemAtPosition(msg.Y); idx >= 0 && idx != r.cursor {
 			r.cursor = idx
 			r.updateViewport()
@@ -161,17 +153,16 @@ func (r *RegionSelector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return r, nil
 
 	case tea.MouseClickMsg:
-		// Click to select and apply
 		if msg.Button == tea.MouseLeft {
 			if idx := r.getItemAtPosition(msg.Y); idx >= 0 {
 				r.cursor = idx
-				return r.selectRegion()
+				r.toggleCurrent()
+				r.updateViewport()
 			}
 		}
 		return r, nil
 
 	case tea.KeyPressMsg:
-		// Handle filter input mode
 		if r.filterActive {
 			switch msg.String() {
 			case "esc":
@@ -221,8 +212,24 @@ func (r *RegionSelector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				r.updateViewport()
 			}
 			return r, nil
+		case " ":
+			r.toggleCurrent()
+			r.updateViewport()
+			return r, nil
+		case "a":
+			for _, region := range r.filtered {
+				r.selected[region] = true
+			}
+			r.updateViewport()
+			return r, nil
+		case "n":
+			for _, region := range r.filtered {
+				delete(r.selected, region)
+			}
+			r.updateViewport()
+			return r, nil
 		case "enter", "l":
-			return r.selectRegion()
+			return r.applySelection()
 		}
 	}
 
@@ -231,15 +238,31 @@ func (r *RegionSelector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return r, cmd
 }
 
-func (r *RegionSelector) selectRegion() (tea.Model, tea.Cmd) {
+func (r *RegionSelector) toggleCurrent() {
 	if r.cursor >= 0 && r.cursor < len(r.filtered) {
 		region := r.filtered[r.cursor]
-		config.Global().SetRegion(region)
-		return r, func() tea.Msg {
-			return navmsg.RegionChangedMsg{Region: region}
+		if r.selected[region] {
+			delete(r.selected, region)
+		} else {
+			r.selected[region] = true
 		}
 	}
-	return r, nil
+}
+
+func (r *RegionSelector) applySelection() (tea.Model, tea.Cmd) {
+	var regions []string
+	for _, region := range r.regions {
+		if r.selected[region] {
+			regions = append(regions, region)
+		}
+	}
+	if len(regions) == 0 {
+		return r, nil
+	}
+	config.Global().SetRegions(regions)
+	return r, func() tea.Msg {
+		return navmsg.RegionChangedMsg{Regions: regions}
+	}
 }
 
 func (r *RegionSelector) applyFilter() {
@@ -273,7 +296,6 @@ func (r *RegionSelector) updateViewport() {
 	}
 	r.viewport.SetContent(r.renderContent())
 
-	// Scroll to keep cursor visible
 	if r.cursor >= 0 {
 		viewportHeight := r.viewport.Height()
 		if viewportHeight > 0 {
@@ -291,30 +313,30 @@ func (r *RegionSelector) renderContent() string {
 
 	for i, region := range r.filtered {
 		style := r.styles.item
+		isChecked := r.selected[region]
+
 		if i == r.cursor {
 			style = r.styles.itemSelected
-		} else if region == r.currentRegion {
-			style = r.styles.itemCurrent
+		} else if isChecked {
+			style = r.styles.itemChecked
 		}
 
-		prefix := "  "
-		if region == r.currentRegion {
-			prefix = "• "
+		checkbox := "☐ "
+		if isChecked {
+			checkbox = "☑ "
 		}
 
-		b.WriteString(style.Render(prefix + region))
+		b.WriteString(style.Render(checkbox + region))
 		b.WriteString("\n")
 	}
 
 	return b.String()
 }
 
-// getItemAtPosition returns the region index at given Y position, or -1 if none
 func (r *RegionSelector) getItemAtPosition(y int) int {
 	if !r.ready {
 		return -1
 	}
-	// Layout: title (1) + filter? (1) + viewport content
 	headerHeight := 1
 	if r.filterActive || r.filterText != "" {
 		headerHeight++
@@ -327,14 +349,11 @@ func (r *RegionSelector) getItemAtPosition(y int) int {
 	return -1
 }
 
-// ViewString returns the view content as a string
 func (r *RegionSelector) ViewString() string {
 	s := r.styles
 
-	// Title
-	title := s.title.Render("Select Region")
+	title := s.title.Render("Select Regions")
 
-	// Filter
 	var filterView string
 	if r.filterActive {
 		filterView = r.styles.filter.Render(r.filterInput.View()) + "\n"
@@ -349,17 +368,15 @@ func (r *RegionSelector) ViewString() string {
 	return title + "\n" + filterView + r.viewport.View()
 }
 
-// View implements tea.Model
 func (r *RegionSelector) View() tea.View {
 	return tea.NewView(r.ViewString())
 }
 
-// SetSize implements View
 func (r *RegionSelector) SetSize(width, height int) tea.Cmd {
 	r.width = width
 	r.height = height
 
-	viewportHeight := height - 2 // title + some padding
+	viewportHeight := height - 2
 	if r.filterActive || r.filterText != "" {
 		viewportHeight--
 	}
@@ -375,15 +392,14 @@ func (r *RegionSelector) SetSize(width, height int) tea.Cmd {
 	return nil
 }
 
-// StatusLine implements View
 func (r *RegionSelector) StatusLine() string {
+	count := len(r.selected)
 	if r.filterActive {
 		return "Type to filter • Enter confirm • Esc cancel"
 	}
-	return "Select region • / filter • Enter select • Esc cancel"
+	return "Space:toggle • a:all • n:none • Enter:apply • " + strings.Repeat("●", count) + " selected"
 }
 
-// HasActiveInput implements InputCapture
 func (r *RegionSelector) HasActiveInput() bool {
 	return r.filterActive
 }

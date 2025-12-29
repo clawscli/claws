@@ -290,7 +290,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, nil
 
 	case navmsg.RegionChangedMsg:
-		log.Info("region changed", "region", msg.Region)
+		log.Info("regions changed", "regions", msg.Regions)
 		// Pop views until we find a refreshable one (ResourceBrowser or ServiceBrowser)
 		for len(a.viewStack) > 0 {
 			a.currentView = a.viewStack[len(a.viewStack)-1]

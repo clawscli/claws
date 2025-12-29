@@ -13,5 +13,5 @@ type ProfileChangedMsg struct {
 // RegionChangedMsg is sent when region is changed.
 // Handled by app.go to refresh views with new region.
 type RegionChangedMsg struct {
-	Region string
+	Regions []string
 }

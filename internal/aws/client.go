@@ -12,12 +12,31 @@ import (
 // CostExplorerRegion is the only region where Cost Explorer API is available.
 const CostExplorerRegion = "us-east-1"
 
+type regionOverrideKey struct{}
+
+// WithRegionOverride returns a context with region override for multi-region queries
+func WithRegionOverride(ctx context.Context, region string) context.Context {
+	return context.WithValue(ctx, regionOverrideKey{}, region)
+}
+
+// GetRegionFromContext returns region from context override, or empty string if not set
+func GetRegionFromContext(ctx context.Context) string {
+	if r, ok := ctx.Value(regionOverrideKey{}).(string); ok {
+		return r
+	}
+	return ""
+}
+
 // NewConfig creates a new AWS config with the application's region and profile settings.
 // This is the preferred way to create AWS configs in DAOs.
 func NewConfig(ctx context.Context) (aws.Config, error) {
 	opts := SelectionLoadOptions(appconfig.Global().Selection())
 
-	if region := appconfig.Global().Region(); region != "" {
+	region := GetRegionFromContext(ctx)
+	if region == "" {
+		region = appconfig.Global().Region()
+	}
+	if region != "" {
 		opts = append(opts, config.WithRegion(region))
 	}
 
