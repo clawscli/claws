@@ -27,8 +27,9 @@ import (
 // ResourceBrowser displays resources of a specific type
 
 const (
-	logTokenMaxLen     = 20
-	metricsLoadTimeout = 30 * time.Second
+	logTokenMaxLen          = 20
+	metricsLoadTimeout      = 30 * time.Second
+	multiRegionFetchTimeout = 30 * time.Second
 )
 
 // resourceBrowserStyles holds cached lipgloss styles for performance
@@ -250,6 +251,9 @@ func (r *ResourceBrowser) fetchMultiRegionResources(regions []string, existingTo
 		err       error
 	}
 
+	ctx, cancel := context.WithTimeout(r.ctx, multiRegionFetchTimeout)
+	defer cancel()
+
 	results := make(chan regionResult, len(regions))
 	var wg sync.WaitGroup
 
@@ -258,7 +262,7 @@ func (r *ResourceBrowser) fetchMultiRegionResources(regions []string, existingTo
 		go func(region string) {
 			defer wg.Done()
 
-			regionCtx := aws.WithRegionOverride(r.ctx, region)
+			regionCtx := aws.WithRegionOverride(ctx, region)
 			d, err := r.registry.GetDAO(regionCtx, r.service, r.resourceType)
 			if err != nil {
 				results <- regionResult{region: region, err: err}
