@@ -781,8 +781,10 @@ func (r *ResourceBrowser) buildTable() {
 		fullRow := make(table.Row, numCols)
 		fullRow[0] = markIndicator
 		copy(fullRow[1:], row)
-		if effectiveMetricsEnabled {
+		if effectiveMetricsEnabled && r.metricsData != nil {
 			fullRow[len(cols)+1] = metrics.RenderSparkline(r.metricsData.Get(res.GetID()))
+		} else if effectiveMetricsEnabled {
+			fullRow[len(cols)+1] = metrics.RenderSparkline(nil)
 		}
 		rows[i] = fullRow
 	}

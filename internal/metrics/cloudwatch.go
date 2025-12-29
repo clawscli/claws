@@ -1,3 +1,4 @@
+// Package metrics provides CloudWatch metrics fetching and sparkline rendering.
 package metrics
 
 import (
@@ -42,6 +43,10 @@ func (f *Fetcher) Fetch(ctx context.Context, resourceIDs []string, spec *render.
 	data := NewMetricData(spec)
 
 	for i := 0; i < len(queries); i += maxQueriesPerRequest {
+		if ctx.Err() != nil {
+			return data, ctx.Err()
+		}
+
 		end := i + maxQueriesPerRequest
 		if end > len(queries) {
 			end = len(queries)
