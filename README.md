@@ -25,7 +25,7 @@ A terminal UI for AWS resource management 👮
 - **Multi-service support** - EC2, S3, IAM, RDS, Lambda, ECS, and 65+ more services (164 resources total)
 - **Resource actions** - Start/stop instances, delete resources, tail logs
 - **Cross-resource navigation** - Jump from VPC to subnets, from Lambda to CloudWatch Logs
-- **Profile & region switching** - Switch AWS profiles (`P`) and regions (`R`) on the fly, browse profiles with `:profile`
+- **Profile & region switching** - Switch AWS profiles (`P`) and regions (`R`) on the fly, multi-region selection supported
 - **Command mode** - Quick navigation with `:ec2/instances` syntax
 - **Filtering** - Fuzzy search with `/`, tag filtering with `:tag Env=prod`
 - **Column sorting** - Sort by any column with `:sort <col>` command
@@ -155,7 +155,7 @@ claws -l debug.log
 | `N` | Load next page (pagination) |
 | `M` | Toggle inline metrics (EC2, RDS, Lambda) |
 | `Ctrl+r` | Refresh (including metrics) |
-| `R` | Switch AWS region |
+| `R` | Select AWS region(s) (multi-select supported) |
 | `P` | Switch AWS profile |
 | `?` | Show help |
 | `Esc` | Go back |
@@ -183,6 +183,20 @@ claws -l debug.log
 | `l` | View CloudWatch Logs |
 | `o` | View Outputs / Operations |
 | `i` | View Images / Indexes |
+
+### Region Selector (`R` key)
+
+| Key | Action |
+|-----|--------|
+| `j` / `k` | Navigate up/down |
+| `Space` | Toggle region selection |
+| `a` | Select all regions |
+| `n` | Deselect all regions |
+| `/` | Filter regions |
+| `Enter` | Apply selection |
+| `Esc` | Cancel |
+
+Selected regions are queried in parallel; resources display with Region column.
 
 ### Commands
 

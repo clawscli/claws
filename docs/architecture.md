@@ -173,6 +173,82 @@ type Navigation struct {
 }
 ```
 
+## Multi-Region Support
+
+claws supports querying multiple AWS regions simultaneously via the `R` key.
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    View Layer                               │
+│  ResourceBrowser detects multi-region, spawns goroutines    │
+├─────────────────────────────────────────────────────────────┤
+│                   Registry Layer                            │
+│  GetDAO() auto-wraps with RegionalDAOWrapper                │
+├─────────────────────────────────────────────────────────────┤
+│                   Wrapper Layer                             │
+│  RegionalDAOWrapper / PaginatedDAOWrapper                   │
+│  - Wraps resources with region metadata                     │
+│  - Preserves concrete types for rendering                   │
+├─────────────────────────────────────────────────────────────┤
+│                    DAO Layer                                │
+│  164 custom DAOs - unmodified, region-agnostic              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Key Components
+
+**RegionalDAOWrapper** (`internal/registry/wrapper.go`):
+- Automatically wraps all DAOs when region override is present in context
+- `dao.WrapWithRegion(resource, region)` adds region metadata
+- `dao.UnwrapResource(resource)` retrieves original for type assertions
+- Backward compatible: no wrapping when single-region mode
+
+**Parallel Fetching** (`internal/view/resource_browser.go`):
+```go
+func (r *ResourceBrowser) fetchMultiRegionResources(regions []string, ...) {
+    results := make(chan regionResult, len(regions))
+    for _, region := range regions {
+        go func(region string) {
+            regionCtx := aws.WithRegionOverride(r.ctx, region)
+            d, _ := r.registry.GetDAO(regionCtx, service, resourceType)
+            resources, _ := d.List(regionCtx)
+            results <- regionResult{region, resources, nil}
+        }(region)
+    }
+    // Collect results, handle partial failures
+}
+```
+
+**Double-Wrap Prevention** (`internal/registry/registry.go`):
+```go
+// GetDAO checks if delegate is already wrapped
+if _, ok := delegate.(*RegionalDAOWrapper); ok {
+    return delegate, nil
+}
+if _, ok := delegate.(*PaginatedDAOWrapper); ok {
+    return delegate, nil
+}
+```
+
+### Resource Flow
+
+1. User selects multiple regions via `R` key
+2. `ResourceBrowser.fetchMultiRegionResources()` spawns goroutines per region
+3. Each goroutine: `aws.WithRegionOverride(ctx, region)` → `GetDAO()` → `List()`
+4. `GetDAO()` auto-wraps DAO with `RegionalDAOWrapper`
+5. Wrapper calls underlying DAO, wraps each resource with region
+6. Results collected, merged, displayed with Region column
+7. Before rendering/actions, `dao.UnwrapResource()` retrieves concrete type
+
+### Partial Failure Handling
+
+If some regions fail (access denied, timeout, etc.):
+- Successful regions display normally
+- Errors logged at WARN level
+- User sees partial results without disruption
+
 ## AWS Helper Functions
 
 The `internal/aws/` package provides essential helpers:
