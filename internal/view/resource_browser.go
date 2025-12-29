@@ -338,27 +338,94 @@ func (r *ResourceBrowser) loadResources() tea.Msg {
 
 // reloadResources reloads resources without changing loading state (for auto-reload)
 func (r *ResourceBrowser) reloadResources() tea.Msg {
-	// Use existing DAO if available
-	d := r.dao
-	if d == nil {
-		var err error
-		d, err = r.registry.GetDAO(r.ctx, r.service, r.resourceType)
-		if err != nil {
-			return resourcesErrorMsg{err: err}
+	regions := config.Global().Regions()
+	isMultiRegion := len(regions) > 1
+
+	if !isMultiRegion {
+		d := r.dao
+		if d == nil {
+			var err error
+			d, err = r.registry.GetDAO(r.ctx, r.service, r.resourceType)
+			if err != nil {
+				return resourcesErrorMsg{err: err}
+			}
+		}
+
+		result := r.listResources(d)
+		if result.err != nil {
+			return resourcesErrorMsg{err: result.err}
+		}
+
+		return resourcesLoadedMsg{
+			dao:          d,
+			renderer:     r.renderer,
+			resources:    result.resources,
+			nextToken:    result.nextToken,
+			hasMorePages: result.nextToken != "",
 		}
 	}
 
-	result := r.listResources(d)
-	if result.err != nil {
-		return resourcesErrorMsg{err: result.err}
+	type regionResult struct {
+		region    string
+		resources []dao.Resource
+		err       error
+	}
+
+	results := make(chan regionResult, len(regions))
+	var wg sync.WaitGroup
+
+	for _, region := range regions {
+		wg.Add(1)
+		go func(region string) {
+			defer wg.Done()
+
+			regionCtx := aws.WithRegionOverride(r.ctx, region)
+			d, err := r.registry.GetDAO(regionCtx, r.service, r.resourceType)
+			if err != nil {
+				results <- regionResult{region: region, err: err}
+				return
+			}
+
+			result := r.listResourcesWithContext(regionCtx, d)
+			if result.err != nil {
+				results <- regionResult{region: region, err: result.err}
+				return
+			}
+
+			wrapped := make([]dao.Resource, len(result.resources))
+			for i, res := range result.resources {
+				wrapped[i] = dao.WrapWithRegion(res, region)
+			}
+			results <- regionResult{region: region, resources: wrapped}
+		}(region)
+	}
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	var allResources []dao.Resource
+	var errors []string
+	for result := range results {
+		if result.err != nil {
+			errors = append(errors, fmt.Sprintf("%s: %v", result.region, result.err))
+			log.Warn("reload: failed to fetch from region", "region", result.region, "error", result.err)
+		} else {
+			allResources = append(allResources, result.resources...)
+		}
+	}
+
+	if len(allResources) == 0 && len(errors) > 0 {
+		return resourcesErrorMsg{err: fmt.Errorf("all regions failed: %s", strings.Join(errors, "; "))}
 	}
 
 	return resourcesLoadedMsg{
-		dao:          d,
+		dao:          nil,
 		renderer:     r.renderer,
-		resources:    result.resources,
-		nextToken:    result.nextToken,
-		hasMorePages: result.nextToken != "",
+		resources:    allResources,
+		nextToken:    "",
+		hasMorePages: false,
 	}
 }
 
