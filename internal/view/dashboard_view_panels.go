@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/ui"
 )

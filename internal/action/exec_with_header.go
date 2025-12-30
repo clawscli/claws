@@ -8,11 +8,12 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"golang.org/x/term"
+
 	"github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/ui"
-	"golang.org/x/term"
 )
 
 func setAWSEnv(cmd *exec.Cmd, region string) {

@@ -7,6 +7,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/backup"
 	"github.com/aws/aws-sdk-go-v2/service/backup/types"
+
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/render"
@@ -282,9 +283,7 @@ func (r *RecoveryPointResource) IamRoleArn() string {
 
 // BackupPlanId returns the backup plan ID (from calculated lifecycle)
 func (r *RecoveryPointResource) BackupPlanId() string {
-	if r.Detail != nil && r.Detail.CalculatedLifecycle != nil {
-		// Not directly available, but can be inferred
-	}
+	// CalculatedLifecycle doesn't contain BackupPlanId; this info is not directly available
 	return ""
 }
 

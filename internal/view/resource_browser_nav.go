@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	tea "charm.land/bubbletea/v2"
+
 	"github.com/clawscli/claws/internal/action"
 	"github.com/clawscli/claws/internal/dao"
 )

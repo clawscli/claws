@@ -6,6 +6,7 @@ import (
 	"os"
 
 	tea "charm.land/bubbletea/v2"
+
 	"github.com/clawscli/claws/internal/app"
 	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/log"
@@ -333,12 +334,12 @@ func main() {
 		cfg.UseEnvOnly()
 	} else if opts.profile != "" {
 		cfg.UseProfile(opts.profile)
-		os.Setenv("AWS_PROFILE", opts.profile)
+		_ = os.Setenv("AWS_PROFILE", opts.profile)
 	}
 	// else: SDKDefault is the zero value, no action needed
 	if opts.region != "" {
 		cfg.SetRegion(opts.region)
-		os.Setenv("AWS_REGION", opts.region)
+		_ = os.Setenv("AWS_REGION", opts.region)
 	}
 
 	// Enable logging if log file specified

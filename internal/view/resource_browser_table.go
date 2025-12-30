@@ -3,6 +3,7 @@ package view
 import (
 	"charm.land/bubbles/v2/table"
 	"charm.land/lipgloss/v2"
+
 	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/metrics"

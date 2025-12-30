@@ -123,7 +123,7 @@ func (r *ImageRenderer) RenderDetail(resource dao.Resource) string {
 		// Show severity breakdown if available
 		if img.Image.ImageScanFindingsSummary != nil && img.Image.ImageScanFindingsSummary.FindingSeverityCounts != nil {
 			for severity, count := range img.Image.ImageScanFindingsSummary.FindingSeverityCounts {
-				d.Field(string(severity), fmt.Sprintf("%d", count))
+				d.Field(severity, fmt.Sprintf("%d", count))
 			}
 		}
 	} else {

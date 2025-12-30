@@ -2,6 +2,7 @@ package view
 
 import (
 	tea "charm.land/bubbletea/v2"
+
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/log"
 )

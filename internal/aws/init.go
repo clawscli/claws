@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/aws/aws-sdk-go-v2/config"
+
 	appconfig "github.com/clawscli/claws/internal/config"
 )
 

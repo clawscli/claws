@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/rds"
+
 	rdsClient "github.com/clawscli/claws/custom/rds"
 	"github.com/clawscli/claws/internal/action"
 	appaws "github.com/clawscli/claws/internal/aws"

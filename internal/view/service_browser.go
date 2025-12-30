@@ -8,6 +8,7 @@ import (
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+
 	"github.com/clawscli/claws/internal/registry"
 	"github.com/clawscli/claws/internal/ui"
 )

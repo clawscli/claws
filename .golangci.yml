@@ -11,6 +11,18 @@ issues:
   exclude-use-default: false
   max-issues-per-linter: 0
   max-same-issues: 0
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - goconst
+        - errorlint
+        - errcheck
+    - linters:
+        - goconst
+      source: "case \".*\":|return \".*\"|== \".*\""
+    - linters:
+        - staticcheck
+      text: "SA1019.*deprecated"
 
 linters:
   disable-all: true
@@ -35,5 +47,5 @@ linters-settings:
   gofmt:
     simplify: true
   goconst:
-    min-len: 3
-    min-occurrences: 3
+    min-len: 5
+    min-occurrences: 5

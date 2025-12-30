@@ -4,11 +4,12 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/mattn/go-runewidth"
+
 	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/registry"
 	"github.com/clawscli/claws/internal/render"
 	"github.com/clawscli/claws/internal/ui"
-	"github.com/mattn/go-runewidth"
 )
 
 const (

@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	tea "charm.land/bubbletea/v2"
+
 	"github.com/clawscli/claws/custom/cloudwatch/alarms"
 	"github.com/clawscli/claws/custom/costexplorer/anomalies"
 	"github.com/clawscli/claws/custom/costexplorer/costs"

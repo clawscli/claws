@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
+
 	appaws "github.com/clawscli/claws/internal/aws"
 )
 

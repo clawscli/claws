@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+
 	"github.com/clawscli/claws/internal/registry"
 	"github.com/clawscli/claws/internal/view"
 )
