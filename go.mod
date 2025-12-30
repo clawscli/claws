@@ -60,6 +60,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/organizations v1.50.0
 	github.com/aws/aws-sdk-go-v2/service/rds v1.113.1
 	github.com/aws/aws-sdk-go-v2/service/redshift v1.61.4
+	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.31.5
 	github.com/aws/aws-sdk-go-v2/service/route53 v1.62.0
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.93.2
 	github.com/aws/aws-sdk-go-v2/service/s3vectors v1.6.1
@@ -102,7 +103,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.11.16 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.16 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.16 // indirect
-	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.31.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/signin v1.0.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.30.7 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.12 // indirect
