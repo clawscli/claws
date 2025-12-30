@@ -25,7 +25,7 @@ import (
 
 const (
 	tagSearchTimeout = 30 * time.Second
-	tagSearchLimit   = 100
+	tagSearchLimit   = 100 // AWS Resource Groups Tagging API max per request
 )
 
 type taggedARN struct {
@@ -440,6 +440,7 @@ func (v *TagSearchView) getResourceIDForGet(arn *aws.ARN) string {
 	case "bedrock-agentcore":
 		// ARN: arn:aws:bedrock-agentcore:region:account:runtime/RUNTIME_ID/runtime-endpoint/DEFAULT
 		// Extract just the runtime ID (first segment) for GetAgentRuntime API
+		// idx > 0 (not >= 0): if "/" is at position 0, the prefix would be empty string which is invalid
 		if idx := strings.Index(arn.ResourceID, "/"); idx > 0 {
 			return arn.ResourceID[:idx]
 		}
