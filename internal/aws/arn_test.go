@@ -409,7 +409,6 @@ func TestARN_CanNavigate(t *testing.T) {
 func TestParseARN_NilSafe(t *testing.T) {
 	var nilARN *ARN
 
-	// All methods should be safe to call on nil
 	if nilARN.ShortID() != "" {
 		t.Error("ShortID on nil should return empty string")
 	}
@@ -423,5 +422,121 @@ func TestParseARN_NilSafe(t *testing.T) {
 	s, r := nilARN.ServiceResourceType()
 	if s != "" || r != "" {
 		t.Error("ServiceResourceType on nil should return empty strings")
+	}
+
+	k, v := nilARN.ExtractParentFilter()
+	if k != "" || v != "" {
+		t.Error("ExtractParentFilter on nil should return empty strings")
+	}
+}
+
+func TestARN_ExtractParentFilter(t *testing.T) {
+	tests := []struct {
+		name      string
+		arn       string
+		wantKey   string
+		wantValue string
+	}{
+		{
+			name:      "GuardDuty finding",
+			arn:       "arn:aws:guardduty:us-east-1:123456789012:detector/abc123def456/finding/xyz789",
+			wantKey:   "DetectorId",
+			wantValue: "abc123def456",
+		},
+		{
+			name:      "Glue table",
+			arn:       "arn:aws:glue:us-east-1:123456789012:table/my-database/my-table",
+			wantKey:   "DatabaseName",
+			wantValue: "my-database",
+		},
+		{
+			name:      "Glue job",
+			arn:       "arn:aws:glue:us-east-1:123456789012:job/my-job-name",
+			wantKey:   "JobName",
+			wantValue: "my-job-name",
+		},
+		{
+			name:      "Transfer user",
+			arn:       "arn:aws:transfer:us-east-1:123456789012:user/s-abc123/myuser",
+			wantKey:   "ServerId",
+			wantValue: "s-abc123",
+		},
+		{
+			name:      "CodeBuild build",
+			arn:       "arn:aws:codebuild:us-east-1:123456789012:build/my-project:abc-123-def",
+			wantKey:   "ProjectName",
+			wantValue: "my-project",
+		},
+		{
+			name:      "EMR cluster",
+			arn:       "arn:aws:elasticmapreduce:us-east-1:123456789012:cluster/j-ABC123DEF",
+			wantKey:   "ClusterId",
+			wantValue: "j-ABC123DEF",
+		},
+		{
+			name:      "ECR repository",
+			arn:       "arn:aws:ecr:us-east-1:123456789012:repository/my-repo",
+			wantKey:   "RepositoryName",
+			wantValue: "my-repo",
+		},
+		{
+			name:      "Cognito user pool",
+			arn:       "arn:aws:cognito-idp:us-east-1:123456789012:userpool/us-east-1_ABC123",
+			wantKey:   "UserPoolId",
+			wantValue: "us-east-1_ABC123",
+		},
+		{
+			name:      "CodePipeline pipeline",
+			arn:       "arn:aws:codepipeline:us-east-1:123456789012:pipeline/my-pipeline",
+			wantKey:   "PipelineName",
+			wantValue: "my-pipeline",
+		},
+		{
+			name:      "Backup plan",
+			arn:       "arn:aws:backup:us-east-1:123456789012:backup-plan/abc-123-def",
+			wantKey:   "BackupPlanId",
+			wantValue: "abc-123-def",
+		},
+		{
+			name:      "EC2 instance - no parent filter needed",
+			arn:       "arn:aws:ec2:us-east-1:123456789012:instance/i-1234567890abcdef0",
+			wantKey:   "",
+			wantValue: "",
+		},
+		{
+			name:      "Lambda function - no parent filter needed",
+			arn:       "arn:aws:lambda:us-east-1:123456789012:function:my-function",
+			wantKey:   "",
+			wantValue: "",
+		},
+		{
+			name:      "S3 bucket - no parent filter needed",
+			arn:       "arn:aws:s3:::my-bucket",
+			wantKey:   "",
+			wantValue: "",
+		},
+		{
+			name:      "Backup recovery point - cannot extract vault",
+			arn:       "arn:aws:backup:us-east-1:123456789012:recovery-point:rp-abc123",
+			wantKey:   "",
+			wantValue: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parsed := ParseARN(tt.arn)
+			if parsed == nil {
+				t.Fatalf("ParseARN() returned nil")
+			}
+
+			gotKey, gotValue := parsed.ExtractParentFilter()
+			if gotKey != tt.wantKey {
+				t.Errorf("ExtractParentFilter() key = %q, want %q", gotKey, tt.wantKey)
+			}
+			if gotValue != tt.wantValue {
+				t.Errorf("ExtractParentFilter() value = %q, want %q", gotValue, tt.wantValue)
+			}
+		})
 	}
 }

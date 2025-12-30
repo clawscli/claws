@@ -283,6 +283,53 @@ func TestRegionalDAOWrapperGetPassesRawID(t *testing.T) {
 	}
 }
 
+func TestRegionalDAOWrapperPreservesARN(t *testing.T) {
+	mockDAO := NewMockDAO()
+	ctx := aws.WithRegionOverride(context.Background(), "us-east-1")
+	wrapper := NewRegionalDAOWrapper(ctx, mockDAO).(*RegionalDAOWrapper)
+
+	tests := []struct {
+		name     string
+		inputID  string
+		expected string
+	}{
+		{
+			name:     "ARN without region prefix passes through unchanged",
+			inputID:  "arn:aws:states:us-east-1:123456789012:stateMachine:my-state-machine",
+			expected: "arn:aws:states:us-east-1:123456789012:stateMachine:my-state-machine",
+		},
+		{
+			name:     "region-prefixed ARN gets stripped correctly",
+			inputID:  "us-east-1:arn:aws:states:us-east-1:123456789012:stateMachine:my-state-machine",
+			expected: "arn:aws:states:us-east-1:123456789012:stateMachine:my-state-machine",
+		},
+		{
+			name:     "simple ID without region prefix passes through",
+			inputID:  "i-1234567890abcdef0",
+			expected: "i-1234567890abcdef0",
+		},
+		{
+			name:     "region-prefixed simple ID gets stripped",
+			inputID:  "us-east-1:i-1234567890abcdef0",
+			expected: "i-1234567890abcdef0",
+		},
+		{
+			name:     "wrong region prefix not stripped",
+			inputID:  "eu-west-1:i-1234567890abcdef0",
+			expected: "eu-west-1:i-1234567890abcdef0",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, _ = wrapper.Get(ctx, tt.inputID)
+			if mockDAO.lastGetID != tt.expected {
+				t.Errorf("Get(%q): got %q, want %q", tt.inputID, mockDAO.lastGetID, tt.expected)
+			}
+		})
+	}
+}
+
 func TestRegionalDAOWrapperSingleWrapTypeAssertion(t *testing.T) {
 	customRes := &CustomTestResource{
 		BaseResource: dao.BaseResource{ID: "custom-1", Name: "custom"},

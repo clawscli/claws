@@ -17,6 +17,7 @@ import (
 	tagtypes "github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi/types"
 	"github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/config"
+	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/log"
 	"github.com/clawscli/claws/internal/registry"
 	"github.com/clawscli/claws/internal/ui"
@@ -400,18 +401,54 @@ func (v *TagSearchView) navigateToResource() (tea.Model, tea.Cmd) {
 		return v, nil
 	}
 
-	if v.registry.IsSubResource(service, resourceType) {
-		return v, nil
-	}
-
 	ctx := v.ctx
 	if res.Region != "" {
 		ctx = aws.WithRegionOverride(ctx, res.Region)
 	}
 
-	browser := NewResourceBrowserWithType(ctx, v.registry, service, resourceType)
+	if filterKey, filterValue := res.ARN.ExtractParentFilter(); filterKey != "" {
+		ctx = dao.WithFilter(ctx, filterKey, filterValue)
+	}
+
+	renderer, err := v.registry.GetRenderer(service, resourceType)
+	if err != nil {
+		return v, nil
+	}
+	daoInst, err := v.registry.GetDAO(ctx, service, resourceType)
+	if err != nil {
+		daoInst = nil
+	}
+
+	resourceID := v.getResourceIDForGet(res.ARN)
+	minimalResource := &dao.BaseResource{
+		ID:   resourceID,
+		Name: res.ARN.ShortID(),
+		ARN:  res.RawARN,
+		Tags: res.Tags,
+	}
+
+	detailView := NewDetailView(ctx, minimalResource, renderer, service, resourceType, v.registry, daoInst)
 	return v, func() tea.Msg {
-		return NavigateMsg{View: browser}
+		return NavigateMsg{View: detailView}
+	}
+}
+
+func (v *TagSearchView) getResourceIDForGet(arn *aws.ARN) string {
+	switch arn.Service {
+	case "states":
+		return arn.Raw
+	case "bedrock-agentcore":
+		// ARN: arn:aws:bedrock-agentcore:region:account:runtime/RUNTIME_ID/runtime-endpoint/DEFAULT
+		// Extract just the runtime ID (first segment) for GetAgentRuntime API
+		if idx := strings.Index(arn.ResourceID, "/"); idx > 0 {
+			return arn.ResourceID[:idx]
+		}
+		return arn.ResourceID
+	default:
+		if arn.ResourceID != "" {
+			return arn.ResourceID
+		}
+		return arn.Raw
 	}
 }
 

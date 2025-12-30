@@ -140,7 +140,7 @@ func (d *DetailView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if msg.String() == "a" {
 			if actions := action.Global.Get(d.service, d.resType); len(actions) > 0 {
-				actionMenu := NewActionMenu(d.ctx, d.resource, d.service, d.resType)
+				actionMenu := NewActionMenu(d.ctx, dao.UnwrapResource(d.resource), d.service, d.resType)
 				return d, func() tea.Msg {
 					return ShowModalMsg{Modal: &Modal{Content: actionMenu}}
 				}
@@ -166,7 +166,7 @@ func (d *DetailView) handleNavigation(key string) (tea.Model, tea.Cmd) {
 		Renderer: d.renderer,
 	}
 
-	if cmd := helper.HandleKey(key, d.resource); cmd != nil {
+	if cmd := helper.HandleKey(key, dao.UnwrapResource(d.resource)); cmd != nil {
 		return d, cmd
 	}
 
@@ -182,7 +182,7 @@ func (d *DetailView) ViewString() string {
 	// Get summary fields for header
 	var summaryFields []render.SummaryField
 	if d.renderer != nil {
-		summaryFields = d.renderer.RenderSummary(d.resource)
+		summaryFields = d.renderer.RenderSummary(dao.UnwrapResource(d.resource))
 	}
 
 	// Render header panel
@@ -207,7 +207,7 @@ func (d *DetailView) SetSize(width, height int) tea.Cmd {
 	// Calculate header height dynamically
 	var summaryFields []render.SummaryField
 	if d.renderer != nil {
-		summaryFields = d.renderer.RenderSummary(d.resource)
+		summaryFields = d.renderer.RenderSummary(dao.UnwrapResource(d.resource))
 	}
 	headerStr := d.headerPanel.Render(d.service, d.resType, summaryFields)
 	headerHeight := d.headerPanel.Height(headerStr)
@@ -265,7 +265,7 @@ func (d *DetailView) getNavigationShortcuts() string {
 	}
 
 	helper := &NavigationHelper{Renderer: d.renderer}
-	return helper.FormatShortcuts(d.resource)
+	return helper.FormatShortcuts(dao.UnwrapResource(d.resource))
 }
 
 func (d *DetailView) renderContent() string {
@@ -273,7 +273,7 @@ func (d *DetailView) renderContent() string {
 
 	// Try to use renderer's RenderDetail if available
 	if d.renderer != nil {
-		detail = d.renderer.RenderDetail(d.resource)
+		detail = d.renderer.RenderDetail(dao.UnwrapResource(d.resource))
 	}
 
 	// Fallback to generic detail view

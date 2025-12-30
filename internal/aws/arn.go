@@ -249,6 +249,7 @@ var arnToRegistryType = map[string]string{
 	"bedrock-agent/agent":               "agents",
 	"bedrock-agent/knowledge-base":      "knowledge-bases",
 	"bedrock-agent/flow":                "flows",
+	"bedrock-agentcore/runtime":         "runtimes",
 	"route53/hostedzone":                "hosted-zones",
 	"cloudfront/distribution":           "distributions",
 	"acm/certificate":                   "certificates",
@@ -278,4 +279,127 @@ func (a *ARN) CanNavigate() bool {
 	}
 	// Allow navigation for common patterns even without explicit mapping
 	return resType != ""
+}
+
+// ExtractParentFilter returns the filter key and value needed for sub-resources
+// that require parent context when calling Get(). Returns empty strings if no
+// parent filter is needed or cannot be extracted from the ARN.
+//
+// Example: For guardduty finding ARN "arn:aws:guardduty:us-east-1:123:detector/abc/finding/xyz"
+// returns ("DetectorId", "abc")
+func (a *ARN) ExtractParentFilter() (key, value string) {
+	if a == nil || a.ResourceID == "" {
+		return "", ""
+	}
+
+	// Build lookup key from ARN service and resource type
+	lookupKey := a.Service + "/" + a.ResourceType
+
+	switch lookupKey {
+	// GuardDuty findings: detector/detector-id/finding/finding-id
+	case "guardduty/detector":
+		// ResourceID = "detector-id/finding/finding-id"
+		if idx := strings.Index(a.ResourceID, "/finding/"); idx != -1 {
+			return "DetectorId", a.ResourceID[:idx]
+		}
+
+	// Glue tables: table/database-name/table-name
+	case "glue/table":
+		// ResourceID = "database-name/table-name"
+		if idx := strings.Index(a.ResourceID, "/"); idx != -1 {
+			return "DatabaseName", a.ResourceID[:idx]
+		}
+
+	// Glue job runs: job/job-name (run ID not in ARN)
+	case "glue/job":
+		// ResourceID = "job-name" or "job-name/run/run-id"
+		id := a.ResourceID
+		if idx := strings.Index(id, "/"); idx != -1 {
+			return "JobName", id[:idx]
+		}
+		return "JobName", id
+
+	// Transfer users: user/server-id/user-name
+	case "transfer/user":
+		// ResourceID = "server-id/user-name"
+		if idx := strings.Index(a.ResourceID, "/"); idx != -1 {
+			return "ServerId", a.ResourceID[:idx]
+		}
+
+	// CodeBuild builds: build/project-name:build-id
+	case "codebuild/build":
+		// ResourceID = "project-name:build-id"
+		if idx := strings.Index(a.ResourceID, ":"); idx != -1 {
+			return "ProjectName", a.ResourceID[:idx]
+		}
+
+	// CodePipeline executions: pipeline-name (execution ID separate)
+	case "codepipeline/pipeline":
+		// ResourceID could be "pipeline-name" or include execution info
+		id := a.ResourceID
+		if idx := strings.Index(id, "/"); idx != -1 {
+			return "PipelineName", id[:idx]
+		}
+		return "PipelineName", id
+
+	// EMR steps: cluster/cluster-id (step ID not in standard ARN)
+	case "elasticmapreduce/cluster":
+		// ResourceID = "cluster-id" or "cluster-id/step/step-id"
+		id := a.ResourceID
+		if idx := strings.Index(id, "/"); idx != -1 {
+			return "ClusterId", id[:idx]
+		}
+		return "ClusterId", id
+
+	// ECR images: repository/repo-name
+	case "ecr/repository":
+		// ResourceID = "repo-name" or "repo-name/image/sha256:..."
+		id := a.ResourceID
+		if idx := strings.Index(id, "/"); idx != -1 {
+			return "RepositoryName", id[:idx]
+		}
+		return "RepositoryName", id
+
+	// Cognito users: userpool/pool-id
+	case "cognito-idp/userpool":
+		// ResourceID = "pool-id" or "pool-id/user/username"
+		id := a.ResourceID
+		if idx := strings.Index(id, "/"); idx != -1 {
+			return "UserPoolId", id[:idx]
+		}
+		return "UserPoolId", id
+
+	// Access Analyzer findings - need analyzer ARN
+	case "access-analyzer/analyzer":
+		// ResourceID = "analyzer-name/finding/finding-id"
+		if idx := strings.Index(a.ResourceID, "/finding/"); idx != -1 {
+			// Return the full analyzer ARN
+			return "AnalyzerArn", "arn:" + a.Partition + ":access-analyzer:" + a.Region + ":" + a.AccountID + ":analyzer/" + a.ResourceID[:idx]
+		}
+
+	// Detective investigations - need graph ARN
+	case "detective/graph":
+		// ResourceID = "graph-id/investigation/inv-id"
+		if idx := strings.Index(a.ResourceID, "/investigation/"); idx != -1 {
+			return "GraphArn", "arn:" + a.Partition + ":detective:" + a.Region + ":" + a.AccountID + ":graph:" + a.ResourceID[:idx]
+		}
+
+	// Backup recovery points - vault name in ARN path
+	case "backup/recovery-point":
+		// ARN format varies: arn:aws:backup:region:account:recovery-point:rp-id
+		// The vault name is NOT in the ARN for recovery points
+		// Cannot extract parent filter
+		return "", ""
+
+	// Backup selections - plan ID not in ARN
+	case "backup/backup-plan":
+		// ResourceID = "plan-id" or "plan-id/selection/selection-id"
+		id := a.ResourceID
+		if idx := strings.Index(id, "/"); idx != -1 {
+			return "BackupPlanId", id[:idx]
+		}
+		return "BackupPlanId", id
+	}
+
+	return "", ""
 }

@@ -26,8 +26,8 @@ func (r *ResourceBrowser) applySorting() {
 	}
 
 	slices.SortStableFunc(r.filtered, func(a, b dao.Resource) int {
-		valA := col.Getter(a)
-		valB := col.Getter(b)
+		valA := col.Getter(dao.UnwrapResource(a))
+		valB := col.Getter(dao.UnwrapResource(b))
 
 		cmp := compareValues(valA, valB)
 		if !r.sortAscending {

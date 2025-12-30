@@ -132,10 +132,12 @@ func (r *ResourceBrowser) matchesFilter(res dao.Resource, cols []render.Column, 
 		return true
 	}
 
+	unwrapped := dao.UnwrapResource(res)
+
 	// Check all column values (fuzzy match)
 	for _, col := range cols {
 		if col.Getter != nil {
-			if fuzzyMatch(col.Getter(res), filter) {
+			if fuzzyMatch(col.Getter(unwrapped), filter) {
 				return true
 			}
 		}
