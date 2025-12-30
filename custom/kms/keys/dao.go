@@ -2,7 +2,6 @@ package keys
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/kms"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
@@ -95,7 +94,7 @@ func (d *KeyDAO) Delete(ctx context.Context, id string) error {
 			return nil // Already deleted
 		}
 		if apperrors.IsResourceInUse(err) {
-			return fmt.Errorf("key %s is in use", id)
+			return apperrors.Wrapf(err, "key %s is in use", id)
 		}
 		return apperrors.Wrapf(err, "schedule key deletion %s", id)
 	}

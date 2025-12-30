@@ -97,7 +97,7 @@ func (d *ClusterDAO) Delete(ctx context.Context, id string) error {
 			return nil // Already deleted
 		}
 		if apperrors.IsResourceInUse(err) {
-			return fmt.Errorf("cluster %s has active services or tasks", id)
+			return apperrors.Wrapf(err, "cluster %s has active services or tasks", id)
 		}
 		return apperrors.Wrapf(err, "delete cluster %s", id)
 	}

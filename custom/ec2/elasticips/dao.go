@@ -68,7 +68,7 @@ func (d *ElasticIPDAO) Delete(ctx context.Context, id string) error {
 			return nil // Already deleted
 		}
 		if apperrors.IsResourceInUse(err) {
-			return fmt.Errorf("elastic IP %s is associated with an instance or network interface", id)
+			return apperrors.Wrapf(err, "elastic IP %s is associated with an instance or network interface", id)
 		}
 		return apperrors.Wrapf(err, "release address %s", id)
 	}

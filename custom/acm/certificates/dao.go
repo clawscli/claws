@@ -2,7 +2,6 @@ package certificates
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/acm"
 	"github.com/aws/aws-sdk-go-v2/service/acm/types"
@@ -80,7 +79,7 @@ func (d *CertificateDAO) Delete(ctx context.Context, id string) error {
 			return nil // Already deleted
 		}
 		if apperrors.IsResourceInUse(err) {
-			return fmt.Errorf("certificate %s is in use by AWS resources", id)
+			return apperrors.Wrapf(err, "certificate %s is in use by AWS resources", id)
 		}
 		return apperrors.Wrapf(err, "delete certificate %s", id)
 	}

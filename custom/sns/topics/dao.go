@@ -2,7 +2,6 @@ package topics
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/service/sns"
@@ -87,7 +86,7 @@ func (d *TopicDAO) Delete(ctx context.Context, id string) error {
 			return nil // Already deleted
 		}
 		if apperrors.IsResourceInUse(err) {
-			return fmt.Errorf("topic %s is in use", id)
+			return apperrors.Wrapf(err, "topic %s is in use", id)
 		}
 		return apperrors.Wrapf(err, "delete topic %s", id)
 	}

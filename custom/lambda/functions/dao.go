@@ -114,7 +114,7 @@ func (d *FunctionDAO) Delete(ctx context.Context, id string) error {
 			return nil // Already deleted
 		}
 		if apperrors.IsResourceInUse(err) {
-			return fmt.Errorf("function %s is in use", id)
+			return apperrors.Wrapf(err, "function %s is in use", id)
 		}
 		return apperrors.Wrapf(err, "delete function %s", id)
 	}

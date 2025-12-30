@@ -2,7 +2,6 @@ package roles
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/iam/types"
@@ -102,7 +101,7 @@ func (d *RoleDAO) Delete(ctx context.Context, id string) error {
 			return nil // Already deleted
 		}
 		if apperrors.IsResourceInUse(err) {
-			return fmt.Errorf("role %s is in use (has attached policies or is referenced)", id)
+			return apperrors.Wrapf(err, "role %s is in use (has attached policies or is referenced)", id)
 		}
 		return apperrors.Wrapf(err, "delete role %s", id)
 	}

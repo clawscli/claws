@@ -2,7 +2,6 @@ package queues
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
@@ -120,7 +119,7 @@ func (d *QueueDAO) Delete(ctx context.Context, id string) error {
 			return nil // Already deleted
 		}
 		if apperrors.IsResourceInUse(err) {
-			return fmt.Errorf("queue %s is in use", id)
+			return apperrors.Wrapf(err, "queue %s is in use", id)
 		}
 		return apperrors.Wrapf(err, "delete queue %s", id)
 	}

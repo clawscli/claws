@@ -72,7 +72,7 @@ func (d *NatGatewayDAO) Delete(ctx context.Context, id string) error {
 			return nil // Already deleted
 		}
 		if apperrors.IsResourceInUse(err) {
-			return fmt.Errorf("nat gateway %s is in use", id)
+			return apperrors.Wrapf(err, "nat gateway %s is in use", id)
 		}
 		return apperrors.Wrapf(err, "delete nat gateway %s", id)
 	}

@@ -75,7 +75,7 @@ func (d *SecurityGroupDAO) Delete(ctx context.Context, id string) error {
 			return nil // Already deleted
 		}
 		if apperrors.IsResourceInUse(err) {
-			return fmt.Errorf("security group %s is in use by other resources", id)
+			return apperrors.Wrapf(err, "security group %s is in use by other resources", id)
 		}
 		return apperrors.Wrapf(err, "delete security group %s", id)
 	}

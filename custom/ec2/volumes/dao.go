@@ -77,7 +77,7 @@ func (d *VolumeDAO) Delete(ctx context.Context, id string) error {
 			return nil // Already deleted
 		}
 		if apperrors.IsResourceInUse(err) {
-			return fmt.Errorf("volume %s is attached to an instance", id)
+			return apperrors.Wrapf(err, "volume %s is attached to an instance", id)
 		}
 		return apperrors.Wrapf(err, "delete volume %s", id)
 	}

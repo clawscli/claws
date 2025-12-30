@@ -86,7 +86,7 @@ func (d *SubnetDAO) Delete(ctx context.Context, id string) error {
 			return nil // Already deleted
 		}
 		if apperrors.IsResourceInUse(err) {
-			return fmt.Errorf("subnet %s is in use", id)
+			return apperrors.Wrapf(err, "subnet %s is in use", id)
 		}
 		return apperrors.Wrapf(err, "delete subnet %s", id)
 	}

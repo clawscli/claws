@@ -80,7 +80,7 @@ func (d *InternetGatewayDAO) Delete(ctx context.Context, id string) error {
 			return nil // Already deleted
 		}
 		if apperrors.IsResourceInUse(err) {
-			return fmt.Errorf("internet gateway %s is in use (must be detached first)", id)
+			return apperrors.Wrapf(err, "internet gateway %s is in use (must be detached first)", id)
 		}
 		return apperrors.Wrapf(err, "delete internet gateway %s", id)
 	}

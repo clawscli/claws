@@ -229,7 +229,7 @@ func (d *BucketDAO) Delete(ctx context.Context, id string) error {
 			return nil // Already deleted
 		}
 		if apperrors.IsResourceInUse(err) {
-			return fmt.Errorf("bucket %s is not empty (must delete all objects first)", id)
+			return apperrors.Wrapf(err, "bucket %s is not empty (must delete all objects first)", id)
 		}
 		return apperrors.Wrapf(err, "delete bucket %s", id)
 	}

@@ -80,7 +80,7 @@ func (d *InstanceDAO) Delete(ctx context.Context, id string) error {
 			return nil // Already deleted
 		}
 		if apperrors.IsResourceInUse(err) {
-			return fmt.Errorf("db instance %s is in use", id)
+			return apperrors.Wrapf(err, "db instance %s is in use", id)
 		}
 		return apperrors.Wrapf(err, "delete db instance %s", id)
 	}

@@ -2,7 +2,6 @@ package policies
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/iam/types"
@@ -111,7 +110,7 @@ func (d *PolicyDAO) Delete(ctx context.Context, id string) error {
 			return nil // Already deleted
 		}
 		if apperrors.IsResourceInUse(err) {
-			return fmt.Errorf("policy %s is in use (attached to roles/users/groups)", id)
+			return apperrors.Wrapf(err, "policy %s is in use (attached to roles/users/groups)", id)
 		}
 		return apperrors.Wrapf(err, "delete policy %s", id)
 	}
