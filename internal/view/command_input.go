@@ -228,8 +228,13 @@ func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 		return c.parseSortCommand(input), nil
 	}
 
-	if input == "login" {
+	if input == "login" || strings.HasPrefix(input, "login ") {
 		profileName := "claws-login"
+		if strings.HasPrefix(input, "login ") {
+			if name := strings.TrimSpace(strings.TrimPrefix(input, "login ")); name != "" {
+				profileName = name
+			}
+		}
 		exec := &action.SimpleExec{
 			Command:    fmt.Sprintf("aws login --remote --profile %s", profileName),
 			ActionName: action.ActionNameLogin,

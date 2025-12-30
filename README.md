@@ -204,7 +204,7 @@ Selected regions are queried in parallel; resources display with Region column.
 
 | Command | Action |
 |---------|--------|
-| `:login` | AWS console login (uses `claws-login` profile) |
+| `:login [name]` | AWS console login (default: `claws-login` profile) |
 | `:ec2/instances` | Navigate to EC2 instances |
 | `:sort <col>` | Sort by column |
 | `:tag <filter>` | Filter by tag |
@@ -213,6 +213,7 @@ Selected regions are queried in parallel; resources display with Region column.
 
 **Login Details:**
 - `:login` runs `aws login --remote` using `claws-login` profile
+- `:login myprofile` uses the specified profile name instead
 - For SSO profiles, use `P` to open profile selector, then `l` for SSO login
 
 ## Supported Services (69 services, 163 resources)
