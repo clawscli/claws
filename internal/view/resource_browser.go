@@ -12,10 +12,8 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/clawscli/claws/internal/action"
 	"github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
-	"github.com/clawscli/claws/internal/log"
 	"github.com/clawscli/claws/internal/metrics"
 	"github.com/clawscli/claws/internal/registry"
 	"github.com/clawscli/claws/internal/render"
@@ -206,288 +204,35 @@ type autoReloadTickMsg struct {
 	time time.Time
 }
 
-// Update implements tea.Model
 func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case resourcesLoadedMsg:
-		r.loading = false
-		r.dao = msg.dao
-		r.renderer = msg.renderer
-		r.resources = msg.resources
-		r.nextPageToken = msg.nextToken
-		r.nextPageTokens = msg.nextPageTokens
-		r.hasMorePages = msg.hasMorePages
-		r.partialErrors = msg.partialErrors
-		r.applyFilter()
-		r.buildTable()
-
-		var cmds []tea.Cmd
-		if r.autoReload {
-			cmds = append(cmds, r.tickCmd())
-		}
-		if r.metricsEnabled && r.metricsLoading {
-			cmds = append(cmds, r.loadMetricsCmd())
-		}
-		if len(cmds) > 0 {
-			return r, tea.Batch(cmds...)
-		}
-		return r, nil
-
+		return r.handleResourcesLoaded(msg)
 	case nextPageLoadedMsg:
-		r.isLoadingMore = false
-		r.resources = append(r.resources, msg.resources...)
-		r.nextPageToken = msg.nextToken
-		r.nextPageTokens = msg.nextPageTokens
-		r.hasMorePages = msg.hasMorePages
-		r.applyFilter()
-		r.buildTable()
-		return r, nil
-
+		return r.handleNextPageLoaded(msg)
 	case resourcesErrorMsg:
-		r.loading = false
-		r.isLoadingMore = false
-		if r.hasMorePages && len(r.resources) > 0 {
-			r.hasMorePages = false
-			r.nextPageToken = ""
-			r.nextPageTokens = nil
-			log.Warn("pagination stopped due to error", "error", msg.err)
-			return r, nil
-		}
-		r.err = msg.err
-		// Keep ticking even on error
-		if r.autoReload {
-			return r, r.tickCmd()
-		}
-		return r, nil
-
+		return r.handleResourcesError(msg)
 	case metricsLoadedMsg:
-		r.metricsLoading = false
-		if msg.resourceType != r.resourceType {
-			return r, nil
-		}
-		if msg.err != nil {
-			log.Warn("failed to load metrics", "error", msg.err, "service", r.service, "resource", r.resourceType)
-		} else {
-			r.metricsData = msg.data
-		}
-		r.buildTable()
-		return r, nil
-
+		return r.handleMetricsLoaded(msg)
 	case autoReloadTickMsg:
-		if r.metricsEnabled && r.getMetricSpec() != nil {
-			return r, tea.Batch(r.reloadResources, r.loadMetricsCmd())
-		}
-		return r, r.reloadResources
-
+		return r.handleAutoReloadTick()
 	case RefreshMsg:
-		r.loading = true
-		r.err = nil
-		return r, tea.Batch(r.loadResources, r.spinner.Tick)
-
+		return r.handleRefreshMsg()
 	case SortMsg:
-		// Handle sort command
-		if msg.Column == "" {
-			// Clear sorting
-			r.ClearSort()
-		} else {
-			// Find column by name
-			colIdx := r.FindColumnByName(msg.Column)
-			if colIdx >= 0 {
-				r.SetSort(colIdx, msg.Ascending)
-			}
-		}
-		r.applyFilter() // Re-apply filter to trigger sorting
-		r.buildTable()
-		return r, nil
-
+		return r.handleSortMsg(msg)
 	case TagFilterMsg:
-		// Handle tag filter command from :tag
-		if msg.Filter == "" {
-			// Clear tag filter
-			r.tagFilterText = ""
-		} else {
-			r.tagFilterText = msg.Filter
-		}
-		r.applyFilter()
-		r.buildTable()
-		return r, nil
-
+		return r.handleTagFilterMsg(msg)
 	case DiffMsg:
-		// Handle diff command: :diff <name> or :diff <name1> <name2>
-		var leftRes, rightRes dao.Resource
-
-		// Find right resource by name
-		for _, res := range r.filtered {
-			if res.GetName() == msg.RightName {
-				rightRes = res
-				break
-			}
-		}
-		if rightRes == nil {
-			return r, nil // Right resource not found
-		}
-
-		if msg.LeftName == "" {
-			// :diff <name> - use current cursor row as left
-			if len(r.filtered) > 0 && r.table.Cursor() < len(r.filtered) {
-				leftRes = r.filtered[r.table.Cursor()]
-			}
-		} else {
-			// :diff <name1> <name2> - find left resource by name
-			for _, res := range r.filtered {
-				if res.GetName() == msg.LeftName {
-					leftRes = res
-					break
-				}
-			}
-		}
-
-		if leftRes == nil || leftRes.GetID() == rightRes.GetID() {
-			return r, nil // Left not found or same resource
-		}
-
-		diffView := NewDiffView(r.ctx, dao.UnwrapResource(leftRes), dao.UnwrapResource(rightRes), r.renderer, r.service, r.resourceType)
-		return r, func() tea.Msg {
-			return NavigateMsg{View: diffView}
-		}
-
+		return r.handleDiffMsg(msg)
 	case tea.KeyPressMsg:
-		// Handle filter mode
-		if r.filterActive {
-			if IsEscKey(msg) {
-				r.filterActive = false
-				r.filterInput.Blur()
-				return r, nil
+		if model, cmd := r.handleKeyPress(msg); model != nil || cmd != nil {
+			if model == nil {
+				model = r
 			}
-			switch msg.String() {
-			case "enter":
-				r.filterActive = false
-				r.filterInput.Blur()
-				r.filterText = r.filterInput.Value()
-				r.applyFilter()
-				r.buildTable()
-				return r, nil
-			default:
-				var cmd tea.Cmd
-				r.filterInput, cmd = r.filterInput.Update(msg)
-				// Live filter as user types
-				r.filterText = r.filterInput.Value()
-				r.applyFilter()
-				r.buildTable()
-				return r, cmd
-			}
-		}
-
-		// First check navigation shortcuts (they take priority)
-		if len(r.filtered) > 0 && r.table.Cursor() < len(r.filtered) {
-			if nav, cmd := r.handleNavigation(msg.String()); cmd != nil {
-				return nav, cmd
-			}
-		}
-
-		switch msg.String() {
-		case "/":
-			r.filterActive = true
-			r.filterInput.Focus()
-			return r, textinput.Blink
-		case "ctrl+r":
-			r.loading = true
-			r.err = nil
-			if r.metricsEnabled {
-				r.metricsLoading = true
-				r.metricsData = nil
-			}
-			return r, tea.Batch(r.loadResources, r.spinner.Tick)
-		case "c":
-			r.filterText = ""
-			r.filterInput.SetValue("")
-			r.fieldFilter = ""
-			r.fieldFilterValue = ""
-			r.markedResource = nil
-			r.applyFilter()
-			r.buildTable()
-			return r, nil
-		case "esc":
-			// Clear mark if set, otherwise let app handle back navigation
-			if r.markedResource != nil {
-				r.markedResource = nil
-				r.buildTable()
-				return r, nil
-			}
-		case "m":
-			if len(r.filtered) > 0 && r.table.Cursor() < len(r.filtered) {
-				resource := r.filtered[r.table.Cursor()]
-				if r.markedResource != nil && r.markedResource.GetID() == resource.GetID() {
-					r.markedResource = nil
-				} else {
-					r.markedResource = resource
-				}
-				r.buildTable()
-			}
-			return r, nil
-		case "M":
-			if r.getMetricSpec() != nil {
-				r.metricsEnabled = !r.metricsEnabled
-				if r.metricsEnabled && r.metricsData == nil {
-					r.metricsLoading = true
-					return r, r.loadMetricsCmd()
-				}
-				r.buildTable()
-			}
-			return r, nil
-		case "d", "enter":
-			if len(r.filtered) > 0 && r.table.Cursor() < len(r.filtered) {
-				ctx, resource := r.contextForResource(r.filtered[r.table.Cursor()])
-				if r.markedResource != nil && r.markedResource.GetID() != resource.GetID() {
-					diffView := NewDiffView(ctx, dao.UnwrapResource(r.markedResource), resource, r.renderer, r.service, r.resourceType)
-					return r, func() tea.Msg {
-						return NavigateMsg{View: diffView}
-					}
-				}
-				detailView := NewDetailView(ctx, resource, r.renderer, r.service, r.resourceType, r.registry, r.dao)
-				return r, func() tea.Msg {
-					return NavigateMsg{View: detailView}
-				}
-			}
-		case "a":
-			if len(r.filtered) > 0 && r.table.Cursor() < len(r.filtered) {
-				if actions := action.Global.Get(r.service, r.resourceType); len(actions) > 0 {
-					ctx, resource := r.contextForResource(r.filtered[r.table.Cursor()])
-					actionMenu := NewActionMenu(ctx, resource, r.service, r.resourceType)
-					return r, func() tea.Msg {
-						return ShowModalMsg{Modal: &Modal{Content: actionMenu}}
-					}
-				}
-			}
-		case "tab":
-			// Cycle to next resource type
-			r.cycleResourceType(1)
-			return r, tea.Batch(r.loadResources, r.spinner.Tick)
-		case "shift+tab":
-			// Cycle to previous resource type
-			r.cycleResourceType(-1)
-			return r, tea.Batch(r.loadResources, r.spinner.Tick)
-		case "1", "2", "3", "4", "5", "6", "7", "8", "9":
-			idx := int(msg.String()[0] - '1')
-			if idx < len(r.resourceTypes) {
-				r.resourceType = r.resourceTypes[idx]
-				r.loading = true
-				r.filterText = ""
-				r.filterInput.SetValue("")
-				r.markedResource = nil
-				r.metricsEnabled = false
-				r.metricsData = nil
-				return r, tea.Batch(r.loadResources, r.spinner.Tick)
-			}
-		case "N":
-			if r.hasMorePages && !r.isLoadingMore && (r.nextPageToken != "" || len(r.nextPageTokens) > 0) {
-				r.isLoadingMore = true
-				return r, r.loadNextPage
-			}
+			return model, cmd
 		}
 
 	case spinner.TickMsg:
-		// Update spinner while loading
 		if r.loading {
 			var cmd tea.Cmd
 			r.spinner, cmd = r.spinner.Update(msg)
@@ -496,28 +241,14 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return r, nil
 
 	case tea.MouseWheelMsg:
-		// Pass wheel events to table for scrolling
-		var cmd tea.Cmd
-		r.table, cmd = r.table.Update(msg)
-		return r, cmd
+		return r.handleMouseWheel(msg)
 
 	case tea.MouseMotionMsg:
-		// Update cursor on hover for better UX
-		if idx := r.getRowAtPosition(msg.Y); idx >= 0 && idx != r.table.Cursor() {
-			r.table.SetCursor(idx)
-		}
-		return r, nil
+		return r.handleMouseMotion(msg)
 
 	case tea.MouseClickMsg:
-		if msg.Button == tea.MouseLeft {
-			// Check if click is on tabs
-			if idx := r.getTabAtPosition(msg.X, msg.Y); idx >= 0 {
-				return r.switchToTab(idx)
-			}
-			// Handle mouse click on table row
-			if len(r.filtered) > 0 {
-				return r.handleMouseClick(msg.X, msg.Y)
-			}
+		if model, cmd := r.handleMouseClickMsg(msg); cmd != nil {
+			return model, cmd
 		}
 	}
 
@@ -610,84 +341,6 @@ func (r *ResourceBrowser) SetSize(width, height int) tea.Cmd {
 
 func (r *ResourceBrowser) HasActiveInput() bool {
 	return r.filterActive
-}
-
-// getHeaderPanelHeight returns the height of the header panel
-func (r *ResourceBrowser) getHeaderPanelHeight() int {
-	headerStr := r.headerPanel.Render(r.service, r.resourceType, nil)
-	return r.headerPanel.Height(headerStr)
-}
-
-// getRowAtPosition returns the row index at given Y position, or -1 if none
-func (r *ResourceBrowser) getRowAtPosition(y int) int {
-	// Structure: headerPanel + \n + tabsView + \n + filterView? + tableHeader
-	headerHeight := r.getHeaderPanelHeight() + 1 + 1 // headerPanel + \n + tabs
-	if r.filterActive || r.filterText != "" {
-		headerHeight++ // filter line
-	}
-
-	// Table header row
-	tableHeaderRows := 1
-	row := y - headerHeight - tableHeaderRows
-
-	if row >= 0 && row < len(r.filtered) {
-		return row
-	}
-	return -1
-}
-
-// handleMouseClick handles mouse click on table rows
-func (r *ResourceBrowser) handleMouseClick(x, y int) (tea.Model, tea.Cmd) {
-	if row := r.getRowAtPosition(y); row >= 0 {
-		r.table.SetCursor(row)
-		return r.openDetailView()
-	}
-	return r, nil
-}
-
-// getTabAtPosition returns the tab index at given position, or -1 if none
-func (r *ResourceBrowser) getTabAtPosition(x, y int) int {
-	if len(r.tabPositions) == 0 {
-		return -1
-	}
-
-	// Tabs are on the line after header panel
-	tabsY := r.getHeaderPanelHeight()
-	if y != tabsY {
-		return -1
-	}
-
-	// Find which tab was clicked
-	for _, tp := range r.tabPositions {
-		if x >= tp.startX && x < tp.endX {
-			return tp.tabIdx
-		}
-	}
-	return -1
-}
-
-// switchToTab switches to the specified tab index
-func (r *ResourceBrowser) switchToTab(idx int) (tea.Model, tea.Cmd) {
-	if idx < 0 || idx >= len(r.resourceTypes) {
-		return r, nil
-	}
-	r.resourceType = r.resourceTypes[idx]
-	r.markedResource = nil
-	r.metricsEnabled = false
-	r.metricsData = nil
-	return r, r.loadResources
-}
-
-func (r *ResourceBrowser) openDetailView() (tea.Model, tea.Cmd) {
-	cursor := r.table.Cursor()
-	if len(r.filtered) == 0 || cursor < 0 || cursor >= len(r.filtered) {
-		return r, nil
-	}
-	ctx, resource := r.contextForResource(r.filtered[cursor])
-	detailView := NewDetailView(ctx, resource, r.renderer, r.service, r.resourceType, r.registry, r.dao)
-	return r, func() tea.Msg {
-		return NavigateMsg{View: detailView}
-	}
 }
 
 func (r *ResourceBrowser) contextForResource(res dao.Resource) (context.Context, dao.Resource) {
