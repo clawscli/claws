@@ -1,0 +1,39 @@
+run:
+  timeout: 5m
+  tests: true
+
+issues:
+  exclude-dirs:
+    - vendor
+  exclude-files:
+    - ".*\\.pb\\.go"
+    - ".*\\.gen\\.go"
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+linters:
+  disable-all: true
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - typecheck
+    - unused
+    - gofmt
+    - goimports
+    - misspell
+    - errorlint
+    - unconvert
+    - goconst
+
+linters-settings:
+  goimports:
+    local-prefixes: github.com/clawscli/claws
+  gofmt:
+    simplify: true
+  goconst:
+    min-len: 3
+    min-occurrences: 3

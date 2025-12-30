@@ -122,9 +122,9 @@ tasks:
       - rm -f coverage.out
 
   lint:
-    desc: Run linters
+    desc: Run linters (requires golangci-lint)
     cmds:
-      - go vet ./...
+      - golangci-lint run
 
   fmt:
     desc: Format code
