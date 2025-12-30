@@ -12,6 +12,7 @@ import (
 	"github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 	"github.com/clawscli/claws/internal/log"
 )
 
@@ -99,7 +100,44 @@ type ActionResult struct {
 	Success     bool
 	Message     string
 	Error       error
-	FollowUpMsg any // Optional tea.Msg to send after action completes
+	ErrorKind   apperrors.Kind // Classification of the error (Auth, Throttling, NotFound, etc.)
+	FollowUpMsg any            // Optional tea.Msg to send after action completes
+}
+
+// FailResult creates a failed ActionResult with automatic error classification.
+func FailResult(err error) ActionResult {
+	return ActionResult{
+		Success:   false,
+		Error:     err,
+		ErrorKind: apperrors.Classify(err),
+	}
+}
+
+// FailResultf creates a failed ActionResult with formatted message and classification.
+func FailResultf(err error, format string, args ...any) ActionResult {
+	wrapped := apperrors.Wrapf(err, format, args...)
+	return ActionResult{
+		Success:   false,
+		Error:     wrapped,
+		ErrorKind: apperrors.Classify(err),
+	}
+}
+
+// SuccessResult creates a successful ActionResult with a message.
+func SuccessResult(message string) ActionResult {
+	return ActionResult{
+		Success: true,
+		Message: message,
+	}
+}
+
+// SuccessResultWithFollowUp creates a successful ActionResult with a follow-up message.
+func SuccessResultWithFollowUp(message string, followUp any) ActionResult {
+	return ActionResult{
+		Success:     true,
+		Message:     message,
+		FollowUpMsg: followUp,
+	}
 }
 
 // ExecutorFunc is a function that executes an action on a resource

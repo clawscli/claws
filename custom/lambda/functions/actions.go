@@ -72,7 +72,7 @@ func executeInvoke(ctx context.Context, resource dao.Resource, dryRun bool) acti
 
 	client, err := getLambdaClient(ctx)
 	if err != nil {
-		return action.ActionResult{Success: false, Error: err}
+		return action.FailResult(err)
 	}
 
 	functionName := fn.GetName()
@@ -93,14 +93,11 @@ func executeInvoke(ctx context.Context, resource dao.Resource, dryRun bool) acti
 
 	output, err := client.Invoke(ctx, input)
 	if err != nil {
-		return action.ActionResult{Success: false, Error: fmt.Errorf("invoke function: %w", err)}
+		return action.FailResultf(err, "invoke function %s", functionName)
 	}
 
 	if dryRun {
-		return action.ActionResult{
-			Success: true,
-			Message: fmt.Sprintf("Dry run successful for %s (Status: %d)", functionName, output.StatusCode),
-		}
+		return action.SuccessResult(fmt.Sprintf("Dry run successful for %s (Status: %d)", functionName, output.StatusCode))
 	}
 
 	// Parse response
@@ -123,16 +120,10 @@ func executeInvoke(ctx context.Context, resource dao.Resource, dryRun bool) acti
 
 	// Check for function error
 	if output.FunctionError != nil && *output.FunctionError != "" {
-		return action.ActionResult{
-			Success: false,
-			Error:   fmt.Errorf("function error: %s - %s", *output.FunctionError, responsePreview),
-		}
+		return action.FailResult(fmt.Errorf("function error: %s - %s", *output.FunctionError, responsePreview))
 	}
 
-	return action.ActionResult{
-		Success: true,
-		Message: fmt.Sprintf("Invoked %s (Status: %d) Response: %s", functionName, statusCode, responsePreview),
-	}
+	return action.SuccessResult(fmt.Sprintf("Invoked %s (Status: %d) Response: %s", functionName, statusCode, responsePreview))
 }
 
 func executeDeleteFunction(ctx context.Context, resource dao.Resource) action.ActionResult {
@@ -143,7 +134,7 @@ func executeDeleteFunction(ctx context.Context, resource dao.Resource) action.Ac
 
 	client, err := getLambdaClient(ctx)
 	if err != nil {
-		return action.ActionResult{Success: false, Error: err}
+		return action.FailResult(err)
 	}
 
 	functionName := fn.GetName()
@@ -154,11 +145,8 @@ func executeDeleteFunction(ctx context.Context, resource dao.Resource) action.Ac
 
 	_, err = client.DeleteFunction(ctx, input)
 	if err != nil {
-		return action.ActionResult{Success: false, Error: fmt.Errorf("delete function: %w", err)}
+		return action.FailResultf(err, "delete function %s", functionName)
 	}
 
-	return action.ActionResult{
-		Success: true,
-		Message: fmt.Sprintf("Deleted function %s", functionName),
-	}
+	return action.SuccessResult(fmt.Sprintf("Deleted function %s", functionName))
 }

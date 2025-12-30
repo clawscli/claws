@@ -2,6 +2,7 @@ package action
 
 import (
 	"context"
+	"errors"
 	"os/exec"
 	"strings"
 	"testing"
@@ -347,6 +348,59 @@ func TestActionResult(t *testing.T) {
 	}
 	if failure.Error != ErrEmptyCommand {
 		t.Errorf("Error = %v, want %v", failure.Error, ErrEmptyCommand)
+	}
+}
+
+func TestSuccessResult(t *testing.T) {
+	result := SuccessResult("operation completed")
+	if !result.Success {
+		t.Error("SuccessResult should have Success=true")
+	}
+	if result.Message != "operation completed" {
+		t.Errorf("Message = %q, want %q", result.Message, "operation completed")
+	}
+	if result.Error != nil {
+		t.Errorf("Error should be nil, got %v", result.Error)
+	}
+}
+
+func TestSuccessResultWithFollowUp(t *testing.T) {
+	followUp := "test-follow-up"
+	result := SuccessResultWithFollowUp("done", followUp)
+	if !result.Success {
+		t.Error("Success should be true")
+	}
+	if result.FollowUpMsg != followUp {
+		t.Errorf("FollowUpMsg = %v, want %v", result.FollowUpMsg, followUp)
+	}
+}
+
+func TestFailResult(t *testing.T) {
+	err := errors.New("test error")
+	result := FailResult(err)
+	if result.Success {
+		t.Error("FailResult should have Success=false")
+	}
+	if result.Error != err {
+		t.Errorf("Error = %v, want %v", result.Error, err)
+	}
+}
+
+func TestFailResultf(t *testing.T) {
+	baseErr := errors.New("connection failed")
+	result := FailResultf(baseErr, "start instance %s", "i-123")
+	if result.Success {
+		t.Error("FailResultf should have Success=false")
+	}
+	if result.Error == nil {
+		t.Fatal("Error should not be nil")
+	}
+	if !errors.Is(result.Error, baseErr) {
+		t.Error("wrapped error should contain original error")
+	}
+	want := "start instance i-123: connection failed"
+	if result.Error.Error() != want {
+		t.Errorf("Error.Error() = %q, want %q", result.Error.Error(), want)
 	}
 }
 

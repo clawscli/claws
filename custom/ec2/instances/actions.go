@@ -70,7 +70,7 @@ func executeInstanceAction(ctx context.Context, act action.Action, resource dao.
 func executeStartInstance(ctx context.Context, resource dao.Resource) action.ActionResult {
 	client, err := appec2.GetClient(ctx)
 	if err != nil {
-		return action.ActionResult{Success: false, Error: err}
+		return action.FailResult(err)
 	}
 
 	instanceID := resource.GetID()
@@ -78,19 +78,16 @@ func executeStartInstance(ctx context.Context, resource dao.Resource) action.Act
 		InstanceIds: []string{instanceID},
 	})
 	if err != nil {
-		return action.ActionResult{Success: false, Error: fmt.Errorf("start instance: %w", err)}
+		return action.FailResultf(err, "start instance %s", instanceID)
 	}
 
-	return action.ActionResult{
-		Success: true,
-		Message: fmt.Sprintf("Started instance %s", instanceID),
-	}
+	return action.SuccessResult(fmt.Sprintf("Started instance %s", instanceID))
 }
 
 func executeStopInstance(ctx context.Context, resource dao.Resource) action.ActionResult {
 	client, err := appec2.GetClient(ctx)
 	if err != nil {
-		return action.ActionResult{Success: false, Error: err}
+		return action.FailResult(err)
 	}
 
 	instanceID := resource.GetID()
@@ -98,19 +95,16 @@ func executeStopInstance(ctx context.Context, resource dao.Resource) action.Acti
 		InstanceIds: []string{instanceID},
 	})
 	if err != nil {
-		return action.ActionResult{Success: false, Error: fmt.Errorf("stop instance: %w", err)}
+		return action.FailResultf(err, "stop instance %s", instanceID)
 	}
 
-	return action.ActionResult{
-		Success: true,
-		Message: fmt.Sprintf("Stopped instance %s", instanceID),
-	}
+	return action.SuccessResult(fmt.Sprintf("Stopped instance %s", instanceID))
 }
 
 func executeRebootInstance(ctx context.Context, resource dao.Resource) action.ActionResult {
 	client, err := appec2.GetClient(ctx)
 	if err != nil {
-		return action.ActionResult{Success: false, Error: err}
+		return action.FailResult(err)
 	}
 
 	instanceID := resource.GetID()
@@ -118,19 +112,16 @@ func executeRebootInstance(ctx context.Context, resource dao.Resource) action.Ac
 		InstanceIds: []string{instanceID},
 	})
 	if err != nil {
-		return action.ActionResult{Success: false, Error: fmt.Errorf("reboot instance: %w", err)}
+		return action.FailResultf(err, "reboot instance %s", instanceID)
 	}
 
-	return action.ActionResult{
-		Success: true,
-		Message: fmt.Sprintf("Rebooted instance %s", instanceID),
-	}
+	return action.SuccessResult(fmt.Sprintf("Rebooted instance %s", instanceID))
 }
 
 func executeTerminateInstance(ctx context.Context, resource dao.Resource) action.ActionResult {
 	client, err := appec2.GetClient(ctx)
 	if err != nil {
-		return action.ActionResult{Success: false, Error: err}
+		return action.FailResult(err)
 	}
 
 	instanceID := resource.GetID()
@@ -138,11 +129,8 @@ func executeTerminateInstance(ctx context.Context, resource dao.Resource) action
 		InstanceIds: []string{instanceID},
 	})
 	if err != nil {
-		return action.ActionResult{Success: false, Error: fmt.Errorf("terminate instance: %w", err)}
+		return action.FailResultf(err, "terminate instance %s", instanceID)
 	}
 
-	return action.ActionResult{
-		Success: true,
-		Message: fmt.Sprintf("Terminated instance %s", instanceID),
-	}
+	return action.SuccessResult(fmt.Sprintf("Terminated instance %s", instanceID))
 }
