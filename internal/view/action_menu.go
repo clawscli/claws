@@ -12,6 +12,7 @@ import (
 	"github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 	"github.com/clawscli/claws/internal/log"
 	navmsg "github.com/clawscli/claws/internal/msg"
 	"github.com/clawscli/claws/internal/ui"
@@ -332,6 +333,8 @@ func (m *ActionMenu) ViewString() string {
 		out += "\n"
 		if m.result.Success {
 			out += ui.SuccessStyle().Render(m.result.Message)
+		} else if m.result.ErrorKind != apperrors.Unknown {
+			out += ui.DangerStyle().Render(fmt.Sprintf("[%s] %v", m.result.ErrorKind, m.result.Error))
 		} else {
 			out += ui.DangerStyle().Render(fmt.Sprintf("Error: %v", m.result.Error))
 		}
