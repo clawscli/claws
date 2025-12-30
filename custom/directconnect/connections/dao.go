@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // ConnectionDAO provides data access for Direct Connect connections.
@@ -21,7 +22,7 @@ type ConnectionDAO struct {
 func NewConnectionDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new directconnect/connections dao: %w", err)
+		return nil, apperrors.Wrap(err, "new directconnect/connections dao")
 	}
 	return &ConnectionDAO{
 		BaseDAO: dao.NewBaseDAO("directconnect", "connections"),
@@ -33,7 +34,7 @@ func NewConnectionDAO(ctx context.Context) (dao.DAO, error) {
 func (d *ConnectionDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	output, err := d.client.DescribeConnections(ctx, &directconnect.DescribeConnectionsInput{})
 	if err != nil {
-		return nil, fmt.Errorf("describe direct connect connections: %w", err)
+		return nil, apperrors.Wrap(err, "describe direct connect connections")
 	}
 
 	resources := make([]dao.Resource, len(output.Connections))
@@ -49,7 +50,7 @@ func (d *ConnectionDAO) Get(ctx context.Context, id string) (dao.Resource, error
 		ConnectionId: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe direct connect connection %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe direct connect connection %s", id)
 	}
 	if len(output.Connections) == 0 {
 		return nil, fmt.Errorf("direct connect connection not found: %s", id)
@@ -63,7 +64,7 @@ func (d *ConnectionDAO) Delete(ctx context.Context, id string) error {
 		ConnectionId: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete direct connect connection %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete direct connect connection %s", id)
 	}
 	return nil
 }

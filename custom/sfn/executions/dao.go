@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // ExecutionDAO provides data access for Step Functions executions
@@ -22,7 +23,7 @@ type ExecutionDAO struct {
 func NewExecutionDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new sfn/executions dao: %w", err)
+		return nil, apperrors.Wrap(err, "new sfn/executions dao")
 	}
 	return &ExecutionDAO{
 		BaseDAO: dao.NewBaseDAO("sfn", "executions"),
@@ -53,7 +54,7 @@ func (d *ExecutionDAO) ListPage(ctx context.Context, pageSize int, pageToken str
 	for smPaginator.HasMorePages() {
 		smOutput, err := smPaginator.NextPage(ctx)
 		if err != nil {
-			return nil, "", fmt.Errorf("list state machines: %w", err)
+			return nil, "", apperrors.Wrap(err, "list state machines")
 		}
 		for _, sm := range smOutput.StateMachines {
 			if appaws.Str(sm.Name) == smName {
@@ -85,7 +86,7 @@ func (d *ExecutionDAO) ListPage(ctx context.Context, pageSize int, pageToken str
 
 	output, err := d.client.ListExecutions(ctx, input)
 	if err != nil {
-		return nil, "", fmt.Errorf("list executions for %s: %w", smName, err)
+		return nil, "", apperrors.Wrapf(err, "list executions for %s", smName)
 	}
 
 	resources := make([]dao.Resource, 0, len(output.Executions))
@@ -108,7 +109,7 @@ func (d *ExecutionDAO) Get(ctx context.Context, id string) (dao.Resource, error)
 
 	output, err := d.client.DescribeExecution(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe execution %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe execution %s", id)
 	}
 
 	// Convert to list item format
@@ -132,7 +133,7 @@ func (d *ExecutionDAO) Delete(ctx context.Context, id string) error {
 
 	_, err := d.client.StopExecution(ctx, input)
 	if err != nil {
-		return fmt.Errorf("stop execution %s: %w", id, err)
+		return apperrors.Wrapf(err, "stop execution %s", id)
 	}
 
 	return nil

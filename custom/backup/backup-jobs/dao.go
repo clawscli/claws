@@ -2,7 +2,6 @@ package backupjobs
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/backup"
@@ -10,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 	"github.com/clawscli/claws/internal/render"
 )
 
@@ -23,7 +23,7 @@ type BackupJobDAO struct {
 func NewBackupJobDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new backup/backup-jobs dao: %w", err)
+		return nil, apperrors.Wrap(err, "new backup/backup-jobs dao")
 	}
 	return &BackupJobDAO{
 		BaseDAO: dao.NewBaseDAO("backup", "backup-jobs"),
@@ -59,7 +59,7 @@ func (d *BackupJobDAO) ListPage(ctx context.Context, pageSize int, pageToken str
 
 	output, err := d.client.ListBackupJobs(ctx, input)
 	if err != nil {
-		return nil, "", fmt.Errorf("list backup jobs: %w", err)
+		return nil, "", apperrors.Wrap(err, "list backup jobs")
 	}
 
 	resources := make([]dao.Resource, 0)
@@ -92,7 +92,7 @@ func (d *BackupJobDAO) Get(ctx context.Context, jobId string) (dao.Resource, err
 
 	output, err := d.client.DescribeBackupJob(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe backup job %s: %w", jobId, err)
+		return nil, apperrors.Wrapf(err, "describe backup job %s", jobId)
 	}
 
 	return NewBackupJobResourceFromDetail(output), nil
@@ -104,7 +104,7 @@ func (d *BackupJobDAO) Delete(ctx context.Context, jobId string) error {
 		BackupJobId: &jobId,
 	})
 	if err != nil {
-		return fmt.Errorf("stop backup job %s: %w", jobId, err)
+		return apperrors.Wrapf(err, "stop backup job %s", jobId)
 	}
 	return nil
 }

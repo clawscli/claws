@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // CostDAO provides data access for AWS Cost Explorer.
@@ -23,7 +24,7 @@ func NewCostDAO(ctx context.Context) (dao.DAO, error) {
 	// Cost Explorer API is only available in us-east-1
 	cfg, err := appaws.NewConfigWithRegion(ctx, appaws.CostExplorerRegion)
 	if err != nil {
-		return nil, fmt.Errorf("new costexplorer/costs dao: %w", err)
+		return nil, apperrors.Wrap(err, "new costexplorer/costs dao")
 	}
 	return &CostDAO{
 		BaseDAO: dao.NewBaseDAO("costexplorer", "costs"),
@@ -56,7 +57,7 @@ func (d *CostDAO) List(ctx context.Context) ([]dao.Resource, error) {
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get cost and usage: %w", err)
+		return nil, apperrors.Wrap(err, "get cost and usage")
 	}
 
 	var resources []dao.Resource
@@ -101,7 +102,7 @@ func (d *CostDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get cost for service %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get cost for service %s", id)
 	}
 
 	for _, result := range output.ResultsByTime {

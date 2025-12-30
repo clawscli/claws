@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // FindingDAO provides data access for Access Analyzer findings.
@@ -22,7 +23,7 @@ type FindingDAO struct {
 func NewFindingDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new accessanalyzer/findings dao: %w", err)
+		return nil, apperrors.Wrap(err, "new accessanalyzer/findings dao")
 	}
 	return &FindingDAO{
 		BaseDAO: dao.NewBaseDAO("accessanalyzer", "findings"),
@@ -43,7 +44,7 @@ func (d *FindingDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken:   token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list findings: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list findings")
 		}
 		return output.Findings, output.NextToken, nil
 	})
@@ -70,7 +71,7 @@ func (d *FindingDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		Id:          &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get finding %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get finding %s", id)
 	}
 	return NewFindingResourceFromDetail(*output.Finding, analyzerArn), nil
 }

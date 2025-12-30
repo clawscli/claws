@@ -2,7 +2,6 @@ package flows
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/bedrockagent"
@@ -10,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // FlowDAO provides data access for Bedrock Flows
@@ -22,7 +22,7 @@ type FlowDAO struct {
 func NewFlowDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new bedrockagent/flows dao: %w", err)
+		return nil, apperrors.Wrap(err, "new bedrockagent/flows dao")
 	}
 	return &FlowDAO{
 		BaseDAO: dao.NewBaseDAO("bedrock-agent", "flows"),
@@ -37,7 +37,7 @@ func (d *FlowDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			MaxResults: appaws.Int32Ptr(100),
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list flows: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list flows")
 		}
 		return output.FlowSummaries, output.NextToken, nil
 	})
@@ -58,7 +58,7 @@ func (d *FlowDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		FlowIdentifier: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get flow %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get flow %s", id)
 	}
 
 	return NewFlowResourceFromDetail(output), nil
@@ -69,7 +69,7 @@ func (d *FlowDAO) Delete(ctx context.Context, id string) error {
 		FlowIdentifier: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete flow %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete flow %s", id)
 	}
 	return nil
 }

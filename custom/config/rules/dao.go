@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // RuleDAO provides data access for AWS Config rules.
@@ -21,7 +22,7 @@ type RuleDAO struct {
 func NewRuleDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new config/rules dao: %w", err)
+		return nil, apperrors.Wrap(err, "new config/rules dao")
 	}
 	return &RuleDAO{
 		BaseDAO: dao.NewBaseDAO("config", "rules"),
@@ -48,7 +49,7 @@ func (d *RuleDAO) ListPage(ctx context.Context, pageSize int, pageToken string) 
 
 	output, err := d.client.DescribeConfigRules(ctx, input)
 	if err != nil {
-		return nil, "", fmt.Errorf("describe config rules: %w", err)
+		return nil, "", apperrors.Wrap(err, "describe config rules")
 	}
 
 	resources := make([]dao.Resource, len(output.ConfigRules))
@@ -70,7 +71,7 @@ func (d *RuleDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		ConfigRuleNames: []string{id},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe config rule %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe config rule %s", id)
 	}
 	if len(output.ConfigRules) == 0 {
 		return nil, fmt.Errorf("config rule not found: %s", id)
@@ -84,7 +85,7 @@ func (d *RuleDAO) Delete(ctx context.Context, id string) error {
 		ConfigRuleName: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete config rule %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete config rule %s", id)
 	}
 	return nil
 }

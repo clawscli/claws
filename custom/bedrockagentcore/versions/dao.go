@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // VersionDAO provides data access for Bedrock AgentCore Runtime Versions
@@ -22,7 +23,7 @@ type VersionDAO struct {
 func NewVersionDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new bedrockagentcore/versions dao: %w", err)
+		return nil, apperrors.Wrap(err, "new bedrockagentcore/versions dao")
 	}
 	return &VersionDAO{
 		BaseDAO: dao.NewBaseDAO("bedrock-agentcore", "versions"),
@@ -60,7 +61,7 @@ func (d *VersionDAO) ListPage(ctx context.Context, pageSize int, pageToken strin
 
 	output, err := d.client.ListAgentRuntimeVersions(ctx, input)
 	if err != nil {
-		return nil, "", fmt.Errorf("list agent runtime versions: %w", err)
+		return nil, "", apperrors.Wrap(err, "list agent runtime versions")
 	}
 
 	resources := make([]dao.Resource, len(output.AgentRuntimes))
@@ -82,7 +83,7 @@ func (d *VersionDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		AgentRuntimeId: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get agent runtime version %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get agent runtime version %s", id)
 	}
 
 	return NewVersionResourceFromDetail(output), nil

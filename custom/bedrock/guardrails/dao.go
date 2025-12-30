@@ -2,7 +2,6 @@ package guardrails
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/bedrock"
@@ -10,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // GuardrailDAO provides data access for Bedrock Guardrails
@@ -22,7 +22,7 @@ type GuardrailDAO struct {
 func NewGuardrailDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new bedrock/guardrails dao: %w", err)
+		return nil, apperrors.Wrap(err, "new bedrock/guardrails dao")
 	}
 	return &GuardrailDAO{
 		BaseDAO: dao.NewBaseDAO("bedrock", "guardrails"),
@@ -37,7 +37,7 @@ func (d *GuardrailDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			MaxResults: appaws.Int32Ptr(100),
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list guardrails: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list guardrails")
 		}
 		return output.Guardrails, output.NextToken, nil
 	})
@@ -58,7 +58,7 @@ func (d *GuardrailDAO) Get(ctx context.Context, id string) (dao.Resource, error)
 		GuardrailIdentifier: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get guardrail %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get guardrail %s", id)
 	}
 
 	return NewGuardrailResourceFromDetail(output), nil
@@ -69,7 +69,7 @@ func (d *GuardrailDAO) Delete(ctx context.Context, id string) error {
 		GuardrailIdentifier: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete guardrail %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete guardrail %s", id)
 	}
 	return nil
 }

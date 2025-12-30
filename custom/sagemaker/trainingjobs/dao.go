@@ -2,7 +2,6 @@ package trainingjobs
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/sagemaker"
@@ -10,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // TrainingJobDAO provides data access for SageMaker training jobs.
@@ -22,7 +22,7 @@ type TrainingJobDAO struct {
 func NewTrainingJobDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new sagemaker/trainingjobs dao: %w", err)
+		return nil, apperrors.Wrap(err, "new sagemaker/trainingjobs dao")
 	}
 	return &TrainingJobDAO{
 		BaseDAO: dao.NewBaseDAO("sagemaker", "training-jobs"),
@@ -37,7 +37,7 @@ func (d *TrainingJobDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list sagemaker training jobs: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list sagemaker training jobs")
 		}
 		return output.TrainingJobSummaries, output.NextToken, nil
 	})
@@ -58,7 +58,7 @@ func (d *TrainingJobDAO) Get(ctx context.Context, id string) (dao.Resource, erro
 		TrainingJobName: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe sagemaker training job: %w", err)
+		return nil, apperrors.Wrap(err, "describe sagemaker training job")
 	}
 	// Convert to summary for consistent resource type
 	summary := types.TrainingJobSummary{
@@ -123,7 +123,7 @@ func (d *TrainingJobDAO) Delete(ctx context.Context, id string) error {
 		TrainingJobName: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("stop sagemaker training job: %w", err)
+		return apperrors.Wrap(err, "stop sagemaker training job")
 	}
 	return nil
 }

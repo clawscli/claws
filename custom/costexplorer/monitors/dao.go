@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // MonitorDAO provides data access for Cost Anomaly Monitors.
@@ -22,7 +23,7 @@ func NewMonitorDAO(ctx context.Context) (dao.DAO, error) {
 	// Cost Explorer API is only available in us-east-1
 	cfg, err := appaws.NewConfigWithRegion(ctx, appaws.CostExplorerRegion)
 	if err != nil {
-		return nil, fmt.Errorf("new costexplorer/monitors dao: %w", err)
+		return nil, apperrors.Wrap(err, "new costexplorer/monitors dao")
 	}
 	return &MonitorDAO{
 		BaseDAO: dao.NewBaseDAO("costexplorer", "monitors"),
@@ -37,7 +38,7 @@ func (d *MonitorDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextPageToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list anomaly monitors: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list anomaly monitors")
 		}
 		return output.AnomalyMonitors, output.NextPageToken, nil
 	})
@@ -58,7 +59,7 @@ func (d *MonitorDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		MonitorArnList: []string{id},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get anomaly monitor %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get anomaly monitor %s", id)
 	}
 
 	if len(output.AnomalyMonitors) == 0 {

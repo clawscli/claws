@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // OUDAO provides data access for Organizations OUs.
@@ -21,7 +22,7 @@ type OUDAO struct {
 func NewOUDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new organizations/ous dao: %w", err)
+		return nil, apperrors.Wrap(err, "new organizations/ous dao")
 	}
 	return &OUDAO{
 		BaseDAO: dao.NewBaseDAO("organizations", "ous"),
@@ -42,7 +43,7 @@ func (d *OUDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list organizations OUs: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list organizations OUs")
 		}
 		return output.OrganizationalUnits, output.NextToken, nil
 	})
@@ -63,7 +64,7 @@ func (d *OUDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		OrganizationalUnitId: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe organizations OU: %w", err)
+		return nil, apperrors.Wrap(err, "describe organizations OU")
 	}
 	return NewOUResource(*output.OrganizationalUnit), nil
 }
@@ -74,7 +75,7 @@ func (d *OUDAO) Delete(ctx context.Context, id string) error {
 		OrganizationalUnitId: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete organizations OU: %w", err)
+		return apperrors.Wrap(err, "delete organizations OU")
 	}
 	return nil
 }

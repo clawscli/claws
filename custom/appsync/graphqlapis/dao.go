@@ -2,13 +2,13 @@ package graphqlapis
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/appsync"
 	"github.com/aws/aws-sdk-go-v2/service/appsync/types"
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // GraphQLApiDAO provides data access for AppSync GraphQL APIs.
@@ -21,7 +21,7 @@ type GraphQLApiDAO struct {
 func NewGraphQLApiDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new appsync/graphqlapis dao: %w", err)
+		return nil, apperrors.Wrap(err, "new appsync/graphqlapis dao")
 	}
 	return &GraphQLApiDAO{
 		BaseDAO: dao.NewBaseDAO("appsync", "graphql-apis"),
@@ -36,7 +36,7 @@ func (d *GraphQLApiDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list appsync graphql apis: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list appsync graphql apis")
 		}
 		return output.GraphqlApis, output.NextToken, nil
 	})
@@ -57,7 +57,7 @@ func (d *GraphQLApiDAO) Get(ctx context.Context, id string) (dao.Resource, error
 		ApiId: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get appsync graphql api: %w", err)
+		return nil, apperrors.Wrap(err, "get appsync graphql api")
 	}
 	return NewGraphQLApiResource(*output.GraphqlApi), nil
 }
@@ -68,7 +68,7 @@ func (d *GraphQLApiDAO) Delete(ctx context.Context, id string) error {
 		ApiId: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete appsync graphql api: %w", err)
+		return apperrors.Wrap(err, "delete appsync graphql api")
 	}
 	return nil
 }

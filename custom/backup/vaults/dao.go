@@ -2,7 +2,6 @@ package vaults
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/backup"
@@ -10,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // VaultDAO provides data access for AWS Backup vaults
@@ -22,7 +22,7 @@ type VaultDAO struct {
 func NewVaultDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new backup/vaults dao: %w", err)
+		return nil, apperrors.Wrap(err, "new backup/vaults dao")
 	}
 	return &VaultDAO{
 		BaseDAO: dao.NewBaseDAO("backup", "vaults"),
@@ -37,7 +37,7 @@ func (d *VaultDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list backup vaults: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list backup vaults")
 		}
 		return output.BackupVaultList, output.NextToken, nil
 	})
@@ -59,7 +59,7 @@ func (d *VaultDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		BackupVaultName: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe backup vault %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe backup vault %s", id)
 	}
 
 	return NewVaultResourceFromDetail(output), nil
@@ -71,7 +71,7 @@ func (d *VaultDAO) Delete(ctx context.Context, id string) error {
 		BackupVaultName: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete backup vault %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete backup vault %s", id)
 	}
 	return nil
 }

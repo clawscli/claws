@@ -2,13 +2,13 @@ package rules
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/eventbridge"
 	"github.com/aws/aws-sdk-go-v2/service/eventbridge/types"
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 	"github.com/clawscli/claws/internal/log"
 )
 
@@ -22,7 +22,7 @@ type RuleDAO struct {
 func NewRuleDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new eventbridge/rules dao: %w", err)
+		return nil, apperrors.Wrap(err, "new eventbridge/rules dao")
 	}
 	return &RuleDAO{
 		BaseDAO: dao.NewBaseDAO("eventbridge", "rules"),
@@ -35,7 +35,7 @@ func (d *RuleDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	busInput := &eventbridge.ListEventBusesInput{}
 	busOutput, err := d.client.ListEventBuses(ctx, busInput)
 	if err != nil {
-		return nil, fmt.Errorf("list event buses: %w", err)
+		return nil, apperrors.Wrap(err, "list event buses")
 	}
 
 	var resources []dao.Resource
@@ -67,7 +67,7 @@ func (d *RuleDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 
 	output, err := d.client.DescribeRule(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe rule %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe rule %s", id)
 	}
 
 	// Convert DescribeRuleOutput to types.Rule
@@ -119,7 +119,7 @@ func (d *RuleDAO) Delete(ctx context.Context, id string) error {
 				Ids:  targetIds,
 			})
 			if err != nil {
-				return fmt.Errorf("remove targets for rule %s: %w", id, err)
+				return apperrors.Wrapf(err, "remove targets for rule %s", id)
 			}
 		}
 	}
@@ -130,7 +130,7 @@ func (d *RuleDAO) Delete(ctx context.Context, id string) error {
 
 	_, err = d.client.DeleteRule(ctx, input)
 	if err != nil {
-		return fmt.Errorf("delete rule %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete rule %s", id)
 	}
 
 	return nil

@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // FindingDAO provides data access for Macie findings.
@@ -22,7 +23,7 @@ type FindingDAO struct {
 func NewFindingDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new macie/findings dao: %w", err)
+		return nil, apperrors.Wrap(err, "new macie/findings dao")
 	}
 	return &FindingDAO{
 		BaseDAO: dao.NewBaseDAO("macie", "findings"),
@@ -42,7 +43,7 @@ func (d *FindingDAO) List(ctx context.Context) ([]dao.Resource, error) {
 
 		output, err := d.client.ListFindings(ctx, input)
 		if err != nil {
-			return nil, nil, fmt.Errorf("list macie findings: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list macie findings")
 		}
 		return output.FindingIds, output.NextToken, nil
 	})
@@ -67,7 +68,7 @@ func (d *FindingDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			FindingIds: batch,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("get macie findings: %w", err)
+			return nil, apperrors.Wrap(err, "get macie findings")
 		}
 
 		for _, finding := range output.Findings {
@@ -94,7 +95,7 @@ func (d *FindingDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		FindingIds: []string{id},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get macie finding: %w", err)
+		return nil, apperrors.Wrap(err, "get macie finding")
 	}
 	if len(output.Findings) == 0 {
 		return nil, fmt.Errorf("finding not found: %s", id)

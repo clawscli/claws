@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // UserDAO provides data access for Transfer Family users.
@@ -21,7 +22,7 @@ type UserDAO struct {
 func NewUserDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new transfer/users dao: %w", err)
+		return nil, apperrors.Wrap(err, "new transfer/users dao")
 	}
 	return &UserDAO{
 		BaseDAO: dao.NewBaseDAO("transfer", "users"),
@@ -42,7 +43,7 @@ func (d *UserDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list transfer users: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list transfer users")
 		}
 		return output.Users, output.NextToken, nil
 	})
@@ -69,7 +70,7 @@ func (d *UserDAO) Get(ctx context.Context, username string) (dao.Resource, error
 		UserName: &username,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe transfer user %s: %w", username, err)
+		return nil, apperrors.Wrapf(err, "describe transfer user %s", username)
 	}
 	return NewUserResourceFromDetail(*output.User, serverId), nil
 }
@@ -86,7 +87,7 @@ func (d *UserDAO) Delete(ctx context.Context, username string) error {
 		UserName: &username,
 	})
 	if err != nil {
-		return fmt.Errorf("delete transfer user %s: %w", username, err)
+		return apperrors.Wrapf(err, "delete transfer user %s", username)
 	}
 	return nil
 }

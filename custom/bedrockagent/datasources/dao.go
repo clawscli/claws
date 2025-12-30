@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 	"github.com/clawscli/claws/internal/log"
 )
 
@@ -23,7 +24,7 @@ type DataSourceDAO struct {
 func NewDataSourceDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new bedrockagent/datasources dao: %w", err)
+		return nil, apperrors.Wrap(err, "new bedrockagent/datasources dao")
 	}
 	return &DataSourceDAO{
 		BaseDAO: dao.NewBaseDAO("bedrock-agent", "data-sources"),
@@ -45,7 +46,7 @@ func (d *DataSourceDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			MaxResults:      appaws.Int32Ptr(100),
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list data sources: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list data sources")
 		}
 		return output.DataSourceSummaries, output.NextToken, nil
 	})
@@ -72,7 +73,7 @@ func (d *DataSourceDAO) Get(ctx context.Context, id string) (dao.Resource, error
 		KnowledgeBaseId: &knowledgeBaseId,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get data source %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get data source %s", id)
 	}
 
 	return NewDataSourceResourceFromDetail(output.DataSource), nil
@@ -89,7 +90,7 @@ func (d *DataSourceDAO) Delete(ctx context.Context, id string) error {
 		KnowledgeBaseId: &knowledgeBaseId,
 	})
 	if err != nil {
-		return fmt.Errorf("delete data source %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete data source %s", id)
 	}
 	return nil
 }

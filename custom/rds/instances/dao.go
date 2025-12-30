@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // InstanceDAO provides data access for RDS instances
@@ -21,7 +22,7 @@ type InstanceDAO struct {
 func NewInstanceDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new rds/instances dao: %w", err)
+		return nil, apperrors.Wrap(err, "new rds/instances dao")
 	}
 	return &InstanceDAO{
 		BaseDAO: dao.NewBaseDAO("rds", "instances"),
@@ -37,7 +38,7 @@ func (d *InstanceDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	for paginator.HasMorePages() {
 		output, err := paginator.NextPage(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("describe db instances: %w", err)
+			return nil, apperrors.Wrap(err, "describe db instances")
 		}
 
 		for _, instance := range output.DBInstances {
@@ -55,7 +56,7 @@ func (d *InstanceDAO) Get(ctx context.Context, id string) (dao.Resource, error) 
 
 	output, err := d.client.DescribeDBInstances(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe db instance %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe db instance %s", id)
 	}
 
 	if len(output.DBInstances) == 0 {
@@ -75,13 +76,13 @@ func (d *InstanceDAO) Delete(ctx context.Context, id string) error {
 
 	_, err := d.client.DeleteDBInstance(ctx, input)
 	if err != nil {
-		if appaws.IsNotFound(err) {
+		if apperrors.IsNotFound(err) {
 			return nil // Already deleted
 		}
-		if appaws.IsResourceInUse(err) {
+		if apperrors.IsResourceInUse(err) {
 			return fmt.Errorf("db instance %s is in use", id)
 		}
-		return fmt.Errorf("delete db instance %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete db instance %s", id)
 	}
 
 	return nil

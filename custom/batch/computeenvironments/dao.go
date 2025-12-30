@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // ComputeEnvironmentDAO provides data access for Batch compute environments.
@@ -21,7 +22,7 @@ type ComputeEnvironmentDAO struct {
 func NewComputeEnvironmentDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new batch/computeenvironments dao: %w", err)
+		return nil, apperrors.Wrap(err, "new batch/computeenvironments dao")
 	}
 	return &ComputeEnvironmentDAO{
 		BaseDAO: dao.NewBaseDAO("batch", "compute-environments"),
@@ -36,7 +37,7 @@ func (d *ComputeEnvironmentDAO) List(ctx context.Context) ([]dao.Resource, error
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("describe batch compute environments: %w", err)
+			return nil, nil, apperrors.Wrap(err, "describe batch compute environments")
 		}
 		return output.ComputeEnvironments, output.NextToken, nil
 	})
@@ -57,7 +58,7 @@ func (d *ComputeEnvironmentDAO) Get(ctx context.Context, name string) (dao.Resou
 		ComputeEnvironments: []string{name},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe batch compute environment: %w", err)
+		return nil, apperrors.Wrap(err, "describe batch compute environment")
 	}
 	if len(output.ComputeEnvironments) == 0 {
 		return nil, fmt.Errorf("compute environment not found: %s", name)
@@ -73,7 +74,7 @@ func (d *ComputeEnvironmentDAO) Delete(ctx context.Context, name string) error {
 		State:              types.CEStateDisabled,
 	})
 	if err != nil {
-		return fmt.Errorf("disable batch compute environment: %w", err)
+		return apperrors.Wrap(err, "disable batch compute environment")
 	}
 
 	// Then delete it
@@ -81,7 +82,7 @@ func (d *ComputeEnvironmentDAO) Delete(ctx context.Context, name string) error {
 		ComputeEnvironment: &name,
 	})
 	if err != nil {
-		return fmt.Errorf("delete batch compute environment: %w", err)
+		return apperrors.Wrap(err, "delete batch compute environment")
 	}
 	return nil
 }

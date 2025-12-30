@@ -2,7 +2,6 @@ package classificationjobs
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/macie2"
@@ -10,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // ClassificationJobDAO provides data access for Macie classification jobs.
@@ -22,7 +22,7 @@ type ClassificationJobDAO struct {
 func NewClassificationJobDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new macie/classificationjobs dao: %w", err)
+		return nil, apperrors.Wrap(err, "new macie/classificationjobs dao")
 	}
 	return &ClassificationJobDAO{
 		BaseDAO: dao.NewBaseDAO("macie", "classification-jobs"),
@@ -37,7 +37,7 @@ func (d *ClassificationJobDAO) List(ctx context.Context) ([]dao.Resource, error)
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list macie classification jobs: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list macie classification jobs")
 		}
 		return output.Items, output.NextToken, nil
 	})
@@ -58,7 +58,7 @@ func (d *ClassificationJobDAO) Get(ctx context.Context, id string) (dao.Resource
 		JobId: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe macie classification job: %w", err)
+		return nil, apperrors.Wrap(err, "describe macie classification job")
 	}
 	return &ClassificationJobResource{
 		BaseResource: dao.BaseResource{
@@ -83,7 +83,7 @@ func (d *ClassificationJobDAO) Delete(ctx context.Context, id string) error {
 		JobStatus: status,
 	})
 	if err != nil {
-		return fmt.Errorf("cancel macie classification job: %w", err)
+		return apperrors.Wrap(err, "cancel macie classification job")
 	}
 	return nil
 }

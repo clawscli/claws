@@ -2,7 +2,6 @@ package models
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/sagemaker"
@@ -10,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // ModelDAO provides data access for SageMaker models.
@@ -22,7 +22,7 @@ type ModelDAO struct {
 func NewModelDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new sagemaker/models dao: %w", err)
+		return nil, apperrors.Wrap(err, "new sagemaker/models dao")
 	}
 	return &ModelDAO{
 		BaseDAO: dao.NewBaseDAO("sagemaker", "models"),
@@ -37,7 +37,7 @@ func (d *ModelDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list sagemaker models: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list sagemaker models")
 		}
 		return output.Models, output.NextToken, nil
 	})
@@ -58,7 +58,7 @@ func (d *ModelDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		ModelName: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe sagemaker model: %w", err)
+		return nil, apperrors.Wrap(err, "describe sagemaker model")
 	}
 	// Convert to summary for consistent resource type
 	summary := types.ModelSummary{
@@ -87,7 +87,7 @@ func (d *ModelDAO) Delete(ctx context.Context, id string) error {
 		ModelName: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete sagemaker model: %w", err)
+		return apperrors.Wrap(err, "delete sagemaker model")
 	}
 	return nil
 }

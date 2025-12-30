@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // GrantDAO provides data access for License Manager grants.
@@ -22,7 +23,7 @@ type GrantDAO struct {
 func NewGrantDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new licensemanager/grants dao: %w", err)
+		return nil, apperrors.Wrap(err, "new licensemanager/grants dao")
 	}
 	return &GrantDAO{
 		BaseDAO: dao.NewBaseDAO("license-manager", "grants"),
@@ -48,7 +49,7 @@ func (d *GrantDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list license grants: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list license grants")
 		}
 		return output.Grants, output.NextToken, nil
 	})
@@ -73,7 +74,7 @@ func (d *GrantDAO) Get(ctx context.Context, arn string) (dao.Resource, error) {
 		GrantArn: &arn,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get grant: %w", err)
+		return nil, apperrors.Wrap(err, "get grant")
 	}
 	return NewGrantResource(*output.Grant), nil
 }
@@ -85,7 +86,7 @@ func (d *GrantDAO) Delete(ctx context.Context, arn string) error {
 		GrantArn: &arn,
 	})
 	if err != nil {
-		return fmt.Errorf("get grant for delete: %w", err)
+		return apperrors.Wrap(err, "get grant for delete")
 	}
 
 	_, err = d.client.DeleteGrant(ctx, &licensemanager.DeleteGrantInput{
@@ -93,7 +94,7 @@ func (d *GrantDAO) Delete(ctx context.Context, arn string) error {
 		Version:  output.Grant.Version,
 	})
 	if err != nil {
-		return fmt.Errorf("delete grant: %w", err)
+		return apperrors.Wrap(err, "delete grant")
 	}
 	return nil
 }

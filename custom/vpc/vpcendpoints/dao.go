@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // VpcEndpointDAO provides data access for VPC Endpoints.
@@ -22,7 +23,7 @@ type VpcEndpointDAO struct {
 func NewVpcEndpointDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new vpc/vpcendpoints dao: %w", err)
+		return nil, apperrors.Wrap(err, "new vpc/vpcendpoints dao")
 	}
 	return &VpcEndpointDAO{
 		BaseDAO: dao.NewBaseDAO("ec2", "vpc-endpoints"),
@@ -37,7 +38,7 @@ func (d *VpcEndpointDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("describe vpc endpoints: %w", err)
+			return nil, nil, apperrors.Wrap(err, "describe vpc endpoints")
 		}
 		return output.VpcEndpoints, output.NextToken, nil
 	})
@@ -58,7 +59,7 @@ func (d *VpcEndpointDAO) Get(ctx context.Context, id string) (dao.Resource, erro
 		VpcEndpointIds: []string{id},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe vpc endpoint %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe vpc endpoint %s", id)
 	}
 	if len(output.VpcEndpoints) == 0 {
 		return nil, fmt.Errorf("vpc endpoint not found: %s", id)
@@ -72,7 +73,7 @@ func (d *VpcEndpointDAO) Delete(ctx context.Context, id string) error {
 		VpcEndpointIds: []string{id},
 	})
 	if err != nil {
-		return fmt.Errorf("delete vpc endpoint %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete vpc endpoint %s", id)
 	}
 	return nil
 }

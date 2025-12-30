@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // InternetGatewayDAO provides data access for Internet Gateways
@@ -21,7 +22,7 @@ type InternetGatewayDAO struct {
 func NewInternetGatewayDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new vpc/internetgateways dao: %w", err)
+		return nil, apperrors.Wrap(err, "new vpc/internetgateways dao")
 	}
 	return &InternetGatewayDAO{
 		BaseDAO: dao.NewBaseDAO("vpc", "internet-gateways"),
@@ -44,7 +45,7 @@ func (d *InternetGatewayDAO) List(ctx context.Context) ([]dao.Resource, error) {
 
 	output, err := d.client.DescribeInternetGateways(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe internet gateways: %w", err)
+		return nil, apperrors.Wrap(err, "describe internet gateways")
 	}
 
 	var resources []dao.Resource
@@ -60,7 +61,7 @@ func (d *InternetGatewayDAO) Get(ctx context.Context, id string) (dao.Resource, 
 		InternetGatewayIds: []string{id},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe internet gateway %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe internet gateway %s", id)
 	}
 
 	if len(output.InternetGateways) == 0 {
@@ -75,13 +76,13 @@ func (d *InternetGatewayDAO) Delete(ctx context.Context, id string) error {
 		InternetGatewayId: &id,
 	})
 	if err != nil {
-		if appaws.IsNotFound(err) {
+		if apperrors.IsNotFound(err) {
 			return nil // Already deleted
 		}
-		if appaws.IsResourceInUse(err) {
+		if apperrors.IsResourceInUse(err) {
 			return fmt.Errorf("internet gateway %s is in use (must be detached first)", id)
 		}
-		return fmt.Errorf("delete internet gateway %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete internet gateway %s", id)
 	}
 	return nil
 }

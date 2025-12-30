@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // DomainDAO provides data access for OpenSearch domains
@@ -21,7 +22,7 @@ type DomainDAO struct {
 func NewDomainDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new opensearch/domains dao: %w", err)
+		return nil, apperrors.Wrap(err, "new opensearch/domains dao")
 	}
 	return &DomainDAO{
 		BaseDAO: dao.NewBaseDAO("opensearch", "domains"),
@@ -35,7 +36,7 @@ func (d *DomainDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	listInput := &opensearch.ListDomainNamesInput{}
 	listOutput, err := d.client.ListDomainNames(ctx, listInput)
 	if err != nil {
-		return nil, fmt.Errorf("list domain names: %w", err)
+		return nil, apperrors.Wrap(err, "list domain names")
 	}
 
 	if len(listOutput.DomainNames) == 0 {
@@ -64,7 +65,7 @@ func (d *DomainDAO) List(ctx context.Context) ([]dao.Resource, error) {
 		}
 		describeOutput, err := d.client.DescribeDomains(ctx, describeInput)
 		if err != nil {
-			return nil, fmt.Errorf("describe domains: %w", err)
+			return nil, apperrors.Wrap(err, "describe domains")
 		}
 
 		for _, status := range describeOutput.DomainStatusList {
@@ -83,7 +84,7 @@ func (d *DomainDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 
 	output, err := d.client.DescribeDomains(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe domain %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe domain %s", id)
 	}
 
 	if len(output.DomainStatusList) == 0 {
@@ -101,7 +102,7 @@ func (d *DomainDAO) Delete(ctx context.Context, id string) error {
 
 	_, err := d.client.DeleteDomain(ctx, input)
 	if err != nil {
-		return fmt.Errorf("delete domain %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete domain %s", id)
 	}
 
 	return nil

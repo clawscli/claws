@@ -2,7 +2,6 @@ package prompts
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/bedrockagent"
@@ -10,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // PromptDAO provides data access for Bedrock Prompts
@@ -22,7 +22,7 @@ type PromptDAO struct {
 func NewPromptDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new bedrockagent/prompts dao: %w", err)
+		return nil, apperrors.Wrap(err, "new bedrockagent/prompts dao")
 	}
 	return &PromptDAO{
 		BaseDAO: dao.NewBaseDAO("bedrock-agent", "prompts"),
@@ -37,7 +37,7 @@ func (d *PromptDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			MaxResults: appaws.Int32Ptr(100),
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list prompts: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list prompts")
 		}
 		return output.PromptSummaries, output.NextToken, nil
 	})
@@ -58,7 +58,7 @@ func (d *PromptDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		PromptIdentifier: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get prompt %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get prompt %s", id)
 	}
 
 	return NewPromptResourceFromDetail(output), nil
@@ -69,7 +69,7 @@ func (d *PromptDAO) Delete(ctx context.Context, id string) error {
 		PromptIdentifier: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete prompt %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete prompt %s", id)
 	}
 	return nil
 }

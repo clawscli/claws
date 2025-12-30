@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // CapacityReservationDAO provides data access for EC2 Capacity Reservations
@@ -22,7 +23,7 @@ type CapacityReservationDAO struct {
 func NewCapacityReservationDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new ec2/capacityreservations dao: %w", err)
+		return nil, apperrors.Wrap(err, "new ec2/capacityreservations dao")
 	}
 	return &CapacityReservationDAO{
 		BaseDAO: dao.NewBaseDAO("ec2", "capacity-reservations"),
@@ -38,7 +39,7 @@ func (d *CapacityReservationDAO) List(ctx context.Context) ([]dao.Resource, erro
 	for paginator.HasMorePages() {
 		output, err := paginator.NextPage(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("describe capacity reservations: %w", err)
+			return nil, apperrors.Wrap(err, "describe capacity reservations")
 		}
 
 		for _, cr := range output.CapacityReservations {
@@ -56,7 +57,7 @@ func (d *CapacityReservationDAO) Get(ctx context.Context, id string) (dao.Resour
 
 	output, err := d.client.DescribeCapacityReservations(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe capacity reservation %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe capacity reservation %s", id)
 	}
 
 	if len(output.CapacityReservations) == 0 {

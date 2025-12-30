@@ -2,13 +2,13 @@ package groups
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/iam/types"
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // GroupDAO provides data access for IAM Groups
@@ -21,7 +21,7 @@ type GroupDAO struct {
 func NewGroupDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new iam/groups dao: %w", err)
+		return nil, apperrors.Wrap(err, "new iam/groups dao")
 	}
 	return &GroupDAO{
 		BaseDAO: dao.NewBaseDAO("iam", "groups"),
@@ -36,7 +36,7 @@ func (d *GroupDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	for paginator.HasMorePages() {
 		output, err := paginator.NextPage(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("list groups: %w", err)
+			return nil, apperrors.Wrap(err, "list groups")
 		}
 
 		for _, group := range output.Groups {
@@ -52,7 +52,7 @@ func (d *GroupDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		GroupName: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get group %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get group %s", id)
 	}
 
 	return NewGroupResource(*output.Group), nil
@@ -63,7 +63,7 @@ func (d *GroupDAO) Delete(ctx context.Context, id string) error {
 		GroupName: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete group %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete group %s", id)
 	}
 	return nil
 }

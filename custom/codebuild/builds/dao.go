@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // BuildDAO provides data access for CodeBuild builds
@@ -22,7 +23,7 @@ type BuildDAO struct {
 func NewBuildDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new codebuild/builds dao: %w", err)
+		return nil, apperrors.Wrap(err, "new codebuild/builds dao")
 	}
 	return &BuildDAO{
 		BaseDAO: dao.NewBaseDAO("codebuild", "builds"),
@@ -56,7 +57,7 @@ func (d *BuildDAO) ListPage(ctx context.Context, pageSize int, pageToken string)
 
 	listOutput, err := d.client.ListBuildsForProject(ctx, listInput)
 	if err != nil {
-		return nil, "", fmt.Errorf("list builds: %w", err)
+		return nil, "", apperrors.Wrap(err, "list builds")
 	}
 
 	if len(listOutput.Ids) == 0 {
@@ -76,7 +77,7 @@ func (d *BuildDAO) ListPage(ctx context.Context, pageSize int, pageToken string)
 
 	batchOutput, err := d.client.BatchGetBuilds(ctx, batchInput)
 	if err != nil {
-		return nil, "", fmt.Errorf("batch get builds: %w", err)
+		return nil, "", apperrors.Wrap(err, "batch get builds")
 	}
 
 	resources := make([]dao.Resource, 0, len(batchOutput.Builds))
@@ -105,7 +106,7 @@ func (d *BuildDAO) Get(ctx context.Context, buildId string) (dao.Resource, error
 
 	output, err := d.client.BatchGetBuilds(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("get build %s: %w", buildId, err)
+		return nil, apperrors.Wrapf(err, "get build %s", buildId)
 	}
 
 	if len(output.Builds) == 0 {
@@ -121,7 +122,7 @@ func (d *BuildDAO) Delete(ctx context.Context, buildId string) error {
 		Id: &buildId,
 	})
 	if err != nil {
-		return fmt.Errorf("stop build %s: %w", buildId, err)
+		return apperrors.Wrapf(err, "stop build %s", buildId)
 	}
 	return nil
 }

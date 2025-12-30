@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // LogStreamDAO provides data access for CloudWatch Log Streams
@@ -21,7 +22,7 @@ type LogStreamDAO struct {
 func NewLogStreamDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new cloudwatch/logstreams dao: %w", err)
+		return nil, apperrors.Wrap(err, "new cloudwatch/logstreams dao")
 	}
 	return &LogStreamDAO{
 		BaseDAO: dao.NewBaseDAO("cloudwatch", "log-streams"),
@@ -61,7 +62,7 @@ func (d *LogStreamDAO) ListPage(ctx context.Context, pageSize int, pageToken str
 
 	output, err := d.client.DescribeLogStreams(ctx, input)
 	if err != nil {
-		return nil, "", fmt.Errorf("describe log streams: %w", err)
+		return nil, "", apperrors.Wrap(err, "describe log streams")
 	}
 
 	resources := make([]dao.Resource, 0, len(output.LogStreams))
@@ -90,7 +91,7 @@ func (d *LogStreamDAO) Get(ctx context.Context, id string) (dao.Resource, error)
 
 	output, err := d.client.DescribeLogStreams(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe log stream %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe log stream %s", id)
 	}
 
 	// Find exact match
@@ -116,7 +117,7 @@ func (d *LogStreamDAO) Delete(ctx context.Context, id string) error {
 
 	_, err := d.client.DeleteLogStream(ctx, input)
 	if err != nil {
-		return fmt.Errorf("delete log stream %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete log stream %s", id)
 	}
 
 	return nil

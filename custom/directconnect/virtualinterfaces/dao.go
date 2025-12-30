@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // VirtualInterfaceDAO provides data access for Direct Connect virtual interfaces.
@@ -21,7 +22,7 @@ type VirtualInterfaceDAO struct {
 func NewVirtualInterfaceDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new directconnect/virtualinterfaces dao: %w", err)
+		return nil, apperrors.Wrap(err, "new directconnect/virtualinterfaces dao")
 	}
 	return &VirtualInterfaceDAO{
 		BaseDAO: dao.NewBaseDAO("directconnect", "virtual-interfaces"),
@@ -40,7 +41,7 @@ func (d *VirtualInterfaceDAO) List(ctx context.Context) ([]dao.Resource, error) 
 
 	output, err := d.client.DescribeVirtualInterfaces(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe virtual interfaces: %w", err)
+		return nil, apperrors.Wrap(err, "describe virtual interfaces")
 	}
 
 	resources := make([]dao.Resource, len(output.VirtualInterfaces))
@@ -56,7 +57,7 @@ func (d *VirtualInterfaceDAO) Get(ctx context.Context, id string) (dao.Resource,
 		VirtualInterfaceId: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe virtual interface %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe virtual interface %s", id)
 	}
 	if len(output.VirtualInterfaces) == 0 {
 		return nil, fmt.Errorf("virtual interface not found: %s", id)
@@ -70,7 +71,7 @@ func (d *VirtualInterfaceDAO) Delete(ctx context.Context, id string) error {
 		VirtualInterfaceId: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete virtual interface %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete virtual interface %s", id)
 	}
 	return nil
 }

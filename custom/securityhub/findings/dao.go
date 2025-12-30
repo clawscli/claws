@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // FindingDAO provides data access for Security Hub findings.
@@ -22,7 +23,7 @@ type FindingDAO struct {
 func NewFindingDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new securityhub/findings dao: %w", err)
+		return nil, apperrors.Wrap(err, "new securityhub/findings dao")
 	}
 	return &FindingDAO{
 		BaseDAO: dao.NewBaseDAO("securityhub", "findings"),
@@ -54,7 +55,7 @@ func (d *FindingDAO) ListPage(ctx context.Context, pageSize int, pageToken strin
 
 	output, err := d.client.GetFindings(ctx, input)
 	if err != nil {
-		return nil, "", fmt.Errorf("get security hub findings: %w", err)
+		return nil, "", apperrors.Wrap(err, "get security hub findings")
 	}
 
 	resources := make([]dao.Resource, len(output.Findings))
@@ -83,7 +84,7 @@ func (d *FindingDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get finding %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get finding %s", id)
 	}
 	if len(output.Findings) == 0 {
 		return nil, fmt.Errorf("finding not found: %s", id)

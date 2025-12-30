@@ -2,13 +2,13 @@ package servers
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/transfer"
 	"github.com/aws/aws-sdk-go-v2/service/transfer/types"
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // ServerDAO provides data access for Transfer Family servers.
@@ -21,7 +21,7 @@ type ServerDAO struct {
 func NewServerDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new transfer/servers dao: %w", err)
+		return nil, apperrors.Wrap(err, "new transfer/servers dao")
 	}
 	return &ServerDAO{
 		BaseDAO: dao.NewBaseDAO("transfer", "servers"),
@@ -36,7 +36,7 @@ func (d *ServerDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list transfer servers: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list transfer servers")
 		}
 		return output.Servers, output.NextToken, nil
 	})
@@ -57,7 +57,7 @@ func (d *ServerDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		ServerId: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe transfer server %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe transfer server %s", id)
 	}
 	return NewServerResourceFromDetail(*output.Server), nil
 }
@@ -68,7 +68,7 @@ func (d *ServerDAO) Delete(ctx context.Context, id string) error {
 		ServerId: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete transfer server %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete transfer server %s", id)
 	}
 	return nil
 }

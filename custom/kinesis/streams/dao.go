@@ -2,13 +2,13 @@ package streams
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/kinesis"
 	"github.com/aws/aws-sdk-go-v2/service/kinesis/types"
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // StreamDAO provides data access for Kinesis streams
@@ -21,7 +21,7 @@ type StreamDAO struct {
 func NewStreamDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new kinesis/streams dao: %w", err)
+		return nil, apperrors.Wrap(err, "new kinesis/streams dao")
 	}
 	return &StreamDAO{
 		BaseDAO: dao.NewBaseDAO("kinesis", "streams"),
@@ -37,7 +37,7 @@ func (d *StreamDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			Limit:     appaws.Int32Ptr(100),
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list streams: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list streams")
 		}
 		// Kinesis uses HasMoreStreams instead of just checking NextToken
 		if output.HasMoreStreams != nil && *output.HasMoreStreams {
@@ -65,7 +65,7 @@ func (d *StreamDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 
 	output, err := d.client.DescribeStreamSummary(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe stream summary %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe stream summary %s", id)
 	}
 
 	return NewStreamResourceFromSummary(output.StreamDescriptionSummary), nil
@@ -79,7 +79,7 @@ func (d *StreamDAO) Delete(ctx context.Context, id string) error {
 
 	_, err := d.client.DeleteStream(ctx, input)
 	if err != nil {
-		return fmt.Errorf("delete stream %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete stream %s", id)
 	}
 
 	return nil

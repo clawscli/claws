@@ -11,6 +11,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // EventDAO provides data access for AWS Health events.
@@ -23,7 +24,7 @@ type EventDAO struct {
 func NewEventDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new health/events dao: %w", err)
+		return nil, apperrors.Wrap(err, "new health/events dao")
 	}
 	// Health API requires us-east-1 region
 	return &EventDAO{
@@ -56,7 +57,7 @@ func (d *EventDAO) ListPage(ctx context.Context, pageSize int, pageToken string)
 
 	output, err := d.client.DescribeEvents(ctx, input)
 	if err != nil {
-		return nil, "", fmt.Errorf("describe health events: %w", err)
+		return nil, "", apperrors.Wrap(err, "describe health events")
 	}
 
 	// Sort by StartTime descending (newest first)
@@ -97,7 +98,7 @@ func (d *EventDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe health event %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe health event %s", id)
 	}
 	if len(output.Events) == 0 {
 		return nil, fmt.Errorf("health event not found: %s", id)

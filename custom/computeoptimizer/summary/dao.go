@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // SummaryDAO provides data access for Compute Optimizer Recommendation Summaries.
@@ -21,7 +22,7 @@ type SummaryDAO struct {
 func NewSummaryDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new computeoptimizer/summary dao: %w", err)
+		return nil, apperrors.Wrap(err, "new computeoptimizer/summary dao")
 	}
 	return &SummaryDAO{
 		BaseDAO: dao.NewBaseDAO("computeoptimizer", "summary"),
@@ -36,7 +37,7 @@ func (d *SummaryDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list recommendation summaries: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list recommendation summaries")
 		}
 		return output.RecommendationSummaries, output.NextToken, nil
 	})

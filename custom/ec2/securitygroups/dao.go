@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // SecurityGroupDAO provides data access for EC2 security groups
@@ -21,7 +22,7 @@ type SecurityGroupDAO struct {
 func NewSecurityGroupDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new ec2/securitygroups dao: %w", err)
+		return nil, apperrors.Wrap(err, "new ec2/securitygroups dao")
 	}
 	return &SecurityGroupDAO{
 		BaseDAO: dao.NewBaseDAO("ec2", "security-groups"),
@@ -37,7 +38,7 @@ func (d *SecurityGroupDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	for paginator.HasMorePages() {
 		output, err := paginator.NextPage(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("describe security groups: %w", err)
+			return nil, apperrors.Wrap(err, "describe security groups")
 		}
 
 		for _, sg := range output.SecurityGroups {
@@ -55,7 +56,7 @@ func (d *SecurityGroupDAO) Get(ctx context.Context, id string) (dao.Resource, er
 
 	output, err := d.client.DescribeSecurityGroups(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe security group %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe security group %s", id)
 	}
 
 	if len(output.SecurityGroups) == 0 {
@@ -70,13 +71,13 @@ func (d *SecurityGroupDAO) Delete(ctx context.Context, id string) error {
 		GroupId: &id,
 	})
 	if err != nil {
-		if appaws.IsNotFound(err) {
+		if apperrors.IsNotFound(err) {
 			return nil // Already deleted
 		}
-		if appaws.IsResourceInUse(err) {
+		if apperrors.IsResourceInUse(err) {
 			return fmt.Errorf("security group %s is in use by other resources", id)
 		}
-		return fmt.Errorf("delete security group %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete security group %s", id)
 	}
 	return nil
 }

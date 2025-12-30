@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // ProtectedResourceDAO provides data access for AWS Backup protected resources
@@ -22,7 +23,7 @@ type ProtectedResourceDAO struct {
 func NewProtectedResourceDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new backup/protected-resources dao: %w", err)
+		return nil, apperrors.Wrap(err, "new backup/protected-resources dao")
 	}
 	return &ProtectedResourceDAO{
 		BaseDAO: dao.NewBaseDAO("backup", "protected-resources"),
@@ -37,7 +38,7 @@ func (d *ProtectedResourceDAO) List(ctx context.Context) ([]dao.Resource, error)
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list protected resources: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list protected resources")
 		}
 		return output.Results, output.NextToken, nil
 	})
@@ -59,7 +60,7 @@ func (d *ProtectedResourceDAO) Get(ctx context.Context, arn string) (dao.Resourc
 		ResourceArn: &arn,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe protected resource %s: %w", arn, err)
+		return nil, apperrors.Wrapf(err, "describe protected resource %s", arn)
 	}
 
 	return NewProtectedResourceFromDetail(output), nil

@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // NatGatewayDAO provides data access for NAT Gateways
@@ -21,7 +22,7 @@ type NatGatewayDAO struct {
 func NewNatGatewayDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new vpc/natgateways dao: %w", err)
+		return nil, apperrors.Wrap(err, "new vpc/natgateways dao")
 	}
 	return &NatGatewayDAO{
 		BaseDAO: dao.NewBaseDAO("vpc", "nat-gateways"),
@@ -36,7 +37,7 @@ func (d *NatGatewayDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	for paginator.HasMorePages() {
 		output, err := paginator.NextPage(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("describe nat gateways: %w", err)
+			return nil, apperrors.Wrap(err, "describe nat gateways")
 		}
 
 		for _, ngw := range output.NatGateways {
@@ -52,7 +53,7 @@ func (d *NatGatewayDAO) Get(ctx context.Context, id string) (dao.Resource, error
 		NatGatewayIds: []string{id},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe nat gateway %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe nat gateway %s", id)
 	}
 
 	if len(output.NatGateways) == 0 {
@@ -67,13 +68,13 @@ func (d *NatGatewayDAO) Delete(ctx context.Context, id string) error {
 		NatGatewayId: &id,
 	})
 	if err != nil {
-		if appaws.IsNotFound(err) {
+		if apperrors.IsNotFound(err) {
 			return nil // Already deleted
 		}
-		if appaws.IsResourceInUse(err) {
+		if apperrors.IsResourceInUse(err) {
 			return fmt.Errorf("nat gateway %s is in use", id)
 		}
-		return fmt.Errorf("delete nat gateway %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete nat gateway %s", id)
 	}
 	return nil
 }

@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // QuotaResource wraps a Service Quota
@@ -130,7 +131,7 @@ type QuotaDAO struct {
 func NewQuotaDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new servicequotas/quotas dao: %w", err)
+		return nil, apperrors.Wrap(err, "new servicequotas/quotas dao")
 	}
 	return &QuotaDAO{
 		BaseDAO: dao.NewBaseDAO("service-quotas", "quotas"),
@@ -153,7 +154,7 @@ func (d *QuotaDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	for paginator.HasMorePages() {
 		page, err := paginator.NextPage(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("list quotas: %w", err)
+			return nil, apperrors.Wrap(err, "list quotas")
 		}
 
 		for _, quota := range page.Quotas {
@@ -177,7 +178,7 @@ func (d *QuotaDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		QuotaCode:   &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get quota: %w", err)
+		return nil, apperrors.Wrap(err, "get quota")
 	}
 
 	if output.Quota == nil {

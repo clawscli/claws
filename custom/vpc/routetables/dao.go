@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // RouteTableDAO provides data access for Route Tables
@@ -21,7 +22,7 @@ type RouteTableDAO struct {
 func NewRouteTableDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new vpc/routetables dao: %w", err)
+		return nil, apperrors.Wrap(err, "new vpc/routetables dao")
 	}
 	return &RouteTableDAO{
 		BaseDAO: dao.NewBaseDAO("vpc", "route-tables"),
@@ -32,7 +33,7 @@ func NewRouteTableDAO(ctx context.Context) (dao.DAO, error) {
 func (d *RouteTableDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	output, err := d.client.DescribeRouteTables(ctx, &ec2.DescribeRouteTablesInput{})
 	if err != nil {
-		return nil, fmt.Errorf("describe route tables: %w", err)
+		return nil, apperrors.Wrap(err, "describe route tables")
 	}
 
 	var resources []dao.Resource
@@ -48,7 +49,7 @@ func (d *RouteTableDAO) Get(ctx context.Context, id string) (dao.Resource, error
 		RouteTableIds: []string{id},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe route table %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe route table %s", id)
 	}
 
 	if len(output.RouteTables) == 0 {
@@ -63,7 +64,7 @@ func (d *RouteTableDAO) Delete(ctx context.Context, id string) error {
 		RouteTableId: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete route table %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete route table %s", id)
 	}
 	return nil
 }

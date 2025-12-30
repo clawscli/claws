@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 	"github.com/clawscli/claws/internal/render"
 )
 
@@ -23,7 +24,7 @@ type RecoveryPointDAO struct {
 func NewRecoveryPointDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new backup/recovery-points dao: %w", err)
+		return nil, apperrors.Wrap(err, "new backup/recovery-points dao")
 	}
 	return &RecoveryPointDAO{
 		BaseDAO: dao.NewBaseDAO("backup", "recovery-points"),
@@ -44,7 +45,7 @@ func (d *RecoveryPointDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken:       token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list recovery points for vault %s: %w", vaultName, err)
+			return nil, nil, apperrors.Wrapf(err, "list recovery points for vault %s", vaultName)
 		}
 		return output.RecoveryPoints, output.NextToken, nil
 	})
@@ -72,7 +73,7 @@ func (d *RecoveryPointDAO) Get(ctx context.Context, id string) (dao.Resource, er
 		RecoveryPointArn: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe recovery point %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe recovery point %s", id)
 	}
 
 	return NewRecoveryPointResourceFromDetail(output, vaultName), nil
@@ -90,7 +91,7 @@ func (d *RecoveryPointDAO) Delete(ctx context.Context, id string) error {
 		RecoveryPointArn: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete recovery point %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete recovery point %s", id)
 	}
 	return nil
 }

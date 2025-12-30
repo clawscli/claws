@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 	"github.com/clawscli/claws/internal/render"
 )
 
@@ -23,7 +24,7 @@ type CopyJobDAO struct {
 func NewCopyJobDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new backup/copy-jobs dao: %w", err)
+		return nil, apperrors.Wrap(err, "new backup/copy-jobs dao")
 	}
 	return &CopyJobDAO{
 		BaseDAO: dao.NewBaseDAO("backup", "copy-jobs"),
@@ -53,7 +54,7 @@ func (d *CopyJobDAO) ListPage(ctx context.Context, pageSize int, pageToken strin
 
 	output, err := d.client.ListCopyJobs(ctx, input)
 	if err != nil {
-		return nil, "", fmt.Errorf("list copy jobs: %w", err)
+		return nil, "", apperrors.Wrap(err, "list copy jobs")
 	}
 
 	resources := make([]dao.Resource, len(output.CopyJobs))
@@ -75,7 +76,7 @@ func (d *CopyJobDAO) Get(ctx context.Context, jobId string) (dao.Resource, error
 		CopyJobId: &jobId,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe copy job %s: %w", jobId, err)
+		return nil, apperrors.Wrapf(err, "describe copy job %s", jobId)
 	}
 
 	return NewCopyJobResourceFromDetail(output), nil

@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // JobDefinitionDAO provides data access for Batch job definitions.
@@ -22,7 +23,7 @@ type JobDefinitionDAO struct {
 func NewJobDefinitionDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new batch/jobdefinitions dao: %w", err)
+		return nil, apperrors.Wrap(err, "new batch/jobdefinitions dao")
 	}
 	return &JobDefinitionDAO{
 		BaseDAO: dao.NewBaseDAO("batch", "job-definitions"),
@@ -40,7 +41,7 @@ func (d *JobDefinitionDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("describe batch job definitions: %w", err)
+			return nil, nil, apperrors.Wrap(err, "describe batch job definitions")
 		}
 		return output.JobDefinitions, output.NextToken, nil
 	})
@@ -61,7 +62,7 @@ func (d *JobDefinitionDAO) Get(ctx context.Context, id string) (dao.Resource, er
 		JobDefinitions: []string{id},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe batch job definition: %w", err)
+		return nil, apperrors.Wrap(err, "describe batch job definition")
 	}
 	if len(output.JobDefinitions) == 0 {
 		return nil, fmt.Errorf("job definition not found: %s", id)
@@ -75,7 +76,7 @@ func (d *JobDefinitionDAO) Delete(ctx context.Context, id string) error {
 		JobDefinition: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("deregister batch job definition: %w", err)
+		return apperrors.Wrap(err, "deregister batch job definition")
 	}
 	return nil
 }

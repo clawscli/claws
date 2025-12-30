@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // JobQueueDAO provides data access for Batch job queues.
@@ -21,7 +22,7 @@ type JobQueueDAO struct {
 func NewJobQueueDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new batch/jobqueues dao: %w", err)
+		return nil, apperrors.Wrap(err, "new batch/jobqueues dao")
 	}
 	return &JobQueueDAO{
 		BaseDAO: dao.NewBaseDAO("batch", "job-queues"),
@@ -36,7 +37,7 @@ func (d *JobQueueDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("describe batch job queues: %w", err)
+			return nil, nil, apperrors.Wrap(err, "describe batch job queues")
 		}
 		return output.JobQueues, output.NextToken, nil
 	})
@@ -57,7 +58,7 @@ func (d *JobQueueDAO) Get(ctx context.Context, name string) (dao.Resource, error
 		JobQueues: []string{name},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe batch job queue: %w", err)
+		return nil, apperrors.Wrap(err, "describe batch job queue")
 	}
 	if len(output.JobQueues) == 0 {
 		return nil, fmt.Errorf("job queue not found: %s", name)
@@ -73,7 +74,7 @@ func (d *JobQueueDAO) Delete(ctx context.Context, name string) error {
 		State:    types.JQStateDisabled,
 	})
 	if err != nil {
-		return fmt.Errorf("disable batch job queue: %w", err)
+		return apperrors.Wrap(err, "disable batch job queue")
 	}
 
 	// Then delete it
@@ -81,7 +82,7 @@ func (d *JobQueueDAO) Delete(ctx context.Context, name string) error {
 		JobQueue: &name,
 	})
 	if err != nil {
-		return fmt.Errorf("delete batch job queue: %w", err)
+		return apperrors.Wrap(err, "delete batch job queue")
 	}
 	return nil
 }

@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // ProjectDAO provides data access for CodeBuild projects
@@ -22,7 +23,7 @@ type ProjectDAO struct {
 func NewProjectDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new codebuild/projects dao: %w", err)
+		return nil, apperrors.Wrap(err, "new codebuild/projects dao")
 	}
 	return &ProjectDAO{
 		BaseDAO: dao.NewBaseDAO("codebuild", "projects"),
@@ -43,7 +44,7 @@ func (d *ProjectDAO) List(ctx context.Context) ([]dao.Resource, error) {
 
 		listOutput, err := d.client.ListProjects(ctx, listInput)
 		if err != nil {
-			return nil, fmt.Errorf("list projects: %w", err)
+			return nil, apperrors.Wrap(err, "list projects")
 		}
 
 		if len(listOutput.Projects) == 0 {
@@ -57,7 +58,7 @@ func (d *ProjectDAO) List(ctx context.Context) ([]dao.Resource, error) {
 
 		batchOutput, err := d.client.BatchGetProjects(ctx, batchInput)
 		if err != nil {
-			return nil, fmt.Errorf("batch get projects: %w", err)
+			return nil, apperrors.Wrap(err, "batch get projects")
 		}
 
 		for _, project := range batchOutput.Projects {
@@ -81,7 +82,7 @@ func (d *ProjectDAO) Get(ctx context.Context, name string) (dao.Resource, error)
 
 	output, err := d.client.BatchGetProjects(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("get project %s: %w", name, err)
+		return nil, apperrors.Wrapf(err, "get project %s", name)
 	}
 
 	if len(output.Projects) == 0 {
@@ -97,7 +98,7 @@ func (d *ProjectDAO) Delete(ctx context.Context, name string) error {
 		Name: &name,
 	})
 	if err != nil {
-		return fmt.Errorf("delete project %s: %w", name, err)
+		return apperrors.Wrapf(err, "delete project %s", name)
 	}
 	return nil
 }

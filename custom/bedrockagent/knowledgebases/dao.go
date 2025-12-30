@@ -2,7 +2,6 @@ package knowledgebases
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/bedrockagent"
@@ -10,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // KnowledgeBaseDAO provides data access for Bedrock Knowledge Bases
@@ -22,7 +22,7 @@ type KnowledgeBaseDAO struct {
 func NewKnowledgeBaseDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new bedrockagent/knowledgebases dao: %w", err)
+		return nil, apperrors.Wrap(err, "new bedrockagent/knowledgebases dao")
 	}
 	return &KnowledgeBaseDAO{
 		BaseDAO: dao.NewBaseDAO("bedrock-agent", "knowledge-bases"),
@@ -42,7 +42,7 @@ func (d *KnowledgeBaseDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			MaxResults: appaws.Int32Ptr(100),
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list knowledge bases: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list knowledge bases")
 		}
 		return output.KnowledgeBaseSummaries, output.NextToken, nil
 	})
@@ -63,7 +63,7 @@ func (d *KnowledgeBaseDAO) Get(ctx context.Context, id string) (dao.Resource, er
 		KnowledgeBaseId: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get knowledge base %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get knowledge base %s", id)
 	}
 
 	return NewKnowledgeBaseResourceFromDetail(output.KnowledgeBase), nil
@@ -74,7 +74,7 @@ func (d *KnowledgeBaseDAO) Delete(ctx context.Context, id string) error {
 		KnowledgeBaseId: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete knowledge base %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete knowledge base %s", id)
 	}
 	return nil
 }

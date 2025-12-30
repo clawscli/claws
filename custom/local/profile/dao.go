@@ -14,6 +14,7 @@ import (
 
 	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 	"github.com/clawscli/claws/internal/log"
 )
 
@@ -197,7 +198,7 @@ func getConfigPath() (string, error) {
 	}
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return "", fmt.Errorf("get home dir: %w", err)
+		return "", apperrors.Wrap(err, "get home dir")
 	}
 	return filepath.Join(homeDir, ".aws", "config"), nil
 }
@@ -210,7 +211,7 @@ func getCredentialsPath() (string, error) {
 	}
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return "", fmt.Errorf("get home dir: %w", err)
+		return "", apperrors.Wrap(err, "get home dir")
 	}
 	return filepath.Join(homeDir, ".aws", "credentials"), nil
 }

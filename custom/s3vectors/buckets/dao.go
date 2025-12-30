@@ -2,13 +2,13 @@ package buckets
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3vectors"
 	"github.com/aws/aws-sdk-go-v2/service/s3vectors/types"
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // VectorBucketDAO provides data access for S3 Vector Buckets
@@ -21,7 +21,7 @@ type VectorBucketDAO struct {
 func NewVectorBucketDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new s3vectors/buckets dao: %w", err)
+		return nil, apperrors.Wrap(err, "new s3vectors/buckets dao")
 	}
 	return &VectorBucketDAO{
 		BaseDAO: dao.NewBaseDAO("s3vectors", "buckets"),
@@ -36,7 +36,7 @@ func (d *VectorBucketDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			MaxResults: appaws.Int32Ptr(100),
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list vector buckets: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list vector buckets")
 		}
 		return output.VectorBuckets, output.NextToken, nil
 	})
@@ -60,7 +60,7 @@ func (d *VectorBucketDAO) Get(ctx context.Context, id string) (dao.Resource, err
 
 	output, err := d.client.GetVectorBucket(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("get vector bucket %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get vector bucket %s", id)
 	}
 
 	return NewVectorBucketResource(output.VectorBucket), nil
@@ -73,7 +73,7 @@ func (d *VectorBucketDAO) Delete(ctx context.Context, id string) error {
 
 	_, err := d.client.DeleteVectorBucket(ctx, input)
 	if err != nil {
-		return fmt.Errorf("delete vector bucket %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete vector bucket %s", id)
 	}
 
 	return nil

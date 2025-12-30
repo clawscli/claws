@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // InstanceDAO provides data access for EC2 instances
@@ -23,7 +24,7 @@ type InstanceDAO struct {
 func NewInstanceDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new ec2/instances dao: %w", err)
+		return nil, apperrors.Wrap(err, "new ec2/instances dao")
 	}
 	return &InstanceDAO{
 		BaseDAO:   dao.NewBaseDAO("ec2", "instances"),
@@ -43,7 +44,7 @@ func (d *InstanceDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	for paginator.HasMorePages() {
 		output, err := paginator.NextPage(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("describe instances: %w", err)
+			return nil, apperrors.Wrap(err, "describe instances")
 		}
 
 		for _, reservation := range output.Reservations {
@@ -64,7 +65,7 @@ func (d *InstanceDAO) Get(ctx context.Context, id string) (dao.Resource, error) 
 
 	output, err := d.client.DescribeInstances(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe instance %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe instance %s", id)
 	}
 
 	if len(output.Reservations) == 0 || len(output.Reservations[0].Instances) == 0 {
@@ -83,10 +84,10 @@ func (d *InstanceDAO) Delete(ctx context.Context, id string) error {
 
 	_, err := d.client.TerminateInstances(ctx, input)
 	if err != nil {
-		if appaws.IsNotFound(err) {
+		if apperrors.IsNotFound(err) {
 			return nil // Already terminated
 		}
-		return fmt.Errorf("terminate instance %s: %w", id, err)
+		return apperrors.Wrapf(err, "terminate instance %s", id)
 	}
 
 	return nil

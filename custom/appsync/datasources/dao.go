@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // DataSourceDAO provides data access for AppSync data sources.
@@ -21,7 +22,7 @@ type DataSourceDAO struct {
 func NewDataSourceDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new appsync/datasources dao: %w", err)
+		return nil, apperrors.Wrap(err, "new appsync/datasources dao")
 	}
 	return &DataSourceDAO{
 		BaseDAO: dao.NewBaseDAO("appsync", "data-sources"),
@@ -42,7 +43,7 @@ func (d *DataSourceDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list appsync data sources: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list appsync data sources")
 		}
 		return output.DataSources, output.NextToken, nil
 	})
@@ -69,7 +70,7 @@ func (d *DataSourceDAO) Get(ctx context.Context, name string) (dao.Resource, err
 		Name:  &name,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get appsync data source: %w", err)
+		return nil, apperrors.Wrap(err, "get appsync data source")
 	}
 	return NewDataSourceResource(*output.DataSource, apiId), nil
 }
@@ -86,7 +87,7 @@ func (d *DataSourceDAO) Delete(ctx context.Context, name string) error {
 		Name:  &name,
 	})
 	if err != nil {
-		return fmt.Errorf("delete appsync data source: %w", err)
+		return apperrors.Wrap(err, "delete appsync data source")
 	}
 	return nil
 }

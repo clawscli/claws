@@ -2,13 +2,13 @@ package users
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/iam/types"
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // UserDetail contains extended user information from multiple API calls
@@ -31,7 +31,7 @@ type UserDAO struct {
 func NewUserDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new iam/users dao: %w", err)
+		return nil, apperrors.Wrap(err, "new iam/users dao")
 	}
 	return &UserDAO{
 		BaseDAO: dao.NewBaseDAO("iam", "users"),
@@ -46,7 +46,7 @@ func (d *UserDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	for paginator.HasMorePages() {
 		output, err := paginator.NextPage(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("list users: %w", err)
+			return nil, apperrors.Wrap(err, "list users")
 		}
 
 		for _, user := range output.Users {
@@ -62,7 +62,7 @@ func (d *UserDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		UserName: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get user %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get user %s", id)
 	}
 
 	detail := UserDetail{User: *output.User}
@@ -100,7 +100,7 @@ func (d *UserDAO) Delete(ctx context.Context, id string) error {
 		UserName: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete user %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete user %s", id)
 	}
 	return nil
 }

@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // TransitGatewayDAO provides data access for Transit Gateways.
@@ -22,7 +23,7 @@ type TransitGatewayDAO struct {
 func NewTransitGatewayDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new vpc/transitgateways dao: %w", err)
+		return nil, apperrors.Wrap(err, "new vpc/transitgateways dao")
 	}
 	return &TransitGatewayDAO{
 		BaseDAO: dao.NewBaseDAO("ec2", "transit-gateways"),
@@ -37,7 +38,7 @@ func (d *TransitGatewayDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("describe transit gateways: %w", err)
+			return nil, nil, apperrors.Wrap(err, "describe transit gateways")
 		}
 		return output.TransitGateways, output.NextToken, nil
 	})
@@ -58,7 +59,7 @@ func (d *TransitGatewayDAO) Get(ctx context.Context, id string) (dao.Resource, e
 		TransitGatewayIds: []string{id},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe transit gateway %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe transit gateway %s", id)
 	}
 	if len(output.TransitGateways) == 0 {
 		return nil, fmt.Errorf("transit gateway not found: %s", id)
@@ -72,7 +73,7 @@ func (d *TransitGatewayDAO) Delete(ctx context.Context, id string) error {
 		TransitGatewayId: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete transit gateway %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete transit gateway %s", id)
 	}
 	return nil
 }

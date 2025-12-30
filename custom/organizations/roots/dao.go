@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // RootDAO provides data access for Organizations roots.
@@ -21,7 +22,7 @@ type RootDAO struct {
 func NewRootDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new organizations/roots dao: %w", err)
+		return nil, apperrors.Wrap(err, "new organizations/roots dao")
 	}
 	return &RootDAO{
 		BaseDAO: dao.NewBaseDAO("organizations", "roots"),
@@ -36,7 +37,7 @@ func (d *RootDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list organizations roots: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list organizations roots")
 		}
 		return output.Roots, output.NextToken, nil
 	})

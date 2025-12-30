@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // ImageDAO provides data access for EC2 AMIs
@@ -21,7 +22,7 @@ type ImageDAO struct {
 func NewImageDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new ec2/images dao: %w", err)
+		return nil, apperrors.Wrap(err, "new ec2/images dao")
 	}
 	return &ImageDAO{
 		BaseDAO: dao.NewBaseDAO("ec2", "images"),
@@ -38,7 +39,7 @@ func (d *ImageDAO) List(ctx context.Context) ([]dao.Resource, error) {
 
 	output, err := d.client.DescribeImages(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe images: %w", err)
+		return nil, apperrors.Wrap(err, "describe images")
 	}
 
 	var resources []dao.Resource
@@ -56,7 +57,7 @@ func (d *ImageDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 
 	output, err := d.client.DescribeImages(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe image %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe image %s", id)
 	}
 
 	if len(output.Images) == 0 {
@@ -73,7 +74,7 @@ func (d *ImageDAO) Delete(ctx context.Context, id string) error {
 
 	_, err := d.client.DeregisterImage(ctx, input)
 	if err != nil {
-		return fmt.Errorf("deregister image %s: %w", id, err)
+		return apperrors.Wrapf(err, "deregister image %s", id)
 	}
 
 	return nil

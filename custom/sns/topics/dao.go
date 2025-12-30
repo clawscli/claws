@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 	"github.com/clawscli/claws/internal/log"
 )
 
@@ -23,7 +24,7 @@ type TopicDAO struct {
 func NewTopicDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new sns/topics dao: %w", err)
+		return nil, apperrors.Wrap(err, "new sns/topics dao")
 	}
 	return &TopicDAO{
 		BaseDAO: dao.NewBaseDAO("sns", "topics"),
@@ -40,7 +41,7 @@ func (d *TopicDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	for paginator.HasMorePages() {
 		output, err := paginator.NextPage(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("list topics: %w", err)
+			return nil, apperrors.Wrap(err, "list topics")
 		}
 
 		for _, topic := range output.Topics {
@@ -68,7 +69,7 @@ func (d *TopicDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		TopicArn: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get topic %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get topic %s", id)
 	}
 
 	topic := types.Topic{TopicArn: &id}
@@ -82,13 +83,13 @@ func (d *TopicDAO) Delete(ctx context.Context, id string) error {
 
 	_, err := d.client.DeleteTopic(ctx, input)
 	if err != nil {
-		if appaws.IsNotFound(err) {
+		if apperrors.IsNotFound(err) {
 			return nil // Already deleted
 		}
-		if appaws.IsResourceInUse(err) {
+		if apperrors.IsResourceInUse(err) {
 			return fmt.Errorf("topic %s is in use", id)
 		}
-		return fmt.Errorf("delete topic %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete topic %s", id)
 	}
 
 	return nil

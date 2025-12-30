@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/apprunner"
@@ -10,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // ServiceDAO provides data access for App Runner services.
@@ -22,7 +22,7 @@ type ServiceDAO struct {
 func NewServiceDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new apprunner/services dao: %w", err)
+		return nil, apperrors.Wrap(err, "new apprunner/services dao")
 	}
 	return &ServiceDAO{
 		BaseDAO: dao.NewBaseDAO("apprunner", "services"),
@@ -37,7 +37,7 @@ func (d *ServiceDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list app runner services: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list app runner services")
 		}
 		return output.ServiceSummaryList, output.NextToken, nil
 	})
@@ -58,7 +58,7 @@ func (d *ServiceDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		ServiceArn: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe app runner service %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe app runner service %s", id)
 	}
 	return NewServiceResourceFromDetail(*output.Service), nil
 }
@@ -69,7 +69,7 @@ func (d *ServiceDAO) Delete(ctx context.Context, id string) error {
 		ServiceArn: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete app runner service %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete app runner service %s", id)
 	}
 	return nil
 }

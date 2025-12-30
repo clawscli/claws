@@ -2,7 +2,6 @@ package restapis
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/apigateway"
@@ -10,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // RestAPIDAO provides data access for API Gateway REST APIs
@@ -22,7 +22,7 @@ type RestAPIDAO struct {
 func NewRestAPIDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new apigateway/restapis dao: %w", err)
+		return nil, apperrors.Wrap(err, "new apigateway/restapis dao")
 	}
 	return &RestAPIDAO{
 		BaseDAO: dao.NewBaseDAO("apigateway", "rest-apis"),
@@ -43,7 +43,7 @@ func (d *RestAPIDAO) List(ctx context.Context) ([]dao.Resource, error) {
 
 		output, err := d.client.GetRestApis(ctx, input)
 		if err != nil {
-			return nil, fmt.Errorf("list REST APIs: %w", err)
+			return nil, apperrors.Wrap(err, "list REST APIs")
 		}
 
 		for _, api := range output.Items {
@@ -65,7 +65,7 @@ func (d *RestAPIDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		RestApiId: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get REST API %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get REST API %s", id)
 	}
 
 	return NewRestAPIResourceFromGetOutput(output), nil
@@ -77,7 +77,7 @@ func (d *RestAPIDAO) Delete(ctx context.Context, id string) error {
 		RestApiId: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete REST API %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete REST API %s", id)
 	}
 	return nil
 }

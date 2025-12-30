@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // TrailDAO provides data access for CloudTrail trails.
@@ -21,7 +22,7 @@ type TrailDAO struct {
 func NewTrailDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new cloudtrail/trails dao: %w", err)
+		return nil, apperrors.Wrap(err, "new cloudtrail/trails dao")
 	}
 	return &TrailDAO{
 		BaseDAO: dao.NewBaseDAO("cloudtrail", "trails"),
@@ -33,7 +34,7 @@ func NewTrailDAO(ctx context.Context) (dao.DAO, error) {
 func (d *TrailDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	output, err := d.client.DescribeTrails(ctx, &cloudtrail.DescribeTrailsInput{})
 	if err != nil {
-		return nil, fmt.Errorf("describe trails: %w", err)
+		return nil, apperrors.Wrap(err, "describe trails")
 	}
 
 	resources := make([]dao.Resource, len(output.TrailList))
@@ -49,7 +50,7 @@ func (d *TrailDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		TrailNameList: []string{id},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe trail %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe trail %s", id)
 	}
 	if len(output.TrailList) == 0 {
 		return nil, fmt.Errorf("trail not found: %s", id)
@@ -63,7 +64,7 @@ func (d *TrailDAO) Delete(ctx context.Context, id string) error {
 		Name: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete trail %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete trail %s", id)
 	}
 	return nil
 }

@@ -2,7 +2,6 @@ package workgroups
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/athena"
@@ -10,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // WorkgroupDAO provides data access for Athena workgroups.
@@ -22,7 +22,7 @@ type WorkgroupDAO struct {
 func NewWorkgroupDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new athena/workgroups dao: %w", err)
+		return nil, apperrors.Wrap(err, "new athena/workgroups dao")
 	}
 	return &WorkgroupDAO{
 		BaseDAO: dao.NewBaseDAO("athena", "workgroups"),
@@ -37,7 +37,7 @@ func (d *WorkgroupDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list athena workgroups: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list athena workgroups")
 		}
 		return output.WorkGroups, output.NextToken, nil
 	})
@@ -58,7 +58,7 @@ func (d *WorkgroupDAO) Get(ctx context.Context, id string) (dao.Resource, error)
 		WorkGroup: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get athena workgroup %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get athena workgroup %s", id)
 	}
 	return NewWorkgroupResourceFromDetail(*output.WorkGroup), nil
 }
@@ -69,7 +69,7 @@ func (d *WorkgroupDAO) Delete(ctx context.Context, id string) error {
 		WorkGroup: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete athena workgroup %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete athena workgroup %s", id)
 	}
 	return nil
 }

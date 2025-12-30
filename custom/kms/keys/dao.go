@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 	"github.com/clawscli/claws/internal/log"
 )
 
@@ -22,7 +23,7 @@ type KeyDAO struct {
 func NewKeyDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new kms/keys dao: %w", err)
+		return nil, apperrors.Wrap(err, "new kms/keys dao")
 	}
 	return &KeyDAO{
 		BaseDAO: dao.NewBaseDAO("kms", "keys"),
@@ -39,7 +40,7 @@ func (d *KeyDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			Limit:  appaws.Int32Ptr(100),
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list keys: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list keys")
 		}
 		// KMS uses Truncated flag instead of checking NextMarker
 		var nextToken *string
@@ -74,7 +75,7 @@ func (d *KeyDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 
 	output, err := d.client.DescribeKey(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe key %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe key %s", id)
 	}
 
 	return NewKeyResource(output.KeyMetadata), nil
@@ -90,13 +91,13 @@ func (d *KeyDAO) Delete(ctx context.Context, id string) error {
 
 	_, err := d.client.ScheduleKeyDeletion(ctx, input)
 	if err != nil {
-		if appaws.IsNotFound(err) {
+		if apperrors.IsNotFound(err) {
 			return nil // Already deleted
 		}
-		if appaws.IsResourceInUse(err) {
+		if apperrors.IsResourceInUse(err) {
 			return fmt.Errorf("key %s is in use", id)
 		}
-		return fmt.Errorf("schedule key deletion %s: %w", id, err)
+		return apperrors.Wrapf(err, "schedule key deletion %s", id)
 	}
 
 	return nil

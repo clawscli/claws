@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // RepositoryDAO provides data access for ECR repositories
@@ -21,7 +22,7 @@ type RepositoryDAO struct {
 func NewRepositoryDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new ecr/repositories dao: %w", err)
+		return nil, apperrors.Wrap(err, "new ecr/repositories dao")
 	}
 	return &RepositoryDAO{
 		BaseDAO: dao.NewBaseDAO("ecr", "repositories"),
@@ -37,7 +38,7 @@ func (d *RepositoryDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	for paginator.HasMorePages() {
 		output, err := paginator.NextPage(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("describe repositories: %w", err)
+			return nil, apperrors.Wrap(err, "describe repositories")
 		}
 
 		for _, repo := range output.Repositories {
@@ -55,7 +56,7 @@ func (d *RepositoryDAO) Get(ctx context.Context, id string) (dao.Resource, error
 
 	output, err := d.client.DescribeRepositories(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe repository %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe repository %s", id)
 	}
 
 	if len(output.Repositories) == 0 {
@@ -73,13 +74,13 @@ func (d *RepositoryDAO) Delete(ctx context.Context, id string) error {
 
 	_, err := d.client.DeleteRepository(ctx, input)
 	if err != nil {
-		if appaws.IsNotFound(err) {
+		if apperrors.IsNotFound(err) {
 			return nil // Already deleted
 		}
-		if appaws.IsResourceInUse(err) {
+		if apperrors.IsResourceInUse(err) {
 			return fmt.Errorf("repository %s is in use", id)
 		}
-		return fmt.Errorf("delete repository %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete repository %s", id)
 	}
 
 	return nil

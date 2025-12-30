@@ -2,13 +2,13 @@ package policies
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/fms"
 	"github.com/aws/aws-sdk-go-v2/service/fms/types"
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // PolicyDAO provides data access for Firewall Manager policies.
@@ -21,7 +21,7 @@ type PolicyDAO struct {
 func NewPolicyDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new fms/policies dao: %w", err)
+		return nil, apperrors.Wrap(err, "new fms/policies dao")
 	}
 	return &PolicyDAO{
 		BaseDAO: dao.NewBaseDAO("fms", "policies"),
@@ -36,7 +36,7 @@ func (d *PolicyDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list fms policies: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list fms policies")
 		}
 		return output.PolicyList, output.NextToken, nil
 	})
@@ -57,7 +57,7 @@ func (d *PolicyDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		PolicyId: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get fms policy %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get fms policy %s", id)
 	}
 	return NewPolicyResourceFromDetail(*output.Policy, output.PolicyArn), nil
 }
@@ -68,7 +68,7 @@ func (d *PolicyDAO) Delete(ctx context.Context, id string) error {
 		PolicyId: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete fms policy %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete fms policy %s", id)
 	}
 	return nil
 }

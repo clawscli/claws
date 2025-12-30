@@ -2,7 +2,6 @@ package statemachines
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/service/sfn"
@@ -10,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // StateMachineDAO provides data access for Step Functions state machines
@@ -22,7 +22,7 @@ type StateMachineDAO struct {
 func NewStateMachineDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new sfn/statemachines dao: %w", err)
+		return nil, apperrors.Wrap(err, "new sfn/statemachines dao")
 	}
 	return &StateMachineDAO{
 		BaseDAO: dao.NewBaseDAO("sfn", "state-machines"),
@@ -39,7 +39,7 @@ func (d *StateMachineDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	for paginator.HasMorePages() {
 		output, err := paginator.NextPage(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("list state machines: %w", err)
+			return nil, apperrors.Wrap(err, "list state machines")
 		}
 
 		for _, sm := range output.StateMachines {
@@ -57,7 +57,7 @@ func (d *StateMachineDAO) Get(ctx context.Context, id string) (dao.Resource, err
 
 	output, err := d.client.DescribeStateMachine(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe state machine %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe state machine %s", id)
 	}
 
 	// Convert to list item format
@@ -78,7 +78,7 @@ func (d *StateMachineDAO) Delete(ctx context.Context, id string) error {
 
 	_, err := d.client.DeleteStateMachine(ctx, input)
 	if err != nil {
-		return fmt.Errorf("delete state machine %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete state machine %s", id)
 	}
 
 	return nil

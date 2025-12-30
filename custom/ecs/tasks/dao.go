@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 	"github.com/clawscli/claws/internal/log"
 )
 
@@ -22,7 +23,7 @@ type TaskDAO struct {
 func NewTaskDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new ecs/tasks dao: %w", err)
+		return nil, apperrors.Wrap(err, "new ecs/tasks dao")
 	}
 	return &TaskDAO{
 		BaseDAO: dao.NewBaseDAO("ecs", "tasks"),
@@ -45,7 +46,7 @@ func (d *TaskDAO) listAllTasks(ctx context.Context) ([]dao.Resource, error) {
 	clusterArns, err := appaws.Paginate(ctx, func(token *string) ([]string, *string, error) {
 		output, err := d.client.ListClusters(ctx, &ecs.ListClustersInput{NextToken: token})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list clusters: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list clusters")
 		}
 		return output.ClusterArns, output.NextToken, nil
 	})
@@ -79,7 +80,7 @@ func (d *TaskDAO) listTasksInCluster(ctx context.Context, cluster string) ([]dao
 		}
 		output, err := d.client.ListTasks(ctx, input)
 		if err != nil {
-			return nil, nil, fmt.Errorf("list tasks: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list tasks")
 		}
 		return output.TaskArns, output.NextToken, nil
 	})
@@ -131,7 +132,7 @@ func (d *TaskDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 
 	output, err := d.client.DescribeTasks(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe task %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe task %s", id)
 	}
 
 	if len(output.Tasks) == 0 {
@@ -155,7 +156,7 @@ func (d *TaskDAO) Delete(ctx context.Context, id string) error {
 
 	_, err := d.client.StopTask(ctx, input)
 	if err != nil {
-		return fmt.Errorf("stop task %s: %w", id, err)
+		return apperrors.Wrapf(err, "stop task %s", id)
 	}
 
 	return nil

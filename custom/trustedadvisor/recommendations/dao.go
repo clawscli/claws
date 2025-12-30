@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // RecommendationDAO provides data access for Trusted Advisor Recommendations.
@@ -22,7 +23,7 @@ type RecommendationDAO struct {
 func NewRecommendationDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new trustedadvisor/recommendations dao: %w", err)
+		return nil, apperrors.Wrap(err, "new trustedadvisor/recommendations dao")
 	}
 	return &RecommendationDAO{
 		BaseDAO: dao.NewBaseDAO("trustedadvisor", "recommendations"),
@@ -37,7 +38,7 @@ func (d *RecommendationDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list recommendations: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list recommendations")
 		}
 		return output.RecommendationSummaries, output.NextToken, nil
 	})
@@ -58,7 +59,7 @@ func (d *RecommendationDAO) Get(ctx context.Context, id string) (dao.Resource, e
 		RecommendationIdentifier: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get recommendation %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get recommendation %s", id)
 	}
 
 	if output.Recommendation == nil {

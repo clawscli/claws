@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // FindingDAO provides data access for GuardDuty findings
@@ -22,7 +23,7 @@ type FindingDAO struct {
 func NewFindingDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new guardduty/findings dao: %w", err)
+		return nil, apperrors.Wrap(err, "new guardduty/findings dao")
 	}
 	return &FindingDAO{
 		BaseDAO: dao.NewBaseDAO("guardduty", "findings"),
@@ -61,7 +62,7 @@ func (d *FindingDAO) ListPage(ctx context.Context, pageSize int, pageToken strin
 
 	listOutput, err := d.client.ListFindings(ctx, listInput)
 	if err != nil {
-		return nil, "", fmt.Errorf("list findings: %w", err)
+		return nil, "", apperrors.Wrap(err, "list findings")
 	}
 
 	if len(listOutput.FindingIds) == 0 {
@@ -76,7 +77,7 @@ func (d *FindingDAO) ListPage(ctx context.Context, pageSize int, pageToken strin
 
 	getOutput, err := d.client.GetFindings(ctx, getInput)
 	if err != nil {
-		return nil, "", fmt.Errorf("get findings: %w", err)
+		return nil, "", apperrors.Wrap(err, "get findings")
 	}
 
 	resources := make([]dao.Resource, 0, len(getOutput.Findings))
@@ -106,7 +107,7 @@ func (d *FindingDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 
 	output, err := d.client.GetFindings(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("get finding %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get finding %s", id)
 	}
 
 	if len(output.Findings) == 0 {
@@ -128,7 +129,7 @@ func (d *FindingDAO) Delete(ctx context.Context, id string) error {
 		FindingIds: []string{id},
 	})
 	if err != nil {
-		return fmt.Errorf("archive finding %s: %w", id, err)
+		return apperrors.Wrapf(err, "archive finding %s", id)
 	}
 	return nil
 }

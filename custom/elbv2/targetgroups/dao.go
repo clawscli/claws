@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // TargetGroupDAO provides data access for ELBv2 Target Groups
@@ -21,7 +22,7 @@ type TargetGroupDAO struct {
 func NewTargetGroupDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new elbv2/targetgroups dao: %w", err)
+		return nil, apperrors.Wrap(err, "new elbv2/targetgroups dao")
 	}
 	return &TargetGroupDAO{
 		BaseDAO: dao.NewBaseDAO("elbv2", "target-groups"),
@@ -41,7 +42,7 @@ func (d *TargetGroupDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			TargetGroupArns: []string{tgArn},
 		})
 		if err != nil {
-			return nil, fmt.Errorf("list target groups: %w", err)
+			return nil, apperrors.Wrap(err, "list target groups")
 		}
 		resources := make([]dao.Resource, 0, len(output.TargetGroups))
 		for _, tg := range output.TargetGroups {
@@ -60,7 +61,7 @@ func (d *TargetGroupDAO) List(ctx context.Context) ([]dao.Resource, error) {
 		}
 		output, err := d.client.DescribeTargetGroups(ctx, input)
 		if err != nil {
-			return nil, nil, fmt.Errorf("list target groups: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list target groups")
 		}
 		return output.TargetGroups, output.NextMarker, nil
 	})
@@ -81,7 +82,7 @@ func (d *TargetGroupDAO) Get(ctx context.Context, id string) (dao.Resource, erro
 		TargetGroupArns: []string{id},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get target group %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get target group %s", id)
 	}
 
 	if len(output.TargetGroups) == 0 {
@@ -97,13 +98,13 @@ func (d *TargetGroupDAO) Delete(ctx context.Context, id string) error {
 		TargetGroupArn: &id,
 	})
 	if err != nil {
-		if appaws.IsNotFound(err) {
+		if apperrors.IsNotFound(err) {
 			return nil // Already deleted
 		}
-		if appaws.IsResourceInUse(err) {
+		if apperrors.IsResourceInUse(err) {
 			return fmt.Errorf("target group %s is in use (attached to load balancer)", id)
 		}
-		return fmt.Errorf("delete target group %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete target group %s", id)
 	}
 	return nil
 }

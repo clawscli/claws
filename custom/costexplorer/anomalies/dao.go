@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // AnomalyLookbackDays is the number of days to look back for anomalies.
@@ -26,7 +27,7 @@ func NewAnomalyDAO(ctx context.Context) (dao.DAO, error) {
 	// Cost Explorer API is only available in us-east-1
 	cfg, err := appaws.NewConfigWithRegion(ctx, appaws.CostExplorerRegion)
 	if err != nil {
-		return nil, fmt.Errorf("new costexplorer/anomalies dao: %w", err)
+		return nil, apperrors.Wrap(err, "new costexplorer/anomalies dao")
 	}
 	return &AnomalyDAO{
 		BaseDAO: dao.NewBaseDAO("costexplorer", "anomalies"),
@@ -50,7 +51,7 @@ func (d *AnomalyDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextPageToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list anomalies: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list anomalies")
 		}
 		return output.Anomalies, output.NextPageToken, nil
 	})

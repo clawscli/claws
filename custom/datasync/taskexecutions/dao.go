@@ -11,6 +11,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // TaskExecutionDAO provides data access for DataSync task executions.
@@ -23,7 +24,7 @@ type TaskExecutionDAO struct {
 func NewTaskExecutionDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new datasync/taskexecutions dao: %w", err)
+		return nil, apperrors.Wrap(err, "new datasync/taskexecutions dao")
 	}
 	return &TaskExecutionDAO{
 		BaseDAO: dao.NewBaseDAO("datasync", "task-executions"),
@@ -44,7 +45,7 @@ func (d *TaskExecutionDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list datasync task executions: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list datasync task executions")
 		}
 		return output.TaskExecutions, output.NextToken, nil
 	})
@@ -66,7 +67,7 @@ func (d *TaskExecutionDAO) Get(ctx context.Context, id string) (dao.Resource, er
 		TaskExecutionArn: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe datasync task execution: %w", err)
+		return nil, apperrors.Wrap(err, "describe datasync task execution")
 	}
 
 	return &TaskExecutionResource{
@@ -98,7 +99,7 @@ func (d *TaskExecutionDAO) Delete(ctx context.Context, id string) error {
 		TaskExecutionArn: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("cancel datasync task execution: %w", err)
+		return apperrors.Wrap(err, "cancel datasync task execution")
 	}
 	return nil
 }

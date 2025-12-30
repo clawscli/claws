@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // ExecutionDAO provides data access for CodePipeline executions
@@ -22,7 +23,7 @@ type ExecutionDAO struct {
 func NewExecutionDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new codepipeline/executions dao: %w", err)
+		return nil, apperrors.Wrap(err, "new codepipeline/executions dao")
 	}
 	return &ExecutionDAO{
 		BaseDAO: dao.NewBaseDAO("codepipeline", "executions"),
@@ -61,7 +62,7 @@ func (d *ExecutionDAO) ListPage(ctx context.Context, pageSize int, pageToken str
 
 	output, err := d.client.ListPipelineExecutions(ctx, input)
 	if err != nil {
-		return nil, "", fmt.Errorf("list pipeline executions: %w", err)
+		return nil, "", apperrors.Wrap(err, "list pipeline executions")
 	}
 
 	resources := make([]dao.Resource, 0, len(output.PipelineExecutionSummaries))
@@ -91,7 +92,7 @@ func (d *ExecutionDAO) Get(ctx context.Context, executionId string) (dao.Resourc
 
 	output, err := d.client.GetPipelineExecution(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("get execution %s: %w", executionId, err)
+		return nil, apperrors.Wrapf(err, "get execution %s", executionId)
 	}
 
 	return NewExecutionResourceFromDetail(output.PipelineExecution, pipelineName), nil
@@ -111,7 +112,7 @@ func (d *ExecutionDAO) Delete(ctx context.Context, executionId string) error {
 		Reason:              appaws.StringPtr("Stopped via claws"),
 	})
 	if err != nil {
-		return fmt.Errorf("stop execution %s: %w", executionId, err)
+		return apperrors.Wrapf(err, "stop execution %s", executionId)
 	}
 	return nil
 }

@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // AutoScalingGroupDAO provides data access for Auto Scaling Groups
@@ -22,7 +23,7 @@ type AutoScalingGroupDAO struct {
 func NewAutoScalingGroupDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new autoscaling/groups dao: %w", err)
+		return nil, apperrors.Wrap(err, "new autoscaling/groups dao")
 	}
 	return &AutoScalingGroupDAO{
 		BaseDAO: dao.NewBaseDAO("autoscaling", "groups"),
@@ -37,7 +38,7 @@ func (d *AutoScalingGroupDAO) List(ctx context.Context) ([]dao.Resource, error) 
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list auto scaling groups: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list auto scaling groups")
 		}
 		return output.AutoScalingGroups, output.NextToken, nil
 	})
@@ -59,7 +60,7 @@ func (d *AutoScalingGroupDAO) Get(ctx context.Context, id string) (dao.Resource,
 		AutoScalingGroupNames: []string{id},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get auto scaling group %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get auto scaling group %s", id)
 	}
 
 	if len(output.AutoScalingGroups) == 0 {
@@ -77,7 +78,7 @@ func (d *AutoScalingGroupDAO) Delete(ctx context.Context, id string) error {
 		ForceDelete:          &forceDelete,
 	})
 	if err != nil {
-		return fmt.Errorf("delete auto scaling group %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete auto scaling group %s", id)
 	}
 	return nil
 }

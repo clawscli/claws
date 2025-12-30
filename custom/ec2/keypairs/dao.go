@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // KeyPairDAO provides data access for EC2 Key Pairs
@@ -21,7 +22,7 @@ type KeyPairDAO struct {
 func NewKeyPairDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new ec2/keypairs dao: %w", err)
+		return nil, apperrors.Wrap(err, "new ec2/keypairs dao")
 	}
 	return &KeyPairDAO{
 		BaseDAO: dao.NewBaseDAO("ec2", "key-pairs"),
@@ -32,7 +33,7 @@ func NewKeyPairDAO(ctx context.Context) (dao.DAO, error) {
 func (d *KeyPairDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	output, err := d.client.DescribeKeyPairs(ctx, &ec2.DescribeKeyPairsInput{})
 	if err != nil {
-		return nil, fmt.Errorf("describe key pairs: %w", err)
+		return nil, apperrors.Wrap(err, "describe key pairs")
 	}
 
 	var resources []dao.Resource
@@ -48,7 +49,7 @@ func (d *KeyPairDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		KeyPairIds: []string{id},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe key pair %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe key pair %s", id)
 	}
 
 	if len(output.KeyPairs) == 0 {
@@ -63,7 +64,7 @@ func (d *KeyPairDAO) Delete(ctx context.Context, id string) error {
 		KeyPairId: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete key pair %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete key pair %s", id)
 	}
 
 	return nil

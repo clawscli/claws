@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // SnapshotDAO provides data access for Redshift snapshots.
@@ -22,7 +23,7 @@ type SnapshotDAO struct {
 func NewSnapshotDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new redshift/snapshots dao: %w", err)
+		return nil, apperrors.Wrap(err, "new redshift/snapshots dao")
 	}
 	return &SnapshotDAO{
 		BaseDAO: dao.NewBaseDAO("redshift", "snapshots"),
@@ -47,7 +48,7 @@ func (d *SnapshotDAO) List(ctx context.Context) ([]dao.Resource, error) {
 		input.Marker = token
 		output, err := d.client.DescribeClusterSnapshots(ctx, input)
 		if err != nil {
-			return nil, nil, fmt.Errorf("describe redshift snapshots: %w", err)
+			return nil, nil, apperrors.Wrap(err, "describe redshift snapshots")
 		}
 		return output.Snapshots, output.Marker, nil
 	})
@@ -68,7 +69,7 @@ func (d *SnapshotDAO) Get(ctx context.Context, id string) (dao.Resource, error) 
 		SnapshotIdentifier: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe redshift snapshot: %w", err)
+		return nil, apperrors.Wrap(err, "describe redshift snapshot")
 	}
 	if len(output.Snapshots) == 0 {
 		return nil, fmt.Errorf("snapshot not found: %s", id)
@@ -82,7 +83,7 @@ func (d *SnapshotDAO) Delete(ctx context.Context, id string) error {
 		SnapshotIdentifier: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete redshift snapshot: %w", err)
+		return apperrors.Wrap(err, "delete redshift snapshot")
 	}
 	return nil
 }

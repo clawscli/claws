@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // LaunchTemplateDAO provides data access for EC2 Launch Templates
@@ -22,7 +23,7 @@ type LaunchTemplateDAO struct {
 func NewLaunchTemplateDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new ec2/launchtemplates dao: %w", err)
+		return nil, apperrors.Wrap(err, "new ec2/launchtemplates dao")
 	}
 	return &LaunchTemplateDAO{
 		BaseDAO: dao.NewBaseDAO("ec2", "launch-templates"),
@@ -37,7 +38,7 @@ func (d *LaunchTemplateDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list launch templates: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list launch templates")
 		}
 		return output.LaunchTemplates, output.NextToken, nil
 	})
@@ -59,7 +60,7 @@ func (d *LaunchTemplateDAO) Get(ctx context.Context, id string) (dao.Resource, e
 		LaunchTemplateIds: []string{id},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get launch template %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get launch template %s", id)
 	}
 
 	if len(output.LaunchTemplates) == 0 {
@@ -75,7 +76,7 @@ func (d *LaunchTemplateDAO) Delete(ctx context.Context, id string) error {
 		LaunchTemplateId: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete launch template %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete launch template %s", id)
 	}
 	return nil
 }

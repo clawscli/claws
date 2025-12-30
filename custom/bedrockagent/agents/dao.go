@@ -2,7 +2,6 @@ package agents
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/bedrockagent"
@@ -10,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // AgentDAO provides data access for Bedrock Agents
@@ -22,7 +22,7 @@ type AgentDAO struct {
 func NewAgentDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new bedrockagent/agents dao: %w", err)
+		return nil, apperrors.Wrap(err, "new bedrockagent/agents dao")
 	}
 	return &AgentDAO{
 		BaseDAO: dao.NewBaseDAO("bedrock-agent", "agents"),
@@ -37,7 +37,7 @@ func (d *AgentDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			MaxResults: appaws.Int32Ptr(100),
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list agents: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list agents")
 		}
 		return output.AgentSummaries, output.NextToken, nil
 	})
@@ -58,7 +58,7 @@ func (d *AgentDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		AgentId: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get agent %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get agent %s", id)
 	}
 
 	return NewAgentResourceFromDetail(output.Agent), nil
@@ -69,7 +69,7 @@ func (d *AgentDAO) Delete(ctx context.Context, id string) error {
 		AgentId: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete agent %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete agent %s", id)
 	}
 	return nil
 }

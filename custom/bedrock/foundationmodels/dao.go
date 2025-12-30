@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // FoundationModelDAO provides data access for Bedrock Foundation Models
@@ -22,7 +23,7 @@ type FoundationModelDAO struct {
 func NewFoundationModelDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new bedrock/foundationmodels dao: %w", err)
+		return nil, apperrors.Wrap(err, "new bedrock/foundationmodels dao")
 	}
 	return &FoundationModelDAO{
 		BaseDAO: dao.NewBaseDAO("bedrock", "foundation-models"),
@@ -39,7 +40,7 @@ func (d *FoundationModelDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	// ListFoundationModels does not have pagination
 	output, err := d.client.ListFoundationModels(ctx, &bedrock.ListFoundationModelsInput{})
 	if err != nil {
-		return nil, fmt.Errorf("list foundation models: %w", err)
+		return nil, apperrors.Wrap(err, "list foundation models")
 	}
 
 	resources := make([]dao.Resource, len(output.ModelSummaries))
@@ -55,7 +56,7 @@ func (d *FoundationModelDAO) Get(ctx context.Context, id string) (dao.Resource, 
 		ModelIdentifier: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get foundation model %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get foundation model %s", id)
 	}
 
 	return NewFoundationModelResourceFromDetail(output.ModelDetails), nil

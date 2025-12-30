@@ -11,6 +11,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // TaskDAO provides data access for DataSync tasks.
@@ -23,7 +24,7 @@ type TaskDAO struct {
 func NewTaskDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new datasync/tasks dao: %w", err)
+		return nil, apperrors.Wrap(err, "new datasync/tasks dao")
 	}
 	return &TaskDAO{
 		BaseDAO: dao.NewBaseDAO("datasync", "tasks"),
@@ -38,7 +39,7 @@ func (d *TaskDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list datasync tasks: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list datasync tasks")
 		}
 		return output.Tasks, output.NextToken, nil
 	})
@@ -75,7 +76,7 @@ func (d *TaskDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		TaskArn: &taskArn,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe datasync task: %w", err)
+		return nil, apperrors.Wrap(err, "describe datasync task")
 	}
 
 	schedule := ""
@@ -123,7 +124,7 @@ func (d *TaskDAO) Delete(ctx context.Context, id string) error {
 		TaskArn: &taskArn,
 	})
 	if err != nil {
-		return fmt.Errorf("delete datasync task: %w", err)
+		return apperrors.Wrap(err, "delete datasync task")
 	}
 	return nil
 }

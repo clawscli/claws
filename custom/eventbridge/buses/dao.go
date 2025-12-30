@@ -2,13 +2,13 @@ package buses
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/eventbridge"
 	"github.com/aws/aws-sdk-go-v2/service/eventbridge/types"
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // BusDAO provides data access for EventBridge event buses
@@ -21,7 +21,7 @@ type BusDAO struct {
 func NewBusDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new eventbridge/buses dao: %w", err)
+		return nil, apperrors.Wrap(err, "new eventbridge/buses dao")
 	}
 	return &BusDAO{
 		BaseDAO: dao.NewBaseDAO("eventbridge", "buses"),
@@ -36,7 +36,7 @@ func (d *BusDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	// EventBridge doesn't have a paginator for ListEventBuses
 	output, err := d.client.ListEventBuses(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("list event buses: %w", err)
+		return nil, apperrors.Wrap(err, "list event buses")
 	}
 
 	for _, bus := range output.EventBuses {
@@ -53,7 +53,7 @@ func (d *BusDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 
 	output, err := d.client.DescribeEventBus(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe event bus %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe event bus %s", id)
 	}
 
 	// Convert DescribeEventBusOutput to types.EventBus
@@ -72,7 +72,7 @@ func (d *BusDAO) Delete(ctx context.Context, id string) error {
 
 	_, err := d.client.DeleteEventBus(ctx, input)
 	if err != nil {
-		return fmt.Errorf("delete event bus %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete event bus %s", id)
 	}
 
 	return nil

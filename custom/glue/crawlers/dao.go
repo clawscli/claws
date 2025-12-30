@@ -2,7 +2,6 @@ package crawlers
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/glue"
@@ -10,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // CrawlerDAO provides data access for Glue crawlers.
@@ -22,7 +22,7 @@ type CrawlerDAO struct {
 func NewCrawlerDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new glue/crawlers dao: %w", err)
+		return nil, apperrors.Wrap(err, "new glue/crawlers dao")
 	}
 	return &CrawlerDAO{
 		BaseDAO: dao.NewBaseDAO("glue", "crawlers"),
@@ -37,7 +37,7 @@ func (d *CrawlerDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("get glue crawlers: %w", err)
+			return nil, nil, apperrors.Wrap(err, "get glue crawlers")
 		}
 		return output.Crawlers, output.NextToken, nil
 	})
@@ -58,7 +58,7 @@ func (d *CrawlerDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		Name: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get glue crawler %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get glue crawler %s", id)
 	}
 	return NewCrawlerResource(*output.Crawler), nil
 }
@@ -69,7 +69,7 @@ func (d *CrawlerDAO) Delete(ctx context.Context, id string) error {
 		Name: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete glue crawler %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete glue crawler %s", id)
 	}
 	return nil
 }

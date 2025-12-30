@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // SnapshotDAO provides data access for RDS snapshots
@@ -21,7 +22,7 @@ type SnapshotDAO struct {
 func NewSnapshotDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new rds/snapshots dao: %w", err)
+		return nil, apperrors.Wrap(err, "new rds/snapshots dao")
 	}
 	return &SnapshotDAO{
 		BaseDAO: dao.NewBaseDAO("rds", "snapshots"),
@@ -53,7 +54,7 @@ func (d *SnapshotDAO) ListPage(ctx context.Context, pageSize int, pageToken stri
 
 	output, err := d.client.DescribeDBSnapshots(ctx, input)
 	if err != nil {
-		return nil, "", fmt.Errorf("describe db snapshots: %w", err)
+		return nil, "", apperrors.Wrap(err, "describe db snapshots")
 	}
 
 	resources := make([]dao.Resource, len(output.DBSnapshots))
@@ -76,7 +77,7 @@ func (d *SnapshotDAO) Get(ctx context.Context, id string) (dao.Resource, error) 
 
 	output, err := d.client.DescribeDBSnapshots(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe db snapshot %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe db snapshot %s", id)
 	}
 
 	if len(output.DBSnapshots) == 0 {
@@ -93,13 +94,13 @@ func (d *SnapshotDAO) Delete(ctx context.Context, id string) error {
 
 	_, err := d.client.DeleteDBSnapshot(ctx, input)
 	if err != nil {
-		if appaws.IsNotFound(err) {
+		if apperrors.IsNotFound(err) {
 			return nil // Already deleted
 		}
-		if appaws.IsResourceInUse(err) {
+		if apperrors.IsResourceInUse(err) {
 			return fmt.Errorf("db snapshot %s is in use", id)
 		}
-		return fmt.Errorf("delete db snapshot %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete db snapshot %s", id)
 	}
 
 	return nil

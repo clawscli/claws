@@ -2,7 +2,6 @@ package notebooks
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/sagemaker"
@@ -10,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // NotebookDAO provides data access for SageMaker notebook instances.
@@ -22,7 +22,7 @@ type NotebookDAO struct {
 func NewNotebookDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new sagemaker/notebooks dao: %w", err)
+		return nil, apperrors.Wrap(err, "new sagemaker/notebooks dao")
 	}
 	return &NotebookDAO{
 		BaseDAO: dao.NewBaseDAO("sagemaker", "notebooks"),
@@ -37,7 +37,7 @@ func (d *NotebookDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list sagemaker notebooks: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list sagemaker notebooks")
 		}
 		return output.NotebookInstances, output.NextToken, nil
 	})
@@ -58,7 +58,7 @@ func (d *NotebookDAO) Get(ctx context.Context, id string) (dao.Resource, error) 
 		NotebookInstanceName: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe sagemaker notebook: %w", err)
+		return nil, apperrors.Wrap(err, "describe sagemaker notebook")
 	}
 	// Convert to summary for consistent resource type
 	summary := types.NotebookInstanceSummary{
@@ -95,7 +95,7 @@ func (d *NotebookDAO) Delete(ctx context.Context, id string) error {
 		NotebookInstanceName: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete sagemaker notebook: %w", err)
+		return apperrors.Wrap(err, "delete sagemaker notebook")
 	}
 	return nil
 }

@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // BucketDAO provides data access for Macie buckets.
@@ -21,7 +22,7 @@ type BucketDAO struct {
 func NewBucketDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new macie/buckets dao: %w", err)
+		return nil, apperrors.Wrap(err, "new macie/buckets dao")
 	}
 	return &BucketDAO{
 		BaseDAO: dao.NewBaseDAO("macie", "buckets"),
@@ -36,7 +37,7 @@ func (d *BucketDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("describe macie buckets: %w", err)
+			return nil, nil, apperrors.Wrap(err, "describe macie buckets")
 		}
 		return output.Buckets, output.NextToken, nil
 	})

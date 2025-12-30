@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // ParameterDAO provides data access for SSM Parameter Store
@@ -21,7 +22,7 @@ type ParameterDAO struct {
 func NewParameterDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new ssm/parameters dao: %w", err)
+		return nil, apperrors.Wrap(err, "new ssm/parameters dao")
 	}
 	return &ParameterDAO{
 		BaseDAO: dao.NewBaseDAO("ssm", "parameters"),
@@ -53,7 +54,7 @@ func (d *ParameterDAO) ListPage(ctx context.Context, pageSize int, pageToken str
 
 	output, err := d.client.DescribeParameters(ctx, input)
 	if err != nil {
-		return nil, "", fmt.Errorf("describe parameters: %w", err)
+		return nil, "", apperrors.Wrap(err, "describe parameters")
 	}
 
 	resources := make([]dao.Resource, len(output.Parameters))
@@ -83,7 +84,7 @@ func (d *ParameterDAO) Get(ctx context.Context, id string) (dao.Resource, error)
 
 	descOutput, err := d.client.DescribeParameters(ctx, descInput)
 	if err != nil {
-		return nil, fmt.Errorf("describe parameter %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe parameter %s", id)
 	}
 
 	if len(descOutput.Parameters) == 0 {
@@ -100,7 +101,7 @@ func (d *ParameterDAO) Delete(ctx context.Context, id string) error {
 
 	_, err := d.client.DeleteParameter(ctx, input)
 	if err != nil {
-		return fmt.Errorf("delete parameter %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete parameter %s", id)
 	}
 
 	return nil

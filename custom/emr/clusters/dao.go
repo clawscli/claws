@@ -2,13 +2,13 @@ package clusters
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/emr"
 	"github.com/aws/aws-sdk-go-v2/service/emr/types"
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // ClusterDAO provides data access for EMR clusters.
@@ -21,7 +21,7 @@ type ClusterDAO struct {
 func NewClusterDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new emr/clusters dao: %w", err)
+		return nil, apperrors.Wrap(err, "new emr/clusters dao")
 	}
 	return &ClusterDAO{
 		BaseDAO: dao.NewBaseDAO("emr", "clusters"),
@@ -36,7 +36,7 @@ func (d *ClusterDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			Marker: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list emr clusters: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list emr clusters")
 		}
 		return output.Clusters, output.Marker, nil
 	})
@@ -57,7 +57,7 @@ func (d *ClusterDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		ClusterId: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe emr cluster: %w", err)
+		return nil, apperrors.Wrap(err, "describe emr cluster")
 	}
 
 	cluster := output.Cluster
@@ -109,7 +109,7 @@ func (d *ClusterDAO) Delete(ctx context.Context, id string) error {
 		JobFlowIds: []string{id},
 	})
 	if err != nil {
-		return fmt.Errorf("terminate emr cluster: %w", err)
+		return apperrors.Wrap(err, "terminate emr cluster")
 	}
 	return nil
 }

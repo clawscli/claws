@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // InvestigationDAO provides data access for Detective investigations.
@@ -22,7 +23,7 @@ type InvestigationDAO struct {
 func NewInvestigationDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new detective/investigations dao: %w", err)
+		return nil, apperrors.Wrap(err, "new detective/investigations dao")
 	}
 	return &InvestigationDAO{
 		BaseDAO: dao.NewBaseDAO("detective", "investigations"),
@@ -43,7 +44,7 @@ func (d *InvestigationDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list detective investigations: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list detective investigations")
 		}
 		return output.InvestigationDetails, output.NextToken, nil
 	})
@@ -70,7 +71,7 @@ func (d *InvestigationDAO) Get(ctx context.Context, id string) (dao.Resource, er
 		InvestigationId: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get detective investigation: %w", err)
+		return nil, apperrors.Wrap(err, "get detective investigation")
 	}
 
 	return &InvestigationResource{

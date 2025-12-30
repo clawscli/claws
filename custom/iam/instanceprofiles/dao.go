@@ -2,7 +2,6 @@ package instanceprofiles
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/service/iam"
@@ -10,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // InstanceProfileDAO provides data access for IAM Instance Profiles
@@ -22,7 +22,7 @@ type InstanceProfileDAO struct {
 func NewInstanceProfileDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new iam/instanceprofiles dao: %w", err)
+		return nil, apperrors.Wrap(err, "new iam/instanceprofiles dao")
 	}
 	return &InstanceProfileDAO{
 		BaseDAO: dao.NewBaseDAO("iam", "instance-profiles"),
@@ -37,7 +37,7 @@ func (d *InstanceProfileDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	for paginator.HasMorePages() {
 		output, err := paginator.NextPage(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("list instance profiles: %w", err)
+			return nil, apperrors.Wrap(err, "list instance profiles")
 		}
 
 		for _, profile := range output.InstanceProfiles {
@@ -53,7 +53,7 @@ func (d *InstanceProfileDAO) Get(ctx context.Context, id string) (dao.Resource, 
 		InstanceProfileName: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get instance profile %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get instance profile %s", id)
 	}
 
 	return NewInstanceProfileResource(*output.InstanceProfile), nil
@@ -64,7 +64,7 @@ func (d *InstanceProfileDAO) Delete(ctx context.Context, id string) error {
 		InstanceProfileName: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete instance profile %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete instance profile %s", id)
 	}
 	return nil
 }

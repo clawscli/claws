@@ -2,13 +2,13 @@ package userpools
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider/types"
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // UserPoolDAO provides data access for Cognito user pools
@@ -21,7 +21,7 @@ type UserPoolDAO struct {
 func NewUserPoolDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new cognito/userpools dao: %w", err)
+		return nil, apperrors.Wrap(err, "new cognito/userpools dao")
 	}
 	return &UserPoolDAO{
 		BaseDAO: dao.NewBaseDAO("cognito", "user-pools"),
@@ -37,7 +37,7 @@ func (d *UserPoolDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			MaxResults: appaws.Int32Ptr(60),
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list user pools: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list user pools")
 		}
 		return output.UserPools, output.NextToken, nil
 	})
@@ -61,7 +61,7 @@ func (d *UserPoolDAO) Get(ctx context.Context, id string) (dao.Resource, error) 
 
 	output, err := d.client.DescribeUserPool(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe user pool %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe user pool %s", id)
 	}
 
 	return NewUserPoolResourceFromDetail(output.UserPool), nil
@@ -75,7 +75,7 @@ func (d *UserPoolDAO) Delete(ctx context.Context, id string) error {
 
 	_, err := d.client.DeleteUserPool(ctx, input)
 	if err != nil {
-		return fmt.Errorf("delete user pool %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete user pool %s", id)
 	}
 
 	return nil

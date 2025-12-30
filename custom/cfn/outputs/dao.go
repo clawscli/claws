@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // OutputDAO provides data access for CloudFormation stack outputs
@@ -21,7 +22,7 @@ type OutputDAO struct {
 func NewOutputDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new cfn/outputs dao: %w", err)
+		return nil, apperrors.Wrap(err, "new cfn/outputs dao")
 	}
 	return &OutputDAO{
 		BaseDAO: dao.NewBaseDAO("cloudformation", "outputs"),
@@ -42,7 +43,7 @@ func (d *OutputDAO) List(ctx context.Context) ([]dao.Resource, error) {
 
 	output, err := d.client.DescribeStacks(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe stacks: %w", err)
+		return nil, apperrors.Wrap(err, "describe stacks")
 	}
 
 	if len(output.Stacks) == 0 {

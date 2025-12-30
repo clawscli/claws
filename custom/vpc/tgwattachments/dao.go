@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // TGWAttachmentDAO provides data access for Transit Gateway attachments.
@@ -22,7 +23,7 @@ type TGWAttachmentDAO struct {
 func NewTGWAttachmentDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new vpc/tgwattachments dao: %w", err)
+		return nil, apperrors.Wrap(err, "new vpc/tgwattachments dao")
 	}
 	return &TGWAttachmentDAO{
 		BaseDAO: dao.NewBaseDAO("ec2", "tgw-attachments"),
@@ -48,7 +49,7 @@ func (d *TGWAttachmentDAO) List(ctx context.Context) ([]dao.Resource, error) {
 		input.NextToken = token
 		output, err := d.client.DescribeTransitGatewayAttachments(ctx, input)
 		if err != nil {
-			return nil, nil, fmt.Errorf("describe transit gateway attachments: %w", err)
+			return nil, nil, apperrors.Wrap(err, "describe transit gateway attachments")
 		}
 		return output.TransitGatewayAttachments, output.NextToken, nil
 	})
@@ -69,7 +70,7 @@ func (d *TGWAttachmentDAO) Get(ctx context.Context, id string) (dao.Resource, er
 		TransitGatewayAttachmentIds: []string{id},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe transit gateway attachment %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe transit gateway attachment %s", id)
 	}
 	if len(output.TransitGatewayAttachments) == 0 {
 		return nil, fmt.Errorf("transit gateway attachment not found: %s", id)
@@ -100,7 +101,7 @@ func (d *TGWAttachmentDAO) Delete(ctx context.Context, id string) error {
 	}
 
 	if err != nil {
-		return fmt.Errorf("delete transit gateway attachment %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete transit gateway attachment %s", id)
 	}
 	return nil
 }

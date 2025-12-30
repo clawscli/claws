@@ -13,6 +13,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 	"github.com/clawscli/claws/internal/log"
 )
 
@@ -26,7 +27,7 @@ type RecommendationDAO struct {
 func NewRecommendationDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new computeoptimizer/recommendations dao: %w", err)
+		return nil, apperrors.Wrap(err, "new computeoptimizer/recommendations dao")
 	}
 	return &RecommendationDAO{
 		BaseDAO: dao.NewBaseDAO("computeoptimizer", "recommendations"),
@@ -69,7 +70,7 @@ func (d *RecommendationDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			defer mu.Unlock()
 			if err != nil {
 				log.Warn("failed to list recommendations", "type", f.name, "error", err)
-				errs = append(errs, fmt.Errorf("%s: %w", f.name, err))
+				errs = append(errs, apperrors.Wrapf(err, "%s", f.name))
 			} else {
 				resources = append(resources, recs...)
 			}
@@ -103,7 +104,7 @@ func (d *RecommendationDAO) listEC2Recommendations(ctx context.Context) ([]dao.R
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list ec2 recommendations: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list ec2 recommendations")
 		}
 		return output.InstanceRecommendations, output.NextToken, nil
 	})
@@ -124,7 +125,7 @@ func (d *RecommendationDAO) listASGRecommendations(ctx context.Context) ([]dao.R
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list asg recommendations: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list asg recommendations")
 		}
 		return output.AutoScalingGroupRecommendations, output.NextToken, nil
 	})
@@ -145,7 +146,7 @@ func (d *RecommendationDAO) listEBSRecommendations(ctx context.Context) ([]dao.R
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list ebs recommendations: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list ebs recommendations")
 		}
 		return output.VolumeRecommendations, output.NextToken, nil
 	})
@@ -166,7 +167,7 @@ func (d *RecommendationDAO) listLambdaRecommendations(ctx context.Context) ([]da
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list lambda recommendations: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list lambda recommendations")
 		}
 		return output.LambdaFunctionRecommendations, output.NextToken, nil
 	})
@@ -187,7 +188,7 @@ func (d *RecommendationDAO) listECSRecommendations(ctx context.Context) ([]dao.R
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list ecs recommendations: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list ecs recommendations")
 		}
 		return output.EcsServiceRecommendations, output.NextToken, nil
 	})

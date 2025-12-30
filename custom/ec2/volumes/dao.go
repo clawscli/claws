@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // VolumeDAO provides data access for EBS volumes
@@ -21,7 +22,7 @@ type VolumeDAO struct {
 func NewVolumeDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new ec2/volumes dao: %w", err)
+		return nil, apperrors.Wrap(err, "new ec2/volumes dao")
 	}
 	return &VolumeDAO{
 		BaseDAO: dao.NewBaseDAO("ec2", "volumes"),
@@ -37,7 +38,7 @@ func (d *VolumeDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	for paginator.HasMorePages() {
 		output, err := paginator.NextPage(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("describe volumes: %w", err)
+			return nil, apperrors.Wrap(err, "describe volumes")
 		}
 
 		for _, vol := range output.Volumes {
@@ -55,7 +56,7 @@ func (d *VolumeDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 
 	output, err := d.client.DescribeVolumes(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe volume %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe volume %s", id)
 	}
 
 	if len(output.Volumes) == 0 {
@@ -72,13 +73,13 @@ func (d *VolumeDAO) Delete(ctx context.Context, id string) error {
 
 	_, err := d.client.DeleteVolume(ctx, input)
 	if err != nil {
-		if appaws.IsNotFound(err) {
+		if apperrors.IsNotFound(err) {
 			return nil // Already deleted
 		}
-		if appaws.IsResourceInUse(err) {
+		if apperrors.IsResourceInUse(err) {
 			return fmt.Errorf("volume %s is attached to an instance", id)
 		}
-		return fmt.Errorf("delete volume %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete volume %s", id)
 	}
 
 	return nil

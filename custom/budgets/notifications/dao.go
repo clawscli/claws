@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // NotificationDAO provides data access for Budget notifications.
@@ -23,7 +24,7 @@ type NotificationDAO struct {
 func NewNotificationDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new budgets/notifications dao: %w", err)
+		return nil, apperrors.Wrap(err, "new budgets/notifications dao")
 	}
 	return &NotificationDAO{
 		BaseDAO:   dao.NewBaseDAO("budgets", "notifications"),
@@ -42,7 +43,7 @@ func (d *NotificationDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	// Get account ID
 	identity, err := d.stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
 	if err != nil {
-		return nil, fmt.Errorf("get caller identity: %w", err)
+		return nil, apperrors.Wrap(err, "get caller identity")
 	}
 	accountID := appaws.Str(identity.Account)
 
@@ -53,7 +54,7 @@ func (d *NotificationDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken:  token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("describe notifications for budget: %w", err)
+			return nil, nil, apperrors.Wrap(err, "describe notifications for budget")
 		}
 		return output.Notifications, output.NextToken, nil
 	})

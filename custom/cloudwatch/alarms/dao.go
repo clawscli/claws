@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // AlarmDAO provides data access for CloudWatch Alarms
@@ -22,7 +23,7 @@ type AlarmDAO struct {
 func NewAlarmDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new cloudwatch/alarms dao: %w", err)
+		return nil, apperrors.Wrap(err, "new cloudwatch/alarms dao")
 	}
 	return &AlarmDAO{
 		BaseDAO: dao.NewBaseDAO("cloudwatch", "alarms"),
@@ -46,7 +47,7 @@ func (d *AlarmDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	for paginator.HasMorePages() {
 		output, err := paginator.NextPage(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("describe alarms: %w", err)
+			return nil, apperrors.Wrap(err, "describe alarms")
 		}
 		allMetricAlarms = append(allMetricAlarms, output.MetricAlarms...)
 		allCompositeAlarms = append(allCompositeAlarms, output.CompositeAlarms...)
@@ -70,7 +71,7 @@ func (d *AlarmDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 
 	output, err := d.client.DescribeAlarms(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe alarm %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe alarm %s", id)
 	}
 
 	for _, a := range output.MetricAlarms {
@@ -95,10 +96,10 @@ func (d *AlarmDAO) Delete(ctx context.Context, id string) error {
 
 	_, err := d.client.DeleteAlarms(ctx, input)
 	if err != nil {
-		if appaws.IsNotFound(err) {
+		if apperrors.IsNotFound(err) {
 			return nil // Already deleted
 		}
-		return fmt.Errorf("delete alarm %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete alarm %s", id)
 	}
 
 	return nil

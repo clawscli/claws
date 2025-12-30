@@ -2,7 +2,6 @@ package jobs
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/transcribe"
@@ -10,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // JobDAO provides data access for Transcribe jobs.
@@ -22,7 +22,7 @@ type JobDAO struct {
 func NewJobDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new transcribe/jobs dao: %w", err)
+		return nil, apperrors.Wrap(err, "new transcribe/jobs dao")
 	}
 	return &JobDAO{
 		BaseDAO: dao.NewBaseDAO("transcribe", "jobs"),
@@ -37,7 +37,7 @@ func (d *JobDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list transcription jobs: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list transcription jobs")
 		}
 		return output.TranscriptionJobSummaries, output.NextToken, nil
 	})
@@ -58,7 +58,7 @@ func (d *JobDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		TranscriptionJobName: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get transcription job %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get transcription job %s", id)
 	}
 	return NewJobResourceFromDetail(*output.TranscriptionJob), nil
 }
@@ -69,7 +69,7 @@ func (d *JobDAO) Delete(ctx context.Context, id string) error {
 		TranscriptionJobName: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete transcription job %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete transcription job %s", id)
 	}
 	return nil
 }

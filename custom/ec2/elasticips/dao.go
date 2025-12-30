@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // ElasticIPDAO provides data access for Elastic IPs
@@ -21,7 +22,7 @@ type ElasticIPDAO struct {
 func NewElasticIPDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new ec2/elasticips dao: %w", err)
+		return nil, apperrors.Wrap(err, "new ec2/elasticips dao")
 	}
 	return &ElasticIPDAO{
 		BaseDAO: dao.NewBaseDAO("ec2", "elastic-ips"),
@@ -32,7 +33,7 @@ func NewElasticIPDAO(ctx context.Context) (dao.DAO, error) {
 func (d *ElasticIPDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	output, err := d.client.DescribeAddresses(ctx, &ec2.DescribeAddressesInput{})
 	if err != nil {
-		return nil, fmt.Errorf("describe addresses: %w", err)
+		return nil, apperrors.Wrap(err, "describe addresses")
 	}
 
 	var resources []dao.Resource
@@ -48,7 +49,7 @@ func (d *ElasticIPDAO) Get(ctx context.Context, id string) (dao.Resource, error)
 		AllocationIds: []string{id},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe address %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe address %s", id)
 	}
 
 	if len(output.Addresses) == 0 {
@@ -63,13 +64,13 @@ func (d *ElasticIPDAO) Delete(ctx context.Context, id string) error {
 		AllocationId: &id,
 	})
 	if err != nil {
-		if appaws.IsNotFound(err) {
+		if apperrors.IsNotFound(err) {
 			return nil // Already deleted
 		}
-		if appaws.IsResourceInUse(err) {
+		if apperrors.IsResourceInUse(err) {
 			return fmt.Errorf("elastic IP %s is associated with an instance or network interface", id)
 		}
-		return fmt.Errorf("release address %s: %w", id, err)
+		return apperrors.Wrapf(err, "release address %s", id)
 	}
 
 	return nil

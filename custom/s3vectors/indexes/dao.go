@@ -2,13 +2,13 @@ package indexes
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3vectors"
 	"github.com/aws/aws-sdk-go-v2/service/s3vectors/types"
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // VectorIndexDAO provides data access for S3 Vector Indexes
@@ -21,7 +21,7 @@ type VectorIndexDAO struct {
 func NewVectorIndexDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new s3vectors/indexes dao: %w", err)
+		return nil, apperrors.Wrap(err, "new s3vectors/indexes dao")
 	}
 	return &VectorIndexDAO{
 		BaseDAO: dao.NewBaseDAO("s3vectors", "indexes"),
@@ -47,7 +47,7 @@ func (d *VectorIndexDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			MaxResults: appaws.Int32Ptr(100),
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list vector buckets: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list vector buckets")
 		}
 		return output.VectorBuckets, output.NextToken, nil
 	})
@@ -77,7 +77,7 @@ func (d *VectorIndexDAO) listIndexesForBucket(ctx context.Context, bucketName st
 			MaxResults:       appaws.Int32Ptr(100),
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list indexes for bucket %s: %w", bucketName, err)
+			return nil, nil, apperrors.Wrapf(err, "list indexes for bucket %s", bucketName)
 		}
 		return output.Indexes, output.NextToken, nil
 	})
@@ -109,7 +109,7 @@ func (d *VectorIndexDAO) Get(ctx context.Context, id string) (dao.Resource, erro
 
 	output, err := d.client.GetIndex(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("get index %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get index %s", id)
 	}
 
 	return NewVectorIndexResource(output.Index), nil
@@ -122,7 +122,7 @@ func (d *VectorIndexDAO) Delete(ctx context.Context, id string) error {
 
 	_, err := d.client.DeleteIndex(ctx, input)
 	if err != nil {
-		return fmt.Errorf("delete index %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete index %s", id)
 	}
 
 	return nil

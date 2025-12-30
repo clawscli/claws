@@ -2,13 +2,13 @@ package rulegroups
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/networkfirewall"
 	"github.com/aws/aws-sdk-go-v2/service/networkfirewall/types"
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // RuleGroupDAO provides data access for Network Firewall rule groups.
@@ -21,7 +21,7 @@ type RuleGroupDAO struct {
 func NewRuleGroupDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new networkfirewall/rulegroups dao: %w", err)
+		return nil, apperrors.Wrap(err, "new networkfirewall/rulegroups dao")
 	}
 	return &RuleGroupDAO{
 		BaseDAO: dao.NewBaseDAO("network-firewall", "rule-groups"),
@@ -36,7 +36,7 @@ func (d *RuleGroupDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list network firewall rule groups: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list network firewall rule groups")
 		}
 		return output.RuleGroups, output.NextToken, nil
 	})
@@ -57,7 +57,7 @@ func (d *RuleGroupDAO) Get(ctx context.Context, id string) (dao.Resource, error)
 		RuleGroupName: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe network firewall rule group %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe network firewall rule group %s", id)
 	}
 	return NewRuleGroupResourceFromDetail(output.RuleGroupResponse, output.RuleGroup), nil
 }
@@ -68,7 +68,7 @@ func (d *RuleGroupDAO) Delete(ctx context.Context, id string) error {
 		RuleGroupName: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete network firewall rule group %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete network firewall rule group %s", id)
 	}
 	return nil
 }

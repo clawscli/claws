@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 	"github.com/clawscli/claws/internal/log"
 )
 
@@ -22,7 +23,7 @@ type ServiceDAO struct {
 func NewServiceDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new ecs/services dao: %w", err)
+		return nil, apperrors.Wrap(err, "new ecs/services dao")
 	}
 	return &ServiceDAO{
 		BaseDAO: dao.NewBaseDAO("ecs", "services"),
@@ -46,7 +47,7 @@ func (d *ServiceDAO) listAllServices(ctx context.Context) ([]dao.Resource, error
 	clusterArns, err := appaws.Paginate(ctx, func(token *string) ([]string, *string, error) {
 		output, err := d.client.ListClusters(ctx, &ecs.ListClustersInput{NextToken: token})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list clusters: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list clusters")
 		}
 		return output.ClusterArns, output.NextToken, nil
 	})
@@ -74,7 +75,7 @@ func (d *ServiceDAO) listServicesInCluster(ctx context.Context, cluster string) 
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list services: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list services")
 		}
 		return output.ServiceArns, output.NextToken, nil
 	})
@@ -126,7 +127,7 @@ func (d *ServiceDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 
 	output, err := d.client.DescribeServices(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe service %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe service %s", id)
 	}
 
 	if len(output.Services) == 0 {
@@ -151,10 +152,10 @@ func (d *ServiceDAO) Delete(ctx context.Context, id string) error {
 
 	_, err := d.client.DeleteService(ctx, input)
 	if err != nil {
-		if appaws.IsNotFound(err) {
+		if apperrors.IsNotFound(err) {
 			return nil // Already deleted
 		}
-		return fmt.Errorf("delete service %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete service %s", id)
 	}
 
 	return nil

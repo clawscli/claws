@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // UserDAO provides data access for Cognito users
@@ -22,7 +23,7 @@ type UserDAO struct {
 func NewUserDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new cognito/users dao: %w", err)
+		return nil, apperrors.Wrap(err, "new cognito/users dao")
 	}
 	return &UserDAO{
 		BaseDAO: dao.NewBaseDAO("cognito", "users"),
@@ -61,7 +62,7 @@ func (d *UserDAO) ListPage(ctx context.Context, pageSize int, pageToken string) 
 
 	output, err := d.client.ListUsers(ctx, input)
 	if err != nil {
-		return nil, "", fmt.Errorf("list users: %w", err)
+		return nil, "", apperrors.Wrap(err, "list users")
 	}
 
 	resources := make([]dao.Resource, len(output.Users))
@@ -91,7 +92,7 @@ func (d *UserDAO) Get(ctx context.Context, username string) (dao.Resource, error
 
 	output, err := d.client.AdminGetUser(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("get user %s: %w", username, err)
+		return nil, apperrors.Wrapf(err, "get user %s", username)
 	}
 
 	return NewUserResourceFromDetail(output, userPoolId), nil
@@ -109,7 +110,7 @@ func (d *UserDAO) Delete(ctx context.Context, username string) error {
 		Username:   &username,
 	})
 	if err != nil {
-		return fmt.Errorf("delete user %s: %w", username, err)
+		return apperrors.Wrapf(err, "delete user %s", username)
 	}
 	return nil
 }

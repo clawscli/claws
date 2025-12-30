@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // StepDAO provides data access for EMR steps.
@@ -21,7 +22,7 @@ type StepDAO struct {
 func NewStepDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new emr/steps dao: %w", err)
+		return nil, apperrors.Wrap(err, "new emr/steps dao")
 	}
 	return &StepDAO{
 		BaseDAO: dao.NewBaseDAO("emr", "steps"),
@@ -42,7 +43,7 @@ func (d *StepDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			Marker:    token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list emr steps: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list emr steps")
 		}
 		return output.Steps, output.Marker, nil
 	})
@@ -69,7 +70,7 @@ func (d *StepDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		StepId:    &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe emr step: %w", err)
+		return nil, apperrors.Wrap(err, "describe emr step")
 	}
 
 	step := output.Step
@@ -100,7 +101,7 @@ func (d *StepDAO) Delete(ctx context.Context, id string) error {
 		StepIds:   []string{id},
 	})
 	if err != nil {
-		return fmt.Errorf("cancel emr step: %w", err)
+		return apperrors.Wrap(err, "cancel emr step")
 	}
 	return nil
 }

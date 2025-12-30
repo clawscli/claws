@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // WebACLDAO provides data access for WAFv2 Web ACLs
@@ -21,7 +22,7 @@ type WebACLDAO struct {
 func NewWebACLDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new wafv2/webacls dao: %w", err)
+		return nil, apperrors.Wrap(err, "new wafv2/webacls dao")
 	}
 	return &WebACLDAO{
 		BaseDAO: dao.NewBaseDAO("wafv2", "web-acls"),
@@ -36,7 +37,7 @@ func (d *WebACLDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	// List REGIONAL Web ACLs
 	regionalResources, err := d.listByScope(ctx, types.ScopeRegional)
 	if err != nil {
-		return nil, fmt.Errorf("list regional web acls: %w", err)
+		return nil, apperrors.Wrap(err, "list regional web acls")
 	}
 	resources = append(resources, regionalResources...)
 
@@ -109,7 +110,7 @@ func (d *WebACLDAO) getWebACLDetail(ctx context.Context, summary *WebACLResource
 
 	output, err := d.client.GetWebACL(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("get web acl: %w", err)
+		return nil, apperrors.Wrap(err, "get web acl")
 	}
 
 	return NewWebACLResourceFromDetail(output.WebACL, summary.Scope), nil
@@ -137,7 +138,7 @@ func (d *WebACLDAO) Delete(ctx context.Context, id string) error {
 
 	getOutput, err := d.client.GetWebACL(ctx, getInput)
 	if err != nil {
-		return fmt.Errorf("get web acl for lock token: %w", err)
+		return apperrors.Wrap(err, "get web acl for lock token")
 	}
 
 	// Delete the Web ACL
@@ -150,7 +151,7 @@ func (d *WebACLDAO) Delete(ctx context.Context, id string) error {
 
 	_, err = d.client.DeleteWebACL(ctx, deleteInput)
 	if err != nil {
-		return fmt.Errorf("delete web acl: %w", err)
+		return apperrors.Wrap(err, "delete web acl")
 	}
 
 	return nil

@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // ClusterDAO provides data access for ECS clusters
@@ -21,7 +22,7 @@ type ClusterDAO struct {
 func NewClusterDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new ecs/clusters dao: %w", err)
+		return nil, apperrors.Wrap(err, "new ecs/clusters dao")
 	}
 	return &ClusterDAO{
 		BaseDAO: dao.NewBaseDAO("ecs", "clusters"),
@@ -36,7 +37,7 @@ func (d *ClusterDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list clusters: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list clusters")
 		}
 		return output.ClusterArns, output.NextToken, nil
 	})
@@ -56,7 +57,7 @@ func (d *ClusterDAO) List(ctx context.Context) ([]dao.Resource, error) {
 
 	descOutput, err := d.client.DescribeClusters(ctx, descInput)
 	if err != nil {
-		return nil, fmt.Errorf("describe clusters: %w", err)
+		return nil, apperrors.Wrap(err, "describe clusters")
 	}
 
 	resources := make([]dao.Resource, 0, len(descOutput.Clusters))
@@ -75,7 +76,7 @@ func (d *ClusterDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 
 	output, err := d.client.DescribeClusters(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe cluster %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe cluster %s", id)
 	}
 
 	if len(output.Clusters) == 0 {
@@ -92,13 +93,13 @@ func (d *ClusterDAO) Delete(ctx context.Context, id string) error {
 
 	_, err := d.client.DeleteCluster(ctx, input)
 	if err != nil {
-		if appaws.IsNotFound(err) {
+		if apperrors.IsNotFound(err) {
 			return nil // Already deleted
 		}
-		if appaws.IsResourceInUse(err) {
+		if apperrors.IsResourceInUse(err) {
 			return fmt.Errorf("cluster %s has active services or tasks", id)
 		}
-		return fmt.Errorf("delete cluster %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete cluster %s", id)
 	}
 
 	return nil

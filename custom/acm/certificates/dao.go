@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // CertificateDAO provides data access for ACM certificates
@@ -21,7 +22,7 @@ type CertificateDAO struct {
 func NewCertificateDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new acm/certificates dao: %w", err)
+		return nil, apperrors.Wrap(err, "new acm/certificates dao")
 	}
 	return &CertificateDAO{
 		BaseDAO: dao.NewBaseDAO("acm", "certificates"),
@@ -37,7 +38,7 @@ func (d *CertificateDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			Includes:  &types.Filters{},
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list certificates: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list certificates")
 		}
 		return output.CertificateSummaryList, output.NextToken, nil
 	})
@@ -62,7 +63,7 @@ func (d *CertificateDAO) Get(ctx context.Context, id string) (dao.Resource, erro
 
 	output, err := d.client.DescribeCertificate(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe certificate %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe certificate %s", id)
 	}
 
 	return NewCertificateResource(output.Certificate), nil
@@ -75,13 +76,13 @@ func (d *CertificateDAO) Delete(ctx context.Context, id string) error {
 
 	_, err := d.client.DeleteCertificate(ctx, input)
 	if err != nil {
-		if appaws.IsNotFound(err) {
+		if apperrors.IsNotFound(err) {
 			return nil // Already deleted
 		}
-		if appaws.IsResourceInUse(err) {
+		if apperrors.IsResourceInUse(err) {
 			return fmt.Errorf("certificate %s is in use by AWS resources", id)
 		}
-		return fmt.Errorf("delete certificate %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete certificate %s", id)
 	}
 
 	return nil

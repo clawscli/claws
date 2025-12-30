@@ -2,7 +2,6 @@ package detectors
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/guardduty"
@@ -10,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // DetectorDAO provides data access for GuardDuty detectors
@@ -22,7 +22,7 @@ type DetectorDAO struct {
 func NewDetectorDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new guardduty/detectors dao: %w", err)
+		return nil, apperrors.Wrap(err, "new guardduty/detectors dao")
 	}
 	return &DetectorDAO{
 		BaseDAO: dao.NewBaseDAO("guardduty", "detectors"),
@@ -39,7 +39,7 @@ func (d *DetectorDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list detectors: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list detectors")
 		}
 		return output.DetectorIds, output.NextToken, nil
 	})
@@ -52,7 +52,7 @@ func (d *DetectorDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			DetectorId: &detectorId,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("get detector %s: %w", detectorId, err)
+			return nil, apperrors.Wrapf(err, "get detector %s", detectorId)
 		}
 		resources = append(resources, NewDetectorResource(detectorId, detail))
 	}
@@ -66,7 +66,7 @@ func (d *DetectorDAO) Get(ctx context.Context, id string) (dao.Resource, error) 
 		DetectorId: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get detector %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get detector %s", id)
 	}
 
 	return NewDetectorResource(id, output), nil
@@ -78,7 +78,7 @@ func (d *DetectorDAO) Delete(ctx context.Context, id string) error {
 		DetectorId: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete detector %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete detector %s", id)
 	}
 	return nil
 }

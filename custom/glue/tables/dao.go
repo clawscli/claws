@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // TableDAO provides data access for Glue tables.
@@ -22,7 +23,7 @@ type TableDAO struct {
 func NewTableDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new glue/tables dao: %w", err)
+		return nil, apperrors.Wrap(err, "new glue/tables dao")
 	}
 	return &TableDAO{
 		BaseDAO: dao.NewBaseDAO("glue", "tables"),
@@ -44,7 +45,7 @@ func (d *TableDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken:    token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("get glue tables: %w", err)
+			return nil, nil, apperrors.Wrap(err, "get glue tables")
 		}
 		return output.TableList, output.NextToken, nil
 	})
@@ -71,7 +72,7 @@ func (d *TableDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		Name:         &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get glue table %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get glue table %s", id)
 	}
 	return NewTableResource(*output.Table, databaseName), nil
 }
@@ -88,7 +89,7 @@ func (d *TableDAO) Delete(ctx context.Context, id string) error {
 		Name:         &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete glue table %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete glue table %s", id)
 	}
 	return nil
 }

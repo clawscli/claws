@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // GraphDAO provides data access for Detective graphs.
@@ -22,7 +23,7 @@ type GraphDAO struct {
 func NewGraphDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new detective/graphs dao: %w", err)
+		return nil, apperrors.Wrap(err, "new detective/graphs dao")
 	}
 	return &GraphDAO{
 		BaseDAO: dao.NewBaseDAO("detective", "graphs"),
@@ -37,7 +38,7 @@ func (d *GraphDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list detective graphs: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list detective graphs")
 		}
 		return output.GraphList, output.NextToken, nil
 	})
@@ -73,7 +74,7 @@ func (d *GraphDAO) Delete(ctx context.Context, arn string) error {
 		GraphArn: &arn,
 	})
 	if err != nil {
-		return fmt.Errorf("delete detective graph: %w", err)
+		return apperrors.Wrap(err, "delete detective graph")
 	}
 	return nil
 }

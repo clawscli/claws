@@ -2,13 +2,13 @@ package policies
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/organizations"
 	"github.com/aws/aws-sdk-go-v2/service/organizations/types"
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // PolicyDAO provides data access for Organizations policies.
@@ -21,7 +21,7 @@ type PolicyDAO struct {
 func NewPolicyDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new organizations/policies dao: %w", err)
+		return nil, apperrors.Wrap(err, "new organizations/policies dao")
 	}
 	return &PolicyDAO{
 		BaseDAO: dao.NewBaseDAO("organizations", "policies"),
@@ -71,7 +71,7 @@ func (d *PolicyDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		PolicyId: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe organizations policy: %w", err)
+		return nil, apperrors.Wrap(err, "describe organizations policy")
 	}
 	return &PolicyResource{
 		BaseResource: dao.BaseResource{
@@ -89,7 +89,7 @@ func (d *PolicyDAO) Delete(ctx context.Context, id string) error {
 		PolicyId: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete organizations policy: %w", err)
+		return apperrors.Wrap(err, "delete organizations policy")
 	}
 	return nil
 }

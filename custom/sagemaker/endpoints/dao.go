@@ -2,7 +2,6 @@ package endpoints
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/sagemaker"
@@ -10,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // EndpointDAO provides data access for SageMaker endpoints.
@@ -22,7 +22,7 @@ type EndpointDAO struct {
 func NewEndpointDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new sagemaker/endpoints dao: %w", err)
+		return nil, apperrors.Wrap(err, "new sagemaker/endpoints dao")
 	}
 	return &EndpointDAO{
 		BaseDAO: dao.NewBaseDAO("sagemaker", "endpoints"),
@@ -37,7 +37,7 @@ func (d *EndpointDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list sagemaker endpoints: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list sagemaker endpoints")
 		}
 		return output.Endpoints, output.NextToken, nil
 	})
@@ -58,7 +58,7 @@ func (d *EndpointDAO) Get(ctx context.Context, id string) (dao.Resource, error) 
 		EndpointName: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe sagemaker endpoint: %w", err)
+		return nil, apperrors.Wrap(err, "describe sagemaker endpoint")
 	}
 	// Convert to summary for consistent resource type
 	summary := types.EndpointSummary{
@@ -82,7 +82,7 @@ func (d *EndpointDAO) Delete(ctx context.Context, id string) error {
 		EndpointName: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete sagemaker endpoint: %w", err)
+		return apperrors.Wrap(err, "delete sagemaker endpoint")
 	}
 	return nil
 }

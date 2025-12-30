@@ -2,13 +2,13 @@ package firewallpolicies
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/networkfirewall"
 	"github.com/aws/aws-sdk-go-v2/service/networkfirewall/types"
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // FirewallPolicyDAO provides data access for Network Firewall policies.
@@ -21,7 +21,7 @@ type FirewallPolicyDAO struct {
 func NewFirewallPolicyDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new networkfirewall/firewallpolicies dao: %w", err)
+		return nil, apperrors.Wrap(err, "new networkfirewall/firewallpolicies dao")
 	}
 	return &FirewallPolicyDAO{
 		BaseDAO: dao.NewBaseDAO("network-firewall", "firewall-policies"),
@@ -36,7 +36,7 @@ func (d *FirewallPolicyDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list network firewall policies: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list network firewall policies")
 		}
 		return output.FirewallPolicies, output.NextToken, nil
 	})
@@ -57,7 +57,7 @@ func (d *FirewallPolicyDAO) Get(ctx context.Context, id string) (dao.Resource, e
 		FirewallPolicyName: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe network firewall policy %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe network firewall policy %s", id)
 	}
 	return NewFirewallPolicyResourceFromDetail(output.FirewallPolicyResponse, output.FirewallPolicy), nil
 }
@@ -68,7 +68,7 @@ func (d *FirewallPolicyDAO) Delete(ctx context.Context, id string) error {
 		FirewallPolicyName: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete network firewall policy %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete network firewall policy %s", id)
 	}
 	return nil
 }

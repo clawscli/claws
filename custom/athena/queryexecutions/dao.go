@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // QueryExecutionDAO provides data access for Athena query executions.
@@ -22,7 +23,7 @@ type QueryExecutionDAO struct {
 func NewQueryExecutionDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new athena/queryexecutions dao: %w", err)
+		return nil, apperrors.Wrap(err, "new athena/queryexecutions dao")
 	}
 	return &QueryExecutionDAO{
 		BaseDAO: dao.NewBaseDAO("athena", "query-executions"),
@@ -61,7 +62,7 @@ func (d *QueryExecutionDAO) ListPage(ctx context.Context, pageSize int, pageToke
 
 	listOutput, err := d.client.ListQueryExecutions(ctx, listInput)
 	if err != nil {
-		return nil, "", fmt.Errorf("list athena query executions: %w", err)
+		return nil, "", apperrors.Wrap(err, "list athena query executions")
 	}
 
 	if len(listOutput.QueryExecutionIds) == 0 {
@@ -73,7 +74,7 @@ func (d *QueryExecutionDAO) ListPage(ctx context.Context, pageSize int, pageToke
 		QueryExecutionIds: listOutput.QueryExecutionIds,
 	})
 	if err != nil {
-		return nil, "", fmt.Errorf("batch get query executions: %w", err)
+		return nil, "", apperrors.Wrap(err, "batch get query executions")
 	}
 
 	resources := make([]dao.Resource, 0, len(batchOutput.QueryExecutions))
@@ -95,7 +96,7 @@ func (d *QueryExecutionDAO) Get(ctx context.Context, id string) (dao.Resource, e
 		QueryExecutionId: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get athena query execution %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get athena query execution %s", id)
 	}
 	return NewQueryExecutionResource(*output.QueryExecution), nil
 }
@@ -106,7 +107,7 @@ func (d *QueryExecutionDAO) Delete(ctx context.Context, id string) error {
 		QueryExecutionId: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("stop athena query execution %s: %w", id, err)
+		return apperrors.Wrapf(err, "stop athena query execution %s", id)
 	}
 	return nil
 }

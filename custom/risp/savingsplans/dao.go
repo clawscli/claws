@@ -11,6 +11,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // SavingsPlanDAO provides data access for Savings Plans
@@ -23,7 +24,7 @@ type SavingsPlanDAO struct {
 func NewSavingsPlanDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new risp/savingsplans dao: %w", err)
+		return nil, apperrors.Wrap(err, "new risp/savingsplans dao")
 	}
 	return &SavingsPlanDAO{
 		BaseDAO: dao.NewBaseDAO("risp", "savings-plans"),
@@ -38,7 +39,7 @@ func (d *SavingsPlanDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	for {
 		output, err := d.client.DescribeSavingsPlans(ctx, input)
 		if err != nil {
-			return nil, fmt.Errorf("describe savings plans: %w", err)
+			return nil, apperrors.Wrap(err, "describe savings plans")
 		}
 
 		for _, sp := range output.SavingsPlans {
@@ -61,7 +62,7 @@ func (d *SavingsPlanDAO) Get(ctx context.Context, id string) (dao.Resource, erro
 
 	output, err := d.client.DescribeSavingsPlans(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe savings plan %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe savings plan %s", id)
 	}
 
 	if len(output.SavingsPlans) == 0 {

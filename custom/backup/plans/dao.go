@@ -2,7 +2,6 @@ package plans
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/backup"
@@ -10,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // BackupPlanDAO provides data access for AWS Backup plans
@@ -22,7 +22,7 @@ type BackupPlanDAO struct {
 func NewBackupPlanDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new backup/plans dao: %w", err)
+		return nil, apperrors.Wrap(err, "new backup/plans dao")
 	}
 	return &BackupPlanDAO{
 		BaseDAO: dao.NewBaseDAO("backup", "plans"),
@@ -37,7 +37,7 @@ func (d *BackupPlanDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list backup plans: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list backup plans")
 		}
 		return output.BackupPlansList, output.NextToken, nil
 	})
@@ -59,7 +59,7 @@ func (d *BackupPlanDAO) Get(ctx context.Context, id string) (dao.Resource, error
 		BackupPlanId: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get backup plan %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get backup plan %s", id)
 	}
 
 	return NewBackupPlanResourceFromDetail(output), nil
@@ -71,7 +71,7 @@ func (d *BackupPlanDAO) Delete(ctx context.Context, id string) error {
 		BackupPlanId: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete backup plan %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete backup plan %s", id)
 	}
 	return nil
 }

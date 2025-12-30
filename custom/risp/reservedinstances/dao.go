@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // ReservedInstanceDAO provides data access for EC2 Reserved Instances
@@ -22,7 +23,7 @@ type ReservedInstanceDAO struct {
 func NewReservedInstanceDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new risp/reservedinstances dao: %w", err)
+		return nil, apperrors.Wrap(err, "new risp/reservedinstances dao")
 	}
 	return &ReservedInstanceDAO{
 		BaseDAO: dao.NewBaseDAO("risp", "reserved-instances"),
@@ -35,7 +36,7 @@ func (d *ReservedInstanceDAO) List(ctx context.Context) ([]dao.Resource, error) 
 
 	output, err := d.client.DescribeReservedInstances(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe reserved instances: %w", err)
+		return nil, apperrors.Wrap(err, "describe reserved instances")
 	}
 
 	var resources []dao.Resource
@@ -53,7 +54,7 @@ func (d *ReservedInstanceDAO) Get(ctx context.Context, id string) (dao.Resource,
 
 	output, err := d.client.DescribeReservedInstances(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe reserved instance %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe reserved instance %s", id)
 	}
 
 	if len(output.ReservedInstances) == 0 {

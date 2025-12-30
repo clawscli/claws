@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // StageDAO provides data access for API Gateway REST API stages
@@ -22,7 +23,7 @@ type StageDAO struct {
 func NewStageDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new apigateway/stages dao: %w", err)
+		return nil, apperrors.Wrap(err, "new apigateway/stages dao")
 	}
 	return &StageDAO{
 		BaseDAO: dao.NewBaseDAO("apigateway", "stages"),
@@ -41,7 +42,7 @@ func (d *StageDAO) List(ctx context.Context) ([]dao.Resource, error) {
 		RestApiId: &restApiId,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("list stages: %w", err)
+		return nil, apperrors.Wrap(err, "list stages")
 	}
 
 	var resources []dao.Resource
@@ -65,7 +66,7 @@ func (d *StageDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		StageName: &stageName,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get stage %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get stage %s", id)
 	}
 
 	return NewStageResourceFromGetOutput(output, restApiId), nil
@@ -83,7 +84,7 @@ func (d *StageDAO) Delete(ctx context.Context, id string) error {
 		StageName: &stageName,
 	})
 	if err != nil {
-		return fmt.Errorf("delete stage %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete stage %s", id)
 	}
 	return nil
 }

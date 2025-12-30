@@ -2,7 +2,6 @@ package distributions
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
@@ -10,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // DistributionDAO provides data access for CloudFront distributions
@@ -22,7 +22,7 @@ type DistributionDAO struct {
 func NewDistributionDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new cloudfront/distributions dao: %w", err)
+		return nil, apperrors.Wrap(err, "new cloudfront/distributions dao")
 	}
 	return &DistributionDAO{
 		BaseDAO: dao.NewBaseDAO("cloudfront", "distributions"),
@@ -38,7 +38,7 @@ func (d *DistributionDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			MaxItems: appaws.Int32Ptr(100),
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list distributions: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list distributions")
 		}
 		if output.DistributionList == nil {
 			return nil, nil, nil
@@ -70,7 +70,7 @@ func (d *DistributionDAO) Get(ctx context.Context, id string) (dao.Resource, err
 
 	output, err := d.client.GetDistribution(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("get distribution %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get distribution %s", id)
 	}
 
 	// Convert Distribution to DistributionSummary for consistency
@@ -132,7 +132,7 @@ func (d *DistributionDAO) Delete(ctx context.Context, id string) error {
 	}
 	getOutput, err := d.client.GetDistribution(ctx, getInput)
 	if err != nil {
-		return fmt.Errorf("get distribution %s for deletion: %w", id, err)
+		return apperrors.Wrapf(err, "get distribution %s for deletion", id)
 	}
 
 	input := &cloudfront.DeleteDistributionInput{
@@ -142,7 +142,7 @@ func (d *DistributionDAO) Delete(ctx context.Context, id string) error {
 
 	_, err = d.client.DeleteDistribution(ctx, input)
 	if err != nil {
-		return fmt.Errorf("delete distribution %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete distribution %s", id)
 	}
 
 	return nil

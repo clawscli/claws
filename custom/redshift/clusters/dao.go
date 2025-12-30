@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // ClusterDAO provides data access for Redshift clusters.
@@ -22,7 +23,7 @@ type ClusterDAO struct {
 func NewClusterDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new redshift/clusters dao: %w", err)
+		return nil, apperrors.Wrap(err, "new redshift/clusters dao")
 	}
 	return &ClusterDAO{
 		BaseDAO: dao.NewBaseDAO("redshift", "clusters"),
@@ -37,7 +38,7 @@ func (d *ClusterDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			Marker: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("describe redshift clusters: %w", err)
+			return nil, nil, apperrors.Wrap(err, "describe redshift clusters")
 		}
 		return output.Clusters, output.Marker, nil
 	})
@@ -58,7 +59,7 @@ func (d *ClusterDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		ClusterIdentifier: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe redshift cluster: %w", err)
+		return nil, apperrors.Wrap(err, "describe redshift cluster")
 	}
 	if len(output.Clusters) == 0 {
 		return nil, fmt.Errorf("cluster not found: %s", id)
@@ -74,7 +75,7 @@ func (d *ClusterDAO) Delete(ctx context.Context, id string) error {
 		SkipFinalClusterSnapshot: &skipFinalSnapshot,
 	})
 	if err != nil {
-		return fmt.Errorf("delete redshift cluster: %w", err)
+		return apperrors.Wrap(err, "delete redshift cluster")
 	}
 	return nil
 }

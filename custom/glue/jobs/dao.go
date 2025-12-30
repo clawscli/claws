@@ -2,7 +2,6 @@ package jobs
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/glue"
@@ -10,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // JobDAO provides data access for Glue jobs.
@@ -22,7 +22,7 @@ type JobDAO struct {
 func NewJobDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new glue/jobs dao: %w", err)
+		return nil, apperrors.Wrap(err, "new glue/jobs dao")
 	}
 	return &JobDAO{
 		BaseDAO: dao.NewBaseDAO("glue", "jobs"),
@@ -37,7 +37,7 @@ func (d *JobDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("get glue jobs: %w", err)
+			return nil, nil, apperrors.Wrap(err, "get glue jobs")
 		}
 		return output.Jobs, output.NextToken, nil
 	})
@@ -58,7 +58,7 @@ func (d *JobDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		JobName: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get glue job %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get glue job %s", id)
 	}
 	return NewJobResource(*output.Job), nil
 }
@@ -69,7 +69,7 @@ func (d *JobDAO) Delete(ctx context.Context, id string) error {
 		JobName: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete glue job %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete glue job %s", id)
 	}
 	return nil
 }

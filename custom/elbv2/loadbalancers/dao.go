@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // LoadBalancerDAO provides data access for ELBv2 Load Balancers
@@ -22,7 +23,7 @@ type LoadBalancerDAO struct {
 func NewLoadBalancerDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new elbv2/loadbalancers dao: %w", err)
+		return nil, apperrors.Wrap(err, "new elbv2/loadbalancers dao")
 	}
 	return &LoadBalancerDAO{
 		BaseDAO: dao.NewBaseDAO("elbv2", "load-balancers"),
@@ -48,7 +49,7 @@ func (d *LoadBalancerDAO) List(ctx context.Context) ([]dao.Resource, error) {
 
 		output, err := d.client.DescribeLoadBalancers(ctx, input)
 		if err != nil {
-			return nil, fmt.Errorf("list load balancers: %w", err)
+			return nil, apperrors.Wrap(err, "list load balancers")
 		}
 
 		resources := make([]dao.Resource, 0, len(output.LoadBalancers))
@@ -64,7 +65,7 @@ func (d *LoadBalancerDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			Marker: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list load balancers: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list load balancers")
 		}
 		return output.LoadBalancers, output.NextMarker, nil
 	})
@@ -85,7 +86,7 @@ func (d *LoadBalancerDAO) Get(ctx context.Context, id string) (dao.Resource, err
 		LoadBalancerArns: []string{id},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get load balancer %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get load balancer %s", id)
 	}
 
 	if len(output.LoadBalancers) == 0 {
@@ -101,13 +102,13 @@ func (d *LoadBalancerDAO) Delete(ctx context.Context, id string) error {
 		LoadBalancerArn: &id,
 	})
 	if err != nil {
-		if appaws.IsNotFound(err) {
+		if apperrors.IsNotFound(err) {
 			return nil // Already deleted
 		}
-		if appaws.IsResourceInUse(err) {
+		if apperrors.IsResourceInUse(err) {
 			return fmt.Errorf("load balancer %s is in use", id)
 		}
-		return fmt.Errorf("delete load balancer %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete load balancer %s", id)
 	}
 	return nil
 }

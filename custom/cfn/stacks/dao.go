@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // StackDAO provides data access for CloudFormation stacks
@@ -21,7 +22,7 @@ type StackDAO struct {
 func NewStackDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new cfn/stacks dao: %w", err)
+		return nil, apperrors.Wrap(err, "new cfn/stacks dao")
 	}
 	return &StackDAO{
 		BaseDAO: dao.NewBaseDAO("cloudformation", "stacks"),
@@ -37,7 +38,7 @@ func (d *StackDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	for paginator.HasMorePages() {
 		output, err := paginator.NextPage(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("describe stacks: %w", err)
+			return nil, apperrors.Wrap(err, "describe stacks")
 		}
 
 		for _, stack := range output.Stacks {
@@ -55,7 +56,7 @@ func (d *StackDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 
 	output, err := d.client.DescribeStacks(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe stack %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe stack %s", id)
 	}
 
 	if len(output.Stacks) == 0 {
@@ -72,10 +73,10 @@ func (d *StackDAO) Delete(ctx context.Context, id string) error {
 
 	_, err := d.client.DeleteStack(ctx, input)
 	if err != nil {
-		if appaws.IsNotFound(err) {
+		if apperrors.IsNotFound(err) {
 			return nil // Already deleted
 		}
-		return fmt.Errorf("delete stack %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete stack %s", id)
 	}
 
 	return nil

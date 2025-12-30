@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 	"github.com/clawscli/claws/internal/log"
 )
 
@@ -22,7 +23,7 @@ type TableDAO struct {
 func NewTableDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new dynamodb/tables dao: %w", err)
+		return nil, apperrors.Wrap(err, "new dynamodb/tables dao")
 	}
 	return &TableDAO{
 		BaseDAO: dao.NewBaseDAO("dynamodb", "tables"),
@@ -36,7 +37,7 @@ func (d *TableDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			ExclusiveStartTableName: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list tables: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list tables")
 		}
 		return output.TableNames, output.LastEvaluatedTableName, nil
 	})
@@ -68,7 +69,7 @@ func (d *TableDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 
 	output, err := d.client.DescribeTable(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe table %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe table %s", id)
 	}
 
 	if output.Table == nil {
@@ -85,13 +86,13 @@ func (d *TableDAO) Delete(ctx context.Context, id string) error {
 
 	_, err := d.client.DeleteTable(ctx, input)
 	if err != nil {
-		if appaws.IsNotFound(err) {
+		if apperrors.IsNotFound(err) {
 			return nil // Already deleted
 		}
-		if appaws.IsResourceInUse(err) {
+		if apperrors.IsResourceInUse(err) {
 			return fmt.Errorf("table %s is in use", id)
 		}
-		return fmt.Errorf("delete table %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete table %s", id)
 	}
 
 	return nil

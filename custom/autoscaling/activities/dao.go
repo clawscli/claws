@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // ActivityDAO provides data access for Auto Scaling activities
@@ -22,7 +23,7 @@ type ActivityDAO struct {
 func NewActivityDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new autoscaling/activities dao: %w", err)
+		return nil, apperrors.Wrap(err, "new autoscaling/activities dao")
 	}
 	return &ActivityDAO{
 		BaseDAO: dao.NewBaseDAO("autoscaling", "activities"),
@@ -61,7 +62,7 @@ func (d *ActivityDAO) ListPage(ctx context.Context, pageSize int, pageToken stri
 
 	output, err := d.client.DescribeScalingActivities(ctx, input)
 	if err != nil {
-		return nil, "", fmt.Errorf("describe scaling activities: %w", err)
+		return nil, "", apperrors.Wrap(err, "describe scaling activities")
 	}
 
 	resources := make([]dao.Resource, len(output.Activities))
@@ -87,7 +88,7 @@ func (d *ActivityDAO) Get(ctx context.Context, activityId string) (dao.Resource,
 
 	output, err := d.client.DescribeScalingActivities(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe activity %s: %w", activityId, err)
+		return nil, apperrors.Wrapf(err, "describe activity %s", activityId)
 	}
 
 	if len(output.Activities) == 0 {

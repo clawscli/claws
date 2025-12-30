@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // LogGroupDAO provides data access for CloudWatch Log Groups
@@ -22,7 +23,7 @@ type LogGroupDAO struct {
 func NewLogGroupDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new cloudwatch/loggroups dao: %w", err)
+		return nil, apperrors.Wrap(err, "new cloudwatch/loggroups dao")
 	}
 	return &LogGroupDAO{
 		BaseDAO: dao.NewBaseDAO("cloudwatch", "log-groups"),
@@ -43,7 +44,7 @@ func (d *LogGroupDAO) List(ctx context.Context) ([]dao.Resource, error) {
 		}
 		output, err := d.client.DescribeLogGroups(ctx, input)
 		if err != nil {
-			return nil, nil, fmt.Errorf("describe log groups: %w", err)
+			return nil, nil, apperrors.Wrap(err, "describe log groups")
 		}
 		return output.LogGroups, output.NextToken, nil
 	})
@@ -65,7 +66,7 @@ func (d *LogGroupDAO) Get(ctx context.Context, id string) (dao.Resource, error) 
 
 	output, err := d.client.DescribeLogGroups(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe log group %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe log group %s", id)
 	}
 
 	// Find exact match
@@ -85,10 +86,10 @@ func (d *LogGroupDAO) Delete(ctx context.Context, id string) error {
 
 	_, err := d.client.DeleteLogGroup(ctx, input)
 	if err != nil {
-		if appaws.IsNotFound(err) {
+		if apperrors.IsNotFound(err) {
 			return nil // Already deleted
 		}
-		return fmt.Errorf("delete log group %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete log group %s", id)
 	}
 
 	return nil

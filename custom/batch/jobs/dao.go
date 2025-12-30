@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // JobDAO provides data access for Batch jobs.
@@ -22,7 +23,7 @@ type JobDAO struct {
 func NewJobDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new batch/jobs dao: %w", err)
+		return nil, apperrors.Wrap(err, "new batch/jobs dao")
 	}
 	return &JobDAO{
 		BaseDAO: dao.NewBaseDAO("batch", "jobs"),
@@ -57,7 +58,7 @@ func (d *JobDAO) List(ctx context.Context) ([]dao.Resource, error) {
 				NextToken: token,
 			})
 			if err != nil {
-				return nil, nil, fmt.Errorf("list batch jobs: %w", err)
+				return nil, nil, apperrors.Wrap(err, "list batch jobs")
 			}
 			return output.JobSummaryList, output.NextToken, nil
 		})
@@ -80,7 +81,7 @@ func (d *JobDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		Jobs: []string{id},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe batch job: %w", err)
+		return nil, apperrors.Wrap(err, "describe batch job")
 	}
 	if len(output.Jobs) == 0 {
 		return nil, fmt.Errorf("job not found: %s", id)
@@ -127,7 +128,7 @@ func (d *JobDAO) Delete(ctx context.Context, id string) error {
 		Reason: &reason,
 	})
 	if err != nil {
-		return fmt.Errorf("terminate batch job: %w", err)
+		return apperrors.Wrap(err, "terminate batch job")
 	}
 	return nil
 }

@@ -2,7 +2,6 @@ package runtimes
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/bedrockagentcorecontrol"
@@ -10,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // RuntimeDAO provides data access for Bedrock AgentCore Runtimes
@@ -22,7 +22,7 @@ type RuntimeDAO struct {
 func NewRuntimeDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new bedrockagentcore/runtimes dao: %w", err)
+		return nil, apperrors.Wrap(err, "new bedrockagentcore/runtimes dao")
 	}
 	return &RuntimeDAO{
 		BaseDAO: dao.NewBaseDAO("bedrock-agentcore", "runtimes"),
@@ -37,7 +37,7 @@ func (d *RuntimeDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			MaxResults: appaws.Int32Ptr(50),
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list agent runtimes: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list agent runtimes")
 		}
 		return output.AgentRuntimes, output.NextToken, nil
 	})
@@ -60,7 +60,7 @@ func (d *RuntimeDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 
 	output, err := d.client.GetAgentRuntime(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("get agent runtime %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get agent runtime %s", id)
 	}
 
 	return NewRuntimeResourceFromDetail(output), nil
@@ -73,7 +73,7 @@ func (d *RuntimeDAO) Delete(ctx context.Context, id string) error {
 
 	_, err := d.client.DeleteAgentRuntime(ctx, input)
 	if err != nil {
-		return fmt.Errorf("delete agent runtime %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete agent runtime %s", id)
 	}
 
 	return nil

@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // EventDAO provides data access for CloudTrail events.
@@ -25,7 +26,7 @@ type EventDAO struct {
 func NewEventDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new cloudtrail/events dao: %w", err)
+		return nil, apperrors.Wrap(err, "new cloudtrail/events dao")
 	}
 	return &EventDAO{
 		BaseDAO: dao.NewBaseDAO("cloudtrail", "events"),
@@ -69,7 +70,7 @@ func (d *EventDAO) ListPage(ctx context.Context, pageSize int, pageToken string)
 
 	output, err := d.client.LookupEvents(ctx, input)
 	if err != nil {
-		return nil, "", fmt.Errorf("lookup cloudtrail events: %w", err)
+		return nil, "", apperrors.Wrap(err, "lookup cloudtrail events")
 	}
 
 	resources := make([]dao.Resource, len(output.Events))
@@ -102,7 +103,7 @@ func (d *EventDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("lookup cloudtrail event %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "lookup cloudtrail event %s", id)
 	}
 	if len(output.Events) == 0 {
 		return nil, fmt.Errorf("event not found: %s", id)

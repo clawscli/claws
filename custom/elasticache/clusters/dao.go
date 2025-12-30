@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // ClusterDAO provides data access for ElastiCache clusters
@@ -21,7 +22,7 @@ type ClusterDAO struct {
 func NewClusterDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new elasticache/clusters dao: %w", err)
+		return nil, apperrors.Wrap(err, "new elasticache/clusters dao")
 	}
 	return &ClusterDAO{
 		BaseDAO: dao.NewBaseDAO("elasticache", "clusters"),
@@ -38,7 +39,7 @@ func (d *ClusterDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			ShowCacheNodeInfo: appaws.BoolPtr(true),
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("describe cache clusters: %w", err)
+			return nil, nil, apperrors.Wrap(err, "describe cache clusters")
 		}
 		return output.CacheClusters, output.Marker, nil
 	})
@@ -63,7 +64,7 @@ func (d *ClusterDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 
 	output, err := d.client.DescribeCacheClusters(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe cache cluster %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe cache cluster %s", id)
 	}
 
 	if len(output.CacheClusters) == 0 {
@@ -81,7 +82,7 @@ func (d *ClusterDAO) Delete(ctx context.Context, id string) error {
 
 	_, err := d.client.DeleteCacheCluster(ctx, input)
 	if err != nil {
-		return fmt.Errorf("delete cache cluster %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete cache cluster %s", id)
 	}
 
 	return nil

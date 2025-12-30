@@ -1,11 +1,66 @@
-package aws
+// Package errors provides error classification and handling for AWS operations.
+package errors
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/aws/smithy-go"
+
+	"github.com/clawscli/claws/internal/log"
 )
+
+// Kind represents the classification of an error.
+type Kind int
+
+const (
+	Unknown    Kind = iota // Unknown or unclassified error
+	Auth                   // Authentication/authorization errors (AccessDenied, Forbidden)
+	Throttling             // Rate limiting errors (TooManyRequests)
+	NotFound               // Resource not found errors
+	InUse                  // Resource in use / dependency errors
+	Validation             // Input validation errors
+)
+
+// String returns the string representation of the error kind.
+func (k Kind) String() string {
+	switch k {
+	case Auth:
+		return "Auth"
+	case Throttling:
+		return "Throttling"
+	case NotFound:
+		return "NotFound"
+	case InUse:
+		return "InUse"
+	case Validation:
+		return "Validation"
+	default:
+		return "Unknown"
+	}
+}
+
+// Classify returns the Kind of the given error.
+func Classify(err error) Kind {
+	if err == nil {
+		return Unknown
+	}
+	switch {
+	case IsNotFound(err):
+		return NotFound
+	case IsAccessDenied(err):
+		return Auth
+	case IsThrottling(err):
+		return Throttling
+	case IsResourceInUse(err):
+		return InUse
+	case IsValidationError(err):
+		return Validation
+	default:
+		return Unknown
+	}
+}
 
 // Common AWS error codes
 const (
@@ -140,4 +195,21 @@ func GetErrorMessage(err error) string {
 	}
 
 	return err.Error()
+}
+
+func Wrap(err error, operation string, attrs ...any) error {
+	if err == nil {
+		return nil
+	}
+	log.Warn(operation, append(attrs, "error", err)...)
+	return fmt.Errorf("%s: %w", operation, err)
+}
+
+func Wrapf(err error, format string, args ...any) error {
+	if err == nil {
+		return nil
+	}
+	msg := fmt.Sprintf(format, args...)
+	log.Warn(msg, "error", err)
+	return fmt.Errorf("%s: %w", msg, err)
 }

@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 	"github.com/clawscli/claws/internal/render"
 )
 
@@ -23,7 +24,7 @@ type RestoreJobDAO struct {
 func NewRestoreJobDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new backup/restore-jobs dao: %w", err)
+		return nil, apperrors.Wrap(err, "new backup/restore-jobs dao")
 	}
 	return &RestoreJobDAO{
 		BaseDAO: dao.NewBaseDAO("backup", "restore-jobs"),
@@ -53,7 +54,7 @@ func (d *RestoreJobDAO) ListPage(ctx context.Context, pageSize int, pageToken st
 
 	output, err := d.client.ListRestoreJobs(ctx, input)
 	if err != nil {
-		return nil, "", fmt.Errorf("list restore jobs: %w", err)
+		return nil, "", apperrors.Wrap(err, "list restore jobs")
 	}
 
 	resources := make([]dao.Resource, len(output.RestoreJobs))
@@ -75,7 +76,7 @@ func (d *RestoreJobDAO) Get(ctx context.Context, jobId string) (dao.Resource, er
 		RestoreJobId: &jobId,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe restore job %s: %w", jobId, err)
+		return nil, apperrors.Wrapf(err, "describe restore job %s", jobId)
 	}
 
 	return NewRestoreJobResourceFromDetail(output), nil

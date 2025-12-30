@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // OperationDAO provides data access for App Runner operations.
@@ -22,7 +23,7 @@ type OperationDAO struct {
 func NewOperationDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new apprunner/operations dao: %w", err)
+		return nil, apperrors.Wrap(err, "new apprunner/operations dao")
 	}
 	return &OperationDAO{
 		BaseDAO: dao.NewBaseDAO("apprunner", "operations"),
@@ -60,7 +61,7 @@ func (d *OperationDAO) ListPage(ctx context.Context, pageSize int, pageToken str
 
 	output, err := d.client.ListOperations(ctx, input)
 	if err != nil {
-		return nil, "", fmt.Errorf("list app runner operations: %w", err)
+		return nil, "", apperrors.Wrap(err, "list app runner operations")
 	}
 
 	resources := make([]dao.Resource, len(output.OperationSummaryList))

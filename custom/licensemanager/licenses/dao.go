@@ -2,7 +2,6 @@ package licenses
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/service/licensemanager"
@@ -10,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // LicenseDAO provides data access for License Manager licenses.
@@ -22,7 +22,7 @@ type LicenseDAO struct {
 func NewLicenseDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new licensemanager/licenses dao: %w", err)
+		return nil, apperrors.Wrap(err, "new licensemanager/licenses dao")
 	}
 	return &LicenseDAO{
 		BaseDAO: dao.NewBaseDAO("license-manager", "licenses"),
@@ -37,7 +37,7 @@ func (d *LicenseDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list licenses: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list licenses")
 		}
 		return output.Licenses, output.NextToken, nil
 	})
@@ -58,7 +58,7 @@ func (d *LicenseDAO) Get(ctx context.Context, arn string) (dao.Resource, error) 
 		LicenseArn: &arn,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get license: %w", err)
+		return nil, apperrors.Wrap(err, "get license")
 	}
 	return NewLicenseResource(*output.License), nil
 }
@@ -70,7 +70,7 @@ func (d *LicenseDAO) Delete(ctx context.Context, arn string) error {
 		LicenseArn: &arn,
 	})
 	if err != nil {
-		return fmt.Errorf("get license for delete: %w", err)
+		return apperrors.Wrap(err, "get license for delete")
 	}
 
 	_, err = d.client.DeleteLicense(ctx, &licensemanager.DeleteLicenseInput{
@@ -78,7 +78,7 @@ func (d *LicenseDAO) Delete(ctx context.Context, arn string) error {
 		SourceVersion: output.License.Version,
 	})
 	if err != nil {
-		return fmt.Errorf("delete license: %w", err)
+		return apperrors.Wrap(err, "delete license")
 	}
 	return nil
 }

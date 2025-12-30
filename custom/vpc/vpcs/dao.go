@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // VPCDAO provides data access for VPCs
@@ -21,7 +22,7 @@ type VPCDAO struct {
 func NewVPCDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new vpc/vpcs dao: %w", err)
+		return nil, apperrors.Wrap(err, "new vpc/vpcs dao")
 	}
 	return &VPCDAO{
 		BaseDAO: dao.NewBaseDAO("vpc", "vpcs"),
@@ -32,7 +33,7 @@ func NewVPCDAO(ctx context.Context) (dao.DAO, error) {
 func (d *VPCDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	output, err := d.client.DescribeVpcs(ctx, &ec2.DescribeVpcsInput{})
 	if err != nil {
-		return nil, fmt.Errorf("describe vpcs: %w", err)
+		return nil, apperrors.Wrap(err, "describe vpcs")
 	}
 
 	var resources []dao.Resource
@@ -48,7 +49,7 @@ func (d *VPCDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		VpcIds: []string{id},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe vpc %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe vpc %s", id)
 	}
 
 	if len(output.Vpcs) == 0 {
@@ -80,13 +81,13 @@ func (d *VPCDAO) Delete(ctx context.Context, id string) error {
 		VpcId: &id,
 	})
 	if err != nil {
-		if appaws.IsNotFound(err) {
+		if apperrors.IsNotFound(err) {
 			return nil // Already deleted
 		}
-		if appaws.IsResourceInUse(err) {
+		if apperrors.IsResourceInUse(err) {
 			return fmt.Errorf("vpc %s is in use", id)
 		}
-		return fmt.Errorf("delete vpc %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete vpc %s", id)
 	}
 	return nil
 }

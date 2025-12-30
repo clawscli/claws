@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // EndpointDAO provides data access for Bedrock AgentCore Runtime Endpoints
@@ -22,7 +23,7 @@ type EndpointDAO struct {
 func NewEndpointDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new bedrockagentcore/endpoints dao: %w", err)
+		return nil, apperrors.Wrap(err, "new bedrockagentcore/endpoints dao")
 	}
 	return &EndpointDAO{
 		BaseDAO: dao.NewBaseDAO("bedrock-agentcore", "endpoints"),
@@ -44,7 +45,7 @@ func (d *EndpointDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			MaxResults:     appaws.Int32Ptr(50),
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list agent runtime endpoints: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list agent runtime endpoints")
 		}
 		return output.RuntimeEndpoints, output.NextToken, nil
 	})
@@ -72,7 +73,7 @@ func (d *EndpointDAO) Get(ctx context.Context, id string) (dao.Resource, error) 
 		EndpointName:   &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get agent runtime endpoint %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get agent runtime endpoint %s", id)
 	}
 
 	return NewEndpointResourceFromDetail(output, runtimeID), nil
@@ -89,7 +90,7 @@ func (d *EndpointDAO) Delete(ctx context.Context, id string) error {
 		EndpointName:   &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete agent runtime endpoint %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete agent runtime endpoint %s", id)
 	}
 
 	return nil

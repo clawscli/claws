@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // BudgetDAO provides data access for AWS Budgets.
@@ -23,7 +24,7 @@ type BudgetDAO struct {
 func NewBudgetDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new budgets/budgets dao: %w", err)
+		return nil, apperrors.Wrap(err, "new budgets/budgets dao")
 	}
 	return &BudgetDAO{
 		BaseDAO:   dao.NewBaseDAO("budgets", "budgets"),
@@ -37,7 +38,7 @@ func (d *BudgetDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	// Get account ID
 	identity, err := d.stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
 	if err != nil {
-		return nil, fmt.Errorf("get caller identity: %w", err)
+		return nil, apperrors.Wrap(err, "get caller identity")
 	}
 	accountID := appaws.Str(identity.Account)
 
@@ -47,7 +48,7 @@ func (d *BudgetDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("describe budgets: %w", err)
+			return nil, nil, apperrors.Wrap(err, "describe budgets")
 		}
 		return output.Budgets, output.NextToken, nil
 	})
@@ -67,7 +68,7 @@ func (d *BudgetDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 	// Get account ID
 	identity, err := d.stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
 	if err != nil {
-		return nil, fmt.Errorf("get caller identity: %w", err)
+		return nil, apperrors.Wrap(err, "get caller identity")
 	}
 	accountID := appaws.Str(identity.Account)
 
@@ -76,7 +77,7 @@ func (d *BudgetDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		BudgetName: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe budget %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe budget %s", id)
 	}
 	return NewBudgetResource(*output.Budget, accountID), nil
 }
@@ -86,7 +87,7 @@ func (d *BudgetDAO) Delete(ctx context.Context, id string) error {
 	// Get account ID
 	identity, err := d.stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
 	if err != nil {
-		return fmt.Errorf("get caller identity: %w", err)
+		return apperrors.Wrap(err, "get caller identity")
 	}
 	accountID := appaws.Str(identity.Account)
 
@@ -95,7 +96,7 @@ func (d *BudgetDAO) Delete(ctx context.Context, id string) error {
 		BudgetName: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete budget %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete budget %s", id)
 	}
 	return nil
 }

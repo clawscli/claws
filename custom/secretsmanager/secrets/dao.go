@@ -2,13 +2,13 @@ package secrets
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager/types"
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // SecretDAO provides data access for Secrets Manager secrets
@@ -21,7 +21,7 @@ type SecretDAO struct {
 func NewSecretDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new secretsmanager/secrets dao: %w", err)
+		return nil, apperrors.Wrap(err, "new secretsmanager/secrets dao")
 	}
 	return &SecretDAO{
 		BaseDAO: dao.NewBaseDAO("secretsmanager", "secrets"),
@@ -36,7 +36,7 @@ func (d *SecretDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			MaxResults: appaws.Int32Ptr(100),
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list secrets: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list secrets")
 		}
 		return output.SecretList, output.NextToken, nil
 	})
@@ -58,7 +58,7 @@ func (d *SecretDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 
 	output, err := d.client.DescribeSecret(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe secret %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe secret %s", id)
 	}
 
 	// Convert DescribeSecretOutput to SecretListEntry for consistency
@@ -105,7 +105,7 @@ func (d *SecretDAO) Delete(ctx context.Context, id string) error {
 
 	_, err := d.client.DeleteSecret(ctx, input)
 	if err != nil {
-		return fmt.Errorf("delete secret %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete secret %s", id)
 	}
 
 	return nil

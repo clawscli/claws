@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // JobRunDAO provides data access for Glue job runs.
@@ -22,7 +23,7 @@ type JobRunDAO struct {
 func NewJobRunDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new glue/jobruns dao: %w", err)
+		return nil, apperrors.Wrap(err, "new glue/jobruns dao")
 	}
 	return &JobRunDAO{
 		BaseDAO: dao.NewBaseDAO("glue", "job-runs"),
@@ -60,7 +61,7 @@ func (d *JobRunDAO) ListPage(ctx context.Context, pageSize int, pageToken string
 
 	output, err := d.client.GetJobRuns(ctx, input)
 	if err != nil {
-		return nil, "", fmt.Errorf("get glue job runs: %w", err)
+		return nil, "", apperrors.Wrap(err, "get glue job runs")
 	}
 
 	resources := make([]dao.Resource, len(output.JobRuns))
@@ -88,7 +89,7 @@ func (d *JobRunDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		RunId:   &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get glue job run %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get glue job run %s", id)
 	}
 	return NewJobRunResource(*output.JobRun), nil
 }

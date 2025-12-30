@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // ImageDAO provides data access for ECR images
@@ -22,7 +23,7 @@ type ImageDAO struct {
 func NewImageDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new ecr/images dao: %w", err)
+		return nil, apperrors.Wrap(err, "new ecr/images dao")
 	}
 	return &ImageDAO{
 		BaseDAO: dao.NewBaseDAO("ecr", "images"),
@@ -61,7 +62,7 @@ func (d *ImageDAO) ListPage(ctx context.Context, pageSize int, pageToken string)
 
 	output, err := d.client.DescribeImages(ctx, input)
 	if err != nil {
-		return nil, "", fmt.Errorf("describe images: %w", err)
+		return nil, "", apperrors.Wrap(err, "describe images")
 	}
 
 	resources := make([]dao.Resource, len(output.ImageDetails))
@@ -93,7 +94,7 @@ func (d *ImageDAO) Get(ctx context.Context, imageDigest string) (dao.Resource, e
 
 	output, err := d.client.DescribeImages(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe image %s: %w", imageDigest, err)
+		return nil, apperrors.Wrapf(err, "describe image %s", imageDigest)
 	}
 
 	if len(output.ImageDetails) == 0 {
@@ -119,7 +120,7 @@ func (d *ImageDAO) Delete(ctx context.Context, imageDigest string) error {
 
 	_, err := d.client.BatchDeleteImage(ctx, input)
 	if err != nil {
-		return fmt.Errorf("delete image %s: %w", imageDigest, err)
+		return apperrors.Wrapf(err, "delete image %s", imageDigest)
 	}
 
 	return nil

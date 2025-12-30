@@ -2,7 +2,6 @@ package inferenceprofiles
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
@@ -11,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // InferenceProfileDAO provides data access for Bedrock Inference Profiles
@@ -23,7 +23,7 @@ type InferenceProfileDAO struct {
 func NewInferenceProfileDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new bedrock/inferenceprofiles dao: %w", err)
+		return nil, apperrors.Wrap(err, "new bedrock/inferenceprofiles dao")
 	}
 	return &InferenceProfileDAO{
 		BaseDAO: dao.NewBaseDAO("bedrock", "inference-profiles"),
@@ -38,7 +38,7 @@ func (d *InferenceProfileDAO) List(ctx context.Context) ([]dao.Resource, error) 
 			MaxResults: appaws.Int32Ptr(100),
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list inference profiles: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list inference profiles")
 		}
 		return output.InferenceProfileSummaries, output.NextToken, nil
 	})
@@ -59,7 +59,7 @@ func (d *InferenceProfileDAO) Get(ctx context.Context, id string) (dao.Resource,
 		InferenceProfileIdentifier: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get inference profile %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get inference profile %s", id)
 	}
 
 	return NewInferenceProfileResourceFromDetail(output), nil
@@ -70,7 +70,7 @@ func (d *InferenceProfileDAO) Delete(ctx context.Context, id string) error {
 		InferenceProfileIdentifier: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete inference profile %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete inference profile %s", id)
 	}
 	return nil
 }

@@ -2,7 +2,6 @@ package databases
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/glue"
@@ -10,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // DatabaseDAO provides data access for Glue databases.
@@ -22,7 +22,7 @@ type DatabaseDAO struct {
 func NewDatabaseDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new glue/databases dao: %w", err)
+		return nil, apperrors.Wrap(err, "new glue/databases dao")
 	}
 	return &DatabaseDAO{
 		BaseDAO: dao.NewBaseDAO("glue", "databases"),
@@ -37,7 +37,7 @@ func (d *DatabaseDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("get glue databases: %w", err)
+			return nil, nil, apperrors.Wrap(err, "get glue databases")
 		}
 		return output.DatabaseList, output.NextToken, nil
 	})
@@ -58,7 +58,7 @@ func (d *DatabaseDAO) Get(ctx context.Context, id string) (dao.Resource, error) 
 		Name: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get glue database %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get glue database %s", id)
 	}
 	return NewDatabaseResource(*output.Database), nil
 }
@@ -69,7 +69,7 @@ func (d *DatabaseDAO) Delete(ctx context.Context, id string) error {
 		Name: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete glue database %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete glue database %s", id)
 	}
 	return nil
 }

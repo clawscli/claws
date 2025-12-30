@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // EventDAO provides data access for CloudFormation stack events
@@ -21,7 +22,7 @@ type EventDAO struct {
 func NewEventDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new cfn/events dao: %w", err)
+		return nil, apperrors.Wrap(err, "new cfn/events dao")
 	}
 	return &EventDAO{
 		BaseDAO: dao.NewBaseDAO("cloudformation", "events"),
@@ -58,7 +59,7 @@ func (d *EventDAO) ListPage(ctx context.Context, pageSize int, pageToken string)
 
 	output, err := d.client.DescribeStackEvents(ctx, input)
 	if err != nil {
-		return nil, "", fmt.Errorf("describe stack events: %w", err)
+		return nil, "", apperrors.Wrap(err, "describe stack events")
 	}
 
 	resources := make([]dao.Resource, 0, len(output.StackEvents))

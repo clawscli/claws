@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // ResourceDAO provides data access for CloudFormation stack resources
@@ -21,7 +22,7 @@ type ResourceDAO struct {
 func NewResourceDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new cfn/resources dao: %w", err)
+		return nil, apperrors.Wrap(err, "new cfn/resources dao")
 	}
 	return &ResourceDAO{
 		BaseDAO: dao.NewBaseDAO("cloudformation", "resources"),
@@ -42,7 +43,7 @@ func (d *ResourceDAO) List(ctx context.Context) ([]dao.Resource, error) {
 
 	output, err := d.client.DescribeStackResources(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("describe stack resources: %w", err)
+		return nil, apperrors.Wrap(err, "describe stack resources")
 	}
 
 	resources := make([]dao.Resource, 0, len(output.StackResources))

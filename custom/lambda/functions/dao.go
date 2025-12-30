@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // FunctionDAO provides data access for Lambda functions
@@ -21,7 +22,7 @@ type FunctionDAO struct {
 func NewFunctionDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new lambda/functions dao: %w", err)
+		return nil, apperrors.Wrap(err, "new lambda/functions dao")
 	}
 	return &FunctionDAO{
 		BaseDAO: dao.NewBaseDAO("lambda", "functions"),
@@ -53,7 +54,7 @@ func (d *FunctionDAO) ListPage(ctx context.Context, pageSize int, pageToken stri
 
 	output, err := d.client.ListFunctions(ctx, input)
 	if err != nil {
-		return nil, "", fmt.Errorf("list functions: %w", err)
+		return nil, "", apperrors.Wrap(err, "list functions")
 	}
 
 	resources := make([]dao.Resource, len(output.Functions))
@@ -76,7 +77,7 @@ func (d *FunctionDAO) Get(ctx context.Context, id string) (dao.Resource, error) 
 
 	output, err := d.client.GetFunction(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("get function %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get function %s", id)
 	}
 
 	if output.Configuration == nil {
@@ -109,13 +110,13 @@ func (d *FunctionDAO) Delete(ctx context.Context, id string) error {
 
 	_, err := d.client.DeleteFunction(ctx, input)
 	if err != nil {
-		if appaws.IsNotFound(err) {
+		if apperrors.IsNotFound(err) {
 			return nil // Already deleted
 		}
-		if appaws.IsResourceInUse(err) {
+		if apperrors.IsResourceInUse(err) {
 			return fmt.Errorf("function %s is in use", id)
 		}
-		return fmt.Errorf("delete function %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete function %s", id)
 	}
 
 	return nil

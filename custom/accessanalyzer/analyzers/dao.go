@@ -2,7 +2,6 @@ package analyzers
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/accessanalyzer"
@@ -10,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // AnalyzerDAO provides data access for IAM Access Analyzer analyzers.
@@ -22,7 +22,7 @@ type AnalyzerDAO struct {
 func NewAnalyzerDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new accessanalyzer/analyzers dao: %w", err)
+		return nil, apperrors.Wrap(err, "new accessanalyzer/analyzers dao")
 	}
 	return &AnalyzerDAO{
 		BaseDAO: dao.NewBaseDAO("accessanalyzer", "analyzers"),
@@ -37,7 +37,7 @@ func (d *AnalyzerDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list analyzers: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list analyzers")
 		}
 		return output.Analyzers, output.NextToken, nil
 	})
@@ -58,7 +58,7 @@ func (d *AnalyzerDAO) Get(ctx context.Context, name string) (dao.Resource, error
 		AnalyzerName: &name,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get analyzer %s: %w", name, err)
+		return nil, apperrors.Wrapf(err, "get analyzer %s", name)
 	}
 	return NewAnalyzerResourceFromDetail(*output.Analyzer), nil
 }
@@ -69,7 +69,7 @@ func (d *AnalyzerDAO) Delete(ctx context.Context, name string) error {
 		AnalyzerName: &name,
 	})
 	if err != nil {
-		return fmt.Errorf("delete analyzer %s: %w", name, err)
+		return apperrors.Wrapf(err, "delete analyzer %s", name)
 	}
 	return nil
 }

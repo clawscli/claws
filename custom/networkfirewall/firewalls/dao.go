@@ -2,13 +2,13 @@ package firewalls
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/networkfirewall"
 	"github.com/aws/aws-sdk-go-v2/service/networkfirewall/types"
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // FirewallDAO provides data access for Network Firewalls.
@@ -21,7 +21,7 @@ type FirewallDAO struct {
 func NewFirewallDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new networkfirewall/firewalls dao: %w", err)
+		return nil, apperrors.Wrap(err, "new networkfirewall/firewalls dao")
 	}
 	return &FirewallDAO{
 		BaseDAO: dao.NewBaseDAO("network-firewall", "firewalls"),
@@ -36,7 +36,7 @@ func (d *FirewallDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list network firewalls: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list network firewalls")
 		}
 		return output.Firewalls, output.NextToken, nil
 	})
@@ -57,7 +57,7 @@ func (d *FirewallDAO) Get(ctx context.Context, id string) (dao.Resource, error) 
 		FirewallName: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe network firewall %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe network firewall %s", id)
 	}
 	return NewFirewallResourceFromDetail(*output.Firewall, output.FirewallStatus), nil
 }
@@ -68,7 +68,7 @@ func (d *FirewallDAO) Delete(ctx context.Context, id string) error {
 		FirewallName: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete network firewall %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete network firewall %s", id)
 	}
 	return nil
 }

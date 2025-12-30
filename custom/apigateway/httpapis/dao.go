@@ -2,7 +2,6 @@ package httpapis
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/apigatewayv2"
@@ -10,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // HttpAPIDAO provides data access for API Gateway HTTP/WebSocket APIs (v2)
@@ -22,7 +22,7 @@ type HttpAPIDAO struct {
 func NewHttpAPIDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new apigateway/httpapis dao: %w", err)
+		return nil, apperrors.Wrap(err, "new apigateway/httpapis dao")
 	}
 	return &HttpAPIDAO{
 		BaseDAO: dao.NewBaseDAO("apigateway", "http-apis"),
@@ -38,7 +38,7 @@ func (d *HttpAPIDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			MaxResults: appaws.StringPtr("500"),
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list HTTP APIs: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list HTTP APIs")
 		}
 		return output.Items, output.NextToken, nil
 	})
@@ -60,7 +60,7 @@ func (d *HttpAPIDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		ApiId: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get HTTP API %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get HTTP API %s", id)
 	}
 
 	return NewHttpAPIResourceFromGetOutput(output), nil
@@ -72,7 +72,7 @@ func (d *HttpAPIDAO) Delete(ctx context.Context, id string) error {
 		ApiId: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete HTTP API %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete HTTP API %s", id)
 	}
 	return nil
 }

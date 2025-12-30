@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // HostedZoneDAO provides data access for Route53 hosted zones
@@ -22,7 +23,7 @@ type HostedZoneDAO struct {
 func NewHostedZoneDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new route53/hostedzones dao: %w", err)
+		return nil, apperrors.Wrap(err, "new route53/hostedzones dao")
 	}
 	return &HostedZoneDAO{
 		BaseDAO: dao.NewBaseDAO("route53", "hosted-zones"),
@@ -40,7 +41,7 @@ func (d *HostedZoneDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	for paginator.HasMorePages() {
 		output, err := paginator.NextPage(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("list hosted zones: %w", err)
+			return nil, apperrors.Wrap(err, "list hosted zones")
 		}
 
 		for _, zone := range output.HostedZones {
@@ -63,7 +64,7 @@ func (d *HostedZoneDAO) Get(ctx context.Context, id string) (dao.Resource, error
 		Id: &zoneID,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get hosted zone %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get hosted zone %s", id)
 	}
 
 	return NewHostedZoneResourceWithDetails(output), nil

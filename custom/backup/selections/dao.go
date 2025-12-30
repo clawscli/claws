@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // SelectionDAO provides data access for AWS Backup selections
@@ -21,7 +22,7 @@ type SelectionDAO struct {
 func NewSelectionDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new backup/selections dao: %w", err)
+		return nil, apperrors.Wrap(err, "new backup/selections dao")
 	}
 	return &SelectionDAO{
 		BaseDAO: dao.NewBaseDAO("backup", "selections"),
@@ -42,7 +43,7 @@ func (d *SelectionDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken:    token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list backup selections: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list backup selections")
 		}
 		return output.BackupSelectionsList, output.NextToken, nil
 	})
@@ -70,7 +71,7 @@ func (d *SelectionDAO) Get(ctx context.Context, selectionId string) (dao.Resourc
 		SelectionId:  &selectionId,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get backup selection %s: %w", selectionId, err)
+		return nil, apperrors.Wrapf(err, "get backup selection %s", selectionId)
 	}
 
 	return NewSelectionResourceFromDetail(output, backupPlanId), nil
@@ -88,7 +89,7 @@ func (d *SelectionDAO) Delete(ctx context.Context, selectionId string) error {
 		SelectionId:  &selectionId,
 	})
 	if err != nil {
-		return fmt.Errorf("delete backup selection %s: %w", selectionId, err)
+		return apperrors.Wrapf(err, "delete backup selection %s", selectionId)
 	}
 	return nil
 }

@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // FindingDAO provides data access for Inspector2 findings
@@ -22,7 +23,7 @@ type FindingDAO struct {
 func NewFindingDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new inspector2/findings dao: %w", err)
+		return nil, apperrors.Wrap(err, "new inspector2/findings dao")
 	}
 	return &FindingDAO{
 		BaseDAO: dao.NewBaseDAO("inspector2", "findings"),
@@ -65,7 +66,7 @@ func (d *FindingDAO) ListPage(ctx context.Context, pageSize int, pageToken strin
 
 	output, err := d.client.ListFindings(ctx, input)
 	if err != nil {
-		return nil, "", fmt.Errorf("list findings: %w", err)
+		return nil, "", apperrors.Wrap(err, "list findings")
 	}
 
 	resources := make([]dao.Resource, len(output.Findings))
@@ -98,7 +99,7 @@ func (d *FindingDAO) Get(ctx context.Context, arn string) (dao.Resource, error) 
 		MaxResults:     appaws.Int32Ptr(1),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get finding %s: %w", arn, err)
+		return nil, apperrors.Wrapf(err, "get finding %s", arn)
 	}
 
 	if len(output.Findings) == 0 {

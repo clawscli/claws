@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // PipelineDAO provides data access for CodePipeline pipelines
@@ -22,7 +23,7 @@ type PipelineDAO struct {
 func NewPipelineDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new codepipeline/pipelines dao: %w", err)
+		return nil, apperrors.Wrap(err, "new codepipeline/pipelines dao")
 	}
 	return &PipelineDAO{
 		BaseDAO: dao.NewBaseDAO("codepipeline", "pipelines"),
@@ -37,7 +38,7 @@ func (d *PipelineDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list pipelines: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list pipelines")
 		}
 		return output.Pipelines, output.NextToken, nil
 	})
@@ -60,7 +61,7 @@ func (d *PipelineDAO) Get(ctx context.Context, name string) (dao.Resource, error
 		Name: &name,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get pipeline %s: %w", name, err)
+		return nil, apperrors.Wrapf(err, "get pipeline %s", name)
 	}
 
 	// Get pipeline state (execution status)
@@ -81,7 +82,7 @@ func (d *PipelineDAO) Delete(ctx context.Context, name string) error {
 		Name: &name,
 	})
 	if err != nil {
-		return fmt.Errorf("delete pipeline %s: %w", name, err)
+		return apperrors.Wrapf(err, "delete pipeline %s", name)
 	}
 	return nil
 }

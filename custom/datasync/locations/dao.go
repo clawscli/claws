@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // LocationDAO provides data access for DataSync locations.
@@ -22,7 +23,7 @@ type LocationDAO struct {
 func NewLocationDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new datasync/locations dao: %w", err)
+		return nil, apperrors.Wrap(err, "new datasync/locations dao")
 	}
 	return &LocationDAO{
 		BaseDAO: dao.NewBaseDAO("datasync", "locations"),
@@ -37,7 +38,7 @@ func (d *LocationDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list datasync locations: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list datasync locations")
 		}
 		return output.Locations, output.NextToken, nil
 	})
@@ -79,7 +80,7 @@ func (d *LocationDAO) Delete(ctx context.Context, id string) error {
 		LocationArn: &locationArn,
 	})
 	if err != nil {
-		return fmt.Errorf("delete datasync location: %w", err)
+		return apperrors.Wrap(err, "delete datasync location")
 	}
 	return nil
 }

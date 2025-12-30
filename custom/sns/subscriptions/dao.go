@@ -2,7 +2,6 @@ package subscriptions
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/service/sns"
@@ -10,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // SubscriptionDAO provides data access for SNS subscriptions
@@ -22,7 +22,7 @@ type SubscriptionDAO struct {
 func NewSubscriptionDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new sns/subscriptions dao: %w", err)
+		return nil, apperrors.Wrap(err, "new sns/subscriptions dao")
 	}
 	return &SubscriptionDAO{
 		BaseDAO: dao.NewBaseDAO("sns", "subscriptions"),
@@ -39,7 +39,7 @@ func (d *SubscriptionDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	for paginator.HasMorePages() {
 		output, err := paginator.NextPage(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("list subscriptions: %w", err)
+			return nil, apperrors.Wrap(err, "list subscriptions")
 		}
 
 		for _, sub := range output.Subscriptions {
@@ -56,7 +56,7 @@ func (d *SubscriptionDAO) Get(ctx context.Context, id string) (dao.Resource, err
 		SubscriptionArn: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get subscription %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get subscription %s", id)
 	}
 
 	// Reconstruct subscription from attributes
@@ -86,7 +86,7 @@ func (d *SubscriptionDAO) Delete(ctx context.Context, id string) error {
 
 	_, err := d.client.Unsubscribe(ctx, input)
 	if err != nil {
-		return fmt.Errorf("unsubscribe %s: %w", id, err)
+		return apperrors.Wrapf(err, "unsubscribe %s", id)
 	}
 
 	return nil

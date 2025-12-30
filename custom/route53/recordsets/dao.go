@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // RecordSetDAO provides data access for Route53 record sets
@@ -22,7 +23,7 @@ type RecordSetDAO struct {
 func NewRecordSetDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new route53/recordsets dao: %w", err)
+		return nil, apperrors.Wrap(err, "new route53/recordsets dao")
 	}
 	return &RecordSetDAO{
 		BaseDAO: dao.NewBaseDAO("route53", "record-sets"),
@@ -68,7 +69,7 @@ func (d *RecordSetDAO) ListPage(ctx context.Context, pageSize int, pageToken str
 
 	output, err := d.client.ListResourceRecordSets(ctx, input)
 	if err != nil {
-		return nil, "", fmt.Errorf("list record sets: %w", err)
+		return nil, "", apperrors.Wrap(err, "list record sets")
 	}
 
 	resources := make([]dao.Resource, 0, len(output.ResourceRecordSets))
@@ -107,7 +108,7 @@ func (d *RecordSetDAO) Get(ctx context.Context, id string) (dao.Resource, error)
 
 	output, err := d.client.ListResourceRecordSets(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("get record set %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get record set %s", id)
 	}
 
 	for _, rs := range output.ResourceRecordSets {

@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // SubnetDAO provides data access for Subnets
@@ -21,7 +22,7 @@ type SubnetDAO struct {
 func NewSubnetDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new vpc/subnets dao: %w", err)
+		return nil, apperrors.Wrap(err, "new vpc/subnets dao")
 	}
 	return &SubnetDAO{
 		BaseDAO: dao.NewBaseDAO("vpc", "subnets"),
@@ -32,7 +33,7 @@ func NewSubnetDAO(ctx context.Context) (dao.DAO, error) {
 func (d *SubnetDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	output, err := d.client.DescribeSubnets(ctx, &ec2.DescribeSubnetsInput{})
 	if err != nil {
-		return nil, fmt.Errorf("describe subnets: %w", err)
+		return nil, apperrors.Wrap(err, "describe subnets")
 	}
 
 	// Get route tables to determine public/private subnets
@@ -66,7 +67,7 @@ func (d *SubnetDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		SubnetIds: []string{id},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe subnet %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "describe subnet %s", id)
 	}
 
 	if len(output.Subnets) == 0 {
@@ -81,13 +82,13 @@ func (d *SubnetDAO) Delete(ctx context.Context, id string) error {
 		SubnetId: &id,
 	})
 	if err != nil {
-		if appaws.IsNotFound(err) {
+		if apperrors.IsNotFound(err) {
 			return nil // Already deleted
 		}
-		if appaws.IsResourceInUse(err) {
+		if apperrors.IsResourceInUse(err) {
 			return fmt.Errorf("subnet %s is in use", id)
 		}
-		return fmt.Errorf("delete subnet %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete subnet %s", id)
 	}
 	return nil
 }

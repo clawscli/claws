@@ -2,7 +2,6 @@ package accounts
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/organizations"
@@ -10,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // AccountDAO provides data access for Organizations accounts.
@@ -22,7 +22,7 @@ type AccountDAO struct {
 func NewAccountDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new organizations/accounts dao: %w", err)
+		return nil, apperrors.Wrap(err, "new organizations/accounts dao")
 	}
 	return &AccountDAO{
 		BaseDAO: dao.NewBaseDAO("organizations", "accounts"),
@@ -37,7 +37,7 @@ func (d *AccountDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list organizations accounts: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list organizations accounts")
 		}
 		return output.Accounts, output.NextToken, nil
 	})
@@ -58,7 +58,7 @@ func (d *AccountDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		AccountId: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe organizations account: %w", err)
+		return nil, apperrors.Wrap(err, "describe organizations account")
 	}
 	return NewAccountResource(*output.Account), nil
 }
@@ -69,7 +69,7 @@ func (d *AccountDAO) Delete(ctx context.Context, id string) error {
 		AccountId: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("remove account from organization: %w", err)
+		return apperrors.Wrap(err, "remove account from organization")
 	}
 	return nil
 }

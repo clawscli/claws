@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // BucketDAO provides data access for S3 buckets
@@ -22,7 +23,7 @@ type BucketDAO struct {
 func NewBucketDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new s3/buckets dao: %w", err)
+		return nil, apperrors.Wrap(err, "new s3/buckets dao")
 	}
 	return &BucketDAO{
 		BaseDAO: dao.NewBaseDAO("s3", "buckets"),
@@ -39,7 +40,7 @@ func (d *BucketDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			MaxBuckets:        appaws.Int32Ptr(1000),
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list buckets: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list buckets")
 		}
 		return output.Buckets, output.ContinuationToken, nil
 	})
@@ -67,7 +68,7 @@ func (d *BucketDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		Bucket: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get bucket location for %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get bucket location for %s", id)
 	}
 	if locOutput != nil && locOutput.LocationConstraint != "" {
 		region = string(locOutput.LocationConstraint)
@@ -224,13 +225,13 @@ func (d *BucketDAO) Delete(ctx context.Context, id string) error {
 		Bucket: &id,
 	})
 	if err != nil {
-		if appaws.IsNotFound(err) {
+		if apperrors.IsNotFound(err) {
 			return nil // Already deleted
 		}
-		if appaws.IsResourceInUse(err) {
+		if apperrors.IsResourceInUse(err) {
 			return fmt.Errorf("bucket %s is not empty (must delete all objects first)", id)
 		}
-		return fmt.Errorf("delete bucket %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete bucket %s", id)
 	}
 	return nil
 }

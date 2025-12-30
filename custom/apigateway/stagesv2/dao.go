@@ -10,6 +10,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // StageV2DAO provides data access for API Gateway HTTP/WebSocket API stages (v2)
@@ -22,7 +23,7 @@ type StageV2DAO struct {
 func NewStageV2DAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new apigateway/stagesv2 dao: %w", err)
+		return nil, apperrors.Wrap(err, "new apigateway/stagesv2 dao")
 	}
 	return &StageV2DAO{
 		BaseDAO: dao.NewBaseDAO("apigateway", "stages-v2"),
@@ -43,7 +44,7 @@ func (d *StageV2DAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("list stages: %w", err)
+			return nil, nil, apperrors.Wrap(err, "list stages")
 		}
 		return output.Items, output.NextToken, nil
 	})
@@ -71,7 +72,7 @@ func (d *StageV2DAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		StageName: &stageName,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get stage %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get stage %s", id)
 	}
 
 	return NewStageV2ResourceFromGetOutput(output, apiId), nil
@@ -89,7 +90,7 @@ func (d *StageV2DAO) Delete(ctx context.Context, id string) error {
 		StageName: &stageName,
 	})
 	if err != nil {
-		return fmt.Errorf("delete stage %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete stage %s", id)
 	}
 	return nil
 }

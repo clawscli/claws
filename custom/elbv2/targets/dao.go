@@ -9,6 +9,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // TargetDAO provides data access for ELBv2 Targets (Target Health)
@@ -21,7 +22,7 @@ type TargetDAO struct {
 func NewTargetDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new elbv2/targets dao: %w", err)
+		return nil, apperrors.Wrap(err, "new elbv2/targets dao")
 	}
 	return &TargetDAO{
 		BaseDAO: dao.NewBaseDAO("elbv2", "targets"),
@@ -40,7 +41,7 @@ func (d *TargetDAO) List(ctx context.Context) ([]dao.Resource, error) {
 		TargetGroupArn: &tgArn,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("describe target health: %w", err)
+		return nil, apperrors.Wrap(err, "describe target health")
 	}
 
 	var resources []dao.Resource

@@ -2,13 +2,13 @@ package groups
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/xray"
 	"github.com/aws/aws-sdk-go-v2/service/xray/types"
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // GroupDAO provides data access for X-Ray groups.
@@ -21,7 +21,7 @@ type GroupDAO struct {
 func NewGroupDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new xray/groups dao: %w", err)
+		return nil, apperrors.Wrap(err, "new xray/groups dao")
 	}
 	return &GroupDAO{
 		BaseDAO: dao.NewBaseDAO("xray", "groups"),
@@ -36,7 +36,7 @@ func (d *GroupDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			NextToken: token,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("get xray groups: %w", err)
+			return nil, nil, apperrors.Wrap(err, "get xray groups")
 		}
 		return output.Groups, output.NextToken, nil
 	})
@@ -57,7 +57,7 @@ func (d *GroupDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		GroupName: &id,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get xray group %s: %w", id, err)
+		return nil, apperrors.Wrapf(err, "get xray group %s", id)
 	}
 	return NewGroupResourceFromDetail(*output.Group), nil
 }
@@ -68,7 +68,7 @@ func (d *GroupDAO) Delete(ctx context.Context, id string) error {
 		GroupName: &id,
 	})
 	if err != nil {
-		return fmt.Errorf("delete xray group %s: %w", id, err)
+		return apperrors.Wrapf(err, "delete xray group %s", id)
 	}
 	return nil
 }
