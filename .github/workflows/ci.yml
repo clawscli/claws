@@ -25,11 +25,12 @@ jobs:
       - name: Build
         run: go build ./...
 
-      - name: Install golangci-lint
-        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-
       - name: Lint
-        run: golangci-lint run --timeout=5m
+        uses: golangci/golangci-lint-action@v6
+        with:
+          install-mode: goinstall
+          version: v1.64.8
+          args: --timeout=5m
 
       - name: Test
         run: go test ./...
