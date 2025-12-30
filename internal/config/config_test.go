@@ -58,7 +58,10 @@ func TestConfig_SelectionGetSet(t *testing.T) {
 }
 
 func TestConfig_AccountID(t *testing.T) {
-	cfg := &Config{accountID: "123456789012"}
+	cfg := &Config{
+		selections: []ProfileSelection{SDKDefault()},
+		accountIDs: map[string]string{ProfileIDSDKDefault: "123456789012"},
+	}
 
 	if cfg.AccountID() != "123456789012" {
 		t.Errorf("AccountID() = %q, want %q", cfg.AccountID(), "123456789012")
@@ -226,6 +229,7 @@ func TestProfileSelection_ID(t *testing.T) {
 
 func TestConfig_SetAccountID(t *testing.T) {
 	cfg := &Config{}
+	cfg.SetSelection(SDKDefault())
 
 	// Initial should be empty
 	if cfg.AccountID() != "" {
@@ -242,5 +246,44 @@ func TestConfig_SetAccountID(t *testing.T) {
 	cfg.SetAccountID("987654321098")
 	if cfg.AccountID() != "987654321098" {
 		t.Errorf("AccountID() = %q, want %q", cfg.AccountID(), "987654321098")
+	}
+}
+
+func TestConfig_MultiProfile(t *testing.T) {
+	cfg := &Config{}
+
+	if cfg.IsMultiProfile() {
+		t.Error("IsMultiProfile() should be false initially")
+	}
+
+	cfg.SetSelection(NamedProfile("dev"))
+	if cfg.IsMultiProfile() {
+		t.Error("IsMultiProfile() should be false with single selection")
+	}
+
+	cfg.SetSelections([]ProfileSelection{NamedProfile("dev"), NamedProfile("prod")})
+	if !cfg.IsMultiProfile() {
+		t.Error("IsMultiProfile() should be true with multiple selections")
+	}
+
+	sels := cfg.Selections()
+	if len(sels) != 2 {
+		t.Errorf("Selections() = %d items, want 2", len(sels))
+	}
+}
+
+func TestConfig_AccountIDs(t *testing.T) {
+	cfg := &Config{}
+	cfg.SetSelections([]ProfileSelection{NamedProfile("dev"), NamedProfile("prod")})
+
+	ids := map[string]string{"dev": "111111111111", "prod": "222222222222"}
+	cfg.SetAccountIDs(ids)
+
+	got := cfg.AccountIDs()
+	if got["dev"] != "111111111111" {
+		t.Errorf("AccountIDs()[dev] = %q, want %q", got["dev"], "111111111111")
+	}
+	if got["prod"] != "222222222222" {
+		t.Errorf("AccountIDs()[prod] = %q, want %q", got["prod"], "222222222222")
 	}
 }

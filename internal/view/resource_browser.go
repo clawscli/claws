@@ -14,6 +14,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/clawscli/claws/internal/aws"
+	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/metrics"
 	"github.com/clawscli/claws/internal/registry"
@@ -95,11 +96,12 @@ type ResourceBrowser struct {
 	autoReloadInterval time.Duration
 
 	// Pagination (for PaginatedDAO)
-	nextPageToken  string
-	nextPageTokens map[string]string
-	hasMorePages   bool
-	isLoadingMore  bool
-	pageSize       int
+	nextPageToken       string
+	nextPageTokens      map[string]string
+	nextMultiPageTokens map[profileRegionKey]string
+	hasMorePages        bool
+	isLoadingMore       bool
+	pageSize            int
 
 	// Sorting
 	sortColumn    int  // column index to sort by (-1 = no sort)
@@ -345,10 +347,15 @@ func (r *ResourceBrowser) HasActiveInput() bool {
 }
 
 func (r *ResourceBrowser) contextForResource(res dao.Resource) (context.Context, dao.Resource) {
-	if region := dao.GetResourceRegion(res); region != "" {
-		return aws.WithRegionOverride(r.ctx, region), dao.UnwrapResource(res)
+	ctx := r.ctx
+	if profile := dao.GetResourceProfile(res); profile != "" {
+		sel := config.ProfileSelectionFromID(profile)
+		ctx = aws.WithSelectionOverride(ctx, sel)
 	}
-	return r.ctx, dao.UnwrapResource(res)
+	if region := dao.GetResourceRegion(res); region != "" {
+		ctx = aws.WithRegionOverride(ctx, region)
+	}
+	return ctx, dao.UnwrapResource(res)
 }
 
 func (r *ResourceBrowser) renderTabs() string {

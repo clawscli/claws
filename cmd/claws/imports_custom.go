@@ -209,9 +209,6 @@ import (
 	_ "github.com/clawscli/claws/custom/licensemanager/grants"
 	_ "github.com/clawscli/claws/custom/licensemanager/licenses"
 
-	// Local
-	_ "github.com/clawscli/claws/custom/local/profile"
-
 	// Macie
 	_ "github.com/clawscli/claws/custom/macie/buckets"
 	_ "github.com/clawscli/claws/custom/macie/classificationjobs"

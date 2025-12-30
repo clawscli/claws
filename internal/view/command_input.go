@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -229,11 +228,8 @@ func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 		return c.parseSortCommand(input), nil
 	}
 
-	// Handle login command: :login - login via AWS console and get credentials
-	// Creates a temporary profile to avoid polluting existing profiles
-	// SkipAWSEnv=true ensures aws login writes to real ~/.aws files (not /dev/null in EnvOnly mode)
 	if input == "login" {
-		profileName := fmt.Sprintf("claws-%d", time.Now().Unix())
+		profileName := "claws-login"
 		exec := &action.SimpleExec{
 			Command:    fmt.Sprintf("aws login --remote --profile %s", profileName),
 			ActionName: action.ActionNameLogin,
@@ -243,7 +239,6 @@ func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 			if err != nil {
 				return ErrorMsg{Err: err}
 			}
-			// Switch to the new profile
 			sel := config.NamedProfile(profileName)
 			config.Global().SetSelection(sel)
 			return navmsg.ProfileChangedMsg{Selection: sel}

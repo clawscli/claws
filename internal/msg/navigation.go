@@ -4,14 +4,14 @@ package msg
 
 import "github.com/clawscli/claws/internal/config"
 
-// ProfileChangedMsg is sent when profile is changed.
-// Handled by app.go to refresh views with new credentials.
 type ProfileChangedMsg struct {
 	Selection config.ProfileSelection
 }
 
-// RegionChangedMsg is sent when region is changed.
-// Handled by app.go to refresh views with new region.
+type ProfilesChangedMsg struct {
+	Selections []config.ProfileSelection
+}
+
 type RegionChangedMsg struct {
 	Regions []string
 }

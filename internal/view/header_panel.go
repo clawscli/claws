@@ -69,10 +69,17 @@ func (h *HeaderPanel) renderContextLine(service, resourceType string) string {
 	cfg := config.Global()
 	s := h.styles
 
-	profileDisplay := cfg.Selection().DisplayName()
-	accountID := cfg.AccountID()
-	if accountID == "" {
-		accountID = "-"
+	var profileDisplay, accountDisplay string
+	if cfg.IsMultiProfile() {
+		selections := cfg.Selections()
+		profileDisplay = formatMultiProfiles(selections)
+		accountDisplay = formatMultiAccounts(selections, cfg.AccountIDs())
+	} else {
+		profileDisplay = cfg.Selection().DisplayName()
+		accountDisplay = cfg.AccountID()
+		if accountDisplay == "" {
+			accountDisplay = "-"
+		}
 	}
 
 	var regionDisplay string
@@ -85,7 +92,7 @@ func (h *HeaderPanel) renderContextLine(service, resourceType string) string {
 
 	line := s.label.Render("Profile: ") + s.value.Render(profileDisplay) +
 		s.dim.Render("  │  ") +
-		s.label.Render("Account: ") + s.value.Render(accountID) +
+		s.label.Render("Account: ") + s.value.Render(accountDisplay) +
 		s.dim.Render("  │  ") +
 		s.label.Render("Region: ") + s.value.Render(regionDisplay)
 
@@ -98,6 +105,46 @@ func (h *HeaderPanel) renderContextLine(service, resourceType string) string {
 	}
 
 	return line
+}
+
+func formatMultiProfiles(selections []config.ProfileSelection) string {
+	const maxShow = 2
+	if len(selections) <= maxShow {
+		names := make([]string, len(selections))
+		for i, sel := range selections {
+			names[i] = sel.DisplayName()
+		}
+		return strings.Join(names, ", ")
+	}
+	names := make([]string, maxShow)
+	for i := 0; i < maxShow; i++ {
+		names[i] = selections[i].DisplayName()
+	}
+	return strings.Join(names, ", ") + " (+" + itoa(len(selections)-maxShow) + ")"
+}
+
+func formatMultiAccounts(selections []config.ProfileSelection, accountIDs map[string]string) string {
+	const maxShow = 2
+	accounts := make([]string, 0, len(selections))
+	for _, sel := range selections {
+		if acc := accountIDs[sel.ID()]; acc != "" {
+			accounts = append(accounts, acc)
+		}
+	}
+	if len(accounts) == 0 {
+		return "-"
+	}
+	if len(accounts) <= maxShow {
+		return strings.Join(accounts, ", ")
+	}
+	return strings.Join(accounts[:maxShow], ", ") + " (+" + itoa(len(accounts)-maxShow) + ")"
+}
+
+func itoa(n int) string {
+	if n < 10 {
+		return string(rune('0' + n))
+	}
+	return itoa(n/10) + string(rune('0'+n%10))
 }
 
 // RenderContextLine renders the AWS account/region context line.

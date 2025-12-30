@@ -125,12 +125,12 @@ func (s ProfileSelection) ID() string {
 
 // Config holds global application configuration
 type Config struct {
-	mu        sync.RWMutex
-	regions   []string
-	selection ProfileSelection
-	accountID string
-	warnings  []string
-	readOnly  bool
+	mu         sync.RWMutex
+	regions    []string
+	selections []ProfileSelection
+	accountIDs map[string]string
+	warnings   []string
+	readOnly   bool
 }
 
 var (
@@ -182,18 +182,40 @@ func (c *Config) IsMultiRegion() bool {
 	return len(c.regions) > 1
 }
 
-// Selection returns the current profile selection
 func (c *Config) Selection() ProfileSelection {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.selection
+	if len(c.selections) == 0 {
+		return SDKDefault()
+	}
+	return c.selections[0]
 }
 
-// SetSelection sets the profile selection
+func (c *Config) Selections() []ProfileSelection {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if len(c.selections) == 0 {
+		return []ProfileSelection{SDKDefault()}
+	}
+	return append([]ProfileSelection(nil), c.selections...)
+}
+
 func (c *Config) SetSelection(sel ProfileSelection) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.selection = sel
+	c.selections = []ProfileSelection{sel}
+}
+
+func (c *Config) SetSelections(sels []ProfileSelection) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.selections = append([]ProfileSelection(nil), sels...)
+}
+
+func (c *Config) IsMultiProfile() bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return len(c.selections) > 1
 }
 
 // UseSDKDefault sets SDK default credential mode
@@ -211,18 +233,55 @@ func (c *Config) UseProfile(name string) {
 	c.SetSelection(NamedProfile(name))
 }
 
-// AccountID returns the current AWS account ID
 func (c *Config) AccountID() string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.accountID
+	key := ProfileIDSDKDefault
+	if len(c.selections) > 0 {
+		key = c.selections[0].ID()
+	}
+	return c.accountIDs[key]
 }
 
-// SetAccountID sets the AWS account ID
+func (c *Config) AccountIDs() map[string]string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	result := make(map[string]string, len(c.accountIDs))
+	for k, v := range c.accountIDs {
+		result[k] = v
+	}
+	return result
+}
+
 func (c *Config) SetAccountID(id string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.accountID = id
+	if c.accountIDs == nil {
+		c.accountIDs = make(map[string]string)
+	}
+	key := ProfileIDSDKDefault
+	if len(c.selections) > 0 {
+		key = c.selections[0].ID()
+	}
+	c.accountIDs[key] = id
+}
+
+func (c *Config) SetAccountIDs(ids map[string]string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.accountIDs = make(map[string]string, len(ids))
+	for k, v := range ids {
+		c.accountIDs[k] = v
+	}
+}
+
+func (c *Config) SetAccountIDForProfile(profileID, accountID string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.accountIDs == nil {
+		c.accountIDs = make(map[string]string)
+	}
+	c.accountIDs[profileID] = accountID
 }
 
 // Warnings returns any startup warnings

@@ -17,3 +17,11 @@ func FetchAccountID(ctx context.Context, cfg aws.Config) string {
 	}
 	return *identity.Account
 }
+
+func FetchAccountIDForContext(ctx context.Context) string {
+	cfg, err := NewConfig(ctx)
+	if err != nil {
+		return ""
+	}
+	return FetchAccountID(ctx, cfg)
+}

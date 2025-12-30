@@ -239,11 +239,11 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			)
 
 		case key.Matches(msg, a.keys.Profile):
-			profileBrowser := view.NewResourceBrowserWithType(a.ctx, a.registry, "local", "profile")
+			profileSelector := view.NewProfileSelector(a.ctx)
 			if a.currentView != nil {
 				a.viewStack = append(a.viewStack, a.currentView)
 			}
-			a.currentView = profileBrowser
+			a.currentView = profileSelector
 			return a, tea.Batch(
 				a.currentView.Init(),
 				a.currentView.SetSize(a.width, a.height-2),
@@ -312,16 +312,13 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case navmsg.ProfileChangedMsg:
 		log.Info("profile changed", "selection", msg.Selection.DisplayName(), "currentView", fmt.Sprintf("%T", a.currentView), "stackDepth", len(a.viewStack))
-		// Refresh region and account ID for the new selection
 		if err := aws.RefreshContext(a.ctx); err != nil {
 			log.Debug("failed to refresh profile config", "error", err)
 		}
-		// Pop views until we find a refreshable AWS resource view (skip local service views)
 		for len(a.viewStack) > 0 {
 			a.currentView = a.viewStack[len(a.viewStack)-1]
 			a.viewStack = a.viewStack[:len(a.viewStack)-1]
 
-			// Skip local service views (profile browser) - we want to return to AWS resources
 			if rb, ok := a.currentView.(*view.ResourceBrowser); ok && rb.Service() == "local" {
 				continue
 			}
@@ -333,7 +330,29 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				)
 			}
 		}
-		// Fallback to dashboard if no refreshable view found
+		a.currentView = view.NewDashboardView(a.ctx, a.registry)
+		return a, tea.Batch(
+			a.currentView.Init(),
+			a.currentView.SetSize(a.width, a.height-2),
+		)
+
+	case navmsg.ProfilesChangedMsg:
+		log.Info("profiles changed", "count", len(msg.Selections))
+		for len(a.viewStack) > 0 {
+			a.currentView = a.viewStack[len(a.viewStack)-1]
+			a.viewStack = a.viewStack[:len(a.viewStack)-1]
+
+			if _, ok := a.currentView.(*view.ProfileSelector); ok {
+				continue
+			}
+
+			if r, ok := a.currentView.(view.Refreshable); ok && r.CanRefresh() {
+				return a, tea.Batch(
+					a.currentView.SetSize(a.width, a.height-2),
+					func() tea.Msg { return view.RefreshMsg{} },
+				)
+			}
+		}
 		a.currentView = view.NewDashboardView(a.ctx, a.registry)
 		return a, tea.Batch(
 			a.currentView.Init(),

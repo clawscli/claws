@@ -121,8 +121,6 @@ func defaultAliases() map[string]string {
 		"sp":            "risp/savings-plans",
 		"odcr":          "ec2/capacity-reservations",
 		"tgw":           "vpc/transit-gateways",
-		"profile":       "local/profile",
-		"profiles":      "local/profile",
 	}
 }
 

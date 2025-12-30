@@ -14,6 +14,7 @@ func (r *ResourceBrowser) handleResourcesLoaded(msg resourcesLoadedMsg) (tea.Mod
 	r.resources = msg.resources
 	r.nextPageToken = msg.nextToken
 	r.nextPageTokens = msg.nextPageTokens
+	r.nextMultiPageTokens = msg.nextMultiPageTokens
 	r.hasMorePages = msg.hasMorePages
 	r.partialErrors = msg.partialErrors
 	r.applyFilter()
@@ -37,6 +38,7 @@ func (r *ResourceBrowser) handleNextPageLoaded(msg nextPageLoadedMsg) (tea.Model
 	r.resources = append(r.resources, msg.resources...)
 	r.nextPageToken = msg.nextToken
 	r.nextPageTokens = msg.nextPageTokens
+	r.nextMultiPageTokens = msg.nextMultiPageTokens
 	r.hasMorePages = msg.hasMorePages
 	r.applyFilter()
 	r.buildTable()
@@ -50,6 +52,7 @@ func (r *ResourceBrowser) handleResourcesError(msg resourcesErrorMsg) (tea.Model
 		r.hasMorePages = false
 		r.nextPageToken = ""
 		r.nextPageTokens = nil
+		r.nextMultiPageTokens = nil
 		log.Warn("pagination stopped due to error", "error", msg.err)
 		return r, nil
 	}

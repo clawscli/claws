@@ -22,7 +22,7 @@ A terminal UI for AWS resource management 👮
 
 - **Interactive TUI** - Navigate AWS resources with vim-style keybindings
 - **Mouse support** - Click, scroll, hover for navigation
-- **Multi-service support** - EC2, S3, IAM, RDS, Lambda, ECS, and 65+ more services (164 resources total)
+- **Multi-service support** - EC2, S3, IAM, RDS, Lambda, ECS, and 65+ more services (163 resources total)
 - **Resource actions** - Start/stop instances, delete resources, tail logs
 - **Cross-resource navigation** - Jump from VPC to subnets, from Lambda to CloudWatch Logs
 - **Profile & region switching** - Switch AWS profiles (`P`) and regions (`R`) on the fly
@@ -204,8 +204,7 @@ Selected regions are queried in parallel; resources display with Region column.
 
 | Command | Action |
 |---------|--------|
-| `:login` | AWS console login (creates `claws-<timestamp>` profile) |
-| `:profile` | Browse and switch AWS profiles |
+| `:login` | AWS console login (uses `claws-login` profile) |
 | `:ec2/instances` | Navigate to EC2 instances |
 | `:sort <col>` | Sort by column |
 | `:tag <filter>` | Filter by tag |
@@ -213,11 +212,10 @@ Selected regions are queried in parallel; resources display with Region column.
 | `:diff <n1> <n2>` | Compare two named resources |
 
 **Login Details:**
-- `:login` runs `aws login --remote` and creates a temporary profile
-- For SSO profiles, use "SSO Login" action from profile browser (`P` or `:profile`)
-- Temporary `claws-*` profiles can be cleaned up from `~/.aws/credentials`
+- `:login` runs `aws login --remote` using `claws-login` profile
+- For SSO profiles, use `P` to open profile selector, then `l` for SSO login
 
-## Supported Services (69 services, 164 resources)
+## Supported Services (69 services, 163 resources)
 
 ### Compute
 | Service | Resources |
@@ -361,7 +359,6 @@ Quick shortcuts for common services:
 | `agent` | Bedrock Agent Agents |
 | `models` | Bedrock Foundation Models |
 | `guardrail` | Bedrock Guardrails |
-| `profile`, `profiles` | AWS Profiles |
 
 ## Configuration
 

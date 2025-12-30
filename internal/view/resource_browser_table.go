@@ -11,8 +11,6 @@ import (
 	"github.com/clawscli/claws/internal/ui"
 )
 
-// buildTable constructs the table component with columns, rows, and styling.
-// It handles mark indicator, region column (multi-region), and metrics column.
 func (r *ResourceBrowser) buildTable() {
 	if r.renderer == nil {
 		return
@@ -22,14 +20,19 @@ func (r *ResourceBrowser) buildTable() {
 	cols := r.renderer.Columns()
 
 	const markColWidth = 2
+	const profileColWidth = 16
+	const accountColWidth = 14
 	const regionColWidth = 14
 	metricsColWidth := metrics.ColumnWidth
 
 	effectiveMetricsEnabled := r.metricsEnabled && r.getMetricSpec() != nil
+	isMultiProfile := config.Global().IsMultiProfile()
 	isMultiRegion := config.Global().IsMultiRegion()
 
 	numCols := len(cols) + 1
-	if isMultiRegion {
+	if isMultiProfile {
+		numCols += 3
+	} else if isMultiRegion {
 		numCols++
 	}
 	if effectiveMetricsEnabled {
@@ -42,7 +45,9 @@ func (r *ResourceBrowser) buildTable() {
 	for _, col := range cols {
 		totalColWidth += col.Width
 	}
-	if isMultiRegion {
+	if isMultiProfile {
+		totalColWidth += profileColWidth + accountColWidth + regionColWidth
+	} else if isMultiRegion {
 		totalColWidth += regionColWidth
 	}
 	if effectiveMetricsEnabled {
@@ -54,11 +59,12 @@ func (r *ResourceBrowser) buildTable() {
 		extraWidth = 0
 	}
 
+	hasTrailingCols := isMultiProfile || isMultiRegion || effectiveMetricsEnabled
 	colIdx := 1
 	for i, col := range cols {
 		title := col.Name + r.getSortIndicator(i)
 		width := col.Width
-		if i == len(cols)-1 && !isMultiRegion && !effectiveMetricsEnabled {
+		if i == len(cols)-1 && !hasTrailingCols {
 			width += extraWidth
 		}
 		tableCols[colIdx] = table.Column{
@@ -68,15 +74,23 @@ func (r *ResourceBrowser) buildTable() {
 		colIdx++
 	}
 
-	if isMultiRegion {
+	if isMultiProfile {
+		tableCols[colIdx] = table.Column{Title: "PROFILE", Width: profileColWidth}
+		colIdx++
+		tableCols[colIdx] = table.Column{Title: "ACCOUNT", Width: accountColWidth}
+		colIdx++
 		width := regionColWidth
 		if !effectiveMetricsEnabled {
 			width += extraWidth
 		}
-		tableCols[colIdx] = table.Column{
-			Title: "REGION",
-			Width: width,
+		tableCols[colIdx] = table.Column{Title: "REGION", Width: width}
+		colIdx++
+	} else if isMultiRegion {
+		width := regionColWidth
+		if !effectiveMetricsEnabled {
+			width += extraWidth
 		}
+		tableCols[colIdx] = table.Column{Title: "REGION", Width: width}
 		colIdx++
 	}
 
@@ -104,7 +118,15 @@ func (r *ResourceBrowser) buildTable() {
 		copy(fullRow[1:], row)
 
 		rowIdx := len(cols) + 1
-		if isMultiRegion {
+		if isMultiProfile {
+			profileID := dao.GetResourceProfile(res)
+			fullRow[rowIdx] = config.ProfileSelectionFromID(profileID).DisplayName()
+			rowIdx++
+			fullRow[rowIdx] = dao.GetResourceAccountID(res)
+			rowIdx++
+			fullRow[rowIdx] = dao.GetResourceRegion(res)
+			rowIdx++
+		} else if isMultiRegion {
 			fullRow[rowIdx] = dao.GetResourceRegion(res)
 			rowIdx++
 		}

@@ -14,13 +14,12 @@ import (
 const CostExplorerRegion = "us-east-1"
 
 type regionOverrideKey struct{}
+type selectionOverrideKey struct{}
 
-// WithRegionOverride returns a context with region override for multi-region queries
 func WithRegionOverride(ctx context.Context, region string) context.Context {
 	return context.WithValue(ctx, regionOverrideKey{}, region)
 }
 
-// GetRegionFromContext returns region from context override, or empty string if not set
 func GetRegionFromContext(ctx context.Context) string {
 	if r, ok := ctx.Value(regionOverrideKey{}).(string); ok {
 		return r
@@ -28,10 +27,23 @@ func GetRegionFromContext(ctx context.Context) string {
 	return ""
 }
 
-// NewConfig creates a new AWS config with the application's region and profile settings.
-// This is the preferred way to create AWS configs in DAOs.
+func WithSelectionOverride(ctx context.Context, sel appconfig.ProfileSelection) context.Context {
+	return context.WithValue(ctx, selectionOverrideKey{}, sel)
+}
+
+func GetSelectionFromContext(ctx context.Context) (appconfig.ProfileSelection, bool) {
+	if s, ok := ctx.Value(selectionOverrideKey{}).(appconfig.ProfileSelection); ok {
+		return s, true
+	}
+	return appconfig.ProfileSelection{}, false
+}
+
 func NewConfig(ctx context.Context) (aws.Config, error) {
-	opts := SelectionLoadOptions(appconfig.Global().Selection())
+	sel := appconfig.Global().Selection()
+	if ctxSel, ok := GetSelectionFromContext(ctx); ok {
+		sel = ctxSel
+	}
+	opts := SelectionLoadOptions(sel)
 
 	region := GetRegionFromContext(ctx)
 	if region == "" {
@@ -48,10 +60,12 @@ func NewConfig(ctx context.Context) (aws.Config, error) {
 	return cfg, nil
 }
 
-// NewConfigWithRegion creates a new AWS config with a specific region override.
-// Use this when you need to make API calls to a specific region (e.g., S3 bucket operations).
 func NewConfigWithRegion(ctx context.Context, region string) (aws.Config, error) {
-	opts := SelectionLoadOptions(appconfig.Global().Selection())
+	sel := appconfig.Global().Selection()
+	if ctxSel, ok := GetSelectionFromContext(ctx); ok {
+		sel = ctxSel
+	}
+	opts := SelectionLoadOptions(sel)
 	opts = append(opts, config.WithRegion(region))
 
 	cfg, err := config.LoadDefaultConfig(ctx, opts...)

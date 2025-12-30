@@ -113,29 +113,47 @@ type Mergeable interface {
 	MergeFrom(original Resource)
 }
 
-// RegionalResource wraps a Resource with region metadata for multi-region queries
 type RegionalResource struct {
 	Resource
 	Region string
 }
 
 func (r *RegionalResource) GetRegion() string { return r.Region }
+func (r *RegionalResource) GetID() string     { return r.Region + ":" + r.Resource.GetID() }
+func (r *RegionalResource) GetName() string   { return r.Resource.GetName() }
 
-// GetID returns region-qualified ID to avoid collisions across regions
-func (r *RegionalResource) GetID() string { return r.Region + ":" + r.Resource.GetID() }
-
-func (r *RegionalResource) GetName() string { return r.Resource.GetName() }
-
-// WrapWithRegion wraps a resource with region metadata
 func WrapWithRegion(res Resource, region string) *RegionalResource {
 	return &RegionalResource{Resource: res, Region: region}
+}
+
+type ProfiledResource struct {
+	Resource
+	Profile   string
+	AccountID string
+	Region    string
+}
+
+func (r *ProfiledResource) GetProfile() string   { return r.Profile }
+func (r *ProfiledResource) GetAccountID() string { return r.AccountID }
+func (r *ProfiledResource) GetRegion() string    { return r.Region }
+func (r *ProfiledResource) GetID() string {
+	return r.Profile + ":" + r.Region + ":" + r.Resource.GetID()
+}
+func (r *ProfiledResource) GetName() string { return r.Resource.GetName() }
+
+func WrapWithProfile(res Resource, profile, accountID, region string) *ProfiledResource {
+	return &ProfiledResource{Resource: res, Profile: profile, AccountID: accountID, Region: region}
 }
 
 type regionalResource interface {
 	GetRegion() string
 }
 
-// GetResourceRegion extracts region from a resource (returns "" if not regional)
+type profiledResource interface {
+	GetProfile() string
+	GetAccountID() string
+}
+
 func GetResourceRegion(res Resource) string {
 	if rr, ok := res.(regionalResource); ok {
 		return rr.GetRegion()
@@ -143,8 +161,24 @@ func GetResourceRegion(res Resource) string {
 	return ""
 }
 
-// UnwrapResource returns the inner resource if wrapped, otherwise returns as-is
+func GetResourceProfile(res Resource) string {
+	if pr, ok := res.(profiledResource); ok {
+		return pr.GetProfile()
+	}
+	return ""
+}
+
+func GetResourceAccountID(res Resource) string {
+	if pr, ok := res.(profiledResource); ok {
+		return pr.GetAccountID()
+	}
+	return ""
+}
+
 func UnwrapResource(res Resource) Resource {
+	if pr, ok := res.(*ProfiledResource); ok {
+		return pr.Resource
+	}
 	if rr, ok := res.(*RegionalResource); ok {
 		return rr.Resource
 	}
