@@ -23,6 +23,7 @@ issues:
     - linters:
         - staticcheck
       text: "SA1019.*deprecated"
+      path: "custom/.*/.*\\.go"
 
 linters:
   disable-all: true
@@ -40,6 +41,10 @@ linters:
     - errorlint
     - unconvert
     - goconst
+    # Security linters
+    - gosec
+    - bodyclose
+    - noctx
 
 linters-settings:
   goimports:
@@ -49,3 +54,11 @@ linters-settings:
   goconst:
     min-len: 5
     min-occurrences: 5
+  gosec:
+    excludes:
+      - G104  # Audit errors not checked (covered by errcheck)
+      - G204  # Subprocess with variable - intentional for CLI actions
+      - G304  # File path from variable - intentional for log/config
+      - G115  # int->int32 conversion - pageSize always < 1000
+      - G301  # Directory permissions - test only
+      - G101  # Hardcoded credentials - test examples only
