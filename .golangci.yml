@@ -62,3 +62,4 @@ linters-settings:
       - G115  # int->int32 conversion - pageSize always < 1000
       - G301  # Directory permissions - test only
       - G101  # Hardcoded credentials - test examples only
+      - G306  # WriteFile permissions 0644 - standard for generated Go source

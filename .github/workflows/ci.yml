@@ -22,6 +22,11 @@ jobs:
           go-version-file: 'go.mod'
           cache: true
 
+      - name: Check generated files
+        run: |
+          go generate ./...
+          git diff --exit-code || (echo "Generated files are out of date. Run 'task gen-imports' and commit." && exit 1)
+
       - name: Build
         run: go build ./...
 

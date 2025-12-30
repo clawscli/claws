@@ -305,16 +305,17 @@ func init() {
 }
 ```
 
-## Step 5: Import in main.go
+## Step 5: Regenerate Imports
 
-Add import to `cmd/claws/main.go`:
+Run the import generator to include your new resource:
 
-```go
-import (
-    // ... existing imports
-    _ "github.com/claws/claws/custom/myservice/myresources"
-)
+```bash
+task gen-imports
 ```
+
+This automatically scans `custom/**/register.go` and regenerates `cmd/claws/imports_custom.go`.
+
+> **Note**: The imports file is auto-generated. Never edit `cmd/claws/imports_custom.go` manually.
 
 ## Step 6: Add Actions (Optional)
 

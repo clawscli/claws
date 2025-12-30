@@ -131,6 +131,11 @@ tasks:
     cmds:
       - go fmt ./...
 
+  gen-imports:
+    desc: Regenerate cmd/claws/imports_custom.go from custom/**/register.go
+    cmds:
+      - go run ./scripts/gen-imports
+
   release:
     desc: "Create a new release (usage: task release -- v0.1.0)"
     cmds:
