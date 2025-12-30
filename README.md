@@ -25,8 +25,10 @@ A terminal UI for AWS resource management 👮
 - **Multi-service support** - EC2, S3, IAM, RDS, Lambda, ECS, and 65+ more services (164 resources total)
 - **Resource actions** - Start/stop instances, delete resources, tail logs
 - **Cross-resource navigation** - Jump from VPC to subnets, from Lambda to CloudWatch Logs
-- **Profile & region switching** - Switch AWS profiles (`P`) and regions (`R`) on the fly, multi-region selection supported
+- **Profile & region switching** - Switch AWS profiles (`P`) and regions (`R`) on the fly
+- **Multi-region selection** - Select multiple regions with `R`, parallel fetch with aggregated results
 - **Command mode** - Quick navigation with `:ec2/instances` syntax
+- **Tag search** - Browse all tagged resources across regions with `:tags` command
 - **Filtering** - Fuzzy search with `/`, tag filtering with `:tag Env=prod`
 - **Column sorting** - Sort by any column with `:sort <col>` command
 - **Resource comparison** - Side-by-side diff view with `m` to mark, `d` to compare
