@@ -117,7 +117,7 @@ func NewSnapshotResource(snapshot types.DBSnapshot) *SnapshotResource {
 			ID:   appaws.Str(snapshot.DBSnapshotIdentifier),
 			Name: appaws.Str(snapshot.DBSnapshotIdentifier),
 			ARN:  appaws.Str(snapshot.DBSnapshotArn),
-			Tags: rdsTagsToMap(snapshot.TagList),
+			Tags: appaws.TagsToMap(snapshot.TagList),
 			Data: snapshot,
 		},
 		Item: snapshot,
@@ -170,15 +170,4 @@ func (r *SnapshotResource) AllocatedStorage() int32 {
 		return *r.Item.AllocatedStorage
 	}
 	return 0
-}
-
-// rdsTagsToMap converts RDS tags to a map
-func rdsTagsToMap(tags []types.Tag) map[string]string {
-	result := make(map[string]string)
-	for _, tag := range tags {
-		if tag.Key != nil && tag.Value != nil {
-			result[*tag.Key] = *tag.Value
-		}
-	}
-	return result
 }

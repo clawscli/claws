@@ -6,12 +6,13 @@ import (
 	computeoptimizertypes "github.com/aws/aws-sdk-go-v2/service/computeoptimizer/types"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
+	rdstypes "github.com/aws/aws-sdk-go-v2/service/rds/types"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 // AWSTag is a constraint for AWS tag types that have Key and Value fields.
 type AWSTag interface {
-	ec2types.Tag | iamtypes.Tag | s3types.Tag | cfntypes.Tag | computeoptimizertypes.Tag
+	ec2types.Tag | iamtypes.Tag | s3types.Tag | cfntypes.Tag | computeoptimizertypes.Tag | rdstypes.Tag
 }
 
 // tagKeyValue extracts key and value from different AWS tag types.
@@ -26,6 +27,8 @@ func tagKeyValue[T AWSTag](tag T) (key, value *string) {
 	case cfntypes.Tag:
 		return t.Key, t.Value
 	case computeoptimizertypes.Tag:
+		return t.Key, t.Value
+	case rdstypes.Tag:
 		return t.Key, t.Value
 	}
 	return nil, nil

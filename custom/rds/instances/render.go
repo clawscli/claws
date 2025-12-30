@@ -216,7 +216,7 @@ func (r *InstanceRenderer) RenderDetail(resource dao.Resource) string {
 	}
 
 	// Tags
-	d.Tags(rdsTagsToMap(ir.Item.TagList))
+	d.Tags(appaws.TagsToMap(ir.Item.TagList))
 
 	return d.String()
 }

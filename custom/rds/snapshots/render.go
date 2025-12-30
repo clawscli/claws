@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/render"
 )
@@ -157,7 +158,7 @@ func (r *SnapshotRenderer) RenderDetail(resource dao.Resource) string {
 	d.FieldIf("DB Parameter Group", sr.Item.DBInstanceIdentifier)
 
 	// Tags
-	d.Tags(rdsTagsToMap(sr.Item.TagList))
+	d.Tags(appaws.TagsToMap(sr.Item.TagList))
 
 	return d.String()
 }
