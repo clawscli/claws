@@ -1673,6 +1673,78 @@ func TestResourceBrowserDiffNavigation(t *testing.T) {
 
 // TagSearchView tests
 
+func TestFormatTags(t *testing.T) {
+	tests := []struct {
+		name   string
+		tags   map[string]string
+		maxLen int
+		want   string
+	}{
+		{
+			name:   "nil tags",
+			tags:   nil,
+			maxLen: 50,
+			want:   "",
+		},
+		{
+			name:   "single tag",
+			tags:   map[string]string{"Env": "prod"},
+			maxLen: 50,
+			want:   "Env=prod",
+		},
+		{
+			name:   "sorted output",
+			tags:   map[string]string{"Z": "1", "A": "2"},
+			maxLen: 50,
+			want:   "A=2, Z=1",
+		},
+		{
+			name:   "truncation",
+			tags:   map[string]string{"VeryLongKey": "VeryLongValue"},
+			maxLen: 10,
+			want:   "VeryLongK…",
+		},
+		{
+			name:   "control char sanitization",
+			tags:   map[string]string{"Key": "val\x00ue\x1b[31m"},
+			maxLen: 50,
+			want:   "Key=value[31m",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := formatTags(tt.tags, tt.maxLen)
+			if got != tt.want {
+				t.Errorf("formatTags() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSanitizeTagValue(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"normal", "normal"},
+		{"with\x00null", "withnull"},
+		{"with\ttab", "withtab"},
+		{"ansi\x1b[31mred", "ansi[31mred"},
+		{"del\x7fchar", "delchar"},
+		{"日本語", "日本語"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got := sanitizeTagValue(tt.input)
+			if got != tt.want {
+				t.Errorf("sanitizeTagValue(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestTagSearchView_parseTagFilters(t *testing.T) {
 	ctx := context.Background()
 	reg := registry.New()

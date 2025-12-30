@@ -714,20 +714,37 @@ func (v *TagSearchView) GetTagValues(key string) []string {
 	return values
 }
 
-// formatTags formats a tag map into a display string with max length
 func formatTags(tags map[string]string, maxLen int) string {
 	if tags == nil {
 		return ""
 	}
 
+	keys := make([]string, 0, len(tags))
+	for k := range tags {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
 	var parts []string
-	for k, v := range tags {
-		parts = append(parts, fmt.Sprintf("%s=%s", k, v))
+	for _, k := range keys {
+		parts = append(parts, fmt.Sprintf("%s=%s", sanitizeTagValue(k), sanitizeTagValue(tags[k])))
 	}
 
 	result := strings.Join(parts, ", ")
-	if len(result) > maxLen {
-		result = result[:maxLen-3] + "..."
+	if len([]rune(result)) > maxLen {
+		runes := []rune(result)
+		result = string(runes[:maxLen-1]) + "…"
 	}
 	return result
+}
+
+func sanitizeTagValue(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	for _, r := range s {
+		if r >= 32 && r != 127 {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
 }
