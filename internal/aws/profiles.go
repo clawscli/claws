@@ -15,19 +15,26 @@ import (
 
 // ProfileInfo contains basic profile metadata from ~/.aws files.
 type ProfileInfo struct {
-	Name  string
-	IsSSO bool
+	Name           string
+	IsSSO          bool
+	Region         string
+	ProfileType    string // SSO, AssumeRole, Static, Default
+	RoleArn        string
+	SourceProfile  string
+	SSOSession     string
+	SSOStartURL    string
+	SSORegion      string
+	SSOAccountID   string
+	SSORoleName    string
+	HasCredentials bool
+	AccessKeyID    string // masked
 }
 
 // LoadProfiles parses ~/.aws/config and ~/.aws/credentials files
 // and returns a sorted list of profile information.
 // Respects AWS_CONFIG_FILE and AWS_SHARED_CREDENTIALS_FILE environment variables.
 func LoadProfiles() ([]ProfileInfo, error) {
-	type profileData struct {
-		name  string
-		isSSO bool
-	}
-	profileMap := make(map[string]*profileData)
+	profileMap := make(map[string]*ProfileInfo)
 
 	configPath := os.Getenv("AWS_CONFIG_FILE")
 	if configPath == "" {
@@ -58,10 +65,24 @@ func LoadProfiles() ([]ProfileInfo, error) {
 				continue
 			}
 
-			isSSO := section.Key("sso_start_url").String() != "" ||
-				section.Key("sso_session").String() != ""
+			ssoStartURL := section.Key("sso_start_url").String()
+			ssoSession := section.Key("sso_session").String()
+			roleArn := section.Key("role_arn").String()
 
-			profileMap[profileName] = &profileData{name: profileName, isSSO: isSSO}
+			info := &ProfileInfo{
+				Name:          profileName,
+				IsSSO:         ssoStartURL != "" || ssoSession != "",
+				Region:        section.Key("region").String(),
+				RoleArn:       roleArn,
+				SourceProfile: section.Key("source_profile").String(),
+				SSOSession:    ssoSession,
+				SSOStartURL:   ssoStartURL,
+				SSORegion:     section.Key("sso_region").String(),
+				SSOAccountID:  section.Key("sso_account_id").String(),
+				SSORoleName:   section.Key("sso_role_name").String(),
+			}
+			info.ProfileType = determineProfileType(info)
+			profileMap[profileName] = info
 		}
 	}
 
@@ -84,8 +105,22 @@ func LoadProfiles() ([]ProfileInfo, error) {
 			if name == "DEFAULT" {
 				continue
 			}
-			if _, exists := profileMap[name]; !exists {
-				profileMap[name] = &profileData{name: name, isSSO: false}
+
+			accessKeyID := section.Key("aws_access_key_id").String()
+			hasCredentials := accessKeyID != ""
+
+			if info, exists := profileMap[name]; exists {
+				info.HasCredentials = hasCredentials
+				info.AccessKeyID = maskAccessKey(accessKeyID)
+				info.ProfileType = determineProfileType(info)
+			} else {
+				info := &ProfileInfo{
+					Name:           name,
+					HasCredentials: hasCredentials,
+					AccessKeyID:    maskAccessKey(accessKeyID),
+				}
+				info.ProfileType = determineProfileType(info)
+				profileMap[name] = info
 			}
 		}
 	}
@@ -98,11 +133,30 @@ func LoadProfiles() ([]ProfileInfo, error) {
 
 	profiles := make([]ProfileInfo, 0, len(names))
 	for _, name := range names {
-		data := profileMap[name]
-		profiles = append(profiles, ProfileInfo{
-			Name:  name,
-			IsSSO: data.isSSO,
-		})
+		profiles = append(profiles, *profileMap[name])
 	}
 	return profiles, nil
+}
+
+func determineProfileType(info *ProfileInfo) string {
+	if info.IsSSO {
+		return "SSO"
+	}
+	if info.RoleArn != "" {
+		return "AssumeRole"
+	}
+	if info.HasCredentials {
+		return "Static"
+	}
+	return "Default"
+}
+
+func maskAccessKey(key string) string {
+	if key == "" {
+		return ""
+	}
+	if len(key) <= 8 {
+		return "****"
+	}
+	return key[:4] + "****" + key[len(key)-4:]
 }

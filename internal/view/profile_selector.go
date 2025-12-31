@@ -19,22 +19,26 @@ import (
 )
 
 type profileItem struct {
-	id      string
-	display string
-	isSSO   bool
+	id          string
+	display     string
+	isSSO       bool
+	profileType string
+	region      string
 }
 
 func (p profileItem) GetID() string    { return p.id }
 func (p profileItem) GetLabel() string { return p.display }
-func (p profileItem) IsSSO() bool      { return p.isSSO }
 
 type ProfileSelector struct {
-	ctx      context.Context
-	selector *MultiSelector[profileItem]
-	profiles []profileItem
+	ctx         context.Context
+	selector    *MultiSelector[profileItem]
+	profiles    []profileItem
+	profileInfo map[string]aws.ProfileInfo
 
 	loginResult *loginResultMsg
 	ssoStyle    lipgloss.Style
+	typeStyle   lipgloss.Style
+	regionStyle lipgloss.Style
 }
 
 func NewProfileSelector(ctx context.Context) *ProfileSelector {
@@ -43,17 +47,25 @@ func NewProfileSelector(ctx context.Context) *ProfileSelector {
 		initialSelected = append(initialSelected, sel.ID())
 	}
 
+	t := ui.Current()
 	p := &ProfileSelector{
-		ctx:      ctx,
-		selector: NewMultiSelector[profileItem]("Select Profiles", initialSelected),
-		ssoStyle: lipgloss.NewStyle().Foreground(ui.Current().Secondary),
+		ctx:         ctx,
+		selector:    NewMultiSelector[profileItem]("Select Profiles", initialSelected),
+		profileInfo: make(map[string]aws.ProfileInfo),
+		ssoStyle:    lipgloss.NewStyle().Foreground(t.Secondary),
+		typeStyle:   lipgloss.NewStyle().Foreground(t.TextDim),
+		regionStyle: lipgloss.NewStyle().Foreground(t.TextDim),
 	}
 
 	p.selector.SetRenderExtra(func(item profileItem) string {
-		if item.isSSO {
-			return p.ssoStyle.Render("[SSO]")
+		var parts []string
+		if item.profileType != "" {
+			parts = append(parts, p.typeStyle.Render("["+item.profileType+"]"))
 		}
-		return ""
+		if item.region != "" {
+			parts = append(parts, p.regionStyle.Render(item.region))
+		}
+		return strings.Join(parts, " ")
 	})
 
 	return p
@@ -65,6 +77,7 @@ func (p *ProfileSelector) Init() tea.Cmd {
 
 type profilesLoadedMsg struct {
 	profiles []profileItem
+	infoMap  map[string]aws.ProfileInfo
 }
 
 type loginResultMsg struct {
@@ -76,9 +89,10 @@ type loginResultMsg struct {
 
 func (p *ProfileSelector) loadProfiles() tea.Msg {
 	profiles := []profileItem{
-		{id: config.ProfileIDSDKDefault, display: config.SDKDefault().DisplayName()},
-		{id: config.ProfileIDEnvOnly, display: config.EnvOnly().DisplayName()},
+		{id: config.ProfileIDSDKDefault, display: config.SDKDefault().DisplayName(), profileType: "Default"},
+		{id: config.ProfileIDEnvOnly, display: config.EnvOnly().DisplayName(), profileType: "Env/IMDS"},
 	}
+	infoMap := make(map[string]aws.ProfileInfo)
 
 	loaded, err := aws.LoadProfiles()
 	if err != nil {
@@ -86,19 +100,23 @@ func (p *ProfileSelector) loadProfiles() tea.Msg {
 	}
 	for _, info := range loaded {
 		profiles = append(profiles, profileItem{
-			id:      info.Name,
-			display: info.Name,
-			isSSO:   info.IsSSO,
+			id:          info.Name,
+			display:     info.Name,
+			isSSO:       info.IsSSO,
+			profileType: info.ProfileType,
+			region:      info.Region,
 		})
+		infoMap[info.Name] = info
 	}
 
-	return profilesLoadedMsg{profiles: profiles}
+	return profilesLoadedMsg{profiles: profiles, infoMap: infoMap}
 }
 
 func (p *ProfileSelector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case profilesLoadedMsg:
 		p.profiles = msg.profiles
+		p.profileInfo = msg.infoMap
 		p.selector.SetItems(p.profiles)
 		return p, nil
 
@@ -120,10 +138,13 @@ func (p *ProfileSelector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "c":
 				p.loginResult = nil
 				p.updateExtraHeight()
+			case "d":
+				return p.toggleDetail()
 			case "l":
 				return p.ssoLoginCurrentProfile()
 			case "L":
 				return p.consoleLoginCurrentProfile()
+
 			}
 		}
 	}
@@ -324,9 +345,21 @@ func (p *ProfileSelector) StatusLine() string {
 		}
 	}
 
-	return "Space:toggle • Enter:apply" + loginHints + " • " + strings.Repeat("●", count) + " selected"
+	return "Space:toggle • d:detail • Enter:apply" + loginHints + " • " + strings.Repeat("●", count) + " selected"
 }
 
 func (p *ProfileSelector) HasActiveInput() bool {
 	return p.selector.FilterActive()
+}
+
+func (p *ProfileSelector) toggleDetail() (tea.Model, tea.Cmd) {
+	profile, ok := p.selector.CurrentItem()
+	if !ok {
+		return p, nil
+	}
+	info, hasInfo := p.profileInfo[profile.id]
+	detailView := NewProfileDetailView(profile, info, hasInfo)
+	return p, func() tea.Msg {
+		return ShowModalMsg{Modal: &Modal{Content: detailView}}
+	}
 }
