@@ -208,6 +208,7 @@ Selected regions are queried in parallel; resources display with Region column.
 | `j` / `k` | Navigate up/down |
 | `Space` | Toggle profile selection |
 | `l` | SSO login for selected profile |
+| `L` | Console login for selected profile (`:login`) |
 | `/` | Filter profiles |
 | `Enter` | Apply selection |
 | `Esc` | Cancel |

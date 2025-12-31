@@ -325,6 +325,8 @@ func (p *ProfileSelector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return p.applySelection()
 		case "l":
 			return p.ssoLoginCurrentProfile()
+		case "L":
+			return p.consoleLoginCurrentProfile()
 		}
 	}
 
@@ -410,6 +412,52 @@ func (s *ssoLoginCmd) Run() error {
 func (s *ssoLoginCmd) SetStdin(r io.Reader)  { s.stdin = r }
 func (s *ssoLoginCmd) SetStdout(w io.Writer) { s.stdout = w }
 func (s *ssoLoginCmd) SetStderr(w io.Writer) { s.stderr = w }
+
+type consoleLoginResultMsg struct {
+	profileID string
+	success   bool
+	err       error
+}
+
+func (p *ProfileSelector) consoleLoginCurrentProfile() (tea.Model, tea.Cmd) {
+	if p.cursor < 0 || p.cursor >= len(p.filtered) {
+		return p, nil
+	}
+	profile := p.filtered[p.cursor]
+
+	if profile.ID == config.ProfileIDSDKDefault || profile.ID == config.ProfileIDEnvOnly {
+		p.ssoResult = &ssoResultMsg{
+			profileID: profile.ID,
+			success:   false,
+			err:       errors.New("console login requires a named profile"),
+		}
+		return p, nil
+	}
+
+	if config.Global().ReadOnly() && !action.IsExecAllowedInReadOnly(action.ActionNameLogin) {
+		p.ssoResult = &ssoResultMsg{
+			profileID: profile.ID,
+			success:   false,
+			err:       errors.New("console login denied in read-only mode"),
+		}
+		return p, nil
+	}
+
+	profileID := profile.ID
+	exec := &action.SimpleExec{
+		Command:    "aws login --remote --profile " + profileID,
+		ActionName: action.ActionNameLogin,
+		SkipAWSEnv: true,
+	}
+	return p, tea.Exec(exec, func(err error) tea.Msg {
+		if err != nil {
+			return consoleLoginResultMsg{profileID: profileID, success: false, err: err}
+		}
+		sel := config.NamedProfile(profileID)
+		config.Global().SetSelection(sel)
+		return navmsg.ProfileChangedMsg{Selection: sel}
+	})
+}
 
 func (p *ProfileSelector) applyFilter() {
 	if p.filterText == "" {
