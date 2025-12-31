@@ -1,7 +1,6 @@
 package view
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"os/exec"
@@ -39,7 +38,7 @@ type ProfileSelector struct {
 	regionStyle lipgloss.Style
 }
 
-func NewProfileSelector(_ context.Context) *ProfileSelector {
+func NewProfileSelector() *ProfileSelector {
 	initialSelected := make([]string, 0)
 	for _, sel := range config.Global().Selections() {
 		initialSelected = append(initialSelected, sel.ID())

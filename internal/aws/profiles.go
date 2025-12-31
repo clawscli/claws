@@ -2,6 +2,7 @@ package aws
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -40,7 +41,7 @@ func LoadProfiles() ([]ProfileInfo, error) {
 	if configPath == "" {
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("get user home dir: %w", err)
 		}
 		configPath = filepath.Join(homeDir, ".aws", "config")
 	}
@@ -90,7 +91,7 @@ func LoadProfiles() ([]ProfileInfo, error) {
 	if credPath == "" {
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("get user home dir: %w", err)
 		}
 		credPath = filepath.Join(homeDir, ".aws", "credentials")
 	}

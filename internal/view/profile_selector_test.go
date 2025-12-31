@@ -1,7 +1,6 @@
 package view
 
 import (
-	"context"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -16,9 +15,7 @@ func testProfiles() []profileItem {
 }
 
 func TestProfileSelectorMouseHover(t *testing.T) {
-	ctx := context.Background()
-
-	selector := NewProfileSelector(ctx)
+	selector := NewProfileSelector()
 	selector.SetSize(100, 50)
 
 	selector.Update(profilesLoadedMsg{profiles: testProfiles()})
@@ -32,9 +29,7 @@ func TestProfileSelectorMouseHover(t *testing.T) {
 }
 
 func TestProfileSelectorMouseClick(t *testing.T) {
-	ctx := context.Background()
-
-	selector := NewProfileSelector(ctx)
+	selector := NewProfileSelector()
 	selector.SetSize(100, 50)
 
 	selector.Update(profilesLoadedMsg{profiles: testProfiles()})
@@ -46,9 +41,7 @@ func TestProfileSelectorMouseClick(t *testing.T) {
 }
 
 func TestProfileSelectorEmptyFilter(t *testing.T) {
-	ctx := context.Background()
-
-	selector := NewProfileSelector(ctx)
+	selector := NewProfileSelector()
 	selector.SetSize(100, 50)
 
 	selector.Update(profilesLoadedMsg{profiles: testProfiles()})
@@ -77,9 +70,7 @@ func TestProfileSelectorEmptyFilter(t *testing.T) {
 }
 
 func TestProfileSelectorFilterMatching(t *testing.T) {
-	ctx := context.Background()
-
-	selector := NewProfileSelector(ctx)
+	selector := NewProfileSelector()
 	selector.SetSize(100, 50)
 
 	profiles := []profileItem{
@@ -114,9 +105,7 @@ func TestProfileSelectorFilterMatching(t *testing.T) {
 }
 
 func TestProfileSelectorSSODetection(t *testing.T) {
-	ctx := context.Background()
-
-	selector := NewProfileSelector(ctx)
+	selector := NewProfileSelector()
 	selector.SetSize(100, 50)
 
 	profiles := []profileItem{
@@ -157,9 +146,7 @@ func TestProfileSelectorSSODetection(t *testing.T) {
 }
 
 func TestProfileSelectorToggle(t *testing.T) {
-	ctx := context.Background()
-
-	selector := NewProfileSelector(ctx)
+	selector := NewProfileSelector()
 	selector.SetSize(100, 50)
 
 	profiles := []profileItem{

@@ -238,7 +238,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			)
 
 		case key.Matches(msg, a.keys.Profile):
-			profileSelector := view.NewProfileSelector(a.ctx)
+			profileSelector := view.NewProfileSelector()
 			if a.currentView != nil {
 				a.viewStack = append(a.viewStack, a.currentView)
 			}
