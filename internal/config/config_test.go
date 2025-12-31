@@ -287,3 +287,102 @@ func TestConfig_AccountIDs(t *testing.T) {
 		t.Errorf("AccountIDs()[prod] = %q, want %q", got["prod"], "222222222222")
 	}
 }
+
+func TestIsValidRegion(t *testing.T) {
+	tests := []struct {
+		region string
+		want   bool
+	}{
+		{"us-east-1", true},
+		{"us-west-2", true},
+		{"eu-west-1", true},
+		{"eu-central-1", true},
+		{"ap-northeast-1", true},
+		{"ap-southeast-2", true},
+		{"sa-east-1", true},
+		{"ca-central-1", true},
+		{"me-south-1", true},
+		{"af-south-1", true},
+		{"us-gov-west-1", true},
+		{"us-gov-east-1", true},
+		{"us-iso-east-1", true},
+		{"us-isob-east-1", true},
+		{"", false},
+		{"invalid", false},
+		{"us-east", false},
+		{"us-east-", false},
+		{"US-EAST-1", false},
+		{"us_east_1", false},
+		{"us-east-1-extra", false},
+		{"a]b[c", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.region, func(t *testing.T) {
+			if got := IsValidRegion(tt.region); got != tt.want {
+				t.Errorf("IsValidRegion(%q) = %v, want %v", tt.region, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestIsValidAccountID(t *testing.T) {
+	tests := []struct {
+		id   string
+		want bool
+	}{
+		{"123456789012", true},
+		{"000000000000", true},
+		{"999999999999", true},
+		{"", true},
+		{"12345678901", false},
+		{"1234567890123", false},
+		{"12345678901a", false},
+		{"abcdefghijkl", false},
+		{"123-456-789", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.id, func(t *testing.T) {
+			if got := IsValidAccountID(tt.id); got != tt.want {
+				t.Errorf("IsValidAccountID(%q) = %v, want %v", tt.id, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestIsValidProfileName(t *testing.T) {
+	tests := []struct {
+		name string
+		want bool
+	}{
+		{"default", true},
+		{"production", true},
+		{"my-profile", true},
+		{"my_profile", true},
+		{"my.profile", true},
+		{"profile123", true},
+		{"Profile-Name_123.test", true},
+		{"", false},
+		{"profile with space", false},
+		{"profile@name", false},
+		{"profile/name", false},
+		{"profile:name", false},
+		{"日本語", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsValidProfileName(tt.name); got != tt.want {
+				t.Errorf("IsValidProfileName(%q) = %v, want %v", tt.name, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestValidationError(t *testing.T) {
+	err := &ValidationError{Field: "region", Value: "invalid", Message: "invalid region format"}
+	if err.Error() != "invalid region format" {
+		t.Errorf("Error() = %q, want %q", err.Error(), "invalid region format")
+	}
+}

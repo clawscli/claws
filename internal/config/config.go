@@ -1,9 +1,59 @@
 package config
 
 import (
+	"maps"
 	"os"
+	"regexp"
 	"sync"
 )
+
+// Validation patterns
+var (
+	// regionPattern matches AWS region format: xx-xxxx-N (e.g., us-east-1, ap-northeast-1)
+	regionPattern = regexp.MustCompile(`^[a-z]{2}(-[a-z]+-\d|-(gov|iso|isob)-[a-z]+-\d)$`)
+
+	// accountIDPattern matches 12-digit AWS account IDs
+	accountIDPattern = regexp.MustCompile(`^\d{12}$`)
+
+	// profileNamePattern matches valid AWS profile names (alphanumeric, hyphen, underscore, period)
+	profileNamePattern = regexp.MustCompile(`^[\w\-.]+$`)
+)
+
+type ValidationError struct {
+	Field   string
+	Value   string
+	Message string
+}
+
+func (e *ValidationError) Error() string {
+	return e.Message
+}
+
+// IsValidRegion checks if the region name follows AWS region format.
+// Valid examples: us-east-1, eu-west-2, ap-northeast-1, us-gov-west-1
+func IsValidRegion(region string) bool {
+	if region == "" || len(region) > 25 {
+		return false
+	}
+	return regionPattern.MatchString(region)
+}
+
+// IsValidAccountID checks if the account ID is a 12-digit number.
+func IsValidAccountID(accountID string) bool {
+	if accountID == "" {
+		return true // Empty is allowed (not yet fetched)
+	}
+	return accountIDPattern.MatchString(accountID)
+}
+
+// IsValidProfileName checks if the profile name contains only valid characters.
+// Valid characters: alphanumeric, hyphen, underscore, period
+func IsValidProfileName(name string) bool {
+	if name == "" || len(name) > 128 {
+		return false
+	}
+	return profileNamePattern.MatchString(name)
+}
 
 // Profile resource ID constants for stable identification
 const (
@@ -247,9 +297,7 @@ func (c *Config) AccountIDs() map[string]string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	result := make(map[string]string, len(c.accountIDs))
-	for k, v := range c.accountIDs {
-		result[k] = v
-	}
+	maps.Copy(result, c.accountIDs)
 	return result
 }
 
@@ -270,9 +318,7 @@ func (c *Config) SetAccountIDs(ids map[string]string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.accountIDs = make(map[string]string, len(ids))
-	for k, v := range ids {
-		c.accountIDs[k] = v
-	}
+	maps.Copy(c.accountIDs, ids)
 }
 
 func (c *Config) SetAccountIDForProfile(profileID, accountID string) {

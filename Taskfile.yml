@@ -28,6 +28,11 @@ tasks:
     cmds:
       - go test ./...
 
+  test-race:
+    desc: Run tests with race detector (requires CGO and C compiler)
+    cmds:
+      - CGO_ENABLED=1 go test -race ./...
+
   test-cover:
     desc: Run tests with coverage report
     cmds:
