@@ -230,6 +230,14 @@ func (p *ProfileSelector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return p, nil
 
+	case consoleLoginResultMsg:
+		p.ssoResult = &ssoResultMsg{profileID: msg.profileID, success: msg.success, err: msg.err}
+		if msg.success {
+			p.selected[msg.profileID] = true
+			p.updateViewport()
+		}
+		return p, nil
+
 	case tea.MouseWheelMsg:
 		var cmd tea.Cmd
 		p.viewport, cmd = p.viewport.Update(msg)
@@ -455,7 +463,7 @@ func (p *ProfileSelector) consoleLoginCurrentProfile() (tea.Model, tea.Cmd) {
 		}
 		sel := config.NamedProfile(profileID)
 		config.Global().SetSelection(sel)
-		return navmsg.ProfileChangedMsg{Selection: sel}
+		return consoleLoginResultMsg{profileID: profileID, success: true}
 	})
 }
 
@@ -611,12 +619,18 @@ func (p *ProfileSelector) StatusLine() string {
 		return "Type to filter • Enter confirm • Esc cancel"
 	}
 
-	var ssoHint string
-	if p.cursor >= 0 && p.cursor < len(p.filtered) && p.filtered[p.cursor].IsSSO {
-		ssoHint = " • l:SSO login"
+	var loginHints string
+	if p.cursor >= 0 && p.cursor < len(p.filtered) {
+		profile := p.filtered[p.cursor]
+		if profile.IsSSO {
+			loginHints = " • l:SSO"
+		}
+		if profile.ID != config.ProfileIDSDKDefault && profile.ID != config.ProfileIDEnvOnly {
+			loginHints += " • L:console"
+		}
 	}
 
-	return "Space:toggle • Enter:apply" + ssoHint + " • " + strings.Repeat("●", count) + " selected"
+	return "Space:toggle • Enter:apply" + loginHints + " • " + strings.Repeat("●", count) + " selected"
 }
 
 func (p *ProfileSelector) HasActiveInput() bool {
