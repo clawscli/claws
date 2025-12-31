@@ -284,6 +284,17 @@ func (c *Config) SetAccountIDForProfile(profileID, accountID string) {
 	c.accountIDs[profileID] = accountID
 }
 
+// GetAccountIDForProfile returns the cached account ID for a specific profile.
+// Returns empty string if not cached.
+func (c *Config) GetAccountIDForProfile(profileID string) string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if c.accountIDs == nil {
+		return ""
+	}
+	return c.accountIDs[profileID]
+}
+
 // Warnings returns any startup warnings
 func (c *Config) Warnings() []string {
 	c.mu.RLock()

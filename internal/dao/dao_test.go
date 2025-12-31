@@ -358,7 +358,27 @@ func TestDoubleWrappingBreaksTypeAssertion(t *testing.T) {
 	}
 }
 
-// TestRegionalResourcePreservesData verifies region wrapping doesn't lose data
+func TestWrapWithProfileUnwrapsRegionalResource(t *testing.T) {
+	original := &BaseResource{
+		ID:   "instance-123",
+		Name: "my-instance",
+		ARN:  "arn:aws:ec2:us-east-1:123456789:instance/instance-123",
+	}
+
+	regional := WrapWithRegion(original, "us-east-1")
+	profiled := WrapWithProfile(regional, "dev", "123456789", "us-east-1")
+
+	expectedID := "dev:us-east-1:instance-123"
+	if profiled.GetID() != expectedID {
+		t.Errorf("GetID() = %q, want %q (no double region)", profiled.GetID(), expectedID)
+	}
+
+	unwrapped := UnwrapResource(profiled)
+	if unwrapped.GetID() != "instance-123" {
+		t.Errorf("UnwrapResource() should return original, got ID %q", unwrapped.GetID())
+	}
+}
+
 func TestRegionalResourcePreservesData(t *testing.T) {
 	resources := []Resource{
 		&BaseResource{

@@ -142,7 +142,11 @@ func (r *ProfiledResource) GetID() string {
 func (r *ProfiledResource) GetName() string { return r.Resource.GetName() }
 
 func WrapWithProfile(res Resource, profile, accountID, region string) *ProfiledResource {
-	return &ProfiledResource{Resource: res, Profile: profile, AccountID: accountID, Region: region}
+	inner := res
+	if rr, ok := res.(*RegionalResource); ok {
+		inner = rr.Resource
+	}
+	return &ProfiledResource{Resource: inner, Profile: profile, AccountID: accountID, Region: region}
 }
 
 type regionalResource interface {

@@ -83,8 +83,6 @@ func (r *ResourceBrowser) fetchMultiProfileResources(profiles []config.ProfileSe
 	results := make(chan fetchResult, len(pairs))
 	var wg sync.WaitGroup
 
-	accountIDs := config.Global().AccountIDs()
-
 	for _, pair := range pairs {
 		wg.Add(1)
 		go func(key profileRegionKey) {
@@ -101,10 +99,11 @@ func (r *ResourceBrowser) fetchMultiProfileResources(profiles []config.ProfileSe
 			fetchCtx := aws.WithSelectionOverride(ctx, sel)
 			fetchCtx = aws.WithRegionOverride(fetchCtx, key.Region)
 
-			if accountIDs[key.Profile] == "" {
+			accountID := config.Global().GetAccountIDForProfile(key.Profile)
+			if accountID == "" {
 				if id := aws.FetchAccountIDForContext(fetchCtx); id != "" {
 					config.Global().SetAccountIDForProfile(key.Profile, id)
-					accountIDs[key.Profile] = id
+					accountID = id
 				}
 			}
 
@@ -135,7 +134,6 @@ func (r *ResourceBrowser) fetchMultiProfileResources(profiles []config.ProfileSe
 				return
 			}
 
-			accountID := accountIDs[key.Profile]
 			wrapped := make([]dao.Resource, len(listResult.resources))
 			for i, res := range listResult.resources {
 				wrapped[i] = dao.WrapWithProfile(res, key.Profile, accountID, key.Region)

@@ -17,6 +17,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"gopkg.in/ini.v1"
 
+	"github.com/clawscli/claws/internal/action"
 	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/log"
 	navmsg "github.com/clawscli/claws/internal/msg"
@@ -371,6 +372,15 @@ func (p *ProfileSelector) ssoLoginCurrentProfile() (tea.Model, tea.Cmd) {
 			profileID: profile.ID,
 			success:   false,
 			err:       errors.New("not an SSO profile"),
+		}
+		return p, nil
+	}
+
+	if config.Global().ReadOnly() && !action.IsExecAllowedInReadOnly(action.ActionNameSSOLogin) {
+		p.ssoResult = &ssoResultMsg{
+			profileID: profile.ID,
+			success:   false,
+			err:       errors.New("SSO login denied in read-only mode"),
 		}
 		return p, nil
 	}
