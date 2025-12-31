@@ -165,7 +165,7 @@ func (r *ResourceBrowser) fetchMultiProfileResources(profiles []config.ProfileSe
 	}
 
 	formatError := func(key profileRegionKey, err error) string {
-		log.Warn("failed to fetch", "profile", key.Profile, "region", key.Region, "error", err)
+		log.Debug("failed to fetch", "profile", key.Profile, "region", key.Region, "error", err)
 		return fmt.Sprintf("%s/%s: %v", key.Profile, key.Region, err)
 	}
 
@@ -197,7 +197,7 @@ func (r *ResourceBrowser) fetchMultiRegionResources(regions []string, existingTo
 	}
 
 	formatError := func(region string, err error) string {
-		log.Warn("failed to fetch from region", "region", region, "error", err)
+		log.Debug("failed to fetch from region", "region", region, "error", err)
 		return fmt.Sprintf("%s: %v", region, err)
 	}
 

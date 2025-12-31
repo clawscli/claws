@@ -189,6 +189,18 @@ var (
 	initOnce sync.Once
 )
 
+func withRLock[T any](mu *sync.RWMutex, fn func() T) T {
+	mu.RLock()
+	defer mu.RUnlock()
+	return fn()
+}
+
+func doWithLock(mu *sync.RWMutex, fn func()) {
+	mu.Lock()
+	defer mu.Unlock()
+	fn()
+}
+
 // Global returns the global config instance
 func Global() *Config {
 	initOnce.Do(func() {
@@ -197,76 +209,61 @@ func Global() *Config {
 	return global
 }
 
-// Region returns the first selected region (backward compatible)
 func (c *Config) Region() string {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	if len(c.regions) == 0 {
-		return ""
-	}
-	return c.regions[0]
+	return withRLock(&c.mu, func() string {
+		if len(c.regions) == 0 {
+			return ""
+		}
+		return c.regions[0]
+	})
 }
 
 func (c *Config) Regions() []string {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return append([]string(nil), c.regions...)
+	return withRLock(&c.mu, func() []string {
+		return append([]string(nil), c.regions...)
+	})
 }
 
-// SetRegion sets a single region
 func (c *Config) SetRegion(region string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.regions = []string{region}
+	doWithLock(&c.mu, func() { c.regions = []string{region} })
 }
 
 func (c *Config) SetRegions(regions []string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.regions = append([]string(nil), regions...)
+	doWithLock(&c.mu, func() { c.regions = append([]string(nil), regions...) })
 }
 
-// IsMultiRegion returns true if multiple regions are selected
 func (c *Config) IsMultiRegion() bool {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return len(c.regions) > 1
+	return withRLock(&c.mu, func() bool { return len(c.regions) > 1 })
 }
 
 func (c *Config) Selection() ProfileSelection {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	if len(c.selections) == 0 {
-		return SDKDefault()
-	}
-	return c.selections[0]
+	return withRLock(&c.mu, func() ProfileSelection {
+		if len(c.selections) == 0 {
+			return SDKDefault()
+		}
+		return c.selections[0]
+	})
 }
 
 func (c *Config) Selections() []ProfileSelection {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	if len(c.selections) == 0 {
-		return []ProfileSelection{SDKDefault()}
-	}
-	return append([]ProfileSelection(nil), c.selections...)
+	return withRLock(&c.mu, func() []ProfileSelection {
+		if len(c.selections) == 0 {
+			return []ProfileSelection{SDKDefault()}
+		}
+		return append([]ProfileSelection(nil), c.selections...)
+	})
 }
 
 func (c *Config) SetSelection(sel ProfileSelection) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.selections = []ProfileSelection{sel}
+	doWithLock(&c.mu, func() { c.selections = []ProfileSelection{sel} })
 }
 
 func (c *Config) SetSelections(sels []ProfileSelection) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.selections = append([]ProfileSelection(nil), sels...)
+	doWithLock(&c.mu, func() { c.selections = append([]ProfileSelection(nil), sels...) })
 }
 
 func (c *Config) IsMultiProfile() bool {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return len(c.selections) > 1
+	return withRLock(&c.mu, func() bool { return len(c.selections) > 1 })
 }
 
 // UseSDKDefault sets SDK default credential mode
@@ -285,87 +282,73 @@ func (c *Config) UseProfile(name string) {
 }
 
 func (c *Config) AccountID() string {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	key := ProfileIDSDKDefault
-	if len(c.selections) > 0 {
-		key = c.selections[0].ID()
-	}
-	return c.accountIDs[key]
+	return withRLock(&c.mu, func() string {
+		key := ProfileIDSDKDefault
+		if len(c.selections) > 0 {
+			key = c.selections[0].ID()
+		}
+		return c.accountIDs[key]
+	})
 }
 
 func (c *Config) AccountIDs() map[string]string {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	result := make(map[string]string, len(c.accountIDs))
-	maps.Copy(result, c.accountIDs)
-	return result
+	return withRLock(&c.mu, func() map[string]string {
+		result := make(map[string]string, len(c.accountIDs))
+		maps.Copy(result, c.accountIDs)
+		return result
+	})
 }
 
 func (c *Config) SetAccountID(id string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.accountIDs == nil {
-		c.accountIDs = make(map[string]string)
-	}
-	key := ProfileIDSDKDefault
-	if len(c.selections) > 0 {
-		key = c.selections[0].ID()
-	}
-	c.accountIDs[key] = id
+	doWithLock(&c.mu, func() {
+		if c.accountIDs == nil {
+			c.accountIDs = make(map[string]string)
+		}
+		key := ProfileIDSDKDefault
+		if len(c.selections) > 0 {
+			key = c.selections[0].ID()
+		}
+		c.accountIDs[key] = id
+	})
 }
 
 func (c *Config) SetAccountIDs(ids map[string]string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.accountIDs = make(map[string]string, len(ids))
-	maps.Copy(c.accountIDs, ids)
+	doWithLock(&c.mu, func() {
+		c.accountIDs = make(map[string]string, len(ids))
+		maps.Copy(c.accountIDs, ids)
+	})
 }
 
 func (c *Config) SetAccountIDForProfile(profileID, accountID string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.accountIDs == nil {
-		c.accountIDs = make(map[string]string)
-	}
-	c.accountIDs[profileID] = accountID
+	doWithLock(&c.mu, func() {
+		if c.accountIDs == nil {
+			c.accountIDs = make(map[string]string)
+		}
+		c.accountIDs[profileID] = accountID
+	})
 }
 
-// GetAccountIDForProfile returns the cached account ID for a specific profile.
-// Returns empty string if not cached.
 func (c *Config) GetAccountIDForProfile(profileID string) string {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	if c.accountIDs == nil {
-		return ""
-	}
-	return c.accountIDs[profileID]
+	return withRLock(&c.mu, func() string {
+		if c.accountIDs == nil {
+			return ""
+		}
+		return c.accountIDs[profileID]
+	})
 }
 
-// Warnings returns any startup warnings
 func (c *Config) Warnings() []string {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return c.warnings
+	return withRLock(&c.mu, func() []string { return c.warnings })
 }
 
-// ReadOnly returns whether the application is in read-only mode
 func (c *Config) ReadOnly() bool {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return c.readOnly
+	return withRLock(&c.mu, func() bool { return c.readOnly })
 }
 
-// SetReadOnly sets the read-only mode
 func (c *Config) SetReadOnly(readOnly bool) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.readOnly = readOnly
+	doWithLock(&c.mu, func() { c.readOnly = readOnly })
 }
 
-// AddWarning adds a warning message
 func (c *Config) AddWarning(msg string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.warnings = append(c.warnings, msg)
+	doWithLock(&c.mu, func() { c.warnings = append(c.warnings, msg) })
 }
