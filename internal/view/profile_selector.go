@@ -114,7 +114,7 @@ func (p *ProfileSelector) loadProfiles() tea.Msg {
 
 	loaded, err := loadProfilesWithSSO()
 	if err != nil {
-		log.Debug("failed to load profiles", "error", err)
+		log.Error("failed to load profiles", "error", err)
 	}
 	profiles = append(profiles, loaded...)
 

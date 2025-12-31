@@ -18,7 +18,7 @@ import (
 
 const (
 	multiRegionFetchTimeout = 30 * time.Second
-	maxConcurrentFetches    = 50
+	maxConcurrentFetches    = 50 // TODO: make configurable via config file
 )
 
 type listResourcesResult struct {
@@ -159,7 +159,7 @@ func (r *ResourceBrowser) fetchMultiProfileResources(profiles []config.ProfileSe
 
 		wrapped := make([]dao.Resource, len(listResult.resources))
 		for i, res := range listResult.resources {
-			wrapped[i] = dao.WrapWithProfile(res, key.Profile, accountID, key.Region)
+			wrapped[i] = dao.WrapWithProfile(dao.UnwrapResource(res), key.Profile, accountID, key.Region)
 		}
 		return wrapped, listResult.nextToken, nil
 	}
