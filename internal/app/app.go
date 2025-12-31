@@ -114,7 +114,7 @@ func (a *App) Init() tea.Cmd {
 func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if a.showWarnings && a.warningsReady {
 		if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
-			if keyMsg.Code == tea.KeyEnter || keyMsg.String() == " " {
+			if keyMsg.Code == tea.KeyEnter || keyMsg.String() == "space" || keyMsg.String() == "q" {
 				a.showWarnings = false
 				return a, nil
 			}
@@ -420,7 +420,7 @@ func (a *App) renderWarnings() string {
 		content += s.warningItem.Render("• "+w) + "\n"
 	}
 
-	content += "\n" + s.warningDim.Render("Press Enter or Space to continue...")
+	content += "\n" + s.warningDim.Render("Press Enter, Space, or q to continue...")
 
 	boxStyle := s.warningBox.Width(a.width - 10)
 	box := boxStyle.Render(content)

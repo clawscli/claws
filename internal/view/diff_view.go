@@ -68,8 +68,9 @@ func (d *DiffView) Init() tea.Cmd {
 func (d *DiffView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
-		if IsEscKey(msg) {
-			return d, nil // Let app handle back navigation
+		// Let app handle back navigation
+		if IsEscKey(msg) || msg.String() == "q" {
+			return d, nil
 		}
 	}
 
@@ -120,7 +121,7 @@ func (d *DiffView) SetSize(width, height int) tea.Cmd {
 
 // StatusLine implements View
 func (d *DiffView) StatusLine() string {
-	return d.left.GetName() + " vs " + d.right.GetName() + " • ↑/↓:scroll • esc:back"
+	return d.left.GetName() + " vs " + d.right.GetName() + " • ↑/↓:scroll • q/esc:back"
 }
 
 // renderSideBySide generates the side-by-side view
