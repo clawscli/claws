@@ -474,3 +474,134 @@ func TestResourceBrowserDiffNavigation(t *testing.T) {
 		t.Errorf("Expected DiffView, got %T", navMsg.View)
 	}
 }
+
+func TestFetchParallelBasic(t *testing.T) {
+	ctx := context.Background()
+	keys := []string{"a", "b", "c"}
+
+	fetch := func(_ context.Context, k string) ([]dao.Resource, string, error) {
+		return []dao.Resource{&mockResource{id: k + "-1"}}, "", nil
+	}
+	formatError := func(k string, err error) string {
+		return k + ": " + err.Error()
+	}
+
+	result := fetchParallel(ctx, keys, fetch, formatError)
+
+	if len(result.resources) != 3 {
+		t.Errorf("got %d resources, want 3", len(result.resources))
+	}
+	if len(result.errors) != 0 {
+		t.Errorf("got %d errors, want 0", len(result.errors))
+	}
+}
+
+func TestFetchParallelWithPageTokens(t *testing.T) {
+	ctx := context.Background()
+	keys := []string{"region-1", "region-2"}
+
+	fetch := func(_ context.Context, k string) ([]dao.Resource, string, error) {
+		if k == "region-1" {
+			return []dao.Resource{&mockResource{id: "r1-item"}}, "next-token-1", nil
+		}
+		return []dao.Resource{&mockResource{id: "r2-item"}}, "", nil
+	}
+	formatError := func(k string, err error) string { return k + ": " + err.Error() }
+
+	result := fetchParallel(ctx, keys, fetch, formatError)
+
+	if len(result.resources) != 2 {
+		t.Errorf("got %d resources, want 2", len(result.resources))
+	}
+	if len(result.pageTokens) != 1 {
+		t.Errorf("got %d page tokens, want 1", len(result.pageTokens))
+	}
+	if result.pageTokens["region-1"] != "next-token-1" {
+		t.Errorf("got token %q, want %q", result.pageTokens["region-1"], "next-token-1")
+	}
+}
+
+func TestFetchParallelPartialErrors(t *testing.T) {
+	ctx := context.Background()
+	keys := []string{"ok", "fail", "ok2"}
+
+	fetch := func(_ context.Context, k string) ([]dao.Resource, string, error) {
+		if k == "fail" {
+			return nil, "", context.DeadlineExceeded
+		}
+		return []dao.Resource{&mockResource{id: k}}, "", nil
+	}
+	formatError := func(k string, err error) string { return k + ": " + err.Error() }
+
+	result := fetchParallel(ctx, keys, fetch, formatError)
+
+	if len(result.resources) != 2 {
+		t.Errorf("got %d resources, want 2", len(result.resources))
+	}
+	if len(result.errors) != 1 {
+		t.Errorf("got %d errors, want 1", len(result.errors))
+	}
+	if !strings.Contains(result.errors[0], "fail") {
+		t.Errorf("error should mention 'fail', got: %s", result.errors[0])
+	}
+}
+
+func TestFetchParallelEmptyKeys(t *testing.T) {
+	ctx := context.Background()
+	var keys []string
+
+	fetch := func(_ context.Context, k string) ([]dao.Resource, string, error) {
+		t.Error("fetch should not be called for empty keys")
+		return nil, "", nil
+	}
+	formatError := func(k string, err error) string { return "" }
+
+	result := fetchParallel(ctx, keys, fetch, formatError)
+
+	if len(result.resources) != 0 {
+		t.Errorf("got %d resources, want 0", len(result.resources))
+	}
+	if len(result.errors) != 0 {
+		t.Errorf("got %d errors, want 0", len(result.errors))
+	}
+}
+
+func TestFetchParallelPreservesKeyOrder(t *testing.T) {
+	ctx := context.Background()
+	keys := []string{"z", "a", "m"}
+
+	fetch := func(_ context.Context, k string) ([]dao.Resource, string, error) {
+		return []dao.Resource{&mockResource{id: k}}, k + "-token", nil
+	}
+	formatError := func(k string, err error) string { return "" }
+
+	result := fetchParallel(ctx, keys, fetch, formatError)
+
+	if len(result.resources) != 3 {
+		t.Fatalf("got %d resources, want 3", len(result.resources))
+	}
+	for i, key := range keys {
+		if result.resources[i].GetID() != key {
+			t.Errorf("resources[%d].GetID() = %q, want %q", i, result.resources[i].GetID(), key)
+		}
+	}
+}
+
+func TestFetchParallelAllErrors(t *testing.T) {
+	ctx := context.Background()
+	keys := []string{"fail1", "fail2"}
+
+	fetch := func(_ context.Context, k string) ([]dao.Resource, string, error) {
+		return nil, "", context.DeadlineExceeded
+	}
+	formatError := func(k string, err error) string { return k + ": timeout" }
+
+	result := fetchParallel(ctx, keys, fetch, formatError)
+
+	if len(result.resources) != 0 {
+		t.Errorf("got %d resources, want 0", len(result.resources))
+	}
+	if len(result.errors) != 2 {
+		t.Errorf("got %d errors, want 2", len(result.errors))
+	}
+}

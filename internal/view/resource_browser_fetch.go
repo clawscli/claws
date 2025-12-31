@@ -182,7 +182,12 @@ func (r *ResourceBrowser) fetchMultiRegionResources(regions []string, existingTo
 		if listResult.err != nil {
 			return nil, "", listResult.err
 		}
-		return listResult.resources, listResult.nextToken, nil
+
+		wrapped := make([]dao.Resource, len(listResult.resources))
+		for i, res := range listResult.resources {
+			wrapped[i] = dao.WrapWithRegion(dao.UnwrapResource(res), region)
+		}
+		return wrapped, listResult.nextToken, nil
 	}
 
 	formatError := func(region string, err error) string {

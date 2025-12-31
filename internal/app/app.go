@@ -319,10 +319,6 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.currentView = a.viewStack[len(a.viewStack)-1]
 			a.viewStack = a.viewStack[:len(a.viewStack)-1]
 
-			if rb, ok := a.currentView.(*view.ResourceBrowser); ok && rb.Service() == "local" {
-				continue
-			}
-
 			if r, ok := a.currentView.(view.Refreshable); ok && r.CanRefresh() {
 				return a, tea.Batch(
 					a.currentView.SetSize(a.width, a.height-2),
