@@ -32,17 +32,32 @@ func main() {
 		}
 	}
 	cfg.SetReadOnly(opts.readOnly)
+
+	if opts.profile != "" && !config.IsValidProfileName(opts.profile) {
+		fmt.Fprintf(os.Stderr, "Error: invalid profile name: %s\n", opts.profile)
+		fmt.Fprintln(os.Stderr, "Valid characters: alphanumeric, hyphen, underscore, period")
+		os.Exit(1)
+	}
+	if opts.region != "" && !config.IsValidRegion(opts.region) {
+		fmt.Fprintf(os.Stderr, "Error: invalid region format: %s\n", opts.region)
+		fmt.Fprintln(os.Stderr, "Expected: xx-xxxx-N (e.g., us-east-1, ap-northeast-1)")
+		os.Exit(1)
+	}
+
 	if opts.envCreds {
 		// Use environment credentials, ignore ~/.aws config
 		cfg.UseEnvOnly()
 	} else if opts.profile != "" {
 		cfg.UseProfile(opts.profile)
-		_ = os.Setenv("AWS_PROFILE", opts.profile)
+		// Don't set AWS_PROFILE globally - it interferes with EnvOnly mode
+		// when switching profiles. SelectionLoadOptions uses WithSharedConfigProfile
+		// for SDK calls, and BuildSubprocessEnv handles subprocess environment.
 	}
 	// else: SDKDefault is the zero value, no action needed
 	if opts.region != "" {
 		cfg.SetRegion(opts.region)
-		_ = os.Setenv("AWS_REGION", opts.region)
+		// Don't set AWS_REGION globally - SelectionLoadOptions handles SDK calls,
+		// and BuildSubprocessEnv handles subprocess environment.
 	}
 
 	// Enable logging if log file specified

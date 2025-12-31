@@ -232,6 +232,11 @@ func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 		profileName := "claws-login"
 		if strings.HasPrefix(input, "login ") {
 			if name := strings.TrimSpace(strings.TrimPrefix(input, "login ")); name != "" {
+				if !config.IsValidProfileName(name) {
+					return func() tea.Msg {
+						return ErrorMsg{Err: fmt.Errorf("invalid profile name: %s", name)}
+					}, nil
+				}
 				profileName = name
 			}
 		}

@@ -39,6 +39,7 @@ func IsValidRegion(region string) bool {
 }
 
 // IsValidAccountID checks if the account ID is a 12-digit number.
+// Used internally to validate STS-fetched account IDs, not for user input.
 func IsValidAccountID(accountID string) bool {
 	if accountID == "" {
 		return true // Empty is allowed (not yet fetched)

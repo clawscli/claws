@@ -11,8 +11,6 @@ import (
 	"sort"
 	"strings"
 
-	"charm.land/bubbles/v2/textinput"
-	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"gopkg.in/ini.v1"
@@ -25,71 +23,44 @@ import (
 )
 
 type profileItem struct {
-	ID          string
-	DisplayName string
-	IsSSO       bool
+	id      string
+	display string
+	isSSO   bool
 }
 
-type profileSelectorStyles struct {
-	title        lipgloss.Style
-	item         lipgloss.Style
-	itemSelected lipgloss.Style
-	itemChecked  lipgloss.Style
-	itemSSO      lipgloss.Style
-	filter       lipgloss.Style
-}
-
-func newProfileSelectorStyles() profileSelectorStyles {
-	t := ui.Current()
-	return profileSelectorStyles{
-		title:        lipgloss.NewStyle().Background(t.TableHeader).Foreground(t.TableHeaderText).Padding(0, 1),
-		item:         lipgloss.NewStyle().PaddingLeft(2),
-		itemSelected: lipgloss.NewStyle().PaddingLeft(2).Background(t.Selection).Foreground(t.SelectionText),
-		itemChecked:  lipgloss.NewStyle().PaddingLeft(2).Foreground(t.Success),
-		itemSSO:      lipgloss.NewStyle().Foreground(t.Secondary),
-		filter:       lipgloss.NewStyle().Foreground(t.Accent),
-	}
-}
+func (p profileItem) GetID() string    { return p.id }
+func (p profileItem) GetLabel() string { return p.display }
+func (p profileItem) IsSSO() bool      { return p.isSSO }
 
 type ProfileSelector struct {
 	ctx      context.Context
+	selector *MultiSelector[profileItem]
 	profiles []profileItem
-	cursor   int
-	width    int
-	height   int
-
-	selected map[string]bool
-
-	viewport viewport.Model
-	ready    bool
-
-	filterInput  textinput.Model
-	filterActive bool
-	filterText   string
-	filtered     []profileItem
-
-	styles profileSelectorStyles
 
 	ssoResult *ssoResultMsg
+	ssoStyle  lipgloss.Style
 }
 
 func NewProfileSelector(ctx context.Context) *ProfileSelector {
-	ti := textinput.New()
-	ti.Placeholder = FilterPlaceholder
-	ti.Prompt = "/"
-	ti.CharLimit = 50
-
-	selected := make(map[string]bool)
+	initialSelected := make([]string, 0)
 	for _, sel := range config.Global().Selections() {
-		selected[sel.ID()] = true
+		initialSelected = append(initialSelected, sel.ID())
 	}
 
-	return &ProfileSelector{
-		ctx:         ctx,
-		selected:    selected,
-		filterInput: ti,
-		styles:      newProfileSelectorStyles(),
+	p := &ProfileSelector{
+		ctx:      ctx,
+		selector: NewMultiSelector[profileItem]("Select Profiles", initialSelected),
+		ssoStyle: lipgloss.NewStyle().Foreground(ui.Current().Secondary),
 	}
+
+	p.selector.SetRenderExtra(func(item profileItem) string {
+		if item.isSSO {
+			return p.ssoStyle.Render("[SSO]")
+		}
+		return ""
+	})
+
+	return p
 }
 
 func (p *ProfileSelector) Init() tea.Cmd {
@@ -108,8 +79,8 @@ type ssoResultMsg struct {
 
 func (p *ProfileSelector) loadProfiles() tea.Msg {
 	profiles := []profileItem{
-		{ID: config.ProfileIDSDKDefault, DisplayName: config.SDKDefault().DisplayName()},
-		{ID: config.ProfileIDEnvOnly, DisplayName: config.EnvOnly().DisplayName()},
+		{id: config.ProfileIDSDKDefault, display: config.SDKDefault().DisplayName()},
+		{id: config.ProfileIDEnvOnly, display: config.EnvOnly().DisplayName()},
 	}
 
 	loaded, err := loadProfilesWithSSO()
@@ -149,8 +120,8 @@ func loadProfilesWithSSO() ([]profileItem, error) {
 			}
 
 			var profileName string
-			if strings.HasPrefix(name, "profile ") {
-				profileName = strings.TrimPrefix(name, "profile ")
+			if after, found := strings.CutPrefix(name, "profile "); found {
+				profileName = after
 			} else if name == "default" {
 				profileName = "default"
 			} else {
@@ -199,9 +170,9 @@ func loadProfilesWithSSO() ([]profileItem, error) {
 	for _, name := range names {
 		data := profileMap[name]
 		items = append(items, profileItem{
-			ID:          name,
-			DisplayName: name,
-			IsSSO:       data.isSSO,
+			id:      name,
+			display: name,
+			isSSO:   data.isSSO,
 		})
 	}
 	return items, nil
@@ -211,159 +182,70 @@ func (p *ProfileSelector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case profilesLoadedMsg:
 		p.profiles = msg.profiles
-		p.applyFilter()
-		p.clampCursor()
-		for i, profile := range p.filtered {
-			if p.selected[profile.ID] {
-				p.cursor = i
-				break
-			}
-		}
-		p.updateViewport()
+		p.selector.SetItems(p.profiles)
 		return p, nil
 
 	case ssoResultMsg:
 		p.ssoResult = &msg
 		if msg.success {
-			p.selected[msg.profileID] = true
-			p.updateViewport()
+			p.selector.Selected()[msg.profileID] = true
+			p.selector.ClearResult()
 		}
+		p.updateExtraHeight()
 		return p, nil
 
 	case consoleLoginResultMsg:
 		p.ssoResult = &ssoResultMsg{profileID: msg.profileID, success: msg.success, err: msg.err}
 		if msg.success {
-			p.selected[msg.profileID] = true
-			p.updateViewport()
+			p.selector.Selected()[msg.profileID] = true
+			p.selector.ClearResult()
 		}
-		return p, nil
-
-	case tea.MouseWheelMsg:
-		var cmd tea.Cmd
-		p.viewport, cmd = p.viewport.Update(msg)
-		return p, cmd
-
-	case tea.MouseMotionMsg:
-		if idx := p.getItemAtPosition(msg.Y); idx >= 0 && idx != p.cursor {
-			p.cursor = idx
-			p.updateViewport()
-		}
-		return p, nil
-
-	case tea.MouseClickMsg:
-		if msg.Button == tea.MouseLeft {
-			if idx := p.getItemAtPosition(msg.Y); idx >= 0 {
-				p.cursor = idx
-				p.toggleCurrent()
-				p.updateViewport()
-			}
-		}
+		p.updateExtraHeight()
 		return p, nil
 
 	case tea.KeyPressMsg:
-		if p.filterActive {
+		if !p.selector.FilterActive() {
 			switch msg.String() {
-			case "esc":
-				p.filterActive = false
-				p.filterInput.Blur()
-				return p, nil
-			case "enter":
-				p.filterActive = false
-				p.filterInput.Blur()
-				p.filterText = p.filterInput.Value()
-				p.applyFilter()
-				p.clampCursor()
-				p.updateViewport()
-				return p, nil
-			default:
-				var cmd tea.Cmd
-				p.filterInput, cmd = p.filterInput.Update(msg)
-				p.filterText = p.filterInput.Value()
-				p.applyFilter()
-				p.clampCursor()
-				p.updateViewport()
-				return p, cmd
-			}
-		}
-
-		switch msg.String() {
-		case "/":
-			p.filterActive = true
-			p.filterInput.Focus()
-			return p, textinput.Blink
-		case "c":
-			p.filterText = ""
-			p.filterInput.SetValue("")
-			p.ssoResult = nil
-			p.applyFilter()
-			p.clampCursor()
-			p.updateViewport()
-			return p, nil
-		case "up", "k":
-			if p.cursor > 0 {
-				p.cursor--
+			case "up", "k", "down", "j":
 				p.ssoResult = nil
-				p.updateViewport()
-			}
-			return p, nil
-		case "down", "j":
-			if p.cursor < len(p.filtered)-1 {
-				p.cursor++
+				p.updateExtraHeight()
+			case "c":
 				p.ssoResult = nil
-				p.updateViewport()
+				p.updateExtraHeight()
+			case "l":
+				return p.ssoLoginCurrentProfile()
+			case "L":
+				return p.consoleLoginCurrentProfile()
 			}
-			return p, nil
-		case "space":
-			p.toggleCurrent()
-			p.updateViewport()
-			return p, nil
-		case "a":
-			for _, profile := range p.filtered {
-				p.selected[profile.ID] = true
-			}
-			p.updateViewport()
-			return p, nil
-		case "n":
-			for _, profile := range p.filtered {
-				delete(p.selected, profile.ID)
-			}
-			p.updateViewport()
-			return p, nil
-		case "enter":
-			return p.applySelection()
-		case "l":
-			return p.ssoLoginCurrentProfile()
-		case "L":
-			return p.consoleLoginCurrentProfile()
 		}
 	}
 
-	var cmd tea.Cmd
-	p.viewport, cmd = p.viewport.Update(msg)
+	cmd, result := p.selector.HandleUpdate(msg)
+	if result == KeyApply {
+		return p.applySelection()
+	}
 	return p, cmd
 }
 
-func (p *ProfileSelector) toggleCurrent() {
-	if p.cursor >= 0 && p.cursor < len(p.filtered) {
-		profile := p.filtered[p.cursor]
-		if p.selected[profile.ID] {
-			delete(p.selected, profile.ID)
-		} else {
-			p.selected[profile.ID] = true
-		}
+func (p *ProfileSelector) updateExtraHeight() {
+	if p.ssoResult != nil {
+		p.selector.SetExtraHeight(1)
+	} else {
+		p.selector.SetExtraHeight(0)
 	}
 }
 
 func (p *ProfileSelector) applySelection() (tea.Model, tea.Cmd) {
-	var selections []config.ProfileSelection
-	for _, profile := range p.profiles {
-		if p.selected[profile.ID] {
-			selections = append(selections, config.ProfileSelectionFromID(profile.ID))
-		}
-	}
-	if len(selections) == 0 {
+	selected := p.selector.SelectedItems()
+	if len(selected) == 0 {
 		return p, nil
 	}
+
+	selections := make([]config.ProfileSelection, len(selected))
+	for i, item := range selected {
+		selections[i] = config.ProfileSelectionFromID(item.id)
+	}
+
 	config.Global().SetSelections(selections)
 	return p, func() tea.Msg {
 		return navmsg.ProfilesChangedMsg{Selections: selections}
@@ -371,38 +253,42 @@ func (p *ProfileSelector) applySelection() (tea.Model, tea.Cmd) {
 }
 
 func (p *ProfileSelector) ssoLoginCurrentProfile() (tea.Model, tea.Cmd) {
-	if p.cursor < 0 || p.cursor >= len(p.filtered) {
+	profile, ok := p.selector.CurrentItem()
+	if !ok {
 		return p, nil
 	}
-	profile := p.filtered[p.cursor]
-	if !profile.IsSSO {
+
+	if !profile.isSSO {
 		p.ssoResult = &ssoResultMsg{
-			profileID: profile.ID,
+			profileID: profile.id,
 			success:   false,
 			err:       errors.New("not an SSO profile"),
 		}
+		p.updateExtraHeight()
 		return p, nil
 	}
 
 	if config.Global().ReadOnly() && !action.IsExecAllowedInReadOnly(action.ActionNameSSOLogin) {
 		p.ssoResult = &ssoResultMsg{
-			profileID: profile.ID,
+			profileID: profile.id,
 			success:   false,
 			err:       errors.New("SSO login denied in read-only mode"),
 		}
+		p.updateExtraHeight()
 		return p, nil
 	}
 
 	if _, err := exec.LookPath("aws"); err != nil {
 		p.ssoResult = &ssoResultMsg{
-			profileID: profile.ID,
+			profileID: profile.id,
 			success:   false,
 			err:       errors.New("aws cli not found in PATH"),
 		}
+		p.updateExtraHeight()
 		return p, nil
 	}
 
-	profileID := profile.ID
+	profileID := profile.id
 	return p, tea.Exec(&ssoLoginCmd{profileName: profileID}, func(err error) tea.Msg {
 		if err != nil {
 			return ssoResultMsg{profileID: profileID, success: false, err: err}
@@ -437,45 +323,48 @@ type consoleLoginResultMsg struct {
 }
 
 func (p *ProfileSelector) consoleLoginCurrentProfile() (tea.Model, tea.Cmd) {
-	if p.cursor < 0 || p.cursor >= len(p.filtered) {
+	profile, ok := p.selector.CurrentItem()
+	if !ok {
 		return p, nil
 	}
-	profile := p.filtered[p.cursor]
 
-	if profile.ID == config.ProfileIDSDKDefault || profile.ID == config.ProfileIDEnvOnly {
+	if profile.id == config.ProfileIDSDKDefault || profile.id == config.ProfileIDEnvOnly {
 		p.ssoResult = &ssoResultMsg{
-			profileID: profile.ID,
+			profileID: profile.id,
 			success:   false,
 			err:       errors.New("console login requires a named profile"),
 		}
+		p.updateExtraHeight()
 		return p, nil
 	}
 
 	if config.Global().ReadOnly() && !action.IsExecAllowedInReadOnly(action.ActionNameLogin) {
 		p.ssoResult = &ssoResultMsg{
-			profileID: profile.ID,
+			profileID: profile.id,
 			success:   false,
 			err:       errors.New("console login denied in read-only mode"),
 		}
+		p.updateExtraHeight()
 		return p, nil
 	}
 
 	if _, err := exec.LookPath("aws"); err != nil {
 		p.ssoResult = &ssoResultMsg{
-			profileID: profile.ID,
+			profileID: profile.id,
 			success:   false,
 			err:       errors.New("aws cli not found in PATH"),
 		}
+		p.updateExtraHeight()
 		return p, nil
 	}
 
-	profileID := profile.ID
-	exec := &action.SimpleExec{
+	profileID := profile.id
+	execCmd := &action.SimpleExec{
 		Command:    "aws login --remote --profile " + profileID,
 		ActionName: action.ActionNameLogin,
 		SkipAWSEnv: true,
 	}
-	return p, tea.Exec(exec, func(err error) tea.Msg {
+	return p, tea.Exec(execCmd, func(err error) tea.Msg {
 		if err != nil {
 			return consoleLoginResultMsg{profileID: profileID, success: false, err: err}
 		}
@@ -485,112 +374,8 @@ func (p *ProfileSelector) consoleLoginCurrentProfile() (tea.Model, tea.Cmd) {
 	})
 }
 
-func (p *ProfileSelector) applyFilter() {
-	if p.filterText == "" {
-		p.filtered = p.profiles
-		return
-	}
-
-	filter := strings.ToLower(p.filterText)
-	p.filtered = nil
-	for _, profile := range p.profiles {
-		if strings.Contains(strings.ToLower(profile.DisplayName), filter) {
-			p.filtered = append(p.filtered, profile)
-		}
-	}
-}
-
-func (p *ProfileSelector) clampCursor() {
-	if len(p.filtered) == 0 {
-		p.cursor = -1
-	} else if p.cursor >= len(p.filtered) {
-		p.cursor = len(p.filtered) - 1
-	} else if p.cursor < 0 {
-		p.cursor = 0
-	}
-}
-
-func (p *ProfileSelector) updateViewport() {
-	if !p.ready {
-		return
-	}
-	p.viewport.SetContent(p.renderContent())
-
-	if p.cursor >= 0 {
-		viewportHeight := p.viewport.Height()
-		if viewportHeight > 0 {
-			if p.cursor < p.viewport.YOffset() {
-				p.viewport.SetYOffset(p.cursor)
-			} else if p.cursor >= p.viewport.YOffset()+viewportHeight {
-				p.viewport.SetYOffset(p.cursor - viewportHeight + 1)
-			}
-		}
-	}
-}
-
-func (p *ProfileSelector) renderContent() string {
-	var b strings.Builder
-
-	for i, profile := range p.filtered {
-		style := p.styles.item
-		isChecked := p.selected[profile.ID]
-
-		if i == p.cursor {
-			style = p.styles.itemSelected
-		} else if isChecked {
-			style = p.styles.itemChecked
-		}
-
-		checkbox := "☐ "
-		if isChecked {
-			checkbox = "☑ "
-		}
-
-		line := checkbox + profile.DisplayName
-		if profile.IsSSO {
-			line += " " + p.styles.itemSSO.Render("[SSO]")
-		}
-
-		b.WriteString(style.Render(line))
-		b.WriteString("\n")
-	}
-
-	return b.String()
-}
-
-func (p *ProfileSelector) getItemAtPosition(y int) int {
-	if !p.ready {
-		return -1
-	}
-	headerHeight := 1
-	if p.filterActive || p.filterText != "" {
-		headerHeight++
-	}
-
-	contentY := y - headerHeight + p.viewport.YOffset()
-	if contentY >= 0 && contentY < len(p.filtered) {
-		return contentY
-	}
-	return -1
-}
-
 func (p *ProfileSelector) ViewString() string {
-	s := p.styles
-
-	title := s.title.Render("Select Profiles")
-
-	var filterView string
-	if p.filterActive {
-		filterView = p.styles.filter.Render(p.filterInput.View()) + "\n"
-	} else if p.filterText != "" {
-		filterView = p.styles.filter.Render("filter: "+p.filterText) + "\n"
-	}
-
-	if !p.ready {
-		return title + "\n" + filterView + "Loading..."
-	}
-
-	content := title + "\n" + filterView + p.viewport.View()
+	content := p.selector.ViewString()
 
 	if p.ssoResult != nil {
 		content += "\n"
@@ -609,41 +394,23 @@ func (p *ProfileSelector) View() tea.View {
 }
 
 func (p *ProfileSelector) SetSize(width, height int) tea.Cmd {
-	p.width = width
-	p.height = height
-
-	viewportHeight := height - 2
-	if p.filterActive || p.filterText != "" {
-		viewportHeight--
-	}
-	if p.ssoResult != nil {
-		viewportHeight--
-	}
-
-	if !p.ready {
-		p.viewport = viewport.New(viewport.WithWidth(width), viewport.WithHeight(viewportHeight))
-		p.ready = true
-	} else {
-		p.viewport.SetWidth(width)
-		p.viewport.SetHeight(viewportHeight)
-	}
-	p.updateViewport()
+	p.updateExtraHeight()
+	p.selector.SetSize(width, height)
 	return nil
 }
 
 func (p *ProfileSelector) StatusLine() string {
-	count := len(p.selected)
-	if p.filterActive {
+	count := p.selector.SelectedCount()
+	if p.selector.FilterActive() {
 		return "Type to filter • Enter confirm • Esc cancel"
 	}
 
 	var loginHints string
-	if p.cursor >= 0 && p.cursor < len(p.filtered) {
-		profile := p.filtered[p.cursor]
-		if profile.IsSSO {
+	if profile, ok := p.selector.CurrentItem(); ok {
+		if profile.isSSO {
 			loginHints = " • l:SSO"
 		}
-		if profile.ID != config.ProfileIDSDKDefault && profile.ID != config.ProfileIDEnvOnly {
+		if profile.id != config.ProfileIDSDKDefault && profile.id != config.ProfileIDEnvOnly {
 			loginHints += " • L:console"
 		}
 	}
@@ -652,5 +419,5 @@ func (p *ProfileSelector) StatusLine() string {
 }
 
 func (p *ProfileSelector) HasActiveInput() bool {
-	return p.filterActive
+	return p.selector.FilterActive()
 }

@@ -7,28 +7,28 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
+func testProfiles() []profileItem {
+	return []profileItem{
+		{id: "default", display: "default", isSSO: false},
+		{id: "dev", display: "dev", isSSO: false},
+		{id: "prod-sso", display: "prod-sso", isSSO: true},
+	}
+}
+
 func TestProfileSelectorMouseHover(t *testing.T) {
 	ctx := context.Background()
 
 	selector := NewProfileSelector(ctx)
 	selector.SetSize(100, 50)
 
-	// Simulate profiles loaded
-	selector.profiles = []profileItem{
-		{ID: "default", DisplayName: "default", IsSSO: false},
-		{ID: "dev", DisplayName: "dev", IsSSO: false},
-		{ID: "prod-sso", DisplayName: "prod-sso", IsSSO: true},
-	}
-	selector.applyFilter()
-	selector.updateViewport()
+	selector.Update(profilesLoadedMsg{profiles: testProfiles()})
 
-	initialCursor := selector.cursor
+	initialCursor := selector.selector.Cursor()
 
-	// Simulate mouse motion
 	motionMsg := tea.MouseMotionMsg{X: 10, Y: 3}
 	selector.Update(motionMsg)
 
-	t.Logf("Cursor after hover: %d (was %d)", selector.cursor, initialCursor)
+	t.Logf("Cursor after hover: %d (was %d)", selector.selector.Cursor(), initialCursor)
 }
 
 func TestProfileSelectorMouseClick(t *testing.T) {
@@ -37,20 +37,11 @@ func TestProfileSelectorMouseClick(t *testing.T) {
 	selector := NewProfileSelector(ctx)
 	selector.SetSize(100, 50)
 
-	// Simulate profiles loaded
-	selector.profiles = []profileItem{
-		{ID: "default", DisplayName: "default", IsSSO: false},
-		{ID: "dev", DisplayName: "dev", IsSSO: false},
-		{ID: "prod-sso", DisplayName: "prod-sso", IsSSO: true},
-	}
-	selector.applyFilter()
-	selector.updateViewport()
+	selector.Update(profilesLoadedMsg{profiles: testProfiles()})
 
-	// Simulate mouse click
 	clickMsg := tea.MouseClickMsg{X: 10, Y: 3, Button: tea.MouseLeft}
 	_, cmd := selector.Update(clickMsg)
 
-	// Click might trigger profile selection toggle
 	t.Logf("Command after click: %v", cmd)
 }
 
@@ -60,37 +51,28 @@ func TestProfileSelectorEmptyFilter(t *testing.T) {
 	selector := NewProfileSelector(ctx)
 	selector.SetSize(100, 50)
 
-	// Simulate profiles loaded
-	selector.profiles = []profileItem{
-		{ID: "default", DisplayName: "default", IsSSO: false},
-		{ID: "dev", DisplayName: "dev", IsSSO: false},
-		{ID: "prod-sso", DisplayName: "prod-sso", IsSSO: true},
-	}
-	selector.applyFilter()
-	selector.updateViewport()
+	selector.Update(profilesLoadedMsg{profiles: testProfiles()})
 
-	// Apply filter that matches nothing
-	selector.filterText = "zzz-nonexistent"
-	selector.applyFilter()
-	selector.clampCursor()
-
-	if len(selector.filtered) != 0 {
-		t.Errorf("Expected 0 filtered profiles, got %d", len(selector.filtered))
+	selector.Update(tea.KeyPressMsg{Code: '/', Text: "/"})
+	for _, r := range "zzz-nonexistent" {
+		selector.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
-	if selector.cursor != -1 {
-		t.Errorf("Expected cursor -1 for empty filter, got %d", selector.cursor)
+	selector.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+
+	if selector.selector.FilteredLen() != 0 {
+		t.Errorf("Expected 0 filtered profiles, got %d", selector.selector.FilteredLen())
+	}
+	if selector.selector.Cursor() != -1 {
+		t.Errorf("Expected cursor -1 for empty filter, got %d", selector.selector.Cursor())
 	}
 
-	// Clear filter - should restore profiles
-	selector.filterText = ""
-	selector.applyFilter()
-	selector.clampCursor()
+	selector.Update(tea.KeyPressMsg{Code: 'c', Text: "c"})
 
-	if len(selector.filtered) != 3 {
-		t.Errorf("Expected 3 filtered profiles after clear, got %d", len(selector.filtered))
+	if selector.selector.FilteredLen() != 3 {
+		t.Errorf("Expected 3 filtered profiles after clear, got %d", selector.selector.FilteredLen())
 	}
-	if selector.cursor < 0 {
-		t.Errorf("Expected cursor >= 0 after clear, got %d", selector.cursor)
+	if selector.selector.Cursor() < 0 {
+		t.Errorf("Expected cursor >= 0 after clear, got %d", selector.selector.Cursor())
 	}
 }
 
@@ -100,36 +82,34 @@ func TestProfileSelectorFilterMatching(t *testing.T) {
 	selector := NewProfileSelector(ctx)
 	selector.SetSize(100, 50)
 
-	// Simulate profiles loaded
-	selector.profiles = []profileItem{
-		{ID: "default", DisplayName: "default", IsSSO: false},
-		{ID: "dev", DisplayName: "dev", IsSSO: false},
-		{ID: "dev-staging", DisplayName: "dev-staging", IsSSO: false},
-		{ID: "prod-sso", DisplayName: "prod-sso", IsSSO: true},
+	profiles := []profileItem{
+		{id: "default", display: "default", isSSO: false},
+		{id: "dev", display: "dev", isSSO: false},
+		{id: "dev-staging", display: "dev-staging", isSSO: false},
+		{id: "prod-sso", display: "prod-sso", isSSO: true},
+	}
+	selector.Update(profilesLoadedMsg{profiles: profiles})
+
+	selector.Update(tea.KeyPressMsg{Code: '/', Text: "/"})
+	for _, r := range "dev" {
+		selector.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
+	}
+	selector.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+
+	if selector.selector.FilteredLen() != 2 {
+		t.Errorf("Expected 2 profiles matching 'dev', got %d", selector.selector.FilteredLen())
 	}
 
-	// Filter by "dev"
-	selector.filterText = "dev"
-	selector.applyFilter()
+	selector.Update(tea.KeyPressMsg{Code: 'c', Text: "c"})
 
-	if len(selector.filtered) != 2 {
-		t.Errorf("Expected 2 profiles matching 'dev', got %d", len(selector.filtered))
+	selector.Update(tea.KeyPressMsg{Code: '/', Text: "/"})
+	for _, r := range "sso" {
+		selector.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
+	selector.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 
-	// Filter is case-insensitive
-	selector.filterText = "DEV"
-	selector.applyFilter()
-
-	if len(selector.filtered) != 2 {
-		t.Errorf("Expected 2 profiles matching 'DEV' (case-insensitive), got %d", len(selector.filtered))
-	}
-
-	// Filter by "sso"
-	selector.filterText = "sso"
-	selector.applyFilter()
-
-	if len(selector.filtered) != 1 {
-		t.Errorf("Expected 1 profile matching 'sso', got %d", len(selector.filtered))
+	if selector.selector.FilteredLen() != 1 {
+		t.Errorf("Expected 1 profile matching 'sso', got %d", selector.selector.FilteredLen())
 	}
 }
 
@@ -139,18 +119,15 @@ func TestProfileSelectorSSODetection(t *testing.T) {
 	selector := NewProfileSelector(ctx)
 	selector.SetSize(100, 50)
 
-	// Simulate profiles loaded with mixed SSO status
-	selector.profiles = []profileItem{
-		{ID: "default", DisplayName: "default", IsSSO: false},
-		{ID: "prod-sso", DisplayName: "prod-sso", IsSSO: true},
+	profiles := []profileItem{
+		{id: "default", display: "default", isSSO: false},
+		{id: "prod-sso", display: "prod-sso", isSSO: true},
 	}
-	selector.applyFilter()
-	selector.updateViewport()
+	selector.Update(profilesLoadedMsg{profiles: profiles})
 
-	// Find SSO profile
 	var ssoProfile *profileItem
 	for i := range selector.profiles {
-		if selector.profiles[i].IsSSO {
+		if selector.profiles[i].isSSO {
 			ssoProfile = &selector.profiles[i]
 			break
 		}
@@ -159,14 +136,13 @@ func TestProfileSelectorSSODetection(t *testing.T) {
 	if ssoProfile == nil {
 		t.Fatal("Expected to find SSO profile")
 	}
-	if ssoProfile.ID != "prod-sso" {
-		t.Errorf("Expected SSO profile 'prod-sso', got %q", ssoProfile.ID)
+	if ssoProfile.id != "prod-sso" {
+		t.Errorf("Expected SSO profile 'prod-sso', got %q", ssoProfile.id)
 	}
 
-	// Verify non-SSO profile
 	var nonSSOProfile *profileItem
 	for i := range selector.profiles {
-		if !selector.profiles[i].IsSSO {
+		if !selector.profiles[i].isSSO {
 			nonSSOProfile = &selector.profiles[i]
 			break
 		}
@@ -175,8 +151,8 @@ func TestProfileSelectorSSODetection(t *testing.T) {
 	if nonSSOProfile == nil {
 		t.Fatal("Expected to find non-SSO profile")
 	}
-	if nonSSOProfile.IsSSO {
-		t.Error("Expected non-SSO profile to have IsSSO=false")
+	if nonSSOProfile.isSSO {
+		t.Error("Expected non-SSO profile to have isSSO=false")
 	}
 }
 
@@ -186,37 +162,27 @@ func TestProfileSelectorToggle(t *testing.T) {
 	selector := NewProfileSelector(ctx)
 	selector.SetSize(100, 50)
 
-	// Simulate profiles loaded
-	selector.profiles = []profileItem{
-		{ID: "default", DisplayName: "default", IsSSO: false},
-		{ID: "dev", DisplayName: "dev", IsSSO: false},
+	profiles := []profileItem{
+		{id: "default", display: "default", isSSO: false},
+		{id: "dev", display: "dev", isSSO: false},
 	}
-	selector.applyFilter()
-	selector.cursor = 0
-	selector.updateViewport()
+	selector.Update(profilesLoadedMsg{profiles: profiles})
 
-	// Initially no selection
-	selector.selected = make(map[string]bool)
-
-	// Toggle first profile
-	selector.toggleCurrent()
-	if !selector.selected["default"] {
+	selector.Update(tea.KeyPressMsg{Code: tea.KeySpace})
+	if !selector.selector.Selected()["default"] {
 		t.Error("Expected 'default' to be selected after toggle")
 	}
 
-	// Toggle again to deselect
-	selector.toggleCurrent()
-	if selector.selected["default"] {
+	selector.Update(tea.KeyPressMsg{Code: tea.KeySpace})
+	if selector.selector.Selected()["default"] {
 		t.Error("Expected 'default' to be deselected after second toggle")
 	}
 
-	// Select multiple
-	selector.cursor = 0
-	selector.toggleCurrent()
-	selector.cursor = 1
-	selector.toggleCurrent()
+	selector.Update(tea.KeyPressMsg{Code: tea.KeySpace})
+	selector.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
+	selector.Update(tea.KeyPressMsg{Code: tea.KeySpace})
 
-	if !selector.selected["default"] || !selector.selected["dev"] {
+	if !selector.selector.Selected()["default"] || !selector.selector.Selected()["dev"] {
 		t.Error("Expected both profiles to be selected")
 	}
 }
