@@ -4,18 +4,14 @@ import (
 	"context"
 	"errors"
 	"io"
-	"io/fs"
-	"os"
 	"os/exec"
-	"path/filepath"
-	"sort"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"gopkg.in/ini.v1"
 
 	"github.com/clawscli/claws/internal/action"
+	"github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/log"
 	navmsg "github.com/clawscli/claws/internal/msg"
@@ -84,99 +80,19 @@ func (p *ProfileSelector) loadProfiles() tea.Msg {
 		{id: config.ProfileIDEnvOnly, display: config.EnvOnly().DisplayName()},
 	}
 
-	loaded, err := loadProfilesWithSSO()
+	loaded, err := aws.LoadProfiles()
 	if err != nil {
 		log.Error("failed to load profiles", "error", err)
 	}
-	profiles = append(profiles, loaded...)
-
-	return profilesLoadedMsg{profiles: profiles}
-}
-
-func loadProfilesWithSSO() ([]profileItem, error) {
-	type profileData struct {
-		name  string
-		isSSO bool
-	}
-	profileMap := make(map[string]*profileData)
-
-	configPath := os.Getenv("AWS_CONFIG_FILE")
-	if configPath == "" {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return nil, err
-		}
-		configPath = filepath.Join(homeDir, ".aws", "config")
-	}
-
-	cfg, err := ini.Load(configPath)
-	if err != nil && !errors.Is(err, fs.ErrNotExist) {
-		log.Debug("failed to parse aws config", "path", configPath, "error", err)
-	}
-	if err == nil {
-		for _, section := range cfg.Sections() {
-			name := section.Name()
-			if name == "DEFAULT" {
-				continue
-			}
-
-			var profileName string
-			if after, found := strings.CutPrefix(name, "profile "); found {
-				profileName = after
-			} else if name == "default" {
-				profileName = "default"
-			} else {
-				continue
-			}
-
-			isSSO := section.Key("sso_start_url").String() != "" ||
-				section.Key("sso_session").String() != ""
-
-			profileMap[profileName] = &profileData{name: profileName, isSSO: isSSO}
-		}
-	}
-
-	credPath := os.Getenv("AWS_SHARED_CREDENTIALS_FILE")
-	if credPath == "" {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return nil, err
-		}
-		credPath = filepath.Join(homeDir, ".aws", "credentials")
-	}
-
-	creds, err := ini.Load(credPath)
-	if err != nil && !errors.Is(err, fs.ErrNotExist) {
-		log.Debug("failed to parse aws credentials", "path", credPath, "error", err)
-	}
-	if err == nil {
-		for _, section := range creds.Sections() {
-			name := section.Name()
-			if name == "DEFAULT" {
-				continue
-			}
-			if _, exists := profileMap[name]; !exists {
-				profileMap[name] = &profileData{name: name, isSSO: false}
-			}
-		}
-	}
-
-	names := make([]string, 0, len(profileMap))
-	for name := range profileMap {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-
-	items := make([]profileItem, 0, len(names))
-	for _, name := range names {
-		data := profileMap[name]
-		items = append(items, profileItem{
-			id:      name,
-			display: name,
-			isSSO:   data.isSSO,
+	for _, info := range loaded {
+		profiles = append(profiles, profileItem{
+			id:      info.Name,
+			display: info.Name,
+			isSSO:   info.IsSSO,
 		})
 	}
-	return items, nil
+
+	return profilesLoadedMsg{profiles: profiles}
 }
 
 func (p *ProfileSelector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {

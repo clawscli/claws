@@ -39,8 +39,6 @@ type MultiSelector[T SelectorItem] struct {
 	title    string
 	items    []T
 	cursor   int
-	width    int
-	height   int
 	selected map[string]bool
 
 	viewport viewport.Model
@@ -364,9 +362,6 @@ func (m *MultiSelector[T]) ViewString() string {
 }
 
 func (m *MultiSelector[T]) SetSize(width, height int) {
-	m.width = width
-	m.height = height
-
 	viewportHeight := height - 2 - m.extraHeight
 	if m.filterActive || m.filterText != "" {
 		viewportHeight--
