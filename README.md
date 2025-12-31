@@ -162,7 +162,7 @@ claws -l debug.log
 | `P` | Select AWS profile(s) (multi-select supported) |
 | `?` | Show help |
 | `Esc` | Go back |
-| `Ctrl+c` | Quit |
+| `q` / `Ctrl+c` | Quit |
 
 ### Mouse Support
 
@@ -219,6 +219,7 @@ Selected profiles are queried in parallel; resources display with Profile and Ac
 
 | Command | Action |
 |---------|--------|
+| `:q` / `:quit` | Quit |
 | `:login [name]` | AWS console login (default: `claws-login` profile) |
 | `:ec2/instances` | Navigate to EC2 instances |
 | `:sort <col>` | Sort by column |

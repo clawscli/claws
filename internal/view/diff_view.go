@@ -68,7 +68,7 @@ func (d *DiffView) Init() tea.Cmd {
 func (d *DiffView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
-		if IsEscKey(msg) || msg.String() == "q" {
+		if IsEscKey(msg) {
 			return d, nil // Let app handle back navigation
 		}
 	}

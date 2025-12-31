@@ -217,6 +217,11 @@ func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 		return nil, &NavigateMsg{View: dashboard, ClearStack: true}
 	}
 
+	// Handle quit command
+	if input == "q" || input == "quit" {
+		return tea.Quit, nil
+	}
+
 	// Handle services/browse command - go to service browser
 	if input == "services" || input == "browse" {
 		browser := NewServiceBrowser(c.ctx, c.registry)
@@ -419,6 +424,9 @@ func (c *CommandInput) GetSuggestions() []string {
 	} else {
 		// Suggest services and special commands
 		// Add navigation commands
+		if strings.HasPrefix("quit", input) {
+			suggestions = append(suggestions, "quit")
+		}
 		if strings.HasPrefix("home", input) {
 			suggestions = append(suggestions, "home")
 		}
