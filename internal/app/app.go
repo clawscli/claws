@@ -162,10 +162,9 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.commandInput.SetWidth(msg.Width)
 		// Update cached styles with new width
 		a.styles = newAppStyles(msg.Width)
-		// Mark warnings as ready to be dismissed after first window size (terminal init complete)
-		if !a.warningsReady {
-			a.warningsReady = true
-		}
+		// Mark warnings ready after first WindowSizeMsg (terminal initialized).
+		// Safe to set unconditionally - only affects dismissal when showWarnings is true.
+		a.warningsReady = true
 		if a.currentView != nil {
 			return a, a.currentView.SetSize(msg.Width, msg.Height-2)
 		}

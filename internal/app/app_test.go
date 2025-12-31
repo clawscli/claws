@@ -301,3 +301,31 @@ func TestModalNavigateClosesModal(t *testing.T) {
 		t.Errorf("Expected viewStack length 1, got %d", len(app.viewStack))
 	}
 }
+
+func TestWarningScreenDismissal(t *testing.T) {
+	tests := []struct {
+		name string
+		key  tea.KeyPressMsg
+	}{
+		{"enter", tea.KeyPressMsg{Code: tea.KeyEnter}},
+		{"space", tea.KeyPressMsg{Code: tea.KeySpace}},
+		{"q", tea.KeyPressMsg{Code: 0, Text: "q"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			reg := registry.New()
+
+			app := New(ctx, reg)
+			app.showWarnings = true
+			app.warningsReady = true
+
+			app.Update(tt.key)
+
+			if app.showWarnings {
+				t.Errorf("Expected showWarnings=false after %s key", tt.name)
+			}
+		})
+	}
+}

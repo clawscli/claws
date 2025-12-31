@@ -160,6 +160,36 @@ func TestCommandInput_Update_Enter_Service(t *testing.T) {
 	}
 }
 
+func TestCommandInput_QuitCommand(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	tests := []struct {
+		input    string
+		wantQuit bool
+	}{
+		{"q", true},
+		{"quit", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			ci := NewCommandInput(ctx, reg)
+			ci.Activate()
+			ci.textInput.SetValue(tt.input)
+
+			cmd, nav := ci.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+
+			if cmd == nil {
+				t.Error("Expected tea.Quit command")
+			}
+			if nav != nil {
+				t.Error("Expected nil NavigateMsg for quit")
+			}
+		})
+	}
+}
+
 // mockDiffProvider for testing getDiffSuggestions
 type mockDiffProvider struct {
 	names      []string
