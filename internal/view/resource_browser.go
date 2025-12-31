@@ -162,7 +162,7 @@ func NewResourceBrowserWithAutoReload(ctx context.Context, reg *registry.Registr
 
 func newResourceBrowser(ctx context.Context, reg *registry.Registry, service, resourceType string) *ResourceBrowser {
 	ti := textinput.New()
-	ti.Placeholder = "filter..."
+	ti.Placeholder = FilterPlaceholder
 	ti.Prompt = "/"
 	ti.CharLimit = 50
 

@@ -16,6 +16,9 @@ import (
 // DefaultAutoReloadInterval is the default interval for auto-reload
 const DefaultAutoReloadInterval = 3 * time.Second
 
+// FilterPlaceholder is the placeholder text for filter inputs
+const FilterPlaceholder = "filter..."
+
 // View is the interface for all views in the application
 type View interface {
 	tea.Model

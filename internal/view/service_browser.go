@@ -138,7 +138,7 @@ func (i serviceItem) filterValue() string {
 // NewServiceBrowser creates a new ServiceBrowser
 func NewServiceBrowser(ctx context.Context, reg *registry.Registry) *ServiceBrowser {
 	ti := textinput.New()
-	ti.Placeholder = "filter..."
+	ti.Placeholder = FilterPlaceholder
 	ti.Prompt = "/"
 	ti.CharLimit = 30
 

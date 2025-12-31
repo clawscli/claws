@@ -62,7 +62,7 @@ type TagSearchView struct {
 
 func NewTagSearchView(ctx context.Context, reg *registry.Registry, tagFilter string) *TagSearchView {
 	ti := textinput.New()
-	ti.Placeholder = "filter..."
+	ti.Placeholder = FilterPlaceholder
 	ti.Prompt = "/"
 	ti.CharLimit = 100
 

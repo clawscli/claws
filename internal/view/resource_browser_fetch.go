@@ -45,102 +45,43 @@ func (r *ResourceBrowser) listResources(d dao.DAO) listResourcesResult {
 	return r.listResourcesWithContext(r.ctx, d)
 }
 
-type multiRegionFetchResult struct {
-	resources  []dao.Resource
-	errors     []string
-	pageTokens map[string]string
-}
-
 type profileRegionKey struct {
 	Profile string
 	Region  string
 }
 
-type multiFetchResult struct {
-	resources  []dao.Resource
-	errors     []string
-	pageTokens map[profileRegionKey]string
+type parallelFetchItem[K comparable] struct {
+	key       K
+	resources []dao.Resource
+	nextToken string
+	err       error
 }
 
-func (r *ResourceBrowser) fetchMultiProfileResources(profiles []config.ProfileSelection, regions []string, existingTokens map[profileRegionKey]string) multiFetchResult {
-	type fetchResult struct {
-		key       profileRegionKey
-		resources []dao.Resource
-		nextToken string
-		err       error
-	}
+type parallelFetchResult[K comparable] struct {
+	resources  []dao.Resource
+	errors     []string
+	pageTokens map[K]string
+}
 
-	ctx, cancel := context.WithTimeout(r.ctx, multiRegionFetchTimeout)
+func fetchParallel[K comparable](
+	ctx context.Context,
+	keys []K,
+	fetch func(context.Context, K) ([]dao.Resource, string, error),
+	formatError func(K, error) string,
+) parallelFetchResult[K] {
+	ctx, cancel := context.WithTimeout(ctx, multiRegionFetchTimeout)
 	defer cancel()
 
-	var pairs []profileRegionKey
-	for _, sel := range profiles {
-		for _, region := range regions {
-			pairs = append(pairs, profileRegionKey{Profile: sel.ID(), Region: region})
-		}
-	}
-
-	results := make(chan fetchResult, len(pairs))
+	results := make(chan parallelFetchItem[K], len(keys))
 	var wg sync.WaitGroup
 
-	for _, pair := range pairs {
+	for _, key := range keys {
 		wg.Add(1)
-		go func(key profileRegionKey) {
+		go func(k K) {
 			defer wg.Done()
-
-			var sel config.ProfileSelection
-			for _, s := range profiles {
-				if s.ID() == key.Profile {
-					sel = s
-					break
-				}
-			}
-
-			fetchCtx := aws.WithSelectionOverride(ctx, sel)
-			fetchCtx = aws.WithRegionOverride(fetchCtx, key.Region)
-
-			accountID := config.Global().GetAccountIDForProfile(key.Profile)
-			if accountID == "" {
-				if id := aws.FetchAccountIDForContext(fetchCtx); id != "" {
-					config.Global().SetAccountIDForProfile(key.Profile, id)
-					accountID = id
-				}
-			}
-
-			d, err := r.registry.GetDAO(fetchCtx, r.service, r.resourceType)
-			if err != nil {
-				results <- fetchResult{key: key, err: err}
-				return
-			}
-
-			var listResult listResourcesResult
-			if pagDAO, ok := d.(dao.PaginatedDAO); ok {
-				token := ""
-				if existingTokens != nil {
-					token = existingTokens[key]
-				}
-				listCtx := fetchCtx
-				if r.fieldFilter != "" && r.fieldFilterValue != "" {
-					listCtx = dao.WithFilter(fetchCtx, r.fieldFilter, r.fieldFilterValue)
-				}
-				resources, nextToken, err := pagDAO.ListPage(listCtx, r.pageSize, token)
-				listResult = listResourcesResult{resources: resources, nextToken: nextToken, err: err}
-			} else {
-				listResult = r.listResourcesWithContext(fetchCtx, d)
-			}
-
-			if listResult.err != nil {
-				results <- fetchResult{key: key, err: listResult.err}
-				return
-			}
-
-			wrapped := make([]dao.Resource, len(listResult.resources))
-			for i, res := range listResult.resources {
-				wrapped[i] = dao.WrapWithProfile(res, key.Profile, accountID, key.Region)
-			}
-
-			results <- fetchResult{key: key, resources: wrapped, nextToken: listResult.nextToken}
-		}(pair)
+			resources, nextToken, err := fetch(ctx, k)
+			results <- parallelFetchItem[K]{key: k, resources: resources, nextToken: nextToken, err: err}
+		}(key)
 	}
 
 	go func() {
@@ -148,114 +89,120 @@ func (r *ResourceBrowser) fetchMultiProfileResources(profiles []config.ProfileSe
 		close(results)
 	}()
 
-	resultsByKey := make(map[profileRegionKey]fetchResult)
+	resultsByKey := make(map[K]parallelFetchItem[K])
 	for result := range results {
 		resultsByKey[result.key] = result
 	}
 
 	var allResources []dao.Resource
 	var errors []string
-	pageTokens := make(map[profileRegionKey]string)
-	for _, key := range pairs {
+	pageTokens := make(map[K]string)
+	for _, key := range keys {
 		result, ok := resultsByKey[key]
 		if !ok {
 			continue
 		}
 		if result.err != nil {
-			errors = append(errors, fmt.Sprintf("%s/%s: %v", result.key.Profile, result.key.Region, result.err))
-			log.Warn("failed to fetch", "profile", result.key.Profile, "region", result.key.Region, "error", result.err)
+			errors = append(errors, formatError(key, result.err))
 		} else {
 			allResources = append(allResources, result.resources...)
 			if result.nextToken != "" {
-				pageTokens[result.key] = result.nextToken
+				pageTokens[key] = result.nextToken
 			}
 		}
 	}
 
-	return multiFetchResult{resources: allResources, errors: errors, pageTokens: pageTokens}
+	return parallelFetchResult[K]{resources: allResources, errors: errors, pageTokens: pageTokens}
 }
 
-func (r *ResourceBrowser) fetchMultiRegionResources(regions []string, existingTokens map[string]string) multiRegionFetchResult {
-	type regionResult struct {
-		region    string
-		resources []dao.Resource
-		nextToken string
-		err       error
+func (r *ResourceBrowser) fetchMultiProfileResources(profiles []config.ProfileSelection, regions []string, existingTokens map[profileRegionKey]string) parallelFetchResult[profileRegionKey] {
+	profileMap := make(map[string]config.ProfileSelection, len(profiles))
+	for _, sel := range profiles {
+		profileMap[sel.ID()] = sel
 	}
 
-	ctx, cancel := context.WithTimeout(r.ctx, multiRegionFetchTimeout)
-	defer cancel()
-
-	results := make(chan regionResult, len(regions))
-	var wg sync.WaitGroup
-
-	for _, region := range regions {
-		wg.Add(1)
-		go func(region string) {
-			defer wg.Done()
-
-			regionCtx := aws.WithRegionOverride(ctx, region)
-			d, err := r.registry.GetDAO(regionCtx, r.service, r.resourceType)
-			if err != nil {
-				results <- regionResult{region: region, err: err}
-				return
-			}
-
-			var listResult listResourcesResult
-			if pagDAO, ok := d.(dao.PaginatedDAO); ok {
-				token := ""
-				if existingTokens != nil {
-					token = existingTokens[region]
-				}
-				listCtx := regionCtx
-				if r.fieldFilter != "" && r.fieldFilterValue != "" {
-					listCtx = dao.WithFilter(regionCtx, r.fieldFilter, r.fieldFilterValue)
-				}
-				resources, nextToken, err := pagDAO.ListPage(listCtx, r.pageSize, token)
-				listResult = listResourcesResult{resources: resources, nextToken: nextToken, err: err}
-			} else {
-				listResult = r.listResourcesWithContext(regionCtx, d)
-			}
-
-			if listResult.err != nil {
-				results <- regionResult{region: region, err: listResult.err}
-				return
-			}
-
-			results <- regionResult{region: region, resources: listResult.resources, nextToken: listResult.nextToken}
-		}(region)
-	}
-
-	go func() {
-		wg.Wait()
-		close(results)
-	}()
-
-	resultsByRegion := make(map[string]regionResult)
-	for result := range results {
-		resultsByRegion[result.region] = result
-	}
-
-	var allResources []dao.Resource
-	var errors []string
-	pageTokens := make(map[string]string)
-	for _, region := range regions {
-		result, ok := resultsByRegion[region]
-		if !ok {
-			continue
-		}
-		if result.err != nil {
-			errors = append(errors, fmt.Sprintf("%s: %v", result.region, result.err))
-			log.Warn("failed to fetch from region", "region", result.region, "error", result.err)
-		} else {
-			allResources = append(allResources, result.resources...)
-			if result.nextToken != "" {
-				pageTokens[result.region] = result.nextToken
-			}
+	var keys []profileRegionKey
+	for _, sel := range profiles {
+		for _, region := range regions {
+			keys = append(keys, profileRegionKey{Profile: sel.ID(), Region: region})
 		}
 	}
 
-	return multiRegionFetchResult{resources: allResources, errors: errors, pageTokens: pageTokens}
+	fetch := func(ctx context.Context, key profileRegionKey) ([]dao.Resource, string, error) {
+		sel := profileMap[key.Profile]
+		fetchCtx := aws.WithSelectionOverride(ctx, sel)
+		fetchCtx = aws.WithRegionOverride(fetchCtx, key.Region)
+
+		accountID := config.Global().GetAccountIDForProfile(key.Profile)
+		if accountID == "" {
+			if id := aws.FetchAccountIDForContext(fetchCtx); id != "" {
+				config.Global().SetAccountIDForProfile(key.Profile, id)
+				accountID = id
+			}
+		}
+
+		d, err := r.registry.GetDAO(fetchCtx, r.service, r.resourceType)
+		if err != nil {
+			return nil, "", err
+		}
+
+		listResult := r.fetchWithDAO(fetchCtx, d, existingTokens[key])
+		if listResult.err != nil {
+			return nil, "", listResult.err
+		}
+
+		wrapped := make([]dao.Resource, len(listResult.resources))
+		for i, res := range listResult.resources {
+			wrapped[i] = dao.WrapWithProfile(res, key.Profile, accountID, key.Region)
+		}
+		return wrapped, listResult.nextToken, nil
+	}
+
+	formatError := func(key profileRegionKey, err error) string {
+		log.Warn("failed to fetch", "profile", key.Profile, "region", key.Region, "error", err)
+		return fmt.Sprintf("%s/%s: %v", key.Profile, key.Region, err)
+	}
+
+	return fetchParallel(r.ctx, keys, fetch, formatError)
+}
+
+func (r *ResourceBrowser) fetchMultiRegionResources(regions []string, existingTokens map[string]string) parallelFetchResult[string] {
+	fetch := func(ctx context.Context, region string) ([]dao.Resource, string, error) {
+		regionCtx := aws.WithRegionOverride(ctx, region)
+		d, err := r.registry.GetDAO(regionCtx, r.service, r.resourceType)
+		if err != nil {
+			return nil, "", err
+		}
+
+		token := ""
+		if existingTokens != nil {
+			token = existingTokens[region]
+		}
+		listResult := r.fetchWithDAO(regionCtx, d, token)
+		if listResult.err != nil {
+			return nil, "", listResult.err
+		}
+		return listResult.resources, listResult.nextToken, nil
+	}
+
+	formatError := func(region string, err error) string {
+		log.Warn("failed to fetch from region", "region", region, "error", err)
+		return fmt.Sprintf("%s: %v", region, err)
+	}
+
+	return fetchParallel(r.ctx, regions, fetch, formatError)
+}
+
+func (r *ResourceBrowser) fetchWithDAO(ctx context.Context, d dao.DAO, token string) listResourcesResult {
+	if pagDAO, ok := d.(dao.PaginatedDAO); ok {
+		listCtx := ctx
+		if r.fieldFilter != "" && r.fieldFilterValue != "" {
+			listCtx = dao.WithFilter(ctx, r.fieldFilter, r.fieldFilterValue)
+		}
+		resources, nextToken, err := pagDAO.ListPage(listCtx, r.pageSize, token)
+		return listResourcesResult{resources: resources, nextToken: nextToken, err: err}
+	}
+	return r.listResourcesWithContext(ctx, d)
 }
 
 func (r *ResourceBrowser) loadResources() tea.Msg {
@@ -274,8 +221,6 @@ func (r *ResourceBrowser) loadResources() tea.Msg {
 		return resourcesErrorMsg{err: err}
 	}
 
-	// Local resources (e.g., profiles) don't depend on AWS credentials,
-	// so skip multi-profile fetching to avoid duplicates
 	if isMultiProfile && r.service != "local" {
 		fetchResult := r.fetchMultiProfileResources(profiles, regions, nil)
 		if len(fetchResult.resources) == 0 && len(fetchResult.errors) > 0 {

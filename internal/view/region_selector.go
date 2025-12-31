@@ -71,7 +71,7 @@ type RegionSelector struct {
 
 func NewRegionSelector(ctx context.Context) *RegionSelector {
 	ti := textinput.New()
-	ti.Placeholder = "filter..."
+	ti.Placeholder = FilterPlaceholder
 	ti.Prompt = "/"
 	ti.CharLimit = 50
 

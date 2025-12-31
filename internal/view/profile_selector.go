@@ -75,7 +75,7 @@ type ProfileSelector struct {
 
 func NewProfileSelector(ctx context.Context) *ProfileSelector {
 	ti := textinput.New()
-	ti.Placeholder = "filter..."
+	ti.Placeholder = FilterPlaceholder
 	ti.Prompt = "/"
 	ti.CharLimit = 50
 
@@ -116,9 +116,7 @@ func (p *ProfileSelector) loadProfiles() tea.Msg {
 	if err != nil {
 		log.Debug("failed to load profiles", "error", err)
 	}
-	for _, item := range loaded {
-		profiles = append(profiles, item)
-	}
+	profiles = append(profiles, loaded...)
 
 	return profilesLoadedMsg{profiles: profiles}
 }

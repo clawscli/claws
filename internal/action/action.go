@@ -169,8 +169,6 @@ var ReadOnlyAllowlist = map[string]bool{
 	"DetectStackDrift": true,
 	// InvokeFunctionDryRun: Validation mode, function is not actually invoked
 	"InvokeFunctionDryRun": true,
-	// SwitchProfile: Local config change only, no AWS resource modifications
-	"SwitchProfile": true,
 }
 
 // ReadOnlyExecAllowlist defines exec actions allowed in read-only mode.
