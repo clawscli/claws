@@ -26,6 +26,7 @@ A terminal UI for AWS resource management 👮
 - **Resource actions** - Start/stop instances, delete resources, tail logs
 - **Cross-resource navigation** - Jump from VPC to subnets, from Lambda to CloudWatch Logs
 - **Profile & region switching** - Switch AWS profiles (`P`) and regions (`R`) on the fly
+- **Multi-profile selection** - Select multiple profiles with `P`, parallel fetch across accounts
 - **Multi-region selection** - Select multiple regions with `R`, parallel fetch with aggregated results
 - **Command mode** - Quick navigation with `:ec2/instances` syntax
 - **Tag search** - Browse all tagged resources across regions with `:tags` command
@@ -158,7 +159,7 @@ claws -l debug.log
 | `M` | Toggle inline metrics (EC2, RDS, Lambda) |
 | `Ctrl+r` | Refresh (including metrics) |
 | `R` | Select AWS region(s) (multi-select supported) |
-| `P` | Switch AWS profile |
+| `P` | Select AWS profile(s) (multi-select supported) |
 | `?` | Show help |
 | `Esc` | Go back |
 | `Ctrl+c` | Quit |
@@ -199,6 +200,19 @@ claws -l debug.log
 | `Esc` | Cancel |
 
 Selected regions are queried in parallel; resources display with Region column.
+
+### Profile Selector (`P` key)
+
+| Key | Action |
+|-----|--------|
+| `j` / `k` | Navigate up/down |
+| `Space` | Toggle profile selection |
+| `l` | SSO login for selected profile |
+| `/` | Filter profiles |
+| `Enter` | Apply selection |
+| `Esc` | Cancel |
+
+Selected profiles are queried in parallel; resources display with Profile and Account columns.
 
 ### Commands
 
