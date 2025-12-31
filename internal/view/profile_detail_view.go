@@ -11,8 +11,6 @@ type ProfileDetailView struct {
 	profile      profileItem
 	info         aws.ProfileInfo
 	hasInfo      bool
-	width        int
-	height       int
 	contentCache string
 }
 
@@ -49,9 +47,7 @@ func (v *ProfileDetailView) ViewString() string {
 	return v.contentCache
 }
 
-func (v *ProfileDetailView) SetSize(width, height int) tea.Cmd {
-	v.width = width
-	v.height = height
+func (v *ProfileDetailView) SetSize(_, _ int) tea.Cmd {
 	return nil
 }
 

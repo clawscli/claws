@@ -2,7 +2,7 @@ package view
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"io"
 	"os/exec"
 	"strings"
@@ -30,18 +30,16 @@ func (p profileItem) GetID() string    { return p.id }
 func (p profileItem) GetLabel() string { return p.display }
 
 type ProfileSelector struct {
-	ctx         context.Context
 	selector    *MultiSelector[profileItem]
 	profiles    []profileItem
 	profileInfo map[string]aws.ProfileInfo
 
 	loginResult *loginResultMsg
-	ssoStyle    lipgloss.Style
 	typeStyle   lipgloss.Style
 	regionStyle lipgloss.Style
 }
 
-func NewProfileSelector(ctx context.Context) *ProfileSelector {
+func NewProfileSelector(_ context.Context) *ProfileSelector {
 	initialSelected := make([]string, 0)
 	for _, sel := range config.Global().Selections() {
 		initialSelected = append(initialSelected, sel.ID())
@@ -49,10 +47,8 @@ func NewProfileSelector(ctx context.Context) *ProfileSelector {
 
 	t := ui.Current()
 	p := &ProfileSelector{
-		ctx:         ctx,
 		selector:    NewMultiSelector[profileItem]("Select Profiles", initialSelected),
 		profileInfo: make(map[string]aws.ProfileInfo),
-		ssoStyle:    lipgloss.NewStyle().Foreground(t.Secondary),
 		typeStyle:   lipgloss.NewStyle().Foreground(t.TextDim),
 		regionStyle: lipgloss.NewStyle().Foreground(t.TextDim),
 	}
@@ -191,7 +187,7 @@ func (p *ProfileSelector) ssoLoginCurrentProfile() (tea.Model, tea.Cmd) {
 		p.loginResult = &loginResultMsg{
 			profileID: profile.id,
 			success:   false,
-			err:       errors.New("not an SSO profile"),
+			err:       fmt.Errorf("profile %q is not SSO", profile.id),
 		}
 		p.updateExtraHeight()
 		return p, nil
@@ -201,7 +197,7 @@ func (p *ProfileSelector) ssoLoginCurrentProfile() (tea.Model, tea.Cmd) {
 		p.loginResult = &loginResultMsg{
 			profileID: profile.id,
 			success:   false,
-			err:       errors.New("SSO login denied in read-only mode"),
+			err:       fmt.Errorf("SSO login denied: read-only mode"),
 		}
 		p.updateExtraHeight()
 		return p, nil
@@ -211,7 +207,7 @@ func (p *ProfileSelector) ssoLoginCurrentProfile() (tea.Model, tea.Cmd) {
 		p.loginResult = &loginResultMsg{
 			profileID: profile.id,
 			success:   false,
-			err:       errors.New("aws cli not found in PATH"),
+			err:       fmt.Errorf("aws CLI not found in PATH"),
 		}
 		p.updateExtraHeight()
 		return p, nil
@@ -255,7 +251,7 @@ func (p *ProfileSelector) consoleLoginCurrentProfile() (tea.Model, tea.Cmd) {
 		p.loginResult = &loginResultMsg{
 			profileID:      profile.id,
 			success:        false,
-			err:            errors.New("console login requires a named profile"),
+			err:            fmt.Errorf("console login requires named profile, got %q", profile.id),
 			isConsoleLogin: true,
 		}
 		p.updateExtraHeight()
@@ -266,7 +262,7 @@ func (p *ProfileSelector) consoleLoginCurrentProfile() (tea.Model, tea.Cmd) {
 		p.loginResult = &loginResultMsg{
 			profileID:      profile.id,
 			success:        false,
-			err:            errors.New("console login denied in read-only mode"),
+			err:            fmt.Errorf("console login denied: read-only mode"),
 			isConsoleLogin: true,
 		}
 		p.updateExtraHeight()
@@ -277,7 +273,7 @@ func (p *ProfileSelector) consoleLoginCurrentProfile() (tea.Model, tea.Cmd) {
 		p.loginResult = &loginResultMsg{
 			profileID:      profile.id,
 			success:        false,
-			err:            errors.New("aws cli not found in PATH"),
+			err:            fmt.Errorf("aws CLI not found in PATH"),
 			isConsoleLogin: true,
 		}
 		p.updateExtraHeight()
