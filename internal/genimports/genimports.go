@@ -97,7 +97,6 @@ var ServiceDisplayNames = map[string]string{
 	"kms":              "KMS",
 	"lambda":           "Lambda",
 	"licensemanager":   "License Manager",
-	"local":            "Local",
 	"macie":            "Macie",
 	"networkfirewall":  "Network Firewall",
 	"opensearch":       "OpenSearch",

@@ -86,7 +86,7 @@ type Action struct {
 	// PostExecFollowUp generates a tea.Msg after successful exec completion.
 	// Called by ActionMenu when an exec action returns success.
 	// If nil, no follow-up message is sent.
-	// Example: profile switch after SSO login returns msg.ProfileChangedMsg.
+	// Example: profile switch after SSO login returns msg.ProfilesChangedMsg.
 	PostExecFollowUp func(resource dao.Resource) any
 
 	// ConfirmToken returns the string the user must type to confirm dangerous actions.

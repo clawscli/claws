@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"charm.land/bubbles/v2/help"
@@ -304,28 +303,6 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		// Fallback to dashboard if no refreshable view found
-		a.currentView = view.NewDashboardView(a.ctx, a.registry)
-		return a, tea.Batch(
-			a.currentView.Init(),
-			a.currentView.SetSize(a.width, a.height-2),
-		)
-
-	case navmsg.ProfileChangedMsg:
-		log.Info("profile changed", "selection", msg.Selection.DisplayName(), "currentView", fmt.Sprintf("%T", a.currentView), "stackDepth", len(a.viewStack))
-		if err := aws.RefreshContext(a.ctx); err != nil {
-			log.Debug("failed to refresh profile config", "error", err)
-		}
-		for len(a.viewStack) > 0 {
-			a.currentView = a.viewStack[len(a.viewStack)-1]
-			a.viewStack = a.viewStack[:len(a.viewStack)-1]
-
-			if r, ok := a.currentView.(view.Refreshable); ok && r.CanRefresh() {
-				return a, tea.Batch(
-					a.currentView.SetSize(a.width, a.height-2),
-					func() tea.Msg { return view.RefreshMsg{} },
-				)
-			}
-		}
 		a.currentView = view.NewDashboardView(a.ctx, a.registry)
 		return a, tea.Batch(
 			a.currentView.Init(),

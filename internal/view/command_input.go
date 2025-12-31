@@ -245,8 +245,8 @@ func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 				return ErrorMsg{Err: err}
 			}
 			sel := config.NamedProfile(profileName)
-			config.Global().SetSelection(sel)
-			return navmsg.ProfileChangedMsg{Selection: sel}
+			config.Global().SetSelections([]config.ProfileSelection{sel})
+			return navmsg.ProfilesChangedMsg{Selections: []config.ProfileSelection{sel}}
 		}), nil
 	}
 

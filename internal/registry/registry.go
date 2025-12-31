@@ -195,7 +195,6 @@ func defaultDisplayNames() map[string]string {
 		"xray":              "X-Ray",
 		"trustedadvisor":    "Trusted Advisor",
 		"computeoptimizer":  "Compute Optimizer",
-		"local":             "Local", // Not in service list, but used for header display
 	}
 }
 

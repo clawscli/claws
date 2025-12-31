@@ -1132,8 +1132,8 @@ func TestReadOnlyEnforcement_ExecWithHeader(t *testing.T) {
 			Command:    "echo test",
 			ActionName: ActionNameSSOLogin, // In ReadOnlyExecAllowlist
 			Resource:   &mockResource{id: "test", name: "test"},
-			Service:    "local",
-			ResType:    "profile",
+			Service:    "ec2",
+			ResType:    "instances",
 		}
 
 		err := exec.Run()

@@ -6,15 +6,18 @@ import (
 	"github.com/clawscli/claws/internal/config"
 )
 
-func TestProfileChangedMsg(t *testing.T) {
+func TestProfilesChangedMsg(t *testing.T) {
 	sel := config.NamedProfile("production")
-	msg := ProfileChangedMsg{Selection: sel}
+	msg := ProfilesChangedMsg{Selections: []config.ProfileSelection{sel}}
 
-	if !msg.Selection.IsNamedProfile() {
+	if len(msg.Selections) != 1 {
+		t.Errorf("len(Selections) = %d, want 1", len(msg.Selections))
+	}
+	if !msg.Selections[0].IsNamedProfile() {
 		t.Error("expected IsNamedProfile() to be true")
 	}
-	if msg.Selection.ProfileName != "production" {
-		t.Errorf("ProfileName = %q, want %q", msg.Selection.ProfileName, "production")
+	if msg.Selections[0].ProfileName != "production" {
+		t.Errorf("ProfileName = %q, want %q", msg.Selections[0].ProfileName, "production")
 	}
 }
 

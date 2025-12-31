@@ -4,10 +4,6 @@ package msg
 
 import "github.com/clawscli/claws/internal/config"
 
-type ProfileChangedMsg struct {
-	Selection config.ProfileSelection
-}
-
 type ProfilesChangedMsg struct {
 	Selections []config.ProfileSelection
 }

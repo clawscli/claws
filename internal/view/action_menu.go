@@ -107,7 +107,7 @@ func (m *ActionMenu) Init() tea.Cmd {
 // Update implements tea.Model
 func (m *ActionMenu) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case navmsg.ProfileChangedMsg, navmsg.RegionChangedMsg:
+	case navmsg.ProfilesChangedMsg, navmsg.RegionChangedMsg:
 		// Let app.go handle these navigation messages
 		return m, func() tea.Msg { return msg }
 

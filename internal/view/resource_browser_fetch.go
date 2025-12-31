@@ -232,7 +232,7 @@ func (r *ResourceBrowser) loadResources() tea.Msg {
 		return resourcesErrorMsg{err: err}
 	}
 
-	if isMultiProfile && r.service != "local" {
+	if isMultiProfile {
 		fetchResult := r.fetchMultiProfileResources(profiles, regions, nil)
 		if len(fetchResult.resources) == 0 && len(fetchResult.errors) > 0 {
 			return resourcesErrorMsg{err: fmt.Errorf("all profile/region pairs failed: %s", strings.Join(fetchResult.errors, "; "))}
@@ -298,7 +298,7 @@ func (r *ResourceBrowser) reloadResources() tea.Msg {
 	isMultiProfile := len(profiles) > 1
 	isMultiRegion := len(regions) > 1
 
-	if isMultiProfile && r.service != "local" {
+	if isMultiProfile {
 		fetchResult := r.fetchMultiProfileResources(profiles, regions, nil)
 		if len(fetchResult.resources) == 0 && len(fetchResult.errors) > 0 {
 			return resourcesErrorMsg{err: fmt.Errorf("all profile/region pairs failed: %s", strings.Join(fetchResult.errors, "; "))}
