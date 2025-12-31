@@ -2,6 +2,7 @@ package aws
 
 import (
 	"context"
+	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/config"
 
@@ -30,21 +31,55 @@ func InitContext(ctx context.Context) error {
 	return nil
 }
 
-// RefreshContext re-fetches region and account ID for the current profile selection.
+// RefreshContext re-fetches region and account ID for the current profile selection(s).
 func RefreshContext(ctx context.Context) error {
-	sel := appconfig.Global().Selection()
+	selections := appconfig.Global().Selections()
+	if len(selections) == 0 {
+		selections = []appconfig.ProfileSelection{appconfig.SDKDefault()}
+	}
 
-	cfg, err := config.LoadDefaultConfig(ctx, SelectionLoadOptions(sel)...)
-	if err != nil {
+	// Update global region if single selection
+	if !appconfig.Global().IsMultiRegion() {
+		sel := selections[0]
+		cfg, err := config.LoadDefaultConfig(ctx, SelectionLoadOptions(sel)...)
+		if err == nil && cfg.Region != "" {
+			appconfig.Global().SetRegion(cfg.Region)
+		}
+	}
+
+	var wg sync.WaitGroup
+	accountIDs := make(map[string]string)
+	var mu sync.Mutex
+	errChan := make(chan error, len(selections))
+
+	for _, sel := range selections {
+		wg.Add(1)
+		go func(s appconfig.ProfileSelection) {
+			defer wg.Done()
+			cfg, err := config.LoadDefaultConfig(ctx, SelectionLoadOptions(s)...)
+			if err != nil {
+				errChan <- err
+				return
+			}
+			id := FetchAccountID(ctx, cfg)
+			mu.Lock()
+			accountIDs[s.ID()] = id
+			mu.Unlock()
+		}(sel)
+	}
+
+	wg.Wait()
+	close(errChan)
+
+	// Collect errors, but proceed if at least some succeeded
+	if len(accountIDs) > 0 {
+		appconfig.Global().SetAccountIDs(accountIDs)
+	}
+
+	// Return first error if any occurred during config load
+	for err := range errChan {
 		return err
 	}
-
-	if cfg.Region != "" && !appconfig.Global().IsMultiRegion() {
-		appconfig.Global().SetRegion(cfg.Region)
-	}
-
-	accountID := FetchAccountID(ctx, cfg)
-	appconfig.Global().SetAccountID(accountID)
 
 	return nil
 }

@@ -9,6 +9,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/clawscli/claws/internal/dao"
+	navmsg "github.com/clawscli/claws/internal/msg"
 	"github.com/clawscli/claws/internal/registry"
 	"github.com/clawscli/claws/internal/ui"
 )
@@ -192,6 +193,12 @@ func (d *DashboardView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.MouseMotionMsg:
 		d.handleMouseMotion(msg)
+
+	case navmsg.ProfilesChangedMsg:
+		return d.handleRefresh()
+
+	case navmsg.RegionChangedMsg:
+		return d.handleRefresh()
 	}
 
 	return d, nil

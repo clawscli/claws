@@ -334,6 +334,9 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case navmsg.ProfilesChangedMsg:
 		log.Info("profiles changed", "count", len(msg.Selections))
+		if err := aws.RefreshContext(a.ctx); err != nil {
+			log.Debug("failed to refresh profile config", "error", err)
+		}
 		for len(a.viewStack) > 0 {
 			a.currentView = a.viewStack[len(a.viewStack)-1]
 			a.viewStack = a.viewStack[:len(a.viewStack)-1]
