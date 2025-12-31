@@ -16,7 +16,10 @@ import (
 	"github.com/clawscli/claws/internal/render"
 )
 
-const multiRegionFetchTimeout = 30 * time.Second
+const (
+	multiRegionFetchTimeout = 30 * time.Second
+	maxConcurrentFetches    = 50
+)
 
 type listResourcesResult struct {
 	resources []dao.Resource
@@ -73,12 +76,15 @@ func fetchParallel[K comparable](
 	defer cancel()
 
 	results := make(chan parallelFetchItem[K], len(keys))
+	sem := make(chan struct{}, maxConcurrentFetches)
 	var wg sync.WaitGroup
 
 	for _, key := range keys {
 		wg.Add(1)
 		go func(k K) {
 			defer wg.Done()
+			sem <- struct{}{}        // Acquire semaphore
+			defer func() { <-sem }() // Release semaphore
 			resources, nextToken, err := fetch(ctx, k)
 			results <- parallelFetchItem[K]{key: k, resources: resources, nextToken: nextToken, err: err}
 		}(key)

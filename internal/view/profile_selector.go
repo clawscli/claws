@@ -393,6 +393,15 @@ func (p *ProfileSelector) ssoLoginCurrentProfile() (tea.Model, tea.Cmd) {
 		return p, nil
 	}
 
+	if _, err := exec.LookPath("aws"); err != nil {
+		p.ssoResult = &ssoResultMsg{
+			profileID: profile.ID,
+			success:   false,
+			err:       errors.New("aws cli not found in PATH"),
+		}
+		return p, nil
+	}
+
 	profileID := profile.ID
 	return p, tea.Exec(&ssoLoginCmd{profileName: profileID}, func(err error) tea.Msg {
 		if err != nil {
@@ -447,6 +456,15 @@ func (p *ProfileSelector) consoleLoginCurrentProfile() (tea.Model, tea.Cmd) {
 			profileID: profile.ID,
 			success:   false,
 			err:       errors.New("console login denied in read-only mode"),
+		}
+		return p, nil
+	}
+
+	if _, err := exec.LookPath("aws"); err != nil {
+		p.ssoResult = &ssoResultMsg{
+			profileID: profile.ID,
+			success:   false,
+			err:       errors.New("aws cli not found in PATH"),
 		}
 		return p, nil
 	}
