@@ -92,10 +92,6 @@ func (r *RegionSelector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		r.selector.SetItems(r.regions)
 		return r, nil
 
-	case tea.KeyPressMsg:
-		if msg.String() == "l" && !r.selector.FilterActive() {
-			return r.applySelection()
-		}
 	}
 
 	cmd, result := r.selector.HandleUpdate(msg)
