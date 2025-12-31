@@ -37,8 +37,8 @@ type ProfileSelector struct {
 	selector *MultiSelector[profileItem]
 	profiles []profileItem
 
-	ssoResult *ssoResultMsg
-	ssoStyle  lipgloss.Style
+	loginResult *loginResultMsg
+	ssoStyle    lipgloss.Style
 }
 
 func NewProfileSelector(ctx context.Context) *ProfileSelector {
@@ -71,10 +71,11 @@ type profilesLoadedMsg struct {
 	profiles []profileItem
 }
 
-type ssoResultMsg struct {
-	profileID string
-	success   bool
-	err       error
+type loginResultMsg struct {
+	profileID      string
+	success        bool
+	err            error
+	isConsoleLogin bool
 }
 
 func (p *ProfileSelector) loadProfiles() tea.Msg {
@@ -185,17 +186,8 @@ func (p *ProfileSelector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		p.selector.SetItems(p.profiles)
 		return p, nil
 
-	case ssoResultMsg:
-		p.ssoResult = &msg
-		if msg.success {
-			p.selector.Selected()[msg.profileID] = true
-			p.selector.ClearResult()
-		}
-		p.updateExtraHeight()
-		return p, nil
-
-	case consoleLoginResultMsg:
-		p.ssoResult = &ssoResultMsg{profileID: msg.profileID, success: msg.success, err: msg.err}
+	case loginResultMsg:
+		p.loginResult = &msg
 		if msg.success {
 			p.selector.Selected()[msg.profileID] = true
 			p.selector.ClearResult()
@@ -207,10 +199,10 @@ func (p *ProfileSelector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if !p.selector.FilterActive() {
 			switch msg.String() {
 			case "up", "k", "down", "j":
-				p.ssoResult = nil
+				p.loginResult = nil
 				p.updateExtraHeight()
 			case "c":
-				p.ssoResult = nil
+				p.loginResult = nil
 				p.updateExtraHeight()
 			case "l":
 				return p.ssoLoginCurrentProfile()
@@ -228,7 +220,7 @@ func (p *ProfileSelector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (p *ProfileSelector) updateExtraHeight() {
-	if p.ssoResult != nil {
+	if p.loginResult != nil {
 		p.selector.SetExtraHeight(1)
 	} else {
 		p.selector.SetExtraHeight(0)
@@ -259,7 +251,7 @@ func (p *ProfileSelector) ssoLoginCurrentProfile() (tea.Model, tea.Cmd) {
 	}
 
 	if !profile.isSSO {
-		p.ssoResult = &ssoResultMsg{
+		p.loginResult = &loginResultMsg{
 			profileID: profile.id,
 			success:   false,
 			err:       errors.New("not an SSO profile"),
@@ -269,7 +261,7 @@ func (p *ProfileSelector) ssoLoginCurrentProfile() (tea.Model, tea.Cmd) {
 	}
 
 	if config.Global().ReadOnly() && !action.IsExecAllowedInReadOnly(action.ActionNameSSOLogin) {
-		p.ssoResult = &ssoResultMsg{
+		p.loginResult = &loginResultMsg{
 			profileID: profile.id,
 			success:   false,
 			err:       errors.New("SSO login denied in read-only mode"),
@@ -279,7 +271,7 @@ func (p *ProfileSelector) ssoLoginCurrentProfile() (tea.Model, tea.Cmd) {
 	}
 
 	if _, err := exec.LookPath("aws"); err != nil {
-		p.ssoResult = &ssoResultMsg{
+		p.loginResult = &loginResultMsg{
 			profileID: profile.id,
 			success:   false,
 			err:       errors.New("aws cli not found in PATH"),
@@ -291,9 +283,9 @@ func (p *ProfileSelector) ssoLoginCurrentProfile() (tea.Model, tea.Cmd) {
 	profileID := profile.id
 	return p, tea.Exec(&ssoLoginCmd{profileName: profileID}, func(err error) tea.Msg {
 		if err != nil {
-			return ssoResultMsg{profileID: profileID, success: false, err: err}
+			return loginResultMsg{profileID: profileID, success: false, err: err}
 		}
-		return ssoResultMsg{profileID: profileID, success: true}
+		return loginResultMsg{profileID: profileID, success: true}
 	})
 }
 
@@ -316,12 +308,6 @@ func (s *ssoLoginCmd) SetStdin(r io.Reader)  { s.stdin = r }
 func (s *ssoLoginCmd) SetStdout(w io.Writer) { s.stdout = w }
 func (s *ssoLoginCmd) SetStderr(w io.Writer) { s.stderr = w }
 
-type consoleLoginResultMsg struct {
-	profileID string
-	success   bool
-	err       error
-}
-
 func (p *ProfileSelector) consoleLoginCurrentProfile() (tea.Model, tea.Cmd) {
 	profile, ok := p.selector.CurrentItem()
 	if !ok {
@@ -329,30 +315,33 @@ func (p *ProfileSelector) consoleLoginCurrentProfile() (tea.Model, tea.Cmd) {
 	}
 
 	if profile.id == config.ProfileIDSDKDefault || profile.id == config.ProfileIDEnvOnly {
-		p.ssoResult = &ssoResultMsg{
-			profileID: profile.id,
-			success:   false,
-			err:       errors.New("console login requires a named profile"),
+		p.loginResult = &loginResultMsg{
+			profileID:      profile.id,
+			success:        false,
+			err:            errors.New("console login requires a named profile"),
+			isConsoleLogin: true,
 		}
 		p.updateExtraHeight()
 		return p, nil
 	}
 
 	if config.Global().ReadOnly() && !action.IsExecAllowedInReadOnly(action.ActionNameLogin) {
-		p.ssoResult = &ssoResultMsg{
-			profileID: profile.id,
-			success:   false,
-			err:       errors.New("console login denied in read-only mode"),
+		p.loginResult = &loginResultMsg{
+			profileID:      profile.id,
+			success:        false,
+			err:            errors.New("console login denied in read-only mode"),
+			isConsoleLogin: true,
 		}
 		p.updateExtraHeight()
 		return p, nil
 	}
 
 	if _, err := exec.LookPath("aws"); err != nil {
-		p.ssoResult = &ssoResultMsg{
-			profileID: profile.id,
-			success:   false,
-			err:       errors.New("aws cli not found in PATH"),
+		p.loginResult = &loginResultMsg{
+			profileID:      profile.id,
+			success:        false,
+			err:            errors.New("aws cli not found in PATH"),
+			isConsoleLogin: true,
 		}
 		p.updateExtraHeight()
 		return p, nil
@@ -366,23 +355,27 @@ func (p *ProfileSelector) consoleLoginCurrentProfile() (tea.Model, tea.Cmd) {
 	}
 	return p, tea.Exec(execCmd, func(err error) tea.Msg {
 		if err != nil {
-			return consoleLoginResultMsg{profileID: profileID, success: false, err: err}
+			return loginResultMsg{profileID: profileID, success: false, err: err, isConsoleLogin: true}
 		}
 		sel := config.NamedProfile(profileID)
 		config.Global().SetSelection(sel)
-		return consoleLoginResultMsg{profileID: profileID, success: true}
+		return loginResultMsg{profileID: profileID, success: true, isConsoleLogin: true}
 	})
 }
 
 func (p *ProfileSelector) ViewString() string {
 	content := p.selector.ViewString()
 
-	if p.ssoResult != nil {
+	if p.loginResult != nil {
 		content += "\n"
-		if p.ssoResult.success {
-			content += ui.SuccessStyle().Render("SSO login successful")
+		loginType := "SSO"
+		if p.loginResult.isConsoleLogin {
+			loginType = "Console"
+		}
+		if p.loginResult.success {
+			content += ui.SuccessStyle().Render(loginType + " login successful")
 		} else {
-			content += ui.DangerStyle().Render("SSO login failed: " + p.ssoResult.err.Error())
+			content += ui.DangerStyle().Render(loginType + " login failed: " + p.loginResult.err.Error())
 		}
 	}
 
