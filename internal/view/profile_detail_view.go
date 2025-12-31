@@ -32,7 +32,7 @@ func (v *ProfileDetailView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		switch msg.String() {
-		case "esc", "d":
+		case "esc", "d", "q":
 			return v, func() tea.Msg { return HideModalMsg{} }
 		}
 	}
@@ -52,7 +52,7 @@ func (v *ProfileDetailView) SetSize(_, _ int) tea.Cmd {
 }
 
 func (v *ProfileDetailView) StatusLine() string {
-	return "Esc/d:close"
+	return "Esc/d/q:close"
 }
 
 func (v *ProfileDetailView) buildContent() string {
