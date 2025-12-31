@@ -1,6 +1,7 @@
 package view
 
 import (
+	"strconv"
 	"strings"
 
 	"charm.land/lipgloss/v2"
@@ -120,7 +121,7 @@ func formatMultiProfiles(selections []config.ProfileSelection) string {
 	for i := 0; i < maxShow; i++ {
 		names[i] = selections[i].DisplayName()
 	}
-	return strings.Join(names, ", ") + " (+" + itoa(len(selections)-maxShow) + ")"
+	return strings.Join(names, ", ") + " (+" + strconv.Itoa(len(selections)-maxShow) + ")"
 }
 
 func formatMultiAccounts(selections []config.ProfileSelection, accountIDs map[string]string) string {
@@ -137,14 +138,7 @@ func formatMultiAccounts(selections []config.ProfileSelection, accountIDs map[st
 	if len(accounts) <= maxShow {
 		return strings.Join(accounts, ", ")
 	}
-	return strings.Join(accounts[:maxShow], ", ") + " (+" + itoa(len(accounts)-maxShow) + ")"
-}
-
-func itoa(n int) string {
-	if n < 10 {
-		return string(rune('0' + n))
-	}
-	return itoa(n/10) + string(rune('0'+n%10))
+	return strings.Join(accounts[:maxShow], ", ") + " (+" + strconv.Itoa(len(accounts)-maxShow) + ")"
 }
 
 // RenderContextLine renders the AWS account/region context line.

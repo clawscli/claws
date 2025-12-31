@@ -257,7 +257,7 @@ func TestIsAllowedInReadOnly(t *testing.T) {
 		{"view type allowed", Action{Type: ActionTypeView}, true},
 		{"exec allowlisted", Action{Type: ActionTypeExec, Name: ActionNameLogin}, true},
 		{"exec not allowlisted", Action{Type: ActionTypeExec, Name: "SomeExec"}, false},
-		{"api allowlisted", Action{Type: ActionTypeAPI, Operation: "SwitchProfile"}, true},
+		{"api allowlisted", Action{Type: ActionTypeAPI, Operation: "DetectStackDrift"}, true},
 		{"api not allowlisted", Action{Type: ActionTypeAPI, Operation: "DeleteStack"}, false},
 		{"unknown type", Action{Type: ActionType("unknown")}, false},
 	}
@@ -275,7 +275,6 @@ func TestReadOnlyAllowlist(t *testing.T) {
 	expected := []string{
 		"DetectStackDrift",     // CloudFormation: read-only drift detection
 		"InvokeFunctionDryRun", // Lambda: validation only
-		"SwitchProfile",        // local/profile: switch active profile
 	}
 
 	for _, op := range expected {
@@ -819,9 +818,9 @@ func TestReadOnlyEnforcement_ExecuteWithDAO(t *testing.T) {
 		})
 
 		action := Action{
-			Name:      "SwitchProfile",
+			Name:      "DetectStackDrift",
 			Type:      ActionTypeAPI,
-			Operation: "SwitchProfile", // In ReadOnlyAllowlist
+			Operation: "DetectStackDrift", // In ReadOnlyAllowlist
 		}
 
 		result := ExecuteWithDAO(context.Background(), action, &mockResource{id: "test"}, "test", "readonly")
@@ -863,7 +862,7 @@ func TestReadOnlyEnforcement_ExecuteWithDAO(t *testing.T) {
 			Command: "echo test", // Use harmless command for test
 		}
 
-		result := ExecuteWithDAO(context.Background(), action, &mockResource{id: "test"}, "local", "profile")
+		result := ExecuteWithDAO(context.Background(), action, &mockResource{id: "test"}, "ec2", "instances")
 
 		// Should pass read-only gate (but may fail later for other reasons)
 		if result.Error == ErrReadOnlyDenied {
