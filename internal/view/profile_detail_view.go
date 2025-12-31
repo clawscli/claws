@@ -32,7 +32,7 @@ func (v *ProfileDetailView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		switch msg.String() {
-		case "esc", "d", "q":
+		case "d":
 			return v, func() tea.Msg { return HideModalMsg{} }
 		}
 	}
