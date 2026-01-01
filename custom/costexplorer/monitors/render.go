@@ -16,7 +16,7 @@ type MonitorRenderer struct {
 func NewMonitorRenderer() render.Renderer {
 	return &MonitorRenderer{
 		BaseRenderer: render.BaseRenderer{
-			Service:  "costexplorer",
+			Service:  "ce",
 			Resource: "monitors",
 			Cols: []render.Column{
 				{Name: "NAME", Width: 35, Getter: getName},

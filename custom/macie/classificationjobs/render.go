@@ -14,7 +14,7 @@ type ClassificationJobRenderer struct {
 func NewClassificationJobRenderer() render.Renderer {
 	return &ClassificationJobRenderer{
 		BaseRenderer: render.BaseRenderer{
-			Service:  "macie",
+			Service:  "macie2",
 			Resource: "classification-jobs",
 			Cols: []render.Column{
 				{Name: "JOB ID", Width: 35, Getter: func(r dao.Resource) string { return r.GetID() }},

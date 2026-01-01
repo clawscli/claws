@@ -20,7 +20,7 @@ type UserRenderer struct {
 func NewUserRenderer() *UserRenderer {
 	return &UserRenderer{
 		BaseRenderer: render.BaseRenderer{
-			Service:  "cognito",
+			Service:  "cognito-idp",
 			Resource: "users",
 			Cols: []render.Column{
 				{Name: "USERNAME", Width: 30, Getter: getUsername},

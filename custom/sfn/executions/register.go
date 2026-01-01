@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	registry.Global.RegisterCustom("sfn", "executions", registry.Entry{
+	registry.Global.RegisterCustom("stepfunctions", "executions", registry.Entry{
 		DAOFactory: func(ctx context.Context) (dao.DAO, error) {
 			return NewExecutionDAO(ctx)
 		},

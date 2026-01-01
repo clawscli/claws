@@ -17,7 +17,7 @@ type BusRenderer struct {
 func NewBusRenderer() render.Renderer {
 	return &BusRenderer{
 		BaseRenderer: render.BaseRenderer{
-			Service:  "eventbridge",
+			Service:  "events",
 			Resource: "buses",
 			Cols: []render.Column{
 				{
@@ -114,7 +114,7 @@ func (r *BusRenderer) Navigations(resource dao.Resource) []render.Navigation {
 
 	// Rules navigation
 	navs = append(navs, render.Navigation{
-		Key: "r", Label: "Rules", Service: "eventbridge", Resource: "rules",
+		Key: "r", Label: "Rules", Service: "events", Resource: "rules",
 		FilterField: "EventBusName", FilterValue: br.GetName(),
 	})
 

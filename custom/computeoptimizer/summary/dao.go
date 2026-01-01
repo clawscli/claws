@@ -25,7 +25,7 @@ func NewSummaryDAO(ctx context.Context) (dao.DAO, error) {
 		return nil, apperrors.Wrap(err, "new computeoptimizer/summary dao")
 	}
 	return &SummaryDAO{
-		BaseDAO: dao.NewBaseDAO("computeoptimizer", "summary"),
+		BaseDAO: dao.NewBaseDAO("compute-optimizer", "summary"),
 		client:  computeoptimizer.NewFromConfig(cfg),
 	}, nil
 }

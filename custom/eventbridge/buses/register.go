@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	registry.Global.RegisterCustom("eventbridge", "buses", registry.Entry{
+	registry.Global.RegisterCustom("events", "buses", registry.Entry{
 		DAOFactory: func(ctx context.Context) (dao.DAO, error) {
 			return NewBusDAO(ctx)
 		},

@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	registry.Global.RegisterCustom("computeoptimizer", "summary", registry.Entry{
+	registry.Global.RegisterCustom("compute-optimizer", "summary", registry.Entry{
 		DAOFactory: func(ctx context.Context) (dao.DAO, error) {
 			return NewSummaryDAO(ctx)
 		},

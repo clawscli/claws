@@ -25,7 +25,7 @@ func NewRuleDAO(ctx context.Context) (dao.DAO, error) {
 		return nil, apperrors.Wrap(err, "new eventbridge/rules dao")
 	}
 	return &RuleDAO{
-		BaseDAO: dao.NewBaseDAO("eventbridge", "rules"),
+		BaseDAO: dao.NewBaseDAO("events", "rules"),
 		client:  eventbridge.NewFromConfig(cfg),
 	}, nil
 }

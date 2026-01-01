@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	registry.Global.RegisterCustom("sfn", "state-machines", registry.Entry{
+	registry.Global.RegisterCustom("stepfunctions", "state-machines", registry.Entry{
 		DAOFactory: func(ctx context.Context) (dao.DAO, error) {
 			return NewStateMachineDAO(ctx)
 		},

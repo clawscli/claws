@@ -423,7 +423,7 @@ func (d *DashboardView) activateCurrentRow() (tea.Model, tea.Cmd) {
 	case panelCost:
 		if d.focusedRow < len(d.costTop) {
 			item := d.costTop[d.focusedRow]
-			return d.navigateToFiltered("costexplorer", "costs", "ServiceName", item.service)
+			return d.navigateToFiltered("ce", "costs", "ServiceName", item.service)
 		}
 
 	case panelOperations:

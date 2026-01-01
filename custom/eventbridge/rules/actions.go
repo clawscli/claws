@@ -13,7 +13,7 @@ import (
 
 func init() {
 	// Register actions for EventBridge rules
-	action.Global.Register("eventbridge", "rules", []action.Action{
+	action.Global.Register("events", "rules", []action.Action{
 		{
 			Name:      "Enable",
 			Shortcut:  "E",
@@ -38,7 +38,7 @@ func init() {
 	})
 
 	// Register executor
-	action.RegisterExecutor("eventbridge", "rules", executeRuleAction)
+	action.RegisterExecutor("events", "rules", executeRuleAction)
 }
 
 // executeRuleAction executes an action on an EventBridge rule

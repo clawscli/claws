@@ -30,7 +30,7 @@ func NewRecommendationDAO(ctx context.Context) (dao.DAO, error) {
 		return nil, apperrors.Wrap(err, "new computeoptimizer/recommendations dao")
 	}
 	return &RecommendationDAO{
-		BaseDAO: dao.NewBaseDAO("computeoptimizer", "recommendations"),
+		BaseDAO: dao.NewBaseDAO("compute-optimizer", "recommendations"),
 		client:  computeoptimizer.NewFromConfig(cfg),
 	}, nil
 }

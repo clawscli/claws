@@ -17,7 +17,7 @@ type AnomalyRenderer struct {
 func NewAnomalyRenderer() render.Renderer {
 	return &AnomalyRenderer{
 		BaseRenderer: render.BaseRenderer{
-			Service:  "costexplorer",
+			Service:  "ce",
 			Resource: "anomalies",
 			Cols: []render.Column{
 				{Name: "SERVICE", Width: 30, Getter: getDimensionValue},

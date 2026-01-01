@@ -22,7 +22,7 @@ type RuleRenderer struct {
 func NewRuleRenderer() render.Renderer {
 	return &RuleRenderer{
 		BaseRenderer: render.BaseRenderer{
-			Service:  "eventbridge",
+			Service:  "events",
 			Resource: "rules",
 			Cols: []render.Column{
 				{
@@ -221,7 +221,7 @@ func (r *RuleRenderer) Navigations(resource dao.Resource) []render.Navigation {
 
 	// Event Bus navigation
 	navs = append(navs, render.Navigation{
-		Key: "b", Label: "Event Bus", Service: "eventbridge", Resource: "buses",
+		Key: "b", Label: "Event Bus", Service: "events", Resource: "buses",
 		FilterField: "Name", FilterValue: rr.EventBusName(),
 	})
 

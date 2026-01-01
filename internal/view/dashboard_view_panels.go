@@ -24,7 +24,7 @@ const (
 
 	dashboardMaxRecords = 100
 
-	targetCost         = "costexplorer/costs"
+	targetCost         = "ce/costs"
 	targetOperations   = "health/events"
 	targetSecurity     = "securityhub/findings"
 	targetOptimization = "trustedadvisor/recommendations"

@@ -19,7 +19,7 @@ type BucketRenderer struct {
 func NewBucketRenderer() render.Renderer {
 	return &BucketRenderer{
 		BaseRenderer: render.BaseRenderer{
-			Service:  "macie",
+			Service:  "macie2",
 			Resource: "buckets",
 			Cols: []render.Column{
 				{Name: "BUCKET NAME", Width: 40, Getter: func(r dao.Resource) string { return r.GetID() }},
@@ -105,7 +105,7 @@ func (r *BucketRenderer) Navigations(resource dao.Resource) []render.Navigation 
 		{
 			Key:         "f",
 			Label:       "Findings",
-			Service:     "macie",
+			Service:     "macie2",
 			Resource:    "findings",
 			FilterField: "BucketName",
 			FilterValue: bucket.Name(),

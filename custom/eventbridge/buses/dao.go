@@ -24,7 +24,7 @@ func NewBusDAO(ctx context.Context) (dao.DAO, error) {
 		return nil, apperrors.Wrap(err, "new eventbridge/buses dao")
 	}
 	return &BusDAO{
-		BaseDAO: dao.NewBaseDAO("eventbridge", "buses"),
+		BaseDAO: dao.NewBaseDAO("events", "buses"),
 		client:  eventbridge.NewFromConfig(cfg),
 	}, nil
 }

@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	registry.Global.RegisterCustom("costexplorer", "monitors", registry.Entry{
+	registry.Global.RegisterCustom("ce", "monitors", registry.Entry{
 		DAOFactory: func(ctx context.Context) (dao.DAO, error) {
 			return NewMonitorDAO(ctx)
 		},

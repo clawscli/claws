@@ -25,7 +25,7 @@ func NewBucketDAO(ctx context.Context) (dao.DAO, error) {
 		return nil, apperrors.Wrap(err, "new macie/buckets dao")
 	}
 	return &BucketDAO{
-		BaseDAO: dao.NewBaseDAO("macie", "buckets"),
+		BaseDAO: dao.NewBaseDAO("macie2", "buckets"),
 		client:  macie2.NewFromConfig(cfg),
 	}, nil
 }

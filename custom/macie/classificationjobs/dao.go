@@ -25,7 +25,7 @@ func NewClassificationJobDAO(ctx context.Context) (dao.DAO, error) {
 		return nil, apperrors.Wrap(err, "new macie/classificationjobs dao")
 	}
 	return &ClassificationJobDAO{
-		BaseDAO: dao.NewBaseDAO("macie", "classification-jobs"),
+		BaseDAO: dao.NewBaseDAO("macie2", "classification-jobs"),
 		client:  macie2.NewFromConfig(cfg),
 	}, nil
 }

@@ -16,7 +16,7 @@ type FindingRenderer struct {
 func NewFindingRenderer() render.Renderer {
 	return &FindingRenderer{
 		BaseRenderer: render.BaseRenderer{
-			Service:  "macie",
+			Service:  "macie2",
 			Resource: "findings",
 			Cols: []render.Column{
 				{Name: "FINDING ID", Width: 35, Getter: func(r dao.Resource) string { return r.GetID() }},

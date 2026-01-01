@@ -25,7 +25,7 @@ func NewStateMachineDAO(ctx context.Context) (dao.DAO, error) {
 		return nil, apperrors.Wrap(err, "new sfn/statemachines dao")
 	}
 	return &StateMachineDAO{
-		BaseDAO: dao.NewBaseDAO("sfn", "state-machines"),
+		BaseDAO: dao.NewBaseDAO("stepfunctions", "state-machines"),
 		client:  sfn.NewFromConfig(cfg),
 	}, nil
 }

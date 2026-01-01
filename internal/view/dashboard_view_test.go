@@ -203,7 +203,7 @@ func TestDashboardView_NavigateTo(t *testing.T) {
 		target  string
 		wantCmd bool
 	}{
-		{"valid target", "costexplorer/costs", true},
+		{"valid target", "ce/costs", true},
 		{"valid security target", "securityhub/findings", true},
 		{"invalid target no slash", "invalid", false},
 		{"empty target", "", false},

@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	action.Global.Register("sfn", "state-machines", []action.Action{
+	action.Global.Register("stepfunctions", "state-machines", []action.Action{
 		{
 			Name:         "Delete",
 			Shortcut:     "D",
@@ -23,7 +23,7 @@ func init() {
 		},
 	})
 
-	action.RegisterExecutor("sfn", "state-machines", executeStateMachineAction)
+	action.RegisterExecutor("stepfunctions", "state-machines", executeStateMachineAction)
 }
 
 func executeStateMachineAction(ctx context.Context, act action.Action, resource dao.Resource) action.ActionResult {

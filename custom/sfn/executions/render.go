@@ -19,7 +19,7 @@ type ExecutionRenderer struct {
 func NewExecutionRenderer() render.Renderer {
 	return &ExecutionRenderer{
 		BaseRenderer: render.BaseRenderer{
-			Service:  "sfn",
+			Service:  "stepfunctions",
 			Resource: "executions",
 			Cols: []render.Column{
 				{
@@ -200,7 +200,7 @@ func (r *ExecutionRenderer) Navigations(resource dao.Resource) []render.Navigati
 
 	// State Machine navigation
 	navs = append(navs, render.Navigation{
-		Key: "m", Label: "State Machine", Service: "sfn", Resource: "state-machines",
+		Key: "m", Label: "State Machine", Service: "stepfunctions", Resource: "state-machines",
 		FilterField: "StateMachineArn", FilterValue: er.StateMachineARN(),
 	})
 

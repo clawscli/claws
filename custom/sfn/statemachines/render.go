@@ -21,7 +21,7 @@ type StateMachineRenderer struct {
 func NewStateMachineRenderer() render.Renderer {
 	return &StateMachineRenderer{
 		BaseRenderer: render.BaseRenderer{
-			Service:  "sfn",
+			Service:  "stepfunctions",
 			Resource: "state-machines",
 			Cols: []render.Column{
 				{
@@ -187,7 +187,7 @@ func (r *StateMachineRenderer) Navigations(resource dao.Resource) []render.Navig
 
 	// Executions navigation
 	navs = append(navs, render.Navigation{
-		Key: "e", Label: "Executions", Service: "sfn", Resource: "executions",
+		Key: "e", Label: "Executions", Service: "stepfunctions", Resource: "executions",
 		FilterField: "StateMachineName", FilterValue: sr.GetName(),
 	})
 

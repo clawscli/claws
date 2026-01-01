@@ -26,7 +26,7 @@ func NewExecutionDAO(ctx context.Context) (dao.DAO, error) {
 		return nil, apperrors.Wrap(err, "new sfn/executions dao")
 	}
 	return &ExecutionDAO{
-		BaseDAO: dao.NewBaseDAO("sfn", "executions"),
+		BaseDAO: dao.NewBaseDAO("stepfunctions", "executions"),
 		client:  sfn.NewFromConfig(cfg),
 	}, nil
 }

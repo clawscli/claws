@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	registry.Global.RegisterCustom("cognito", "user-pools", registry.Entry{
+	registry.Global.RegisterCustom("cognito-idp", "user-pools", registry.Entry{
 		DAOFactory: func(ctx context.Context) (dao.DAO, error) {
 			return NewUserPoolDAO(ctx)
 		},

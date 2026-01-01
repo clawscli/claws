@@ -26,7 +26,7 @@ func NewFindingDAO(ctx context.Context) (dao.DAO, error) {
 		return nil, apperrors.Wrap(err, "new macie/findings dao")
 	}
 	return &FindingDAO{
-		BaseDAO: dao.NewBaseDAO("macie", "findings"),
+		BaseDAO: dao.NewBaseDAO("macie2", "findings"),
 		client:  macie2.NewFromConfig(cfg),
 	}, nil
 }

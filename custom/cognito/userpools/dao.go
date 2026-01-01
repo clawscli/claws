@@ -24,7 +24,7 @@ func NewUserPoolDAO(ctx context.Context) (dao.DAO, error) {
 		return nil, apperrors.Wrap(err, "new cognito/userpools dao")
 	}
 	return &UserPoolDAO{
-		BaseDAO: dao.NewBaseDAO("cognito", "user-pools"),
+		BaseDAO: dao.NewBaseDAO("cognito-idp", "user-pools"),
 		client:  cognitoidentityprovider.NewFromConfig(cfg),
 	}, nil
 }

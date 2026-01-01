@@ -20,7 +20,7 @@ type UserPoolRenderer struct {
 func NewUserPoolRenderer() *UserPoolRenderer {
 	return &UserPoolRenderer{
 		BaseRenderer: render.BaseRenderer{
-			Service:  "cognito",
+			Service:  "cognito-idp",
 			Resource: "user-pools",
 			Cols: []render.Column{
 				{Name: "ID", Width: 25, Getter: getPoolId},
@@ -182,7 +182,7 @@ func (r *UserPoolRenderer) Navigations(resource dao.Resource) []render.Navigatio
 
 	return []render.Navigation{
 		{
-			Key: "u", Label: "Users", Service: "cognito", Resource: "users",
+			Key: "u", Label: "Users", Service: "cognito-idp", Resource: "users",
 			FilterField: "UserPoolId", FilterValue: pool.PoolId(),
 		},
 	}

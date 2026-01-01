@@ -13,7 +13,7 @@ import (
 
 func init() {
 	// Register actions for Step Functions executions
-	action.Global.Register("sfn", "executions", []action.Action{
+	action.Global.Register("stepfunctions", "executions", []action.Action{
 		{
 			Name:      "Stop",
 			Shortcut:  "S",
@@ -24,7 +24,7 @@ func init() {
 	})
 
 	// Register executor
-	action.RegisterExecutor("sfn", "executions", executeExecutionAction)
+	action.RegisterExecutor("stepfunctions", "executions", executeExecutionAction)
 }
 
 // executeExecutionAction executes an action on a Step Functions execution

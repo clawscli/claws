@@ -14,7 +14,7 @@ type RuleRenderer struct {
 func NewRuleRenderer() render.Renderer {
 	return &RuleRenderer{
 		BaseRenderer: render.BaseRenderer{
-			Service:  "config",
+			Service:  "configservice",
 			Resource: "rules",
 			Cols: []render.Column{
 				{Name: "RULE NAME", Width: 45, Getter: func(r dao.Resource) string { return r.GetID() }},

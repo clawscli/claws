@@ -27,7 +27,7 @@ func NewCostDAO(ctx context.Context) (dao.DAO, error) {
 		return nil, apperrors.Wrap(err, "new costexplorer/costs dao")
 	}
 	return &CostDAO{
-		BaseDAO: dao.NewBaseDAO("costexplorer", "costs"),
+		BaseDAO: dao.NewBaseDAO("ce", "costs"),
 		client:  costexplorer.NewFromConfig(cfg),
 	}, nil
 }

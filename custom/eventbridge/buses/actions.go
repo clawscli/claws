@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	action.Global.Register("eventbridge", "buses", []action.Action{
+	action.Global.Register("events", "buses", []action.Action{
 		{
 			Name:      "Delete",
 			Shortcut:  "D",
@@ -22,7 +22,7 @@ func init() {
 		},
 	})
 
-	action.RegisterExecutor("eventbridge", "buses", executeBusAction)
+	action.RegisterExecutor("events", "buses", executeBusAction)
 }
 
 func executeBusAction(ctx context.Context, act action.Action, resource dao.Resource) action.ActionResult {

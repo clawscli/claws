@@ -30,7 +30,7 @@ func NewAnomalyDAO(ctx context.Context) (dao.DAO, error) {
 		return nil, apperrors.Wrap(err, "new costexplorer/anomalies dao")
 	}
 	return &AnomalyDAO{
-		BaseDAO: dao.NewBaseDAO("costexplorer", "anomalies"),
+		BaseDAO: dao.NewBaseDAO("ce", "anomalies"),
 		client:  costexplorer.NewFromConfig(cfg),
 	}, nil
 }

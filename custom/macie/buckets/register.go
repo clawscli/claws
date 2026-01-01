@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	registry.Global.RegisterCustom("macie", "buckets", registry.Entry{
+	registry.Global.RegisterCustom("macie2", "buckets", registry.Entry{
 		DAOFactory: func(ctx context.Context) (dao.DAO, error) {
 			return NewBucketDAO(ctx)
 		},

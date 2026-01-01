@@ -156,11 +156,9 @@ func isVPCResource(resourceType string) bool {
 
 var arnToRegistryService = map[string]string{
 	"logs":                 "cloudwatch",
-	"states":               "sfn",
+	"states":               "stepfunctions",
 	"elasticloadbalancing": "elbv2",
 	"execute-api":          "apigateway",
-	"cognito-idp":          "cognito",
-	"events":               "eventbridge",
 }
 
 // normalizeResourceType maps ARN resource types to claws registry resource types.

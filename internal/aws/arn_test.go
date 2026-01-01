@@ -274,7 +274,7 @@ func TestARN_ServiceResourceType(t *testing.T) {
 		{
 			name:             "Step Functions state machine",
 			arn:              "arn:aws:states:us-east-1:123456789012:stateMachine:my-sm",
-			wantService:      "sfn",
+			wantService:      "stepfunctions",
 			wantResourceType: "state-machines",
 		},
 		{
@@ -298,7 +298,7 @@ func TestARN_ServiceResourceType(t *testing.T) {
 		{
 			name:             "EventBridge event bus",
 			arn:              "arn:aws:events:us-east-1:123456789012:event-bus/my-bus",
-			wantService:      "eventbridge",
+			wantService:      "events",
 			wantResourceType: "buses",
 		},
 		{

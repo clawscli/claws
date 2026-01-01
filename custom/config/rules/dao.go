@@ -25,7 +25,7 @@ func NewRuleDAO(ctx context.Context) (dao.DAO, error) {
 		return nil, apperrors.Wrap(err, "new config/rules dao")
 	}
 	return &RuleDAO{
-		BaseDAO: dao.NewBaseDAO("config", "rules"),
+		BaseDAO: dao.NewBaseDAO("configservice", "rules"),
 		client:  configservice.NewFromConfig(cfg),
 	}, nil
 }
