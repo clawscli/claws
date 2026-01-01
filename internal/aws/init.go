@@ -83,3 +83,49 @@ func RefreshContext(ctx context.Context) error {
 
 	return nil
 }
+
+func RefreshContextData(ctx context.Context) (region string, accountIDs map[string]string, err error) {
+	selections := appconfig.Global().Selections()
+	if len(selections) == 0 {
+		selections = []appconfig.ProfileSelection{appconfig.SDKDefault()}
+	}
+
+	if !appconfig.Global().IsMultiRegion() {
+		sel := selections[0]
+		cfg, loadErr := config.LoadDefaultConfig(ctx, SelectionLoadOptions(sel)...)
+		if loadErr == nil && cfg.Region != "" {
+			region = cfg.Region
+		}
+	}
+
+	var wg sync.WaitGroup
+	accountIDs = make(map[string]string)
+	var mu sync.Mutex
+	errChan := make(chan error, len(selections))
+
+	for _, sel := range selections {
+		wg.Add(1)
+		go func(s appconfig.ProfileSelection) {
+			defer wg.Done()
+			cfg, loadErr := config.LoadDefaultConfig(ctx, SelectionLoadOptions(s)...)
+			if loadErr != nil {
+				errChan <- loadErr
+				return
+			}
+			id := FetchAccountID(ctx, cfg)
+			mu.Lock()
+			accountIDs[s.ID()] = id
+			mu.Unlock()
+		}(sel)
+	}
+
+	wg.Wait()
+	close(errChan)
+
+	for e := range errChan {
+		err = e
+		break
+	}
+
+	return region, accountIDs, err
+}

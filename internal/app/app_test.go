@@ -257,6 +257,70 @@ func TestAWSContextReadyMsg_IMDSError(t *testing.T) {
 	}
 }
 
+func TestProfileRefreshDoneMsg_Success(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	app := New(ctx, reg)
+	app.profileRefreshID = 5
+	app.profileRefreshing = true
+
+	msg := profileRefreshDoneMsg{
+		refreshID:  5,
+		region:     "us-west-2",
+		accountIDs: map[string]string{"dev": "123456789012"},
+		err:        nil,
+	}
+	app.Update(msg)
+
+	if app.profileRefreshing {
+		t.Error("Expected profileRefreshing to be false after success")
+	}
+}
+
+func TestProfileRefreshDoneMsg_StaleIgnored(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	app := New(ctx, reg)
+	app.profileRefreshID = 10
+	app.profileRefreshing = true
+
+	msg := profileRefreshDoneMsg{
+		refreshID:  5,
+		region:     "us-west-2",
+		accountIDs: map[string]string{"dev": "123456789012"},
+		err:        nil,
+	}
+	app.Update(msg)
+
+	if !app.profileRefreshing {
+		t.Error("Expected profileRefreshing to remain true for stale refresh")
+	}
+}
+
+func TestProfileRefreshDoneMsg_ErrorSilent(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	app := New(ctx, reg)
+	app.profileRefreshID = 1
+	app.profileRefreshing = true
+
+	msg := profileRefreshDoneMsg{
+		refreshID: 1,
+		err:       fmt.Errorf("failed to load config"),
+	}
+	app.Update(msg)
+
+	if app.profileRefreshing {
+		t.Error("Expected profileRefreshing to be false after error")
+	}
+	if app.showWarnings {
+		t.Error("Expected showWarnings to remain false (silent error)")
+	}
+}
+
 func TestModalShowAndHide(t *testing.T) {
 	ctx := context.Background()
 	reg := registry.New()
