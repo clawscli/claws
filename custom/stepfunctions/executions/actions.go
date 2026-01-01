@@ -6,7 +6,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/sfn"
 
-	sfnClient "github.com/clawscli/claws/custom/sfn"
+	sfnClient "github.com/clawscli/claws/custom/stepfunctions"
 	"github.com/clawscli/claws/internal/action"
 	"github.com/clawscli/claws/internal/dao"
 )

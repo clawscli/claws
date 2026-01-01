@@ -16,21 +16,21 @@ import (
 	_ "github.com/clawscli/claws/custom/acm/certificates"
 
 	// API Gateway
-	_ "github.com/clawscli/claws/custom/apigateway/httpapis"
-	_ "github.com/clawscli/claws/custom/apigateway/restapis"
+	_ "github.com/clawscli/claws/custom/apigateway/http-apis"
+	_ "github.com/clawscli/claws/custom/apigateway/rest-apis"
 	_ "github.com/clawscli/claws/custom/apigateway/stages"
-	_ "github.com/clawscli/claws/custom/apigateway/stagesv2"
+	_ "github.com/clawscli/claws/custom/apigateway/stages-v2"
 
 	// App Runner
 	_ "github.com/clawscli/claws/custom/apprunner/operations"
 	_ "github.com/clawscli/claws/custom/apprunner/services"
 
 	// AppSync
-	_ "github.com/clawscli/claws/custom/appsync/datasources"
-	_ "github.com/clawscli/claws/custom/appsync/graphqlapis"
+	_ "github.com/clawscli/claws/custom/appsync/data-sources"
+	_ "github.com/clawscli/claws/custom/appsync/graphql-apis"
 
 	// Athena
-	_ "github.com/clawscli/claws/custom/athena/queryexecutions"
+	_ "github.com/clawscli/claws/custom/athena/query-executions"
 	_ "github.com/clawscli/claws/custom/athena/workgroups"
 
 	// Auto Scaling
@@ -48,21 +48,21 @@ import (
 	_ "github.com/clawscli/claws/custom/backup/vaults"
 
 	// Batch
-	_ "github.com/clawscli/claws/custom/batch/computeenvironments"
-	_ "github.com/clawscli/claws/custom/batch/jobdefinitions"
-	_ "github.com/clawscli/claws/custom/batch/jobqueues"
+	_ "github.com/clawscli/claws/custom/batch/compute-environments"
+	_ "github.com/clawscli/claws/custom/batch/job-definitions"
+	_ "github.com/clawscli/claws/custom/batch/job-queues"
 	_ "github.com/clawscli/claws/custom/batch/jobs"
 
 	// Bedrock
-	_ "github.com/clawscli/claws/custom/bedrock/foundationmodels"
+	_ "github.com/clawscli/claws/custom/bedrock/foundation-models"
 	_ "github.com/clawscli/claws/custom/bedrock/guardrails"
-	_ "github.com/clawscli/claws/custom/bedrock/inferenceprofiles"
+	_ "github.com/clawscli/claws/custom/bedrock/inference-profiles"
 
 	// Bedrock Agent
 	_ "github.com/clawscli/claws/custom/bedrockagent/agents"
-	_ "github.com/clawscli/claws/custom/bedrockagent/datasources"
+	_ "github.com/clawscli/claws/custom/bedrockagent/data-sources"
 	_ "github.com/clawscli/claws/custom/bedrockagent/flows"
-	_ "github.com/clawscli/claws/custom/bedrockagent/knowledgebases"
+	_ "github.com/clawscli/claws/custom/bedrockagent/knowledge-bases"
 	_ "github.com/clawscli/claws/custom/bedrockagent/prompts"
 
 	// Bedrock AgentCore
@@ -73,6 +73,11 @@ import (
 	// Budgets
 	_ "github.com/clawscli/claws/custom/budgets/budgets"
 	_ "github.com/clawscli/claws/custom/budgets/notifications"
+
+	// Cost Explorer
+	_ "github.com/clawscli/claws/custom/ce/anomalies"
+	_ "github.com/clawscli/claws/custom/ce/costs"
+	_ "github.com/clawscli/claws/custom/ce/monitors"
 
 	// CloudFormation
 	_ "github.com/clawscli/claws/custom/cfn/events"
@@ -89,8 +94,8 @@ import (
 
 	// CloudWatch
 	_ "github.com/clawscli/claws/custom/cloudwatch/alarms"
-	_ "github.com/clawscli/claws/custom/cloudwatch/loggroups"
-	_ "github.com/clawscli/claws/custom/cloudwatch/logstreams"
+	_ "github.com/clawscli/claws/custom/cloudwatch/log-groups"
+	_ "github.com/clawscli/claws/custom/cloudwatch/log-streams"
 
 	// CodeBuild
 	_ "github.com/clawscli/claws/custom/codebuild/builds"
@@ -101,24 +106,19 @@ import (
 	_ "github.com/clawscli/claws/custom/codepipeline/pipelines"
 
 	// Cognito
-	_ "github.com/clawscli/claws/custom/cognito/userpools"
-	_ "github.com/clawscli/claws/custom/cognito/users"
+	_ "github.com/clawscli/claws/custom/cognito-idp/user-pools"
+	_ "github.com/clawscli/claws/custom/cognito-idp/users"
 
 	// Compute Optimizer
-	_ "github.com/clawscli/claws/custom/computeoptimizer/recommendations"
-	_ "github.com/clawscli/claws/custom/computeoptimizer/summary"
+	_ "github.com/clawscli/claws/custom/compute-optimizer/recommendations"
+	_ "github.com/clawscli/claws/custom/compute-optimizer/summary"
 
 	// Config
-	_ "github.com/clawscli/claws/custom/config/rules"
-
-	// Cost Explorer
-	_ "github.com/clawscli/claws/custom/costexplorer/anomalies"
-	_ "github.com/clawscli/claws/custom/costexplorer/costs"
-	_ "github.com/clawscli/claws/custom/costexplorer/monitors"
+	_ "github.com/clawscli/claws/custom/configservice/rules"
 
 	// DataSync
 	_ "github.com/clawscli/claws/custom/datasync/locations"
-	_ "github.com/clawscli/claws/custom/datasync/taskexecutions"
+	_ "github.com/clawscli/claws/custom/datasync/task-executions"
 	_ "github.com/clawscli/claws/custom/datasync/tasks"
 
 	// Detective
@@ -127,19 +127,19 @@ import (
 
 	// Direct Connect
 	_ "github.com/clawscli/claws/custom/directconnect/connections"
-	_ "github.com/clawscli/claws/custom/directconnect/virtualinterfaces"
+	_ "github.com/clawscli/claws/custom/directconnect/virtual-interfaces"
 
 	// DynamoDB
 	_ "github.com/clawscli/claws/custom/dynamodb/tables"
 
 	// EC2
-	_ "github.com/clawscli/claws/custom/ec2/capacityreservations"
-	_ "github.com/clawscli/claws/custom/ec2/elasticips"
+	_ "github.com/clawscli/claws/custom/ec2/capacity-reservations"
+	_ "github.com/clawscli/claws/custom/ec2/elastic-ips"
 	_ "github.com/clawscli/claws/custom/ec2/images"
 	_ "github.com/clawscli/claws/custom/ec2/instances"
-	_ "github.com/clawscli/claws/custom/ec2/keypairs"
-	_ "github.com/clawscli/claws/custom/ec2/launchtemplates"
-	_ "github.com/clawscli/claws/custom/ec2/securitygroups"
+	_ "github.com/clawscli/claws/custom/ec2/key-pairs"
+	_ "github.com/clawscli/claws/custom/ec2/launch-templates"
+	_ "github.com/clawscli/claws/custom/ec2/security-groups"
 	_ "github.com/clawscli/claws/custom/ec2/snapshots"
 	_ "github.com/clawscli/claws/custom/ec2/volumes"
 
@@ -156,8 +156,8 @@ import (
 	_ "github.com/clawscli/claws/custom/elasticache/clusters"
 
 	// ELBv2 (ALB/NLB/GLB)
-	_ "github.com/clawscli/claws/custom/elbv2/loadbalancers"
-	_ "github.com/clawscli/claws/custom/elbv2/targetgroups"
+	_ "github.com/clawscli/claws/custom/elbv2/load-balancers"
+	_ "github.com/clawscli/claws/custom/elbv2/target-groups"
 	_ "github.com/clawscli/claws/custom/elbv2/targets"
 
 	// EMR
@@ -165,8 +165,8 @@ import (
 	_ "github.com/clawscli/claws/custom/emr/steps"
 
 	// EventBridge
-	_ "github.com/clawscli/claws/custom/eventbridge/buses"
-	_ "github.com/clawscli/claws/custom/eventbridge/rules"
+	_ "github.com/clawscli/claws/custom/events/buses"
+	_ "github.com/clawscli/claws/custom/events/rules"
 
 	// Firewall Manager
 	_ "github.com/clawscli/claws/custom/fms/policies"
@@ -174,7 +174,7 @@ import (
 	// Glue
 	_ "github.com/clawscli/claws/custom/glue/crawlers"
 	_ "github.com/clawscli/claws/custom/glue/databases"
-	_ "github.com/clawscli/claws/custom/glue/jobruns"
+	_ "github.com/clawscli/claws/custom/glue/job-runs"
 	_ "github.com/clawscli/claws/custom/glue/jobs"
 	_ "github.com/clawscli/claws/custom/glue/tables"
 
@@ -187,7 +187,7 @@ import (
 
 	// IAM
 	_ "github.com/clawscli/claws/custom/iam/groups"
-	_ "github.com/clawscli/claws/custom/iam/instanceprofiles"
+	_ "github.com/clawscli/claws/custom/iam/instance-profiles"
 	_ "github.com/clawscli/claws/custom/iam/policies"
 	_ "github.com/clawscli/claws/custom/iam/roles"
 	_ "github.com/clawscli/claws/custom/iam/users"
@@ -205,19 +205,19 @@ import (
 	_ "github.com/clawscli/claws/custom/lambda/functions"
 
 	// License Manager
-	_ "github.com/clawscli/claws/custom/licensemanager/configurations"
-	_ "github.com/clawscli/claws/custom/licensemanager/grants"
-	_ "github.com/clawscli/claws/custom/licensemanager/licenses"
+	_ "github.com/clawscli/claws/custom/license-manager/configurations"
+	_ "github.com/clawscli/claws/custom/license-manager/grants"
+	_ "github.com/clawscli/claws/custom/license-manager/licenses"
 
 	// Macie
-	_ "github.com/clawscli/claws/custom/macie/buckets"
-	_ "github.com/clawscli/claws/custom/macie/classificationjobs"
-	_ "github.com/clawscli/claws/custom/macie/findings"
+	_ "github.com/clawscli/claws/custom/macie2/buckets"
+	_ "github.com/clawscli/claws/custom/macie2/classification-jobs"
+	_ "github.com/clawscli/claws/custom/macie2/findings"
 
 	// Network Firewall
-	_ "github.com/clawscli/claws/custom/networkfirewall/firewallpolicies"
-	_ "github.com/clawscli/claws/custom/networkfirewall/firewalls"
-	_ "github.com/clawscli/claws/custom/networkfirewall/rulegroups"
+	_ "github.com/clawscli/claws/custom/network-firewall/firewall-policies"
+	_ "github.com/clawscli/claws/custom/network-firewall/firewalls"
+	_ "github.com/clawscli/claws/custom/network-firewall/rule-groups"
 
 	// OpenSearch
 	_ "github.com/clawscli/claws/custom/opensearch/domains"
@@ -237,12 +237,12 @@ import (
 	_ "github.com/clawscli/claws/custom/redshift/snapshots"
 
 	// RI/SP (Reserved Instances, Savings Plans)
-	_ "github.com/clawscli/claws/custom/risp/reservedinstances"
-	_ "github.com/clawscli/claws/custom/risp/savingsplans"
+	_ "github.com/clawscli/claws/custom/risp/reserved-instances"
+	_ "github.com/clawscli/claws/custom/risp/savings-plans"
 
 	// Route53
-	_ "github.com/clawscli/claws/custom/route53/hostedzones"
-	_ "github.com/clawscli/claws/custom/route53/recordsets"
+	_ "github.com/clawscli/claws/custom/route53/hosted-zones"
+	_ "github.com/clawscli/claws/custom/route53/record-sets"
 
 	// S3
 	_ "github.com/clawscli/claws/custom/s3/buckets"
@@ -255,7 +255,7 @@ import (
 	_ "github.com/clawscli/claws/custom/sagemaker/endpoints"
 	_ "github.com/clawscli/claws/custom/sagemaker/models"
 	_ "github.com/clawscli/claws/custom/sagemaker/notebooks"
-	_ "github.com/clawscli/claws/custom/sagemaker/trainingjobs"
+	_ "github.com/clawscli/claws/custom/sagemaker/training-jobs"
 
 	// Secrets Manager
 	_ "github.com/clawscli/claws/custom/secretsmanager/secrets"
@@ -264,12 +264,8 @@ import (
 	_ "github.com/clawscli/claws/custom/securityhub/findings"
 
 	// Service Quotas
-	_ "github.com/clawscli/claws/custom/servicequotas/quotas"
-	_ "github.com/clawscli/claws/custom/servicequotas/services"
-
-	// Step Functions
-	_ "github.com/clawscli/claws/custom/sfn/executions"
-	_ "github.com/clawscli/claws/custom/sfn/statemachines"
+	_ "github.com/clawscli/claws/custom/service-quotas/quotas"
+	_ "github.com/clawscli/claws/custom/service-quotas/services"
 
 	// SNS
 	_ "github.com/clawscli/claws/custom/sns/subscriptions"
@@ -280,6 +276,10 @@ import (
 
 	// SSM
 	_ "github.com/clawscli/claws/custom/ssm/parameters"
+
+	// Step Functions
+	_ "github.com/clawscli/claws/custom/stepfunctions/executions"
+	_ "github.com/clawscli/claws/custom/stepfunctions/state-machines"
 
 	// Transcribe
 	_ "github.com/clawscli/claws/custom/transcribe/jobs"
@@ -292,17 +292,17 @@ import (
 	_ "github.com/clawscli/claws/custom/trustedadvisor/recommendations"
 
 	// VPC
-	_ "github.com/clawscli/claws/custom/vpc/internetgateways"
-	_ "github.com/clawscli/claws/custom/vpc/natgateways"
-	_ "github.com/clawscli/claws/custom/vpc/routetables"
+	_ "github.com/clawscli/claws/custom/vpc/endpoints"
+	_ "github.com/clawscli/claws/custom/vpc/internet-gateways"
+	_ "github.com/clawscli/claws/custom/vpc/nat-gateways"
+	_ "github.com/clawscli/claws/custom/vpc/route-tables"
 	_ "github.com/clawscli/claws/custom/vpc/subnets"
-	_ "github.com/clawscli/claws/custom/vpc/tgwattachments"
-	_ "github.com/clawscli/claws/custom/vpc/transitgateways"
-	_ "github.com/clawscli/claws/custom/vpc/vpcendpoints"
+	_ "github.com/clawscli/claws/custom/vpc/tgw-attachments"
+	_ "github.com/clawscli/claws/custom/vpc/transit-gateways"
 	_ "github.com/clawscli/claws/custom/vpc/vpcs"
 
 	// WAF
-	_ "github.com/clawscli/claws/custom/wafv2/webacls"
+	_ "github.com/clawscli/claws/custom/wafv2/web-acls"
 
 	// X-Ray
 	_ "github.com/clawscli/claws/custom/xray/groups"

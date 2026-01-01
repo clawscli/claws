@@ -6,9 +6,9 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/clawscli/claws/custom/ce/anomalies"
+	"github.com/clawscli/claws/custom/ce/costs"
 	"github.com/clawscli/claws/custom/cloudwatch/alarms"
-	"github.com/clawscli/claws/custom/costexplorer/anomalies"
-	"github.com/clawscli/claws/custom/costexplorer/costs"
 	"github.com/clawscli/claws/custom/health/events"
 	"github.com/clawscli/claws/custom/securityhub/findings"
 	"github.com/clawscli/claws/custom/trustedadvisor/recommendations"
