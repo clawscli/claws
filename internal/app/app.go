@@ -372,8 +372,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		var cmds []tea.Cmd
-		cmds = append(cmds, refreshCmd)
+		cmds := []tea.Cmd{refreshCmd}
 
 		for len(a.viewStack) > 0 {
 			a.currentView = a.viewStack[len(a.viewStack)-1]
