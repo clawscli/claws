@@ -347,6 +347,60 @@ func TestProfileRefreshError_ClearedOnNewRefresh(t *testing.T) {
 	}
 }
 
+func TestProfileRefresh_RapidChangesOnlyLatestHonored(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	app := New(ctx, reg)
+	app.currentView = &MockView{name: "Dashboard"}
+
+	app.Update(navmsg.ProfilesChangedMsg{Selections: nil})
+	firstID := app.profileRefreshID
+
+	app.Update(navmsg.ProfilesChangedMsg{Selections: nil})
+	secondID := app.profileRefreshID
+
+	app.Update(navmsg.ProfilesChangedMsg{Selections: nil})
+	thirdID := app.profileRefreshID
+
+	if thirdID != 3 {
+		t.Errorf("Expected profileRefreshID to be 3, got %d", thirdID)
+	}
+
+	staleMsg := profileRefreshDoneMsg{
+		refreshID:  firstID,
+		region:     "us-east-1",
+		accountIDs: map[string]string{"old": "111111111111"},
+	}
+	app.Update(staleMsg)
+
+	if !app.profileRefreshing {
+		t.Error("Expected profileRefreshing to remain true after stale response")
+	}
+
+	anotherStaleMsg := profileRefreshDoneMsg{
+		refreshID:  secondID,
+		region:     "us-west-1",
+		accountIDs: map[string]string{"old2": "222222222222"},
+	}
+	app.Update(anotherStaleMsg)
+
+	if !app.profileRefreshing {
+		t.Error("Expected profileRefreshing to remain true after another stale response")
+	}
+
+	latestMsg := profileRefreshDoneMsg{
+		refreshID:  thirdID,
+		region:     "ap-northeast-1",
+		accountIDs: map[string]string{"latest": "333333333333"},
+	}
+	app.Update(latestMsg)
+
+	if app.profileRefreshing {
+		t.Error("Expected profileRefreshing to be false after latest response")
+	}
+}
+
 func TestModalShowAndHide(t *testing.T) {
 	ctx := context.Background()
 	reg := registry.New()

@@ -9,6 +9,8 @@ import (
 	appconfig "github.com/clawscli/claws/internal/config"
 )
 
+// maxConcurrentProfileFetches limits parallel AWS config loads to prevent
+// file descriptor exhaustion and excessive memory usage with many profiles.
 const maxConcurrentProfileFetches = 50
 
 // InitContext initializes AWS context by loading config and fetching account ID.

@@ -461,12 +461,10 @@ func (a *App) View() tea.View {
 		statusContent = ui.DimStyle().Render("AWS initializing...") + " • " + statusContent
 	}
 
-	if a.profileRefreshing {
-		statusContent = ui.DimStyle().Render("Refreshing profile...") + " • " + statusContent
-	}
-
 	if a.profileRefreshError != nil {
 		statusContent = ui.WarningStyle().Render("⚠ Profile error") + " • " + statusContent
+	} else if a.profileRefreshing {
+		statusContent = ui.DimStyle().Render("Refreshing profile...") + " • " + statusContent
 	}
 
 	status := a.styles.status.Render(statusContent)
