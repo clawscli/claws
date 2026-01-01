@@ -6,8 +6,8 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/eventbridge"
 
+	ebClient "github.com/clawscli/claws/custom/events"
 	"github.com/clawscli/claws/internal/action"
-	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
 )
 
@@ -34,16 +34,8 @@ func executeBusAction(ctx context.Context, act action.Action, resource dao.Resou
 	}
 }
 
-func getEventBridgeClient(ctx context.Context) (*eventbridge.Client, error) {
-	cfg, err := appaws.NewConfig(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return eventbridge.NewFromConfig(cfg), nil
-}
-
 func executeDeleteEventBus(ctx context.Context, resource dao.Resource) action.ActionResult {
-	client, err := getEventBridgeClient(ctx)
+	client, err := ebClient.GetClient(ctx)
 	if err != nil {
 		return action.ActionResult{Success: false, Error: err}
 	}

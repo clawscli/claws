@@ -6,8 +6,8 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/sfn"
 
+	sfnClient "github.com/clawscli/claws/custom/stepfunctions"
 	"github.com/clawscli/claws/internal/action"
-	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
 )
 
@@ -35,16 +35,8 @@ func executeStateMachineAction(ctx context.Context, act action.Action, resource 
 	}
 }
 
-func getSFNClient(ctx context.Context) (*sfn.Client, error) {
-	cfg, err := appaws.NewConfig(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return sfn.NewFromConfig(cfg), nil
-}
-
 func executeDeleteStateMachine(ctx context.Context, resource dao.Resource) action.ActionResult {
-	client, err := getSFNClient(ctx)
+	client, err := sfnClient.GetClient(ctx)
 	if err != nil {
 		return action.ActionResult{Success: false, Error: err}
 	}

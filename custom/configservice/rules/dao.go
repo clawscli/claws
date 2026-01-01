@@ -22,7 +22,7 @@ type RuleDAO struct {
 func NewRuleDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new config/rules dao")
+		return nil, apperrors.Wrap(err, "new configservice/rules dao")
 	}
 	return &RuleDAO{
 		BaseDAO: dao.NewBaseDAO("configservice", "rules"),
