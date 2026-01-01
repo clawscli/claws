@@ -160,7 +160,9 @@ func NewCostResource(group types.Group, start, end string) *CostResource {
 
 	return &CostResource{
 		BaseResource: dao.BaseResource{
-			ID:  serviceName,
+			ID: serviceName,
+			// Pseudo-ARN: Cost Explorer aggregates don't have real ARNs.
+			// Format "ce::<service>" enables internal resource identification.
 			ARN: fmt.Sprintf("ce::%s", serviceName),
 		},
 		ServiceName:   serviceName,
