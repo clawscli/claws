@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"charm.land/bubbles/v2/help"
@@ -289,9 +290,15 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case awsContextReadyMsg:
 		a.awsInitializing = false
 		if msg.err != nil {
-			log.Debug("AWS context initialization failed", "error", msg.err)
-			config.Global().AddWarning("AWS init failed: " + msg.err.Error())
-			a.showWarnings = true
+			errStr := msg.err.Error()
+			// IMDS errors are expected on non-EC2 environments - log only, no warning
+			if strings.Contains(errStr, "ec2imds") {
+				log.Debug("IMDS region detection failed (expected on non-EC2)", "error", msg.err)
+			} else {
+				log.Debug("AWS context initialization failed", "error", msg.err)
+				config.Global().AddWarning("AWS init failed: " + errStr)
+				a.showWarnings = true
+			}
 		}
 		// Trigger a re-render to update header with account ID
 		return a, nil

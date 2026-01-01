@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -235,6 +236,24 @@ func TestAWSContextReadyMsg_Timeout(t *testing.T) {
 	}
 	if !app.showWarnings {
 		t.Error("Expected showWarnings to be true after timeout")
+	}
+}
+
+func TestAWSContextReadyMsg_IMDSError(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	app := New(ctx, reg)
+	app.awsInitializing = true
+
+	msg := awsContextReadyMsg{err: fmt.Errorf("operation error ec2imds: GetRegion, exceeded maximum number of attempts")}
+	app.Update(msg)
+
+	if app.awsInitializing {
+		t.Error("Expected awsInitializing to be false after IMDS error")
+	}
+	if app.showWarnings {
+		t.Error("Expected showWarnings to be false for IMDS errors (suppressed)")
 	}
 }
 
