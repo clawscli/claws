@@ -81,9 +81,10 @@ type App struct {
 	showWarnings  bool
 	warningsReady bool
 
-	awsInitializing   bool
-	profileRefreshID  uint64
-	profileRefreshing bool
+	awsInitializing     bool
+	profileRefreshID    uint64
+	profileRefreshing   bool
+	profileRefreshError error
 
 	modal         *view.Modal
 	modalRenderer *view.ModalRenderer
@@ -318,8 +319,9 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return a, nil
 		}
 		a.profileRefreshing = false
+		a.profileRefreshError = msg.err
 		if msg.err != nil {
-			log.Debug("profile refresh failed", "error", msg.err)
+			log.Warn("profile refresh failed", "error", msg.err)
 			return a, nil
 		}
 		if msg.region != "" {
@@ -356,6 +358,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		log.Info("profiles changed", "count", len(msg.Selections))
 		a.profileRefreshID++
 		a.profileRefreshing = true
+		a.profileRefreshError = nil
 		refreshID := a.profileRefreshID
 		refreshCmd := func() tea.Msg {
 			ctx, cancel := context.WithTimeout(a.ctx, awsInitTimeout)
@@ -460,6 +463,10 @@ func (a *App) View() tea.View {
 
 	if a.profileRefreshing {
 		statusContent = ui.DimStyle().Render("Refreshing profile...") + " • " + statusContent
+	}
+
+	if a.profileRefreshError != nil {
+		statusContent = ui.WarningStyle().Render("⚠ Profile error") + " • " + statusContent
 	}
 
 	status := a.styles.status.Render(statusContent)

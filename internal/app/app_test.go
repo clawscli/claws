@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	navmsg "github.com/clawscli/claws/internal/msg"
 	"github.com/clawscli/claws/internal/registry"
 	"github.com/clawscli/claws/internal/view"
 )
@@ -276,6 +277,9 @@ func TestProfileRefreshDoneMsg_Success(t *testing.T) {
 	if app.profileRefreshing {
 		t.Error("Expected profileRefreshing to be false after success")
 	}
+	if app.profileRefreshError != nil {
+		t.Error("Expected profileRefreshError to be nil after success")
+	}
 }
 
 func TestProfileRefreshDoneMsg_StaleIgnored(t *testing.T) {
@@ -299,7 +303,7 @@ func TestProfileRefreshDoneMsg_StaleIgnored(t *testing.T) {
 	}
 }
 
-func TestProfileRefreshDoneMsg_ErrorSilent(t *testing.T) {
+func TestProfileRefreshDoneMsg_Error(t *testing.T) {
 	ctx := context.Background()
 	reg := registry.New()
 
@@ -316,8 +320,30 @@ func TestProfileRefreshDoneMsg_ErrorSilent(t *testing.T) {
 	if app.profileRefreshing {
 		t.Error("Expected profileRefreshing to be false after error")
 	}
+	if app.profileRefreshError == nil {
+		t.Error("Expected profileRefreshError to be set after error")
+	}
 	if app.showWarnings {
-		t.Error("Expected showWarnings to remain false (silent error)")
+		t.Error("Expected showWarnings to remain false")
+	}
+}
+
+func TestProfileRefreshError_ClearedOnNewRefresh(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	app := New(ctx, reg)
+	app.profileRefreshError = fmt.Errorf("previous error")
+	app.currentView = &MockView{name: "Dashboard"}
+
+	msg := navmsg.ProfilesChangedMsg{Selections: nil}
+	app.Update(msg)
+
+	if app.profileRefreshError != nil {
+		t.Error("Expected profileRefreshError to be cleared on new profile change")
+	}
+	if !app.profileRefreshing {
+		t.Error("Expected profileRefreshing to be true")
 	}
 }
 

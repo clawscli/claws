@@ -35,6 +35,7 @@ func InitContext(ctx context.Context) error {
 
 // RefreshContextData re-fetches region and account ID for the current profile selection(s).
 // Returns the data without modifying global state, allowing the caller to apply changes.
+// Fetches up to 50 profiles concurrently. Returns partial results and first error on failure.
 func RefreshContextData(ctx context.Context) (region string, accountIDs map[string]string, err error) {
 	selections := appconfig.Global().Selections()
 	if len(selections) == 0 {
@@ -43,8 +44,8 @@ func RefreshContextData(ctx context.Context) (region string, accountIDs map[stri
 
 	if !appconfig.Global().IsMultiRegion() {
 		sel := selections[0]
-		cfg, loadErr := config.LoadDefaultConfig(ctx, SelectionLoadOptions(sel)...)
-		if loadErr == nil && cfg.Region != "" {
+		cfg, cfgErr := config.LoadDefaultConfig(ctx, SelectionLoadOptions(sel)...)
+		if cfgErr == nil && cfg.Region != "" {
 			region = cfg.Region
 		}
 	}
@@ -61,9 +62,9 @@ func RefreshContextData(ctx context.Context) (region string, accountIDs map[stri
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
-			cfg, loadErr := config.LoadDefaultConfig(ctx, SelectionLoadOptions(s)...)
-			if loadErr != nil {
-				errChan <- loadErr
+			cfg, cfgErr := config.LoadDefaultConfig(ctx, SelectionLoadOptions(s)...)
+			if cfgErr != nil {
+				errChan <- cfgErr
 				return
 			}
 			id := FetchAccountID(ctx, cfg)
@@ -76,9 +77,10 @@ func RefreshContextData(ctx context.Context) (region string, accountIDs map[stri
 	wg.Wait()
 	close(errChan)
 
-	for e := range errChan {
-		err = e
-		break
+	// Collect first error if any (channel is closed, so this won't block)
+	select {
+	case err = <-errChan:
+	default:
 	}
 
 	return region, accountIDs, err
