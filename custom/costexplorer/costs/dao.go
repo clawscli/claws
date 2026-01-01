@@ -161,7 +161,7 @@ func NewCostResource(group types.Group, start, end string) *CostResource {
 	return &CostResource{
 		BaseResource: dao.BaseResource{
 			ID:  serviceName,
-			ARN: fmt.Sprintf("costexplorer::%s", serviceName),
+			ARN: fmt.Sprintf("ce::%s", serviceName),
 		},
 		ServiceName:   serviceName,
 		Cost:          cost,
