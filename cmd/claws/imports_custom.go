@@ -59,16 +59,16 @@ import (
 	_ "github.com/clawscli/claws/custom/bedrock/inference-profiles"
 
 	// Bedrock Agent
-	_ "github.com/clawscli/claws/custom/bedrockagent/agents"
-	_ "github.com/clawscli/claws/custom/bedrockagent/data-sources"
-	_ "github.com/clawscli/claws/custom/bedrockagent/flows"
-	_ "github.com/clawscli/claws/custom/bedrockagent/knowledge-bases"
-	_ "github.com/clawscli/claws/custom/bedrockagent/prompts"
+	_ "github.com/clawscli/claws/custom/bedrock-agent/agents"
+	_ "github.com/clawscli/claws/custom/bedrock-agent/data-sources"
+	_ "github.com/clawscli/claws/custom/bedrock-agent/flows"
+	_ "github.com/clawscli/claws/custom/bedrock-agent/knowledge-bases"
+	_ "github.com/clawscli/claws/custom/bedrock-agent/prompts"
 
 	// Bedrock AgentCore
-	_ "github.com/clawscli/claws/custom/bedrockagentcore/endpoints"
-	_ "github.com/clawscli/claws/custom/bedrockagentcore/runtimes"
-	_ "github.com/clawscli/claws/custom/bedrockagentcore/versions"
+	_ "github.com/clawscli/claws/custom/bedrock-agentcore/endpoints"
+	_ "github.com/clawscli/claws/custom/bedrock-agentcore/runtimes"
+	_ "github.com/clawscli/claws/custom/bedrock-agentcore/versions"
 
 	// Budgets
 	_ "github.com/clawscli/claws/custom/budgets/budgets"
