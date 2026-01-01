@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	navmsg "github.com/clawscli/claws/internal/msg"
 	"github.com/clawscli/claws/internal/registry"
 	"github.com/clawscli/claws/internal/view"
 )
@@ -254,6 +255,149 @@ func TestAWSContextReadyMsg_IMDSError(t *testing.T) {
 	}
 	if app.showWarnings {
 		t.Error("Expected showWarnings to be false for IMDS errors (suppressed)")
+	}
+}
+
+func TestProfileRefreshDoneMsg_Success(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	app := New(ctx, reg)
+	app.profileRefreshID = 5
+	app.profileRefreshing = true
+
+	msg := profileRefreshDoneMsg{
+		refreshID:  5,
+		region:     "us-west-2",
+		accountIDs: map[string]string{"dev": "123456789012"},
+		err:        nil,
+	}
+	app.Update(msg)
+
+	if app.profileRefreshing {
+		t.Error("Expected profileRefreshing to be false after success")
+	}
+	if app.profileRefreshError != nil {
+		t.Error("Expected profileRefreshError to be nil after success")
+	}
+}
+
+func TestProfileRefreshDoneMsg_StaleIgnored(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	app := New(ctx, reg)
+	app.profileRefreshID = 10
+	app.profileRefreshing = true
+
+	msg := profileRefreshDoneMsg{
+		refreshID:  5,
+		region:     "us-west-2",
+		accountIDs: map[string]string{"dev": "123456789012"},
+		err:        nil,
+	}
+	app.Update(msg)
+
+	if !app.profileRefreshing {
+		t.Error("Expected profileRefreshing to remain true for stale refresh")
+	}
+}
+
+func TestProfileRefreshDoneMsg_Error(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	app := New(ctx, reg)
+	app.profileRefreshID = 1
+	app.profileRefreshing = true
+
+	msg := profileRefreshDoneMsg{
+		refreshID: 1,
+		err:       fmt.Errorf("failed to load config"),
+	}
+	app.Update(msg)
+
+	if app.profileRefreshing {
+		t.Error("Expected profileRefreshing to be false after error")
+	}
+	if app.profileRefreshError == nil {
+		t.Error("Expected profileRefreshError to be set after error")
+	}
+	if app.showWarnings {
+		t.Error("Expected showWarnings to remain false")
+	}
+}
+
+func TestProfileRefreshError_ClearedOnNewRefresh(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	app := New(ctx, reg)
+	app.profileRefreshError = fmt.Errorf("previous error")
+	app.currentView = &MockView{name: "Dashboard"}
+
+	msg := navmsg.ProfilesChangedMsg{Selections: nil}
+	app.Update(msg)
+
+	if app.profileRefreshError != nil {
+		t.Error("Expected profileRefreshError to be cleared on new profile change")
+	}
+	if !app.profileRefreshing {
+		t.Error("Expected profileRefreshing to be true")
+	}
+}
+
+func TestProfileRefresh_RapidChangesOnlyLatestHonored(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	app := New(ctx, reg)
+	app.currentView = &MockView{name: "Dashboard"}
+
+	app.Update(navmsg.ProfilesChangedMsg{Selections: nil})
+	firstID := app.profileRefreshID
+
+	app.Update(navmsg.ProfilesChangedMsg{Selections: nil})
+	secondID := app.profileRefreshID
+
+	app.Update(navmsg.ProfilesChangedMsg{Selections: nil})
+	thirdID := app.profileRefreshID
+
+	if thirdID != 3 {
+		t.Errorf("Expected profileRefreshID to be 3, got %d", thirdID)
+	}
+
+	staleMsg := profileRefreshDoneMsg{
+		refreshID:  firstID,
+		region:     "us-east-1",
+		accountIDs: map[string]string{"old": "111111111111"},
+	}
+	app.Update(staleMsg)
+
+	if !app.profileRefreshing {
+		t.Error("Expected profileRefreshing to remain true after stale response")
+	}
+
+	anotherStaleMsg := profileRefreshDoneMsg{
+		refreshID:  secondID,
+		region:     "us-west-1",
+		accountIDs: map[string]string{"old2": "222222222222"},
+	}
+	app.Update(anotherStaleMsg)
+
+	if !app.profileRefreshing {
+		t.Error("Expected profileRefreshing to remain true after another stale response")
+	}
+
+	latestMsg := profileRefreshDoneMsg{
+		refreshID:  thirdID,
+		region:     "ap-northeast-1",
+		accountIDs: map[string]string{"latest": "333333333333"},
+	}
+	app.Update(latestMsg)
+
+	if app.profileRefreshing {
+		t.Error("Expected profileRefreshing to be false after latest response")
 	}
 }
 

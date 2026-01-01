@@ -30,6 +30,14 @@ type awsContextReadyMsg struct {
 	err error
 }
 
+// profileRefreshDoneMsg is sent when async profile refresh completes
+type profileRefreshDoneMsg struct {
+	refreshID  uint64
+	region     string
+	accountIDs map[string]string
+	err        error
+}
+
 // App is the main application model
 // appStyles holds cached lipgloss styles for performance
 type appStyles struct {
@@ -73,7 +81,10 @@ type App struct {
 	showWarnings  bool
 	warningsReady bool
 
-	awsInitializing bool
+	awsInitializing     bool
+	profileRefreshID    uint64
+	profileRefreshing   bool
+	profileRefreshError error
 
 	modal         *view.Modal
 	modalRenderer *view.ModalRenderer
@@ -300,7 +311,27 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				a.showWarnings = true
 			}
 		}
-		// Trigger a re-render to update header with account ID
+		return a, nil
+
+	case profileRefreshDoneMsg:
+		if msg.refreshID != a.profileRefreshID {
+			log.Debug("ignoring stale profile refresh", "got", msg.refreshID, "want", a.profileRefreshID)
+			return a, nil
+		}
+		a.profileRefreshing = false
+		a.profileRefreshError = msg.err
+		if msg.err != nil {
+			log.Warn("profile refresh failed", "error", msg.err)
+			return a, nil
+		}
+		if msg.region != "" {
+			config.Global().SetRegion(msg.region)
+		}
+		if len(msg.accountIDs) > 0 {
+			for profileID, accountID := range msg.accountIDs {
+				config.Global().SetAccountIDForProfile(profileID, accountID)
+			}
+		}
 		return a, nil
 
 	case navmsg.RegionChangedMsg:
@@ -325,9 +356,24 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case navmsg.ProfilesChangedMsg:
 		log.Info("profiles changed", "count", len(msg.Selections))
-		if err := aws.RefreshContext(a.ctx); err != nil {
-			log.Debug("failed to refresh profile config", "error", err)
+		a.profileRefreshID++
+		a.profileRefreshing = true
+		a.profileRefreshError = nil
+		refreshID := a.profileRefreshID
+		refreshCmd := func() tea.Msg {
+			ctx, cancel := context.WithTimeout(a.ctx, awsInitTimeout)
+			defer cancel()
+			region, accountIDs, err := aws.RefreshContextData(ctx)
+			return profileRefreshDoneMsg{
+				refreshID:  refreshID,
+				region:     region,
+				accountIDs: accountIDs,
+				err:        err,
+			}
 		}
+
+		cmds := []tea.Cmd{refreshCmd}
+
 		for len(a.viewStack) > 0 {
 			a.currentView = a.viewStack[len(a.viewStack)-1]
 			a.viewStack = a.viewStack[:len(a.viewStack)-1]
@@ -337,17 +383,19 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			if r, ok := a.currentView.(view.Refreshable); ok && r.CanRefresh() {
-				return a, tea.Batch(
+				cmds = append(cmds,
 					a.currentView.SetSize(a.width, a.height-2),
 					func() tea.Msg { return view.RefreshMsg{} },
 				)
+				return a, tea.Batch(cmds...)
 			}
 		}
 		a.currentView = view.NewDashboardView(a.ctx, a.registry)
-		return a, tea.Batch(
+		cmds = append(cmds,
 			a.currentView.Init(),
 			a.currentView.SetSize(a.width, a.height-2),
 		)
+		return a, tea.Batch(cmds...)
 
 	case view.SortMsg:
 		// Delegate sort command to current view
@@ -410,6 +458,12 @@ func (a *App) View() tea.View {
 
 	if a.awsInitializing {
 		statusContent = ui.DimStyle().Render("AWS initializing...") + " • " + statusContent
+	}
+
+	if a.profileRefreshError != nil {
+		statusContent = ui.WarningStyle().Render("⚠ Profile error") + " • " + statusContent
+	} else if a.profileRefreshing {
+		statusContent = ui.DimStyle().Render("Refreshing profile...") + " • " + statusContent
 	}
 
 	status := a.styles.status.Render(statusContent)
