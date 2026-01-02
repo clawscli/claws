@@ -250,7 +250,7 @@ func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 		}
 		if !config.IsValidProfileName(profileName) {
 			return func() tea.Msg {
-				return ErrorMsg{Err: fmt.Errorf("invalid profile name: %s", profileName)}
+				return ErrorMsg{Err: fmt.Errorf("invalid profile name: %q", profileName)}
 			}, nil
 		}
 		return c.executeLogin(profileName), nil
