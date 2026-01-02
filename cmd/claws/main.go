@@ -173,16 +173,6 @@ func printUsage() {
 	fmt.Println("                           NO_PROXY auto-configured for EC2 IMDS (169.254.169.254)")
 }
 
-// getEnvWithFallback returns the first non-empty value from the given env var names.
-func getEnvWithFallback(names ...string) string {
-	for _, name := range names {
-		if v := os.Getenv(name); v != "" {
-			return v
-		}
-	}
-	return ""
-}
-
 // awsNoProxyEndpoints lists AWS credential endpoints that must bypass proxy.
 // Default: EC2 IMDS only. ECS/EKS endpoints can be added via config.
 // TODO(#67): make configurable via config.yaml
@@ -194,14 +184,14 @@ var awsNoProxyEndpoints = []string{
 // Go's net/http ignores ALL_PROXY. When HTTP_PROXY is set, NO_PROXY is
 // configured to exclude AWS credential endpoints (IMDS, ECS, EKS).
 func propagateAllProxy() {
-	allProxy := getEnvWithFallback("ALL_PROXY", "all_proxy")
+	allProxy := os.Getenv("ALL_PROXY")
 	if allProxy == "" {
 		return
 	}
 
 	var propagated []string
 
-	if getEnvWithFallback("HTTPS_PROXY", "https_proxy") == "" {
+	if os.Getenv("HTTPS_PROXY") == "" {
 		if err := os.Setenv("HTTPS_PROXY", allProxy); err != nil {
 			log.Warn("failed to set HTTPS_PROXY", "error", err)
 		} else {
@@ -209,7 +199,7 @@ func propagateAllProxy() {
 		}
 	}
 
-	if getEnvWithFallback("HTTP_PROXY", "http_proxy") == "" {
+	if os.Getenv("HTTP_PROXY") == "" {
 		if err := os.Setenv("HTTP_PROXY", allProxy); err != nil {
 			log.Warn("failed to set HTTP_PROXY", "error", err)
 		} else {
@@ -218,18 +208,17 @@ func propagateAllProxy() {
 	}
 
 	if len(propagated) > 0 {
-		log.Info("propagated ALL_PROXY", "to", propagated)
+		log.Debug("propagated ALL_PROXY", "to", propagated)
 	}
 }
 
 // configureNoProxy appends awsNoProxyEndpoints to NO_PROXY if missing.
 func configureNoProxy() {
-	if getEnvWithFallback("HTTP_PROXY", "http_proxy") == "" &&
-		getEnvWithFallback("HTTPS_PROXY", "https_proxy") == "" {
+	if os.Getenv("HTTP_PROXY") == "" && os.Getenv("HTTPS_PROXY") == "" {
 		return
 	}
 
-	existing := getEnvWithFallback("NO_PROXY", "no_proxy")
+	existing := os.Getenv("NO_PROXY")
 
 	existingSet := make(map[string]bool)
 	if existing != "" {
@@ -264,7 +253,7 @@ func configureNoProxy() {
 		log.Warn("failed to set NO_PROXY", "error", err)
 		return
 	}
-	log.Info("configured NO_PROXY for AWS endpoints", "added", additions)
+	log.Debug("configured NO_PROXY for AWS endpoints", "added", additions)
 }
 
 func splitNoProxy(value string) []string {

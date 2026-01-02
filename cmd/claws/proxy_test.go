@@ -5,70 +5,12 @@ import (
 	"testing"
 )
 
-func TestGetEnvWithFallback(t *testing.T) {
-	tests := []struct {
-		name     string
-		envVars  map[string]string
-		keys     []string
-		expected string
-	}{
-		{
-			name:     "first key exists",
-			envVars:  map[string]string{"TEST_VAR_A": "value_a"},
-			keys:     []string{"TEST_VAR_A", "TEST_VAR_B"},
-			expected: "value_a",
-		},
-		{
-			name:     "second key exists",
-			envVars:  map[string]string{"TEST_VAR_B": "value_b"},
-			keys:     []string{"TEST_VAR_A", "TEST_VAR_B"},
-			expected: "value_b",
-		},
-		{
-			name:     "first key takes precedence",
-			envVars:  map[string]string{"TEST_VAR_A": "value_a", "TEST_VAR_B": "value_b"},
-			keys:     []string{"TEST_VAR_A", "TEST_VAR_B"},
-			expected: "value_a",
-		},
-		{
-			name:     "no keys exist",
-			envVars:  map[string]string{},
-			keys:     []string{"TEST_VAR_A", "TEST_VAR_B"},
-			expected: "",
-		},
-		{
-			name:     "empty value is skipped",
-			envVars:  map[string]string{"TEST_VAR_A": "", "TEST_VAR_B": "value_b"},
-			keys:     []string{"TEST_VAR_A", "TEST_VAR_B"},
-			expected: "value_b",
-		},
-		{
-			name:     "no keys provided",
-			envVars:  map[string]string{},
-			keys:     []string{},
-			expected: "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			clearEnvVars(t, tt.keys)
-			setEnvVars(t, tt.envVars)
-
-			result := getEnvWithFallback(tt.keys...)
-			if result != tt.expected {
-				t.Errorf("got %q, want %q", result, tt.expected)
-			}
-		})
-	}
-}
-
 func TestPropagateAllProxy(t *testing.T) {
 	proxyVars := []string{
-		"ALL_PROXY", "all_proxy",
-		"HTTP_PROXY", "http_proxy",
-		"HTTPS_PROXY", "https_proxy",
-		"NO_PROXY", "no_proxy",
+		"ALL_PROXY",
+		"HTTP_PROXY",
+		"HTTPS_PROXY",
+		"NO_PROXY",
 	}
 
 	tests := []struct {
@@ -82,18 +24,6 @@ func TestPropagateAllProxy(t *testing.T) {
 			envVars:   map[string]string{"ALL_PROXY": "socks5h://proxy:1080"},
 			wantHTTPS: "socks5h://proxy:1080",
 			wantHTTP:  "socks5h://proxy:1080",
-		},
-		{
-			name:      "all_proxy (lowercase) propagates",
-			envVars:   map[string]string{"all_proxy": "socks5h://proxy:1080"},
-			wantHTTPS: "socks5h://proxy:1080",
-			wantHTTP:  "socks5h://proxy:1080",
-		},
-		{
-			name:      "ALL_PROXY takes precedence over all_proxy",
-			envVars:   map[string]string{"ALL_PROXY": "http://upper", "all_proxy": "http://lower"},
-			wantHTTPS: "http://upper",
-			wantHTTP:  "http://upper",
 		},
 		{
 			name:      "HTTPS_PROXY already set - only HTTP propagated",
@@ -128,10 +58,10 @@ func TestPropagateAllProxy(t *testing.T) {
 
 			propagateAllProxy()
 
-			if got := getEnvWithFallback("HTTPS_PROXY", "https_proxy"); got != tt.wantHTTPS {
+			if got := os.Getenv("HTTPS_PROXY"); got != tt.wantHTTPS {
 				t.Errorf("HTTPS_PROXY = %q, want %q", got, tt.wantHTTPS)
 			}
-			if got := getEnvWithFallback("HTTP_PROXY", "http_proxy"); got != tt.wantHTTP {
+			if got := os.Getenv("HTTP_PROXY"); got != tt.wantHTTP {
 				t.Errorf("HTTP_PROXY = %q, want %q", got, tt.wantHTTP)
 			}
 		})
@@ -140,9 +70,9 @@ func TestPropagateAllProxy(t *testing.T) {
 
 func TestConfigureNoProxy(t *testing.T) {
 	proxyVars := []string{
-		"HTTP_PROXY", "http_proxy",
-		"HTTPS_PROXY", "https_proxy",
-		"NO_PROXY", "no_proxy",
+		"HTTP_PROXY",
+		"HTTPS_PROXY",
+		"NO_PROXY",
 	}
 
 	tests := []struct {
@@ -180,11 +110,6 @@ func TestConfigureNoProxy(t *testing.T) {
 			envVars:     map[string]string{"HTTP_PROXY": "http://proxy", "NO_PROXY": "169.254.169.254"},
 			wantNoProxy: "169.254.169.254",
 		},
-		{
-			name:        "lowercase http_proxy triggers config",
-			envVars:     map[string]string{"http_proxy": "http://proxy"},
-			wantNoProxy: "169.254.169.254",
-		},
 	}
 
 	for _, tt := range tests {
@@ -194,7 +119,7 @@ func TestConfigureNoProxy(t *testing.T) {
 
 			configureNoProxy()
 
-			if got := getEnvWithFallback("NO_PROXY", "no_proxy"); got != tt.wantNoProxy {
+			if got := os.Getenv("NO_PROXY"); got != tt.wantNoProxy {
 				t.Errorf("NO_PROXY = %q, want %q", got, tt.wantNoProxy)
 			}
 		})
