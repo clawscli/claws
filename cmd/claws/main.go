@@ -168,7 +168,8 @@ func printUsage() {
 	fmt.Println()
 	fmt.Println("Environment Variables:")
 	fmt.Println("  CLAWS_READ_ONLY=1|true   Enable read-only mode")
-	fmt.Println("  ALL_PROXY                Propagated to HTTPS_PROXY if not set")
+	fmt.Println("  ALL_PROXY                Propagated to HTTP_PROXY/HTTPS_PROXY if not set")
+	fmt.Println("                           NO_PROXY auto-configured for AWS endpoints (IMDS, ECS, EKS)")
 }
 
 // getEnvWithFallback returns the first non-empty value from the given env var names.
@@ -181,21 +182,110 @@ func getEnvWithFallback(names ...string) string {
 	return ""
 }
 
-// propagateAllProxy copies ALL_PROXY to HTTPS_PROXY if HTTPS_PROXY is not set.
-// Go's net/http ignores ALL_PROXY and only reads HTTP_PROXY/HTTPS_PROXY.
-// AWS APIs use HTTPS, so we only need HTTPS_PROXY.
-// HTTP is only used for IMDS (169.254.169.254) which must NOT be proxied.
+// awsNoProxyEndpoints lists AWS credential endpoints that must bypass proxy.
+// - 169.254.169.254: EC2 IMDS
+// - 169.254.170.2: ECS Task Role
+// - 169.254.170.23: EKS Pod Identity
+// TODO(#67): make configurable via config.yaml
+var awsNoProxyEndpoints = []string{
+	"169.254.169.254",
+	"169.254.170.2",
+	"169.254.170.23",
+}
+
+// propagateAllProxy copies ALL_PROXY to HTTP_PROXY/HTTPS_PROXY if not set.
+// Go's net/http ignores ALL_PROXY. When HTTP_PROXY is set, NO_PROXY is
+// configured to exclude AWS credential endpoints (IMDS, ECS, EKS).
 func propagateAllProxy() {
 	allProxy := getEnvWithFallback("ALL_PROXY", "all_proxy")
 	if allProxy == "" {
 		return
 	}
-	if getEnvWithFallback("HTTPS_PROXY", "https_proxy") != "" {
+
+	var propagated []string
+
+	if getEnvWithFallback("HTTPS_PROXY", "https_proxy") == "" {
+		if err := os.Setenv("HTTPS_PROXY", allProxy); err != nil {
+			log.Warn("failed to set HTTPS_PROXY", "error", err)
+		} else {
+			propagated = append(propagated, "HTTPS_PROXY")
+		}
+	}
+
+	if getEnvWithFallback("HTTP_PROXY", "http_proxy") == "" {
+		if err := os.Setenv("HTTP_PROXY", allProxy); err != nil {
+			log.Warn("failed to set HTTP_PROXY", "error", err)
+		} else {
+			propagated = append(propagated, "HTTP_PROXY")
+			configureNoProxy()
+		}
+	}
+
+	if len(propagated) > 0 {
+		log.Info("propagated ALL_PROXY", "proxy", allProxy, "to", propagated)
+	}
+}
+
+// configureNoProxy appends awsNoProxyEndpoints to NO_PROXY if missing.
+func configureNoProxy() {
+	existing := getEnvWithFallback("NO_PROXY", "no_proxy")
+
+	existingSet := make(map[string]bool)
+	if existing != "" {
+		for _, entry := range splitNoProxy(existing) {
+			existingSet[entry] = true
+		}
+	}
+
+	var additions []string
+	for _, endpoint := range awsNoProxyEndpoints {
+		if !existingSet[endpoint] {
+			additions = append(additions, endpoint)
+		}
+	}
+
+	if len(additions) == 0 {
 		return
 	}
-	if err := os.Setenv("HTTPS_PROXY", allProxy); err != nil {
-		log.Warn("failed to set HTTPS_PROXY", "error", err)
+
+	newValue := existing
+	if newValue != "" {
+		newValue += ","
+	}
+	for i, endpoint := range additions {
+		if i > 0 {
+			newValue += ","
+		}
+		newValue += endpoint
+	}
+
+	if err := os.Setenv("NO_PROXY", newValue); err != nil {
+		log.Warn("failed to set NO_PROXY", "error", err)
 		return
 	}
-	log.Info("propagated ALL_PROXY to HTTPS_PROXY", "proxy", allProxy)
+	log.Info("configured NO_PROXY for AWS endpoints", "added", additions)
+}
+
+func splitNoProxy(value string) []string {
+	if value == "" {
+		return nil
+	}
+	var result []string
+	start := 0
+	for i := 0; i <= len(value); i++ {
+		if i == len(value) || value[i] == ',' {
+			entry := value[start:i]
+			for len(entry) > 0 && entry[0] == ' ' {
+				entry = entry[1:]
+			}
+			for len(entry) > 0 && entry[len(entry)-1] == ' ' {
+				entry = entry[:len(entry)-1]
+			}
+			if entry != "" {
+				result = append(result, entry)
+			}
+			start = i + 1
+		}
+	}
+	return result
 }
