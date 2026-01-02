@@ -9,10 +9,6 @@ import (
 	appconfig "github.com/clawscli/claws/internal/config"
 )
 
-// maxConcurrentProfileFetches limits parallel AWS config loads to prevent
-// file descriptor exhaustion and excessive memory usage with many profiles.
-const maxConcurrentProfileFetches = 50
-
 // InitContext initializes AWS context by loading config and fetching account ID.
 // Updates the global config with region (if not already set) and account ID.
 func InitContext(ctx context.Context) error {
@@ -37,7 +33,7 @@ func InitContext(ctx context.Context) error {
 
 // RefreshContextData re-fetches region and account ID for the current profile selection(s).
 // Returns the data without modifying global state, allowing the caller to apply changes.
-// Fetches up to 50 profiles concurrently. Returns partial results and first error on failure.
+// Concurrency is limited by config.File().MaxConcurrentFetches(). Returns partial results and first error on failure.
 func RefreshContextData(ctx context.Context) (region string, accountIDs map[string]string, err error) {
 	selections := appconfig.Global().Selections()
 	if len(selections) == 0 {
@@ -56,7 +52,7 @@ func RefreshContextData(ctx context.Context) (region string, accountIDs map[stri
 	accountIDs = make(map[string]string)
 	var mu sync.Mutex
 	errChan := make(chan error, len(selections))
-	sem := make(chan struct{}, maxConcurrentProfileFetches)
+	sem := make(chan struct{}, appconfig.File().MaxConcurrentFetches())
 
 	for _, sel := range selections {
 		wg.Add(1)
