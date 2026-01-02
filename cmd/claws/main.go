@@ -21,6 +21,7 @@ var version = "dev"
 
 func main() {
 	propagateAllProxy()
+	configureNoProxy()
 
 	opts := parseFlags()
 
@@ -213,7 +214,6 @@ func propagateAllProxy() {
 			log.Warn("failed to set HTTP_PROXY", "error", err)
 		} else {
 			propagated = append(propagated, "HTTP_PROXY")
-			configureNoProxy()
 		}
 	}
 
@@ -224,6 +224,11 @@ func propagateAllProxy() {
 
 // configureNoProxy appends awsNoProxyEndpoints to NO_PROXY if missing.
 func configureNoProxy() {
+	if getEnvWithFallback("HTTP_PROXY", "http_proxy") == "" &&
+		getEnvWithFallback("HTTPS_PROXY", "https_proxy") == "" {
+		return
+	}
+
 	existing := getEnvWithFallback("NO_PROXY", "no_proxy")
 
 	existingSet := make(map[string]bool)

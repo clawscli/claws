@@ -72,84 +72,52 @@ func TestPropagateAllProxy(t *testing.T) {
 	}
 
 	tests := []struct {
-		name           string
-		envVars        map[string]string
-		wantHTTPS      string
-		wantHTTP       string
-		wantNoProxy    string
-		noProxyChanged bool
+		name      string
+		envVars   map[string]string
+		wantHTTPS string
+		wantHTTP  string
 	}{
 		{
-			name:           "ALL_PROXY propagates to both HTTP and HTTPS",
-			envVars:        map[string]string{"ALL_PROXY": "socks5h://proxy:1080"},
-			wantHTTPS:      "socks5h://proxy:1080",
-			wantHTTP:       "socks5h://proxy:1080",
-			wantNoProxy:    "169.254.169.254",
-			noProxyChanged: true,
+			name:      "ALL_PROXY propagates to both HTTP and HTTPS",
+			envVars:   map[string]string{"ALL_PROXY": "socks5h://proxy:1080"},
+			wantHTTPS: "socks5h://proxy:1080",
+			wantHTTP:  "socks5h://proxy:1080",
 		},
 		{
-			name:           "all_proxy (lowercase) propagates",
-			envVars:        map[string]string{"all_proxy": "socks5h://proxy:1080"},
-			wantHTTPS:      "socks5h://proxy:1080",
-			wantHTTP:       "socks5h://proxy:1080",
-			wantNoProxy:    "169.254.169.254",
-			noProxyChanged: true,
+			name:      "all_proxy (lowercase) propagates",
+			envVars:   map[string]string{"all_proxy": "socks5h://proxy:1080"},
+			wantHTTPS: "socks5h://proxy:1080",
+			wantHTTP:  "socks5h://proxy:1080",
 		},
 		{
-			name:           "ALL_PROXY takes precedence over all_proxy",
-			envVars:        map[string]string{"ALL_PROXY": "http://upper", "all_proxy": "http://lower"},
-			wantHTTPS:      "http://upper",
-			wantHTTP:       "http://upper",
-			wantNoProxy:    "169.254.169.254",
-			noProxyChanged: true,
+			name:      "ALL_PROXY takes precedence over all_proxy",
+			envVars:   map[string]string{"ALL_PROXY": "http://upper", "all_proxy": "http://lower"},
+			wantHTTPS: "http://upper",
+			wantHTTP:  "http://upper",
 		},
 		{
-			name:           "HTTPS_PROXY already set - only HTTP propagated",
-			envVars:        map[string]string{"ALL_PROXY": "http://all", "HTTPS_PROXY": "http://existing"},
-			wantHTTPS:      "http://existing",
-			wantHTTP:       "http://all",
-			wantNoProxy:    "169.254.169.254",
-			noProxyChanged: true,
+			name:      "HTTPS_PROXY already set - only HTTP propagated",
+			envVars:   map[string]string{"ALL_PROXY": "http://all", "HTTPS_PROXY": "http://existing"},
+			wantHTTPS: "http://existing",
+			wantHTTP:  "http://all",
 		},
 		{
-			name:           "HTTP_PROXY already set - only HTTPS propagated, NO_PROXY unchanged",
-			envVars:        map[string]string{"ALL_PROXY": "http://all", "HTTP_PROXY": "http://existing"},
-			wantHTTPS:      "http://all",
-			wantHTTP:       "http://existing",
-			wantNoProxy:    "",
-			noProxyChanged: false,
+			name:      "HTTP_PROXY already set - only HTTPS propagated",
+			envVars:   map[string]string{"ALL_PROXY": "http://all", "HTTP_PROXY": "http://existing"},
+			wantHTTPS: "http://all",
+			wantHTTP:  "http://existing",
 		},
 		{
-			name:           "both already set - no propagation",
-			envVars:        map[string]string{"ALL_PROXY": "http://all", "HTTP_PROXY": "http://h", "HTTPS_PROXY": "http://s"},
-			wantHTTPS:      "http://s",
-			wantHTTP:       "http://h",
-			wantNoProxy:    "",
-			noProxyChanged: false,
+			name:      "both already set - no propagation",
+			envVars:   map[string]string{"ALL_PROXY": "http://all", "HTTP_PROXY": "http://h", "HTTPS_PROXY": "http://s"},
+			wantHTTPS: "http://s",
+			wantHTTP:  "http://h",
 		},
 		{
-			name:           "no ALL_PROXY - no action",
-			envVars:        map[string]string{},
-			wantHTTPS:      "",
-			wantHTTP:       "",
-			wantNoProxy:    "",
-			noProxyChanged: false,
-		},
-		{
-			name:           "existing NO_PROXY is preserved and extended",
-			envVars:        map[string]string{"ALL_PROXY": "http://proxy", "NO_PROXY": "localhost,127.0.0.1"},
-			wantHTTPS:      "http://proxy",
-			wantHTTP:       "http://proxy",
-			wantNoProxy:    "localhost,127.0.0.1,169.254.169.254",
-			noProxyChanged: true,
-		},
-		{
-			name:           "NO_PROXY already has IMDS - no change",
-			envVars:        map[string]string{"ALL_PROXY": "http://proxy", "NO_PROXY": "169.254.169.254"},
-			wantHTTPS:      "http://proxy",
-			wantHTTP:       "http://proxy",
-			wantNoProxy:    "169.254.169.254",
-			noProxyChanged: false,
+			name:      "no ALL_PROXY - no action",
+			envVars:   map[string]string{},
+			wantHTTPS: "",
+			wantHTTP:  "",
 		},
 	}
 
@@ -166,6 +134,66 @@ func TestPropagateAllProxy(t *testing.T) {
 			if got := getEnvWithFallback("HTTP_PROXY", "http_proxy"); got != tt.wantHTTP {
 				t.Errorf("HTTP_PROXY = %q, want %q", got, tt.wantHTTP)
 			}
+		})
+	}
+}
+
+func TestConfigureNoProxy(t *testing.T) {
+	proxyVars := []string{
+		"HTTP_PROXY", "http_proxy",
+		"HTTPS_PROXY", "https_proxy",
+		"NO_PROXY", "no_proxy",
+	}
+
+	tests := []struct {
+		name        string
+		envVars     map[string]string
+		wantNoProxy string
+	}{
+		{
+			name:        "no proxy set - no action",
+			envVars:     map[string]string{},
+			wantNoProxy: "",
+		},
+		{
+			name:        "HTTP_PROXY set - adds IMDS",
+			envVars:     map[string]string{"HTTP_PROXY": "http://proxy:8080"},
+			wantNoProxy: "169.254.169.254",
+		},
+		{
+			name:        "HTTPS_PROXY set - adds IMDS",
+			envVars:     map[string]string{"HTTPS_PROXY": "http://proxy:8080"},
+			wantNoProxy: "169.254.169.254",
+		},
+		{
+			name:        "both proxies set - adds IMDS",
+			envVars:     map[string]string{"HTTP_PROXY": "http://h", "HTTPS_PROXY": "http://s"},
+			wantNoProxy: "169.254.169.254",
+		},
+		{
+			name:        "existing NO_PROXY preserved and extended",
+			envVars:     map[string]string{"HTTP_PROXY": "http://proxy", "NO_PROXY": "localhost,127.0.0.1"},
+			wantNoProxy: "localhost,127.0.0.1,169.254.169.254",
+		},
+		{
+			name:        "NO_PROXY already has IMDS - no change",
+			envVars:     map[string]string{"HTTP_PROXY": "http://proxy", "NO_PROXY": "169.254.169.254"},
+			wantNoProxy: "169.254.169.254",
+		},
+		{
+			name:        "lowercase http_proxy triggers config",
+			envVars:     map[string]string{"http_proxy": "http://proxy"},
+			wantNoProxy: "169.254.169.254",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			clearEnvVars(t, proxyVars)
+			setEnvVars(t, tt.envVars)
+
+			configureNoProxy()
+
 			if got := getEnvWithFallback("NO_PROXY", "no_proxy"); got != tt.wantNoProxy {
 				t.Errorf("NO_PROXY = %q, want %q", got, tt.wantNoProxy)
 			}
