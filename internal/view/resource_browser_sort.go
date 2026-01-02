@@ -90,8 +90,8 @@ func parseNumeric(s string) (float64, error) {
 	}
 
 	for suffix, mult := range suffixes {
-		if strings.HasSuffix(s, suffix) {
-			s = strings.TrimSuffix(s, suffix)
+		if before, ok := strings.CutSuffix(s, suffix); ok {
+			s = before
 			multiplier = mult
 			break
 		}
