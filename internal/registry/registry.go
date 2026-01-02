@@ -55,11 +55,11 @@ type Registry struct {
 	displayNames map[string]string         // service -> display name for UI
 	categories   []ServiceCategory         // ordered list of service categories
 
-	// Cached computed values (aliases are immutable after init)
-	aliasListOnce       sync.Once
-	aliasListCache      []string
-	serviceAliasesOnce  sync.Once
-	serviceAliasesCache map[string][]string
+	// Cached computed values (aliases are immutable after init, safe to cache)
+	aliasListOnce       sync.Once           // guards aliasListCache initialization
+	aliasListCache      []string            // cached result of GetAliases()
+	serviceAliasesOnce  sync.Once           // guards serviceAliasesCache initialization
+	serviceAliasesCache map[string][]string // cached result of GetAliasesForService() by service
 }
 
 // New creates a new Registry

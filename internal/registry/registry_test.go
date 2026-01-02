@@ -2,6 +2,7 @@ package registry
 
 import (
 	"context"
+	"sync"
 	"testing"
 
 	"github.com/clawscli/claws/internal/dao"
@@ -289,6 +290,42 @@ func TestRegistry_GetAliases_ExcludesSelfReferential(t *testing.T) {
 			t.Errorf("GetAliases() should exclude self-referential alias %q", alias)
 		}
 	}
+}
+
+func TestRegistry_GetAliases_ConcurrentAccess(t *testing.T) {
+	reg := New()
+	var wg sync.WaitGroup
+	const goroutines = 100
+
+	wg.Add(goroutines)
+	for range goroutines {
+		go func() {
+			defer wg.Done()
+			aliases := reg.GetAliases()
+			if len(aliases) == 0 {
+				t.Error("GetAliases() should return aliases")
+			}
+		}()
+	}
+	wg.Wait()
+}
+
+func TestRegistry_GetAliasesForService_ConcurrentAccess(t *testing.T) {
+	reg := New()
+	var wg sync.WaitGroup
+	const goroutines = 100
+
+	wg.Add(goroutines)
+	for range goroutines {
+		go func() {
+			defer wg.Done()
+			aliases := reg.GetAliasesForService("cloudformation")
+			if len(aliases) != 2 {
+				t.Errorf("GetAliasesForService() returned %d aliases, want 2", len(aliases))
+			}
+		}()
+	}
+	wg.Wait()
 }
 
 func TestRegistry_GetDAO_NotRegistered(t *testing.T) {
