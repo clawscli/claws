@@ -3,6 +3,7 @@ package view
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"charm.land/bubbles/v2/textinput"
@@ -260,15 +261,24 @@ func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 		}), nil
 	}
 
-	// Handle tag command: :tag <filter> - filter current view by tag
-	if tagFilter, ok := strings.CutPrefix(input, "tag "); ok || input == "tag" {
+	// Handle tag command: :tag (clear) or :tag <filter> (filter by tag)
+	if input == "tag" {
+		return func() tea.Msg {
+			return TagFilterMsg{Filter: ""}
+		}, nil
+	}
+	if tagFilter, ok := strings.CutPrefix(input, "tag "); ok {
 		return func() tea.Msg {
 			return TagFilterMsg{Filter: tagFilter}
 		}, nil
 	}
 
-	// Handle tags command: :tags, :tags <filter> - cross-service tag search via Tagging API
-	if tagFilter, ok := strings.CutPrefix(input, "tags "); ok || input == "tags" {
+	// Handle tags command: :tags (all) or :tags <filter> (cross-service tag search)
+	if input == "tags" {
+		browser := NewTagSearchView(c.ctx, c.registry, "")
+		return nil, &NavigateMsg{View: browser}
+	}
+	if tagFilter, ok := strings.CutPrefix(input, "tags "); ok {
 		browser := NewTagSearchView(c.ctx, c.registry, tagFilter)
 		return nil, &NavigateMsg{View: browser}
 	}
@@ -459,6 +469,8 @@ func (c *CommandInput) GetSuggestions() []string {
 				suggestions = append(suggestions, alias)
 			}
 		}
+
+		slices.Sort(suggestions)
 	}
 
 	return suggestions
@@ -498,30 +510,6 @@ func (c *CommandInput) getDiffSuggestions(args string) []string {
 		suggestions = append(suggestions, "diff "+name)
 	}
 	return suggestions
-}
-
-func matchNamesWithFallback(names []string, pattern string) []string {
-	if pattern == "" {
-		return names
-	}
-
-	var prefixMatches []string
-	for _, name := range names {
-		if strings.HasPrefix(strings.ToLower(name), pattern) {
-			prefixMatches = append(prefixMatches, name)
-		}
-	}
-	if len(prefixMatches) > 0 {
-		return prefixMatches
-	}
-
-	var fuzzyMatches []string
-	for _, name := range names {
-		if fuzzyMatch(name, pattern) {
-			fuzzyMatches = append(fuzzyMatches, name)
-		}
-	}
-	return fuzzyMatches
 }
 
 // getTagSuggestions returns tag key/value suggestions with command prefix

@@ -193,15 +193,3 @@ func getFieldValue(data any, fieldName string) string {
 		return fmt.Sprintf("%v", field.Interface())
 	}
 }
-
-// fuzzyMatch checks if pattern characters appear in order in str (case insensitive)
-func fuzzyMatch(str, pattern string) bool {
-	str = strings.ToLower(str)
-	pi := 0
-	for i := 0; i < len(str) && pi < len(pattern); i++ {
-		if str[i] == pattern[pi] {
-			pi++
-		}
-	}
-	return pi == len(pattern)
-}

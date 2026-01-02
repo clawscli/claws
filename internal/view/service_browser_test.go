@@ -140,35 +140,6 @@ func TestServiceBrowserCategoryNavigation(t *testing.T) {
 	}
 }
 
-func TestFuzzyMatch(t *testing.T) {
-	tests := []struct {
-		str     string
-		pattern string
-		want    bool
-	}{
-		{"AgentCoreStackdev", "agecrstdev", true},
-		{"AgentCoreStackdev", "agent", true},
-		{"AgentCoreStackdev", "acd", true},
-		{"AgentCoreStackdev", "xyz", false},
-		{"AgentCoreStackdev", "deva", false}, // order matters
-		{"i-1234567890abcdef0", "i1234", true},
-		{"i-1234567890abcdef0", "abcdef", true},
-		{"production", "prod", true},
-		{"production", "pdn", true},
-		{"", "a", false},
-		{"abc", "", true}, // empty pattern matches everything
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.str+"_"+tt.pattern, func(t *testing.T) {
-			got := fuzzyMatch(tt.str, tt.pattern)
-			if got != tt.want {
-				t.Errorf("fuzzyMatch(%q, %q) = %v, want %v", tt.str, tt.pattern, got, tt.want)
-			}
-		})
-	}
-}
-
 func TestServiceBrowserMouseHover(t *testing.T) {
 	ctx := context.Background()
 	reg := registry.New()
