@@ -1,4 +1,4 @@
-package sfn
+package stepfunctions
 
 import (
 	"context"

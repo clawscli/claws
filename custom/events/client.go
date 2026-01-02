@@ -1,4 +1,4 @@
-package eventbridge
+package events
 
 import (
 	"context"
