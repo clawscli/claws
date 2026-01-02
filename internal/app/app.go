@@ -333,8 +333,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case navmsg.RegionChangedMsg:
 		log.Info("regions changed", "regions", msg.Regions)
-		// Persist regions if enabled (NoPersist already reflects CLI flag and config)
-		if !config.Global().NoPersist() {
+		// Persist regions if enabled (PersistEnabled already reflects CLI flag and config)
+		if config.Global().PersistEnabled() {
 			profile := ""
 			if sel := config.Global().Selection(); sel.IsNamedProfile() {
 				profile = sel.ProfileName
@@ -364,8 +364,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case navmsg.ProfilesChangedMsg:
 		log.Info("profiles changed", "count", len(msg.Selections))
-		// Persist profile if enabled (NoPersist already reflects CLI flag and config)
-		if !config.Global().NoPersist() {
+		// Persist profile if enabled (PersistEnabled already reflects CLI flag and config)
+		if config.Global().PersistEnabled() {
 			profile := ""
 			if len(msg.Selections) > 0 && msg.Selections[0].IsNamedProfile() {
 				profile = msg.Selections[0].ProfileName
