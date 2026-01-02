@@ -94,6 +94,46 @@ func TestCommandInput_GetSuggestions(t *testing.T) {
 	}
 }
 
+func TestCommandInput_GetSuggestions_Aliases(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	reg.RegisterCustom("costexplorer", "costs", registry.Entry{})
+	reg.RegisterCustom("cloudformation", "stacks", registry.Entry{})
+
+	ci := NewCommandInput(ctx, reg)
+	ci.Activate()
+
+	tests := []struct {
+		input    string
+		expected []string
+	}{
+		{"cost", []string{"costexplorer", "cost-explorer"}},
+		{"cf", []string{"cf", "cfn"}},
+		{"cfn", []string{"cfn"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			ci.textInput.SetValue(tt.input)
+			suggestions := ci.GetSuggestions()
+
+			for _, exp := range tt.expected {
+				found := false
+				for _, s := range suggestions {
+					if s == exp {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Errorf("Expected %q in suggestions for %q, got %v", exp, tt.input, suggestions)
+				}
+			}
+		})
+	}
+}
+
 func TestCommandInput_SetWidth(t *testing.T) {
 	ctx := context.Background()
 	reg := registry.New()

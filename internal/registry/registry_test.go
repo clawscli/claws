@@ -259,6 +259,38 @@ func TestRegistry_GetAliasesForService_WithResourceAlias(t *testing.T) {
 	}
 }
 
+func TestRegistry_GetAliases(t *testing.T) {
+	reg := New()
+	aliases := reg.GetAliases()
+
+	if len(aliases) == 0 {
+		t.Fatal("GetAliases() should return aliases")
+	}
+
+	aliasMap := make(map[string]bool)
+	for _, a := range aliases {
+		aliasMap[a] = true
+	}
+
+	for _, expected := range []string{"cfn", "cf", "sg", "cost-explorer"} {
+		if !aliasMap[expected] {
+			t.Errorf("GetAliases() should include %q", expected)
+		}
+	}
+}
+
+func TestRegistry_GetAliases_ExcludesSelfReferential(t *testing.T) {
+	reg := New()
+	aliases := reg.GetAliases()
+
+	for _, alias := range aliases {
+		resolved, _, found := reg.ResolveAlias(alias)
+		if found && alias == resolved {
+			t.Errorf("GetAliases() should exclude self-referential alias %q", alias)
+		}
+	}
+}
+
 func TestRegistry_GetDAO_NotRegistered(t *testing.T) {
 	reg := New()
 

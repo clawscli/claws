@@ -297,6 +297,22 @@ func (r *Registry) GetAliasesForService(service string) []string {
 	return aliases
 }
 
+// GetAliases returns all aliases (excluding self-referential ones like "sfn" -> "sfn")
+func (r *Registry) GetAliases() []string {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var aliases []string
+	for alias, target := range r.aliases {
+		// Exclude self-referential aliases (alias == target)
+		if alias != target {
+			aliases = append(aliases, alias)
+		}
+	}
+	slices.Sort(aliases)
+	return aliases
+}
+
 // RegisterCustom registers a custom (hand-written) implementation
 // Custom implementations take priority over generated ones
 func (r *Registry) RegisterCustom(service, resource string, entry Entry) {

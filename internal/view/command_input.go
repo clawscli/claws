@@ -462,6 +462,12 @@ func (c *CommandInput) GetSuggestions() []string {
 				suggestions = append(suggestions, svc)
 			}
 		}
+
+		for _, alias := range c.registry.GetAliases() {
+			if strings.HasPrefix(alias, input) {
+				suggestions = append(suggestions, alias)
+			}
+		}
 	}
 
 	return suggestions
