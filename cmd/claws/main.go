@@ -169,7 +169,7 @@ func printUsage() {
 	fmt.Println("Environment Variables:")
 	fmt.Println("  CLAWS_READ_ONLY=1|true   Enable read-only mode")
 	fmt.Println("  ALL_PROXY                Propagated to HTTP_PROXY/HTTPS_PROXY if not set")
-	fmt.Println("                           NO_PROXY auto-configured for AWS endpoints (IMDS, ECS, EKS)")
+	fmt.Println("                           NO_PROXY auto-configured for EC2 IMDS (169.254.169.254)")
 }
 
 // getEnvWithFallback returns the first non-empty value from the given env var names.
@@ -183,14 +183,10 @@ func getEnvWithFallback(names ...string) string {
 }
 
 // awsNoProxyEndpoints lists AWS credential endpoints that must bypass proxy.
-// - 169.254.169.254: EC2 IMDS
-// - 169.254.170.2: ECS Task Role
-// - 169.254.170.23: EKS Pod Identity
+// Default: EC2 IMDS only. ECS/EKS endpoints can be added via config.
 // TODO(#67): make configurable via config.yaml
 var awsNoProxyEndpoints = []string{
-	"169.254.169.254",
-	"169.254.170.2",
-	"169.254.170.23",
+	"169.254.169.254", // EC2 IMDS
 }
 
 // propagateAllProxy copies ALL_PROXY to HTTP_PROXY/HTTPS_PROXY if not set.
@@ -222,7 +218,7 @@ func propagateAllProxy() {
 	}
 
 	if len(propagated) > 0 {
-		log.Info("propagated ALL_PROXY", "proxy", allProxy, "to", propagated)
+		log.Info("propagated ALL_PROXY", "to", propagated)
 	}
 }
 

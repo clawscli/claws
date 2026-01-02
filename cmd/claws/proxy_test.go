@@ -84,7 +84,7 @@ func TestPropagateAllProxy(t *testing.T) {
 			envVars:        map[string]string{"ALL_PROXY": "socks5h://proxy:1080"},
 			wantHTTPS:      "socks5h://proxy:1080",
 			wantHTTP:       "socks5h://proxy:1080",
-			wantNoProxy:    "169.254.169.254,169.254.170.2,169.254.170.23",
+			wantNoProxy:    "169.254.169.254",
 			noProxyChanged: true,
 		},
 		{
@@ -92,7 +92,7 @@ func TestPropagateAllProxy(t *testing.T) {
 			envVars:        map[string]string{"all_proxy": "socks5h://proxy:1080"},
 			wantHTTPS:      "socks5h://proxy:1080",
 			wantHTTP:       "socks5h://proxy:1080",
-			wantNoProxy:    "169.254.169.254,169.254.170.2,169.254.170.23",
+			wantNoProxy:    "169.254.169.254",
 			noProxyChanged: true,
 		},
 		{
@@ -100,7 +100,7 @@ func TestPropagateAllProxy(t *testing.T) {
 			envVars:        map[string]string{"ALL_PROXY": "http://upper", "all_proxy": "http://lower"},
 			wantHTTPS:      "http://upper",
 			wantHTTP:       "http://upper",
-			wantNoProxy:    "169.254.169.254,169.254.170.2,169.254.170.23",
+			wantNoProxy:    "169.254.169.254",
 			noProxyChanged: true,
 		},
 		{
@@ -108,7 +108,7 @@ func TestPropagateAllProxy(t *testing.T) {
 			envVars:        map[string]string{"ALL_PROXY": "http://all", "HTTPS_PROXY": "http://existing"},
 			wantHTTPS:      "http://existing",
 			wantHTTP:       "http://all",
-			wantNoProxy:    "169.254.169.254,169.254.170.2,169.254.170.23",
+			wantNoProxy:    "169.254.169.254",
 			noProxyChanged: true,
 		},
 		{
@@ -140,23 +140,15 @@ func TestPropagateAllProxy(t *testing.T) {
 			envVars:        map[string]string{"ALL_PROXY": "http://proxy", "NO_PROXY": "localhost,127.0.0.1"},
 			wantHTTPS:      "http://proxy",
 			wantHTTP:       "http://proxy",
-			wantNoProxy:    "localhost,127.0.0.1,169.254.169.254,169.254.170.2,169.254.170.23",
+			wantNoProxy:    "localhost,127.0.0.1,169.254.169.254",
 			noProxyChanged: true,
 		},
 		{
-			name:           "NO_PROXY with partial AWS endpoints - only missing added",
+			name:           "NO_PROXY already has IMDS - no change",
 			envVars:        map[string]string{"ALL_PROXY": "http://proxy", "NO_PROXY": "169.254.169.254"},
 			wantHTTPS:      "http://proxy",
 			wantHTTP:       "http://proxy",
-			wantNoProxy:    "169.254.169.254,169.254.170.2,169.254.170.23",
-			noProxyChanged: true,
-		},
-		{
-			name:           "NO_PROXY already has all AWS endpoints - no change",
-			envVars:        map[string]string{"ALL_PROXY": "http://proxy", "NO_PROXY": "169.254.169.254,169.254.170.2,169.254.170.23"},
-			wantHTTPS:      "http://proxy",
-			wantHTTP:       "http://proxy",
-			wantNoProxy:    "169.254.169.254,169.254.170.2,169.254.170.23",
+			wantNoProxy:    "169.254.169.254",
 			noProxyChanged: false,
 		},
 	}
