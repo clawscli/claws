@@ -19,9 +19,9 @@ import (
 var version = "dev"
 
 func main() {
-	propagateAllProxy()
-
 	opts := parseFlags()
+
+	propagateAllProxy()
 
 	// Apply CLI options to global config
 	cfg := config.Global()

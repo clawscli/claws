@@ -70,7 +70,6 @@ func TestPropagateAllProxy(t *testing.T) {
 func clearEnvVars(t *testing.T, keys []string) {
 	t.Helper()
 	for _, key := range keys {
-		t.Setenv(key, "")
 		os.Unsetenv(key)
 	}
 }
