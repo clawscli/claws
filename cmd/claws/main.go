@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -103,30 +104,29 @@ func parseFlags() cliOptions {
 
 	args := os.Args[1:]
 	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		switch {
-		case arg == "-p" || arg == "--profile":
+		switch args[i] {
+		case "-p", "--profile":
 			if i+1 < len(args) {
 				i++
 				opts.profile = args[i]
 			}
-		case arg == "-r" || arg == "--region":
+		case "-r", "--region":
 			if i+1 < len(args) {
 				i++
 				opts.region = args[i]
 			}
-		case arg == "-ro" || arg == "--read-only":
+		case "-ro", "--read-only":
 			opts.readOnly = true
-		case arg == "-e" || arg == "--env":
+		case "-e", "--env":
 			opts.envCreds = true
-		case arg == "-l" || arg == "--log-file":
+		case "-l", "--log-file":
 			if i+1 < len(args) {
 				i++
 				opts.logFile = args[i]
 			}
-		case arg == "-h" || arg == "--help":
+		case "-h", "--help":
 			showHelp = true
-		case arg == "-v" || arg == "--version":
+		case "-v", "--version":
 			showVersion = true
 		}
 	}
@@ -266,21 +266,11 @@ func splitNoProxy(value string) []string {
 	if value == "" {
 		return nil
 	}
-	var result []string
-	start := 0
-	for i := 0; i <= len(value); i++ {
-		if i == len(value) || value[i] == ',' {
-			entry := value[start:i]
-			for len(entry) > 0 && entry[0] == ' ' {
-				entry = entry[1:]
-			}
-			for len(entry) > 0 && entry[len(entry)-1] == ' ' {
-				entry = entry[:len(entry)-1]
-			}
-			if entry != "" {
-				result = append(result, entry)
-			}
-			start = i + 1
+	parts := strings.Split(value, ",")
+	result := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if s := strings.TrimSpace(p); s != "" {
+			result = append(result, s)
 		}
 	}
 	return result
