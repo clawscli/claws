@@ -6,6 +6,12 @@ import (
 )
 
 func TestPropagateAllProxy(t *testing.T) {
+	// Note: Only uppercase ALL_PROXY is supported.
+	// Lowercase all_proxy is intentionally not supported to match
+	// the AWS SDK behavior and keep the implementation simple.
+	// Go's net/http.ProxyFromEnvironment also only checks uppercase
+	// for HTTP_PROXY and HTTPS_PROXY on non-CGI environments.
+
 	proxyVars := []string{
 		"ALL_PROXY",
 		"HTTP_PROXY",
@@ -45,6 +51,12 @@ func TestPropagateAllProxy(t *testing.T) {
 		{
 			name:      "no ALL_PROXY - no action",
 			envVars:   map[string]string{},
+			wantHTTPS: "",
+			wantHTTP:  "",
+		},
+		{
+			name:      "lowercase all_proxy not supported",
+			envVars:   map[string]string{"all_proxy": "http://proxy:8080"},
 			wantHTTPS: "",
 			wantHTTP:  "",
 		},
