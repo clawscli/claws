@@ -158,7 +158,16 @@ func (c *FileConfig) Save() error {
 		return fmt.Errorf("create config dir: %w", err)
 	}
 
-	data, err := yaml.Marshal(c)
+	snapshot := withRLock(&c.mu, func() FileConfig {
+		return FileConfig{
+			Timeouts:    c.Timeouts,
+			Concurrency: c.Concurrency,
+			Persistence: c.Persistence,
+			Startup:     c.Startup,
+		}
+	})
+
+	data, err := yaml.Marshal(&snapshot)
 	if err != nil {
 		return fmt.Errorf("marshal config: %w", err)
 	}
@@ -244,8 +253,13 @@ func (c *FileConfig) SetStartup(regions []string, profile string) {
 	})
 }
 
-func (c *FileConfig) GetStartup() (regions []string, profile string) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return c.Startup.Regions, c.Startup.Profile
+func (c *FileConfig) GetStartup() ([]string, string) {
+	type result struct {
+		regions []string
+		profile string
+	}
+	r := withRLock(&c.mu, func() result {
+		return result{c.Startup.Regions, c.Startup.Profile}
+	})
+	return r.regions, r.profile
 }
