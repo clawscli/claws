@@ -160,6 +160,7 @@ var arnToRegistryService = map[string]string{
 	"elasticloadbalancing": "elbv2",
 	"execute-api":          "apigateway",
 	"config":               "configservice",
+	"access-analyzer":      "accessanalyzer",
 }
 
 // normalizeResourceType maps ARN resource types to claws registry resource types.

@@ -6,8 +6,8 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 
+	cwClient "github.com/clawscli/claws/custom/cloudwatch"
 	"github.com/clawscli/claws/internal/action"
-	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
 )
 
@@ -56,11 +56,7 @@ func executeLogStreamAction(ctx context.Context, act action.Action, resource dao
 }
 
 func getCloudWatchLogsClient(ctx context.Context) (*cloudwatchlogs.Client, error) {
-	cfg, err := appaws.NewConfig(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return cloudwatchlogs.NewFromConfig(cfg), nil
+	return cwClient.GetLogsClient(ctx)
 }
 
 func executeDeleteLogStream(ctx context.Context, resource dao.Resource) action.ActionResult {

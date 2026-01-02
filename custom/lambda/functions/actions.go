@@ -8,8 +8,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/lambda"
 	lambdatypes "github.com/aws/aws-sdk-go-v2/service/lambda/types"
 
+	lambdaClient "github.com/clawscli/claws/custom/lambda"
 	"github.com/clawscli/claws/internal/action"
-	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
 )
 
@@ -57,11 +57,7 @@ func executeFunctionAction(ctx context.Context, act action.Action, resource dao.
 }
 
 func getLambdaClient(ctx context.Context) (*lambda.Client, error) {
-	cfg, err := appaws.NewConfig(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return lambda.NewFromConfig(cfg), nil
+	return lambdaClient.GetClient(ctx)
 }
 
 func executeInvoke(ctx context.Context, resource dao.Resource, dryRun bool) action.ActionResult {

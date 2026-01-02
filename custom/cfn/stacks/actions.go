@@ -6,6 +6,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 
+	cfnClient "github.com/clawscli/claws/custom/cfn"
 	"github.com/clawscli/claws/internal/action"
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
@@ -54,16 +55,8 @@ func executeStackAction(ctx context.Context, act action.Action, resource dao.Res
 	}
 }
 
-func getClient(ctx context.Context) (*cloudformation.Client, error) {
-	cfg, err := appaws.NewConfig(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return cloudformation.NewFromConfig(cfg), nil
-}
-
 func executeDeleteStack(ctx context.Context, resource dao.Resource) action.ActionResult {
-	client, err := getClient(ctx)
+	client, err := cfnClient.GetClient(ctx)
 	if err != nil {
 		return action.ActionResult{Success: false, Error: err}
 	}
@@ -87,7 +80,7 @@ func executeDeleteStack(ctx context.Context, resource dao.Resource) action.Actio
 }
 
 func executeDetectStackDrift(ctx context.Context, resource dao.Resource) action.ActionResult {
-	client, err := getClient(ctx)
+	client, err := cfnClient.GetClient(ctx)
 	if err != nil {
 		return action.ActionResult{Success: false, Error: err}
 	}
@@ -110,7 +103,7 @@ func executeDetectStackDrift(ctx context.Context, resource dao.Resource) action.
 }
 
 func executeCancelUpdateStack(ctx context.Context, resource dao.Resource) action.ActionResult {
-	client, err := getClient(ctx)
+	client, err := cfnClient.GetClient(ctx)
 	if err != nil {
 		return action.ActionResult{Success: false, Error: err}
 	}

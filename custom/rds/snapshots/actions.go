@@ -6,8 +6,8 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 
+	rdsClient "github.com/clawscli/claws/custom/rds"
 	"github.com/clawscli/claws/internal/action"
-	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
 )
 
@@ -35,11 +35,7 @@ func executeSnapshotAction(ctx context.Context, act action.Action, resource dao.
 }
 
 func getRDSClient(ctx context.Context) (*rds.Client, error) {
-	cfg, err := appaws.NewConfig(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return rds.NewFromConfig(cfg), nil
+	return rdsClient.GetClient(ctx)
 }
 
 func executeDeleteDBSnapshot(ctx context.Context, resource dao.Resource) action.ActionResult {

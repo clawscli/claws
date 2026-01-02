@@ -7,6 +7,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 
+	sqsClient "github.com/clawscli/claws/custom/sqs"
 	"github.com/clawscli/claws/internal/action"
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
@@ -57,11 +58,7 @@ func executeQueueAction(ctx context.Context, act action.Action, resource dao.Res
 }
 
 func getSQSClient(ctx context.Context) (*sqs.Client, error) {
-	cfg, err := appaws.NewConfig(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return sqs.NewFromConfig(cfg), nil
+	return sqsClient.GetClient(ctx)
 }
 
 func executePurgeQueue(ctx context.Context, resource dao.Resource) action.ActionResult {

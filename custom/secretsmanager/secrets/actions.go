@@ -6,6 +6,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 
+	smClient "github.com/clawscli/claws/custom/secretsmanager"
 	"github.com/clawscli/claws/internal/action"
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
@@ -50,11 +51,7 @@ func executeSecretAction(ctx context.Context, act action.Action, resource dao.Re
 }
 
 func getSecretsManagerClient(ctx context.Context) (*secretsmanager.Client, error) {
-	cfg, err := appaws.NewConfig(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return secretsmanager.NewFromConfig(cfg), nil
+	return smClient.GetClient(ctx)
 }
 
 func executeDeleteSecret(ctx context.Context, resource dao.Resource) action.ActionResult {

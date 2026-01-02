@@ -22,7 +22,7 @@ type HttpAPIDAO struct {
 func NewHttpAPIDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new apigateway/httpapis dao")
+		return nil, apperrors.Wrap(err, "new apigateway/http-apis dao")
 	}
 	return &HttpAPIDAO{
 		BaseDAO: dao.NewBaseDAO("apigateway", "http-apis"),

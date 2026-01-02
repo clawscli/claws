@@ -6,8 +6,8 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 
+	snsClient "github.com/clawscli/claws/custom/sns"
 	"github.com/clawscli/claws/internal/action"
-	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
 )
 
@@ -36,11 +36,7 @@ func executeTopicAction(ctx context.Context, act action.Action, resource dao.Res
 }
 
 func getSNSClient(ctx context.Context) (*sns.Client, error) {
-	cfg, err := appaws.NewConfig(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return sns.NewFromConfig(cfg), nil
+	return snsClient.GetClient(ctx)
 }
 
 func executeDeleteTopic(ctx context.Context, resource dao.Resource) action.ActionResult {

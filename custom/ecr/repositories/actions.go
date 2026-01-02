@@ -6,8 +6,8 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
 
+	ecrClient "github.com/clawscli/claws/custom/ecr"
 	"github.com/clawscli/claws/internal/action"
-	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
 )
 
@@ -35,11 +35,7 @@ func executeRepositoryAction(ctx context.Context, act action.Action, resource da
 }
 
 func getECRClient(ctx context.Context) (*ecr.Client, error) {
-	cfg, err := appaws.NewConfig(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return ecr.NewFromConfig(cfg), nil
+	return ecrClient.GetClient(ctx)
 }
 
 func executeDeleteRepository(ctx context.Context, resource dao.Resource) action.ActionResult {

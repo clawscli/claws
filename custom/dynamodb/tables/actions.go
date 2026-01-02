@@ -7,8 +7,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
+	ddbClient "github.com/clawscli/claws/custom/dynamodb"
 	"github.com/clawscli/claws/internal/action"
-	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
 )
 
@@ -75,11 +75,7 @@ func executeTableAction(ctx context.Context, act action.Action, resource dao.Res
 }
 
 func getDynamoDBClient(ctx context.Context) (*dynamodb.Client, error) {
-	cfg, err := appaws.NewConfig(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return dynamodb.NewFromConfig(cfg), nil
+	return ddbClient.GetClient(ctx)
 }
 
 func executeScaleCapacity(ctx context.Context, resource dao.Resource, scaleRCU, scaleWCU bool) action.ActionResult {
