@@ -229,36 +229,31 @@ func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 		return nil, &NavigateMsg{View: browser, ClearStack: true}
 	}
 
-	// Handle sort command: :sort, :sort <column>, :sort desc <column>
-	if input == "sort" || strings.HasPrefix(input, "sort ") {
-		return c.parseSortCommand(input), nil
+	// Handle sort command: :sort (clear) or :sort <column> (sort by column)
+	if input == "sort" {
+		return func() tea.Msg {
+			return SortMsg{Column: "", Ascending: true}
+		}, nil
+	}
+	if suffix, ok := strings.CutPrefix(input, "sort "); ok {
+		return c.parseSortArgs(suffix), nil
 	}
 
-	if input == "login" || strings.HasPrefix(input, "login ") {
-		profileName := "claws-login"
-		if suffix, ok := strings.CutPrefix(input, "login "); ok {
-			if name := strings.TrimSpace(suffix); name != "" {
-				if !config.IsValidProfileName(name) {
-					return func() tea.Msg {
-						return ErrorMsg{Err: fmt.Errorf("invalid profile name: %s", name)}
-					}, nil
-				}
-				profileName = name
-			}
+	// Handle login command: :login (default) or :login <profile>
+	if input == "login" {
+		return c.executeLogin("claws-login"), nil
+	}
+	if suffix, ok := strings.CutPrefix(input, "login "); ok {
+		profileName := strings.TrimSpace(suffix)
+		if profileName == "" {
+			return c.executeLogin("claws-login"), nil
 		}
-		exec := &action.SimpleExec{
-			Command:    fmt.Sprintf("aws login --remote --profile %s", profileName),
-			ActionName: action.ActionNameLogin,
-			SkipAWSEnv: true,
+		if !config.IsValidProfileName(profileName) {
+			return func() tea.Msg {
+				return ErrorMsg{Err: fmt.Errorf("invalid profile name: %s", profileName)}
+			}, nil
 		}
-		return tea.Exec(exec, func(err error) tea.Msg {
-			if err != nil {
-				return ErrorMsg{Err: err}
-			}
-			sel := config.NamedProfile(profileName)
-			config.Global().SetSelections([]config.ProfileSelection{sel})
-			return navmsg.ProfilesChangedMsg{Selections: []config.ProfileSelection{sel}}
-		}), nil
+		return c.executeLogin(profileName), nil
 	}
 
 	// Handle tag command: :tag (clear) or :tag <filter> (filter by tag)
@@ -357,35 +352,36 @@ func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 	return nil, nil
 }
 
-// parseSortCommand parses the sort command and returns a SortMsg command
-// Syntax: :sort, :sort <column>, :sort desc <column>
-func (c *CommandInput) parseSortCommand(input string) tea.Cmd {
-	// :sort - clear sorting
-	if input == "sort" {
-		return func() tea.Msg {
-			return SortMsg{Column: "", Ascending: true}
-		}
-	}
-
-	// Parse arguments
-	args := strings.TrimPrefix(input, "sort ")
+func (c *CommandInput) parseSortArgs(args string) tea.Cmd {
 	ascending := true
 	column := args
 
-	// Check for "desc" prefix
-	if strings.HasPrefix(args, "desc ") {
+	if col, ok := strings.CutPrefix(args, "desc "); ok {
 		ascending = false
-		column = strings.TrimPrefix(args, "desc ")
-	} else if strings.HasPrefix(args, "asc ") {
-		ascending = true
-		column = strings.TrimPrefix(args, "asc ")
+		column = col
+	} else if col, ok := strings.CutPrefix(args, "asc "); ok {
+		column = col
 	}
-
-	column = strings.TrimSpace(column)
 
 	return func() tea.Msg {
-		return SortMsg{Column: column, Ascending: ascending}
+		return SortMsg{Column: strings.TrimSpace(column), Ascending: ascending}
 	}
+}
+
+func (c *CommandInput) executeLogin(profileName string) tea.Cmd {
+	exec := &action.SimpleExec{
+		Command:    fmt.Sprintf("aws login --remote --profile %s", profileName),
+		ActionName: action.ActionNameLogin,
+		SkipAWSEnv: true,
+	}
+	return tea.Exec(exec, func(err error) tea.Msg {
+		if err != nil {
+			return ErrorMsg{Err: err}
+		}
+		sel := config.NamedProfile(profileName)
+		config.Global().SetSelections([]config.ProfileSelection{sel})
+		return navmsg.ProfilesChangedMsg{Selections: []config.ProfileSelection{sel}}
+	})
 }
 
 // GetSuggestions returns command suggestions based on current input
