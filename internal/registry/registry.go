@@ -288,7 +288,7 @@ func (r *Registry) ResolveAlias(input string) (string, string, bool) {
 	return input, "", false
 }
 
-// GetAliasesForService returns all aliases for a given service
+// GetAliasesForService returns all aliases for a given service.
 func (r *Registry) GetAliasesForService(service string) []string {
 	r.serviceAliasesOnce.Do(func() {
 		r.mu.RLock()
@@ -306,10 +306,10 @@ func (r *Registry) GetAliasesForService(service string) []string {
 			slices.Sort(r.serviceAliasesCache[svc])
 		}
 	})
-	return r.serviceAliasesCache[service]
+	return slices.Clone(r.serviceAliasesCache[service])
 }
 
-// GetAliases returns all aliases (excluding self-referential ones like "sfn" -> "sfn")
+// GetAliases returns all aliases (excluding self-referential ones like "sfn" -> "sfn").
 func (r *Registry) GetAliases() []string {
 	r.aliasListOnce.Do(func() {
 		r.mu.RLock()
@@ -324,7 +324,7 @@ func (r *Registry) GetAliases() []string {
 		slices.Sort(aliases)
 		r.aliasListCache = aliases
 	})
-	return r.aliasListCache
+	return slices.Clone(r.aliasListCache)
 }
 
 // RegisterCustom registers a custom (hand-written) implementation
