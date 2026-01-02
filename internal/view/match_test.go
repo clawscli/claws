@@ -22,6 +22,10 @@ func TestFuzzyMatch(t *testing.T) {
 		{"production", "pdn", true},
 		{"", "a", false},
 		{"abc", "", true},
+		// uppercase pattern - case insensitive
+		{"production", "PROD", true},
+		{"AgentCoreStackdev", "ACD", true},
+		{"web-server", "WEB", true},
 	}
 
 	for _, tt := range tests {
