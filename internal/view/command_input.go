@@ -235,8 +235,8 @@ func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 
 	if input == "login" || strings.HasPrefix(input, "login ") {
 		profileName := "claws-login"
-		if strings.HasPrefix(input, "login ") {
-			if name := strings.TrimSpace(strings.TrimPrefix(input, "login ")); name != "" {
+		if suffix, ok := strings.CutPrefix(input, "login "); ok {
+			if name := strings.TrimSpace(suffix); name != "" {
 				if !config.IsValidProfileName(name) {
 					return func() tea.Msg {
 						return ErrorMsg{Err: fmt.Errorf("invalid profile name: %s", name)}
@@ -261,30 +261,21 @@ func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 	}
 
 	// Handle tag command: :tag <filter> - filter current view by tag
-	if input == "tag" || strings.HasPrefix(input, "tag ") {
-		tagFilter := ""
-		if strings.HasPrefix(input, "tag ") {
-			tagFilter = strings.TrimPrefix(input, "tag ")
-		}
+	if tagFilter, ok := strings.CutPrefix(input, "tag "); ok || input == "tag" {
 		return func() tea.Msg {
 			return TagFilterMsg{Filter: tagFilter}
 		}, nil
 	}
 
 	// Handle tags command: :tags, :tags <filter> - cross-service tag search via Tagging API
-	if input == "tags" || strings.HasPrefix(input, "tags ") {
-		tagFilter := ""
-		if strings.HasPrefix(input, "tags ") {
-			tagFilter = strings.TrimPrefix(input, "tags ")
-		}
+	if tagFilter, ok := strings.CutPrefix(input, "tags "); ok || input == "tags" {
 		browser := NewTagSearchView(c.ctx, c.registry, tagFilter)
 		return nil, &NavigateMsg{View: browser}
 	}
 
 	// Handle diff command: :diff <name> or :diff <name1> <name2>
-	if strings.HasPrefix(input, "diff ") {
-		args := strings.TrimSpace(strings.TrimPrefix(input, "diff "))
-		parts := strings.Fields(args)
+	if suffix, ok := strings.CutPrefix(input, "diff "); ok {
+		parts := strings.Fields(suffix)
 		if len(parts) == 1 {
 			// :diff <name> - compare current row with named resource
 			return func() tea.Msg {
@@ -393,18 +384,18 @@ func (c *CommandInput) GetSuggestions() []string {
 	var suggestions []string
 
 	// Handle :tag command completion
-	if strings.HasPrefix(input, "tag ") {
-		return c.getTagSuggestions("tag ", strings.TrimPrefix(input, "tag "))
+	if suffix, ok := strings.CutPrefix(input, "tag "); ok {
+		return c.getTagSuggestions("tag ", suffix)
 	}
 
 	// Handle :tags command completion (same as :tag)
-	if strings.HasPrefix(input, "tags ") {
-		return c.getTagSuggestions("tags ", strings.TrimPrefix(input, "tags "))
+	if suffix, ok := strings.CutPrefix(input, "tags "); ok {
+		return c.getTagSuggestions("tags ", suffix)
 	}
 
 	// Handle :diff command completion
-	if strings.HasPrefix(input, "diff ") {
-		return c.getDiffSuggestions(strings.TrimPrefix(input, "diff "))
+	if suffix, ok := strings.CutPrefix(input, "diff "); ok {
+		return c.getDiffSuggestions(suffix)
 	}
 
 	if strings.Contains(input, "/") {

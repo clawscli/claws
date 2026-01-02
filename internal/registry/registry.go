@@ -53,6 +53,10 @@ type Registry struct {
 	aliases      map[string]string         // alias -> service name or service/resource
 	displayNames map[string]string         // service -> display name for UI
 	categories   []ServiceCategory         // ordered list of service categories
+
+	// Cached computed values (aliases are immutable after init)
+	aliasListOnce  sync.Once
+	aliasListCache []string
 }
 
 // New creates a new Registry
@@ -299,18 +303,20 @@ func (r *Registry) GetAliasesForService(service string) []string {
 
 // GetAliases returns all aliases (excluding self-referential ones like "sfn" -> "sfn")
 func (r *Registry) GetAliases() []string {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	r.aliasListOnce.Do(func() {
+		r.mu.RLock()
+		defer r.mu.RUnlock()
 
-	var aliases []string
-	for alias, target := range r.aliases {
-		// Exclude self-referential aliases (alias == target)
-		if alias != target {
-			aliases = append(aliases, alias)
+		var aliases []string
+		for alias, target := range r.aliases {
+			if alias != target {
+				aliases = append(aliases, alias)
+			}
 		}
-	}
-	slices.Sort(aliases)
-	return aliases
+		slices.Sort(aliases)
+		r.aliasListCache = aliases
+	})
+	return r.aliasListCache
 }
 
 // RegisterCustom registers a custom (hand-written) implementation
