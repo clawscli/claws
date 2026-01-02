@@ -19,8 +19,9 @@ import (
 var version = "dev"
 
 func main() {
-	// Parse command line flags
 	opts := parseFlags()
+
+	propagateAllProxy()
 
 	// Apply CLI options to global config
 	cfg := config.Global()
@@ -102,30 +103,29 @@ func parseFlags() cliOptions {
 
 	args := os.Args[1:]
 	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		switch {
-		case arg == "-p" || arg == "--profile":
+		switch args[i] {
+		case "-p", "--profile":
 			if i+1 < len(args) {
 				i++
 				opts.profile = args[i]
 			}
-		case arg == "-r" || arg == "--region":
+		case "-r", "--region":
 			if i+1 < len(args) {
 				i++
 				opts.region = args[i]
 			}
-		case arg == "-ro" || arg == "--read-only":
+		case "-ro", "--read-only":
 			opts.readOnly = true
-		case arg == "-e" || arg == "--env":
+		case "-e", "--env":
 			opts.envCreds = true
-		case arg == "-l" || arg == "--log-file":
+		case "-l", "--log-file":
 			if i+1 < len(args) {
 				i++
 				opts.logFile = args[i]
 			}
-		case arg == "-h" || arg == "--help":
+		case "-h", "--help":
 			showHelp = true
-		case arg == "-v" || arg == "--version":
+		case "-v", "--version":
 			showVersion = true
 		}
 	}
@@ -167,4 +167,36 @@ func printUsage() {
 	fmt.Println()
 	fmt.Println("Environment Variables:")
 	fmt.Println("  CLAWS_READ_ONLY=1|true   Enable read-only mode")
+	fmt.Println("  ALL_PROXY                Propagated to HTTP_PROXY/HTTPS_PROXY if not set")
+}
+
+// propagateAllProxy copies ALL_PROXY to HTTP_PROXY/HTTPS_PROXY if not set.
+// Go's net/http ignores ALL_PROXY, so we propagate it to the standard vars.
+func propagateAllProxy() {
+	allProxy := os.Getenv("ALL_PROXY")
+	if allProxy == "" {
+		return
+	}
+
+	var propagated []string
+
+	if os.Getenv("HTTPS_PROXY") == "" {
+		if err := os.Setenv("HTTPS_PROXY", allProxy); err != nil {
+			log.Warn("failed to set HTTPS_PROXY", "error", err)
+		} else {
+			propagated = append(propagated, "HTTPS_PROXY")
+		}
+	}
+
+	if os.Getenv("HTTP_PROXY") == "" {
+		if err := os.Setenv("HTTP_PROXY", allProxy); err != nil {
+			log.Warn("failed to set HTTP_PROXY", "error", err)
+		} else {
+			propagated = append(propagated, "HTTP_PROXY")
+		}
+	}
+
+	if len(propagated) > 0 {
+		log.Debug("propagated ALL_PROXY", "to", propagated)
+	}
 }
