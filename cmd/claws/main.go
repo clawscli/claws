@@ -19,7 +19,8 @@ import (
 var version = "dev"
 
 func main() {
-	// Parse command line flags
+	propagateAllProxy()
+
 	opts := parseFlags()
 
 	// Apply CLI options to global config
@@ -167,4 +168,34 @@ func printUsage() {
 	fmt.Println()
 	fmt.Println("Environment Variables:")
 	fmt.Println("  CLAWS_READ_ONLY=1|true   Enable read-only mode")
+	fmt.Println("  ALL_PROXY                Propagated to HTTPS_PROXY if not set")
+}
+
+// getEnvWithFallback returns the first non-empty value from the given env var names.
+func getEnvWithFallback(names ...string) string {
+	for _, name := range names {
+		if v := os.Getenv(name); v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+// propagateAllProxy copies ALL_PROXY to HTTPS_PROXY if HTTPS_PROXY is not set.
+// Go's net/http ignores ALL_PROXY and only reads HTTP_PROXY/HTTPS_PROXY.
+// AWS APIs use HTTPS, so we only need HTTPS_PROXY.
+// HTTP is only used for IMDS (169.254.169.254) which must NOT be proxied.
+func propagateAllProxy() {
+	allProxy := getEnvWithFallback("ALL_PROXY", "all_proxy")
+	if allProxy == "" {
+		return
+	}
+	if getEnvWithFallback("HTTPS_PROXY", "https_proxy") != "" {
+		return
+	}
+	if err := os.Setenv("HTTPS_PROXY", allProxy); err != nil {
+		log.Warn("failed to set HTTPS_PROXY", "error", err)
+		return
+	}
+	log.Info("propagated ALL_PROXY to HTTPS_PROXY", "proxy", allProxy)
 }
