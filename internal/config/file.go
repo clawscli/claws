@@ -16,6 +16,7 @@ const (
 	DefaultMultiRegionFetchTimeout = 30 * time.Second
 	DefaultTagSearchTimeout        = 30 * time.Second
 	DefaultMetricsLoadTimeout      = 30 * time.Second
+	DefaultMetricsWindow           = 15 * time.Minute
 	DefaultMaxConcurrentFetches    = 50
 )
 
@@ -40,6 +41,7 @@ type TimeoutConfig struct {
 	MultiRegionFetch Duration `yaml:"multi_region_fetch,omitempty"`
 	TagSearch        Duration `yaml:"tag_search,omitempty"`
 	MetricsLoad      Duration `yaml:"metrics_load,omitempty"`
+	MetricsWindow    Duration `yaml:"metrics_window,omitempty"`
 }
 
 type ConcurrencyConfig struct {
@@ -98,6 +100,7 @@ func DefaultFileConfig() *FileConfig {
 			MultiRegionFetch: Duration(DefaultMultiRegionFetchTimeout),
 			TagSearch:        Duration(DefaultTagSearchTimeout),
 			MetricsLoad:      Duration(DefaultMetricsLoadTimeout),
+			MetricsWindow:    Duration(DefaultMetricsWindow),
 		},
 		Concurrency: ConcurrencyConfig{
 			MaxFetches: DefaultMaxConcurrentFetches,
@@ -210,6 +213,9 @@ func (c *FileConfig) applyDefaults() {
 	if c.Timeouts.MetricsLoad <= 0 {
 		c.Timeouts.MetricsLoad = Duration(DefaultMetricsLoadTimeout)
 	}
+	if c.Timeouts.MetricsWindow <= 0 {
+		c.Timeouts.MetricsWindow = Duration(DefaultMetricsWindow)
+	}
 	if c.Concurrency.MaxFetches <= 0 {
 		c.Concurrency.MaxFetches = DefaultMaxConcurrentFetches
 	}
@@ -257,6 +263,15 @@ func (c *FileConfig) MaxConcurrentFetches() int {
 			return DefaultMaxConcurrentFetches
 		}
 		return c.Concurrency.MaxFetches
+	})
+}
+
+func (c *FileConfig) MetricsWindow() time.Duration {
+	return withRLock(&c.mu, func() time.Duration {
+		if c.Timeouts.MetricsWindow == 0 {
+			return DefaultMetricsWindow
+		}
+		return c.Timeouts.MetricsWindow.Duration()
 	})
 }
 

@@ -11,12 +11,12 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 
 	appaws "github.com/clawscli/claws/internal/aws"
+	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/render"
 )
 
 const (
 	metricPeriod         = 60
-	metricWindow         = 15 * time.Minute
 	maxQueriesPerRequest = 500
 )
 
@@ -39,7 +39,7 @@ func (f *Fetcher) Fetch(ctx context.Context, resourceIDs []string, spec *render.
 
 	queries := f.buildQueries(resourceIDs, spec)
 	endTime := time.Now().Truncate(time.Minute)
-	startTime := endTime.Add(-metricWindow)
+	startTime := endTime.Add(-config.File().MetricsWindow())
 
 	data := NewMetricData(spec)
 
