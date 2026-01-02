@@ -261,10 +261,10 @@ func TestCommandInput_getDiffSuggestions(t *testing.T) {
 			want:     nil,
 		},
 		{
-			name:     "empty args returns all",
+			name:     "empty args returns all sorted",
 			provider: &mockDiffProvider{names: []string{"web-server", "db-server", "cache"}},
 			args:     "",
-			want:     []string{"diff web-server", "diff db-server", "diff cache"},
+			want:     []string{"diff cache", "diff db-server", "diff web-server"},
 		},
 		{
 			name:     "prefix match",
@@ -273,16 +273,16 @@ func TestCommandInput_getDiffSuggestions(t *testing.T) {
 			want:     []string{"diff web-server"},
 		},
 		{
-			name:     "prefix match multiple",
+			name:     "prefix match multiple sorted",
 			provider: &mockDiffProvider{names: []string{"web-server", "web-api", "db-server"}},
 			args:     "web",
-			want:     []string{"diff web-server", "diff web-api"},
+			want:     []string{"diff web-api", "diff web-server"},
 		},
 		{
-			name:     "fuzzy fallback when no prefix",
+			name:     "fuzzy fallback when no prefix sorted",
 			provider: &mockDiffProvider{names: []string{"web-server", "db-server", "cache"}},
 			args:     "server",
-			want:     []string{"diff web-server", "diff db-server"},
+			want:     []string{"diff db-server", "diff web-server"},
 		},
 		{
 			name:     "fuzzy match pattern",
@@ -297,10 +297,10 @@ func TestCommandInput_getDiffSuggestions(t *testing.T) {
 			want:     []string{"diff Web-Server"},
 		},
 		{
-			name:     "case insensitive fuzzy",
+			name:     "case insensitive fuzzy sorted",
 			provider: &mockDiffProvider{names: []string{"Web-Server", "DB-Server", "Cache"}},
 			args:     "SERVER",
-			want:     []string{"diff Web-Server", "diff DB-Server"},
+			want:     []string{"diff DB-Server", "diff Web-Server"},
 		},
 		{
 			name:     "no match returns empty",
@@ -309,10 +309,10 @@ func TestCommandInput_getDiffSuggestions(t *testing.T) {
 			want:     nil,
 		},
 		{
-			name:     "second name completion excludes first",
+			name:     "second name completion excludes first sorted",
 			provider: &mockDiffProvider{names: []string{"web-server", "db-server", "cache"}},
 			args:     "web-server ",
-			want:     []string{"diff web-server db-server", "diff web-server cache"},
+			want:     []string{"diff web-server cache", "diff web-server db-server"},
 		},
 		{
 			name:     "second name with prefix",

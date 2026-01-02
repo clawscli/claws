@@ -1,6 +1,9 @@
 package view
 
-import "strings"
+import (
+	"slices"
+	"strings"
+)
 
 // fuzzyMatch checks if pattern characters appear in order in str (case insensitive)
 func fuzzyMatch(str, pattern string) bool {
@@ -18,7 +21,9 @@ func fuzzyMatch(str, pattern string) bool {
 // It first tries prefix matching, then falls back to fuzzy matching if no prefix matches.
 func matchNamesWithFallback(names []string, pattern string) []string {
 	if pattern == "" {
-		return names
+		result := slices.Clone(names)
+		slices.Sort(result)
+		return result
 	}
 
 	var prefixMatches []string
@@ -28,6 +33,7 @@ func matchNamesWithFallback(names []string, pattern string) []string {
 		}
 	}
 	if len(prefixMatches) > 0 {
+		slices.Sort(prefixMatches)
 		return prefixMatches
 	}
 
@@ -37,5 +43,6 @@ func matchNamesWithFallback(names []string, pattern string) []string {
 			fuzzyMatches = append(fuzzyMatches, name)
 		}
 	}
+	slices.Sort(fuzzyMatches)
 	return fuzzyMatches
 }

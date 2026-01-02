@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 	"sync"
 
 	"github.com/clawscli/claws/internal/dao"
@@ -55,8 +56,10 @@ type Registry struct {
 	categories   []ServiceCategory         // ordered list of service categories
 
 	// Cached computed values (aliases are immutable after init)
-	aliasListOnce  sync.Once
-	aliasListCache []string
+	aliasListOnce       sync.Once
+	aliasListCache      []string
+	serviceAliasesOnce  sync.Once
+	serviceAliasesCache map[string][]string
 }
 
 // New creates a new Registry
@@ -287,18 +290,23 @@ func (r *Registry) ResolveAlias(input string) (string, string, bool) {
 
 // GetAliasesForService returns all aliases for a given service
 func (r *Registry) GetAliasesForService(service string) []string {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	r.serviceAliasesOnce.Do(func() {
+		r.mu.RLock()
+		defer r.mu.RUnlock()
 
-	var aliases []string
-	for alias, target := range r.aliases {
-		// Check if target matches service (handle "service" or "service/resource")
-		if target == service || (len(target) > len(service) && target[:len(service)] == service && target[len(service)] == '/') {
-			aliases = append(aliases, alias)
+		r.serviceAliasesCache = make(map[string][]string)
+		for alias, target := range r.aliases {
+			svc := target
+			if idx := strings.Index(target, "/"); idx != -1 {
+				svc = target[:idx]
+			}
+			r.serviceAliasesCache[svc] = append(r.serviceAliasesCache[svc], alias)
 		}
-	}
-	slices.Sort(aliases)
-	return aliases
+		for svc := range r.serviceAliasesCache {
+			slices.Sort(r.serviceAliasesCache[svc])
+		}
+	})
+	return r.serviceAliasesCache[service]
 }
 
 // GetAliases returns all aliases (excluding self-referential ones like "sfn" -> "sfn")

@@ -42,10 +42,10 @@ func TestMatchNamesWithFallback(t *testing.T) {
 		want    []string
 	}{
 		{
-			name:    "empty pattern returns all",
+			name:    "empty pattern returns all sorted",
 			names:   []string{"web-server", "db-server", "cache"},
 			pattern: "",
-			want:    []string{"web-server", "db-server", "cache"},
+			want:    []string{"cache", "db-server", "web-server"},
 		},
 		{
 			name:    "prefix match single",
@@ -57,13 +57,13 @@ func TestMatchNamesWithFallback(t *testing.T) {
 			name:    "prefix match multiple",
 			names:   []string{"web-server", "web-api", "db-server"},
 			pattern: "web",
-			want:    []string{"web-server", "web-api"},
+			want:    []string{"web-api", "web-server"},
 		},
 		{
 			name:    "fuzzy fallback when no prefix",
 			names:   []string{"web-server", "db-server", "cache"},
 			pattern: "server",
-			want:    []string{"web-server", "db-server"},
+			want:    []string{"db-server", "web-server"},
 		},
 		{
 			name:    "fuzzy match pattern",
