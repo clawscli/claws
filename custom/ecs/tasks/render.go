@@ -318,8 +318,7 @@ func (r *TaskRenderer) Navigations(resource dao.Resource) []render.Navigation {
 	}
 
 	// If task is part of a service, add service navigation
-	if group := task.Group(); strings.HasPrefix(group, "service:") {
-		serviceName := strings.TrimPrefix(group, "service:")
+	if serviceName, ok := strings.CutPrefix(task.Group(), "service:"); ok {
 		navs = append(navs, render.Navigation{
 			Key:         "s",
 			Label:       "Service",
