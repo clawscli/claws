@@ -189,18 +189,6 @@ var (
 	initOnce sync.Once
 )
 
-func withRLock[T any](mu *sync.RWMutex, fn func() T) T {
-	mu.RLock()
-	defer mu.RUnlock()
-	return fn()
-}
-
-func doWithLock(mu *sync.RWMutex, fn func()) {
-	mu.Lock()
-	defer mu.Unlock()
-	fn()
-}
-
 // Global returns the global config instance
 func Global() *Config {
 	initOnce.Do(func() {

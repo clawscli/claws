@@ -56,6 +56,7 @@ type StartupConfig struct {
 }
 
 type FileConfig struct {
+	mu          sync.RWMutex      `yaml:"-"`
 	Timeouts    TimeoutConfig     `yaml:"timeouts,omitempty"`
 	Concurrency ConcurrencyConfig `yaml:"concurrency,omitempty"`
 	Persistence PersistenceConfig `yaml:"persistence"`
@@ -110,7 +111,6 @@ func DefaultFileConfig() *FileConfig {
 var (
 	fileConfig     *FileConfig
 	fileConfigOnce sync.Once
-	fileConfigMu   sync.RWMutex
 )
 
 func File() *FileConfig {
@@ -189,65 +189,63 @@ func (c *FileConfig) applyDefaults() {
 }
 
 func (c *FileConfig) AWSInitTimeout() time.Duration {
-	fileConfigMu.RLock()
-	defer fileConfigMu.RUnlock()
-	if c.Timeouts.AWSInit == 0 {
-		return DefaultAWSInitTimeout
-	}
-	return c.Timeouts.AWSInit.Duration()
+	return withRLock(&c.mu, func() time.Duration {
+		if c.Timeouts.AWSInit == 0 {
+			return DefaultAWSInitTimeout
+		}
+		return c.Timeouts.AWSInit.Duration()
+	})
 }
 
 func (c *FileConfig) MultiRegionFetchTimeout() time.Duration {
-	fileConfigMu.RLock()
-	defer fileConfigMu.RUnlock()
-	if c.Timeouts.MultiRegionFetch == 0 {
-		return DefaultMultiRegionFetchTimeout
-	}
-	return c.Timeouts.MultiRegionFetch.Duration()
+	return withRLock(&c.mu, func() time.Duration {
+		if c.Timeouts.MultiRegionFetch == 0 {
+			return DefaultMultiRegionFetchTimeout
+		}
+		return c.Timeouts.MultiRegionFetch.Duration()
+	})
 }
 
 func (c *FileConfig) TagSearchTimeout() time.Duration {
-	fileConfigMu.RLock()
-	defer fileConfigMu.RUnlock()
-	if c.Timeouts.TagSearch == 0 {
-		return DefaultTagSearchTimeout
-	}
-	return c.Timeouts.TagSearch.Duration()
+	return withRLock(&c.mu, func() time.Duration {
+		if c.Timeouts.TagSearch == 0 {
+			return DefaultTagSearchTimeout
+		}
+		return c.Timeouts.TagSearch.Duration()
+	})
 }
 
 func (c *FileConfig) MetricsLoadTimeout() time.Duration {
-	fileConfigMu.RLock()
-	defer fileConfigMu.RUnlock()
-	if c.Timeouts.MetricsLoad == 0 {
-		return DefaultMetricsLoadTimeout
-	}
-	return c.Timeouts.MetricsLoad.Duration()
+	return withRLock(&c.mu, func() time.Duration {
+		if c.Timeouts.MetricsLoad == 0 {
+			return DefaultMetricsLoadTimeout
+		}
+		return c.Timeouts.MetricsLoad.Duration()
+	})
 }
 
 func (c *FileConfig) MaxConcurrentFetches() int {
-	fileConfigMu.RLock()
-	defer fileConfigMu.RUnlock()
-	if c.Concurrency.MaxFetches == 0 {
-		return DefaultMaxConcurrentFetches
-	}
-	return c.Concurrency.MaxFetches
+	return withRLock(&c.mu, func() int {
+		if c.Concurrency.MaxFetches == 0 {
+			return DefaultMaxConcurrentFetches
+		}
+		return c.Concurrency.MaxFetches
+	})
 }
 
 func (c *FileConfig) PersistenceEnabled() bool {
-	fileConfigMu.RLock()
-	defer fileConfigMu.RUnlock()
-	return c.Persistence.Enabled
+	return withRLock(&c.mu, func() bool { return c.Persistence.Enabled })
 }
 
 func (c *FileConfig) SetStartup(regions []string, profile string) {
-	fileConfigMu.Lock()
-	defer fileConfigMu.Unlock()
-	c.Startup.Regions = regions
-	c.Startup.Profile = profile
+	doWithLock(&c.mu, func() {
+		c.Startup.Regions = regions
+		c.Startup.Profile = profile
+	})
 }
 
 func (c *FileConfig) GetStartup() (regions []string, profile string) {
-	fileConfigMu.RLock()
-	defer fileConfigMu.RUnlock()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	return c.Startup.Regions, c.Startup.Profile
 }
