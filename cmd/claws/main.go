@@ -28,9 +28,9 @@ func main() {
 
 	// Determine persistence: CLI flags override config
 	if opts.persist != nil {
-		cfg.SetPersistEnabled(*opts.persist)
+		cfg.SetPersistenceEnabled(*opts.persist)
 	} else {
-		cfg.SetPersistEnabled(fileCfg.PersistenceEnabled())
+		cfg.SetPersistenceEnabled(fileCfg.PersistenceEnabled())
 	}
 
 	// Check environment variables (CLI flags take precedence)

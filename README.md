@@ -399,6 +399,9 @@ timeouts:
 concurrency:
   max_fetches: 100        # Max concurrent API fetches (default: 50)
 
+cloudwatch:
+  window: 15m             # Metrics data window period (default: 15m)
+
 persistence:
   enabled: true           # Save region/profile on change (default: false)
 

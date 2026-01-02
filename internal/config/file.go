@@ -41,7 +41,10 @@ type TimeoutConfig struct {
 	MultiRegionFetch Duration `yaml:"multi_region_fetch,omitempty"`
 	TagSearch        Duration `yaml:"tag_search,omitempty"`
 	MetricsLoad      Duration `yaml:"metrics_load,omitempty"`
-	MetricsWindow    Duration `yaml:"metrics_window,omitempty"`
+}
+
+type CloudWatchConfig struct {
+	Window Duration `yaml:"window,omitempty"`
 }
 
 type ConcurrencyConfig struct {
@@ -61,6 +64,7 @@ type FileConfig struct {
 	mu          sync.RWMutex      `yaml:"-"`
 	Timeouts    TimeoutConfig     `yaml:"timeouts,omitempty"`
 	Concurrency ConcurrencyConfig `yaml:"concurrency,omitempty"`
+	CloudWatch  CloudWatchConfig  `yaml:"cloudwatch,omitempty"`
 	Persistence PersistenceConfig `yaml:"persistence"`
 	Startup     StartupConfig     `yaml:"startup,omitempty"`
 }
@@ -100,10 +104,12 @@ func DefaultFileConfig() *FileConfig {
 			MultiRegionFetch: Duration(DefaultMultiRegionFetchTimeout),
 			TagSearch:        Duration(DefaultTagSearchTimeout),
 			MetricsLoad:      Duration(DefaultMetricsLoadTimeout),
-			MetricsWindow:    Duration(DefaultMetricsWindow),
 		},
 		Concurrency: ConcurrencyConfig{
 			MaxFetches: DefaultMaxConcurrentFetches,
+		},
+		CloudWatch: CloudWatchConfig{
+			Window: Duration(DefaultMetricsWindow),
 		},
 		Persistence: PersistenceConfig{
 			Enabled: false,
@@ -165,6 +171,7 @@ func (c *FileConfig) Save() error {
 		return FileConfig{
 			Timeouts:    c.Timeouts,
 			Concurrency: c.Concurrency,
+			CloudWatch:  c.CloudWatch,
 			Persistence: c.Persistence,
 			Startup:     c.Startup,
 		}
@@ -213,8 +220,8 @@ func (c *FileConfig) applyDefaults() {
 	if c.Timeouts.MetricsLoad <= 0 {
 		c.Timeouts.MetricsLoad = Duration(DefaultMetricsLoadTimeout)
 	}
-	if c.Timeouts.MetricsWindow <= 0 {
-		c.Timeouts.MetricsWindow = Duration(DefaultMetricsWindow)
+	if c.CloudWatch.Window <= 0 {
+		c.CloudWatch.Window = Duration(DefaultMetricsWindow)
 	}
 	if c.Concurrency.MaxFetches <= 0 {
 		c.Concurrency.MaxFetches = DefaultMaxConcurrentFetches
@@ -268,10 +275,10 @@ func (c *FileConfig) MaxConcurrentFetches() int {
 
 func (c *FileConfig) MetricsWindow() time.Duration {
 	return withRLock(&c.mu, func() time.Duration {
-		if c.Timeouts.MetricsWindow == 0 {
+		if c.CloudWatch.Window == 0 {
 			return DefaultMetricsWindow
 		}
-		return c.Timeouts.MetricsWindow.Duration()
+		return c.CloudWatch.Window.Duration()
 	})
 }
 
