@@ -187,10 +187,10 @@ func applyStartupConfig(opts cliOptions, fileCfg *config.FileConfig, cfg *config
 		cfg.UseProfile(startupProfile)
 	}
 
-	// Apply region: CLI > startup config (only if no CLI profile/env override)
+	// Apply region: CLI > startup config
 	if opts.region != "" {
 		cfg.SetRegion(opts.region)
-	} else if len(startupRegions) > 0 && opts.profile == "" && !opts.envCreds {
+	} else if len(startupRegions) > 0 {
 		cfg.SetRegions(startupRegions)
 	}
 }
