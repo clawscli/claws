@@ -177,7 +177,6 @@ func TestLoad_Save_Roundtrip(t *testing.T) {
 }
 
 func TestFileConfig_ApplyDefaults(t *testing.T) {
-	// Config with zero values should get defaults
 	cfg := &FileConfig{}
 	cfg.applyDefaults()
 
@@ -186,6 +185,29 @@ func TestFileConfig_ApplyDefaults(t *testing.T) {
 	}
 	if cfg.Concurrency.MaxFetches != DefaultMaxConcurrentFetches {
 		t.Errorf("MaxFetches = %d, want %d", cfg.Concurrency.MaxFetches, DefaultMaxConcurrentFetches)
+	}
+}
+
+func TestFileConfig_ApplyDefaults_NegativeValues(t *testing.T) {
+	cfg := &FileConfig{
+		Timeouts: TimeoutConfig{
+			AWSInit:          Duration(-5 * time.Second),
+			MultiRegionFetch: Duration(-1 * time.Minute),
+		},
+		Concurrency: ConcurrencyConfig{
+			MaxFetches: -10,
+		},
+	}
+	cfg.applyDefaults()
+
+	if cfg.Timeouts.AWSInit.Duration() != DefaultAWSInitTimeout {
+		t.Errorf("negative AWSInit should default, got %v", cfg.Timeouts.AWSInit.Duration())
+	}
+	if cfg.Timeouts.MultiRegionFetch.Duration() != DefaultMultiRegionFetchTimeout {
+		t.Errorf("negative MultiRegionFetch should default, got %v", cfg.Timeouts.MultiRegionFetch.Duration())
+	}
+	if cfg.Concurrency.MaxFetches != DefaultMaxConcurrentFetches {
+		t.Errorf("negative MaxFetches should default, got %d", cfg.Concurrency.MaxFetches)
 	}
 }
 

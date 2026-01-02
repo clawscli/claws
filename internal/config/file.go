@@ -124,17 +124,6 @@ func File() *FileConfig {
 	return fileConfig
 }
 
-func ReloadFile() error {
-	cfg, err := Load()
-	if err != nil {
-		return err
-	}
-	fileConfigMu.Lock()
-	fileConfig = cfg
-	fileConfigMu.Unlock()
-	return nil
-}
-
 func Load() (*FileConfig, error) {
 	path, err := ConfigPath()
 	if err != nil {
@@ -182,19 +171,19 @@ func (c *FileConfig) Save() error {
 }
 
 func (c *FileConfig) applyDefaults() {
-	if c.Timeouts.AWSInit == 0 {
+	if c.Timeouts.AWSInit <= 0 {
 		c.Timeouts.AWSInit = Duration(DefaultAWSInitTimeout)
 	}
-	if c.Timeouts.MultiRegionFetch == 0 {
+	if c.Timeouts.MultiRegionFetch <= 0 {
 		c.Timeouts.MultiRegionFetch = Duration(DefaultMultiRegionFetchTimeout)
 	}
-	if c.Timeouts.TagSearch == 0 {
+	if c.Timeouts.TagSearch <= 0 {
 		c.Timeouts.TagSearch = Duration(DefaultTagSearchTimeout)
 	}
-	if c.Timeouts.MetricsLoad == 0 {
+	if c.Timeouts.MetricsLoad <= 0 {
 		c.Timeouts.MetricsLoad = Duration(DefaultMetricsLoadTimeout)
 	}
-	if c.Concurrency.MaxFetches == 0 {
+	if c.Concurrency.MaxFetches <= 0 {
 		c.Concurrency.MaxFetches = DefaultMaxConcurrentFetches
 	}
 }
