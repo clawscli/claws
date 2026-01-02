@@ -174,7 +174,10 @@ func (c *FileConfig) Save() error {
 			Concurrency: c.Concurrency,
 			CloudWatch:  c.CloudWatch,
 			Persistence: c.Persistence,
-			Startup:     c.Startup,
+			Startup: StartupConfig{
+				Regions: append([]string(nil), c.Startup.Regions...),
+				Profile: c.Startup.Profile,
+			},
 		}
 	})
 

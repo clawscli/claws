@@ -50,24 +50,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if opts.envCreds {
-		cfg.UseEnvOnly()
-	} else if opts.profile != "" {
-		cfg.UseProfile(opts.profile)
-	} else if startupRegions, startupProfile := fileCfg.GetStartup(); startupProfile != "" {
-		cfg.UseProfile(startupProfile)
-		if len(startupRegions) > 0 {
-			cfg.SetRegions(startupRegions)
-		}
-	}
-
-	if opts.region != "" {
-		cfg.SetRegion(opts.region)
-	} else if opts.profile == "" && !opts.envCreds {
-		if startupRegions, _ := fileCfg.GetStartup(); len(startupRegions) > 0 {
-			cfg.SetRegions(startupRegions)
-		}
-	}
+	applyStartupConfig(opts, fileCfg, cfg)
 
 	// Enable logging if log file specified
 	if opts.logFile != "" {
@@ -186,6 +169,30 @@ func printUsage() {
 	fmt.Println("Environment Variables:")
 	fmt.Println("  CLAWS_READ_ONLY=1|true   Enable read-only mode")
 	fmt.Println("  ALL_PROXY                Propagated to HTTP_PROXY/HTTPS_PROXY if not set")
+}
+
+// applyStartupConfig applies profile/region config with precedence:
+// 1. CLI flags (-p, -r, -e) - highest priority
+// 2. Config file startup section
+// 3. AWS SDK defaults
+func applyStartupConfig(opts cliOptions, fileCfg *config.FileConfig, cfg *config.Config) {
+	startupRegions, startupProfile := fileCfg.GetStartup()
+
+	// Apply profile: CLI > startup config
+	if opts.envCreds {
+		cfg.UseEnvOnly()
+	} else if opts.profile != "" {
+		cfg.UseProfile(opts.profile)
+	} else if startupProfile != "" {
+		cfg.UseProfile(startupProfile)
+	}
+
+	// Apply region: CLI > startup config (only if no CLI profile/env override)
+	if opts.region != "" {
+		cfg.SetRegion(opts.region)
+	} else if len(startupRegions) > 0 && opts.profile == "" && !opts.envCreds {
+		cfg.SetRegions(startupRegions)
+	}
 }
 
 // propagateAllProxy copies ALL_PROXY to HTTP_PROXY/HTTPS_PROXY if not set.
