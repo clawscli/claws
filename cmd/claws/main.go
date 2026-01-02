@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -21,7 +20,6 @@ var version = "dev"
 
 func main() {
 	propagateAllProxy()
-	configureNoProxy()
 
 	opts := parseFlags()
 
@@ -170,19 +168,10 @@ func printUsage() {
 	fmt.Println("Environment Variables:")
 	fmt.Println("  CLAWS_READ_ONLY=1|true   Enable read-only mode")
 	fmt.Println("  ALL_PROXY                Propagated to HTTP_PROXY/HTTPS_PROXY if not set")
-	fmt.Println("                           NO_PROXY auto-configured for EC2 IMDS (169.254.169.254)")
-}
-
-// awsNoProxyEndpoints lists AWS credential endpoints that must bypass proxy.
-// Default: EC2 IMDS only. ECS/EKS endpoints can be added via config.
-// TODO(#67): make configurable via config.yaml
-var awsNoProxyEndpoints = []string{
-	"169.254.169.254", // EC2 IMDS
 }
 
 // propagateAllProxy copies ALL_PROXY to HTTP_PROXY/HTTPS_PROXY if not set.
-// Go's net/http ignores ALL_PROXY. When HTTP_PROXY is set, NO_PROXY is
-// configured to exclude AWS credential endpoints (IMDS, ECS, EKS).
+// Go's net/http ignores ALL_PROXY, so we propagate it to the standard vars.
 func propagateAllProxy() {
 	allProxy := os.Getenv("ALL_PROXY")
 	if allProxy == "" {
@@ -210,62 +199,4 @@ func propagateAllProxy() {
 	if len(propagated) > 0 {
 		log.Debug("propagated ALL_PROXY", "to", propagated)
 	}
-}
-
-// configureNoProxy appends awsNoProxyEndpoints to NO_PROXY if missing.
-func configureNoProxy() {
-	if os.Getenv("HTTP_PROXY") == "" && os.Getenv("HTTPS_PROXY") == "" {
-		return
-	}
-
-	existing := os.Getenv("NO_PROXY")
-
-	existingSet := make(map[string]bool)
-	if existing != "" {
-		for _, entry := range splitNoProxy(existing) {
-			existingSet[entry] = true
-		}
-	}
-
-	var additions []string
-	for _, endpoint := range awsNoProxyEndpoints {
-		if !existingSet[endpoint] {
-			additions = append(additions, endpoint)
-		}
-	}
-
-	if len(additions) == 0 {
-		return
-	}
-
-	newValue := existing
-	if newValue != "" {
-		newValue += ","
-	}
-	for i, endpoint := range additions {
-		if i > 0 {
-			newValue += ","
-		}
-		newValue += endpoint
-	}
-
-	if err := os.Setenv("NO_PROXY", newValue); err != nil {
-		log.Warn("failed to set NO_PROXY", "error", err)
-		return
-	}
-	log.Debug("configured NO_PROXY for AWS endpoints", "added", additions)
-}
-
-func splitNoProxy(value string) []string {
-	if value == "" {
-		return nil
-	}
-	parts := strings.Split(value, ",")
-	result := make([]string, 0, len(parts))
-	for _, p := range parts {
-		if s := strings.TrimSpace(p); s != "" {
-			result = append(result, s)
-		}
-	}
-	return result
 }
