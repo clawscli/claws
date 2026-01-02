@@ -267,13 +267,37 @@ func TestCommandInput_getDiffSuggestions(t *testing.T) {
 			want:     []string{"diff web-server", "diff db-server", "diff cache"},
 		},
 		{
-			name:     "first name prefix filter",
+			name:     "prefix match",
+			provider: &mockDiffProvider{names: []string{"web-server", "db-server", "cache"}},
+			args:     "web",
+			want:     []string{"diff web-server"},
+		},
+		{
+			name:     "prefix match multiple",
+			provider: &mockDiffProvider{names: []string{"web-server", "web-api", "db-server"}},
+			args:     "web",
+			want:     []string{"diff web-server", "diff web-api"},
+		},
+		{
+			name:     "fuzzy fallback when no prefix",
 			provider: &mockDiffProvider{names: []string{"web-server", "db-server", "cache"}},
 			args:     "server",
 			want:     []string{"diff web-server", "diff db-server"},
 		},
 		{
-			name:     "case insensitive match",
+			name:     "fuzzy match pattern",
+			provider: &mockDiffProvider{names: []string{"web-server", "db-server", "cache"}},
+			args:     "wsr",
+			want:     []string{"diff web-server"},
+		},
+		{
+			name:     "case insensitive prefix",
+			provider: &mockDiffProvider{names: []string{"Web-Server", "DB-Server", "Cache"}},
+			args:     "WEB",
+			want:     []string{"diff Web-Server"},
+		},
+		{
+			name:     "case insensitive fuzzy",
 			provider: &mockDiffProvider{names: []string{"Web-Server", "DB-Server", "Cache"}},
 			args:     "SERVER",
 			want:     []string{"diff Web-Server", "diff DB-Server"},
@@ -294,6 +318,12 @@ func TestCommandInput_getDiffSuggestions(t *testing.T) {
 			name:     "second name with prefix",
 			provider: &mockDiffProvider{names: []string{"web-server", "db-server", "cache"}},
 			args:     "web-server db",
+			want:     []string{"diff web-server db-server"},
+		},
+		{
+			name:     "second name fuzzy fallback",
+			provider: &mockDiffProvider{names: []string{"web-server", "db-server", "cache"}},
+			args:     "web-server sr",
 			want:     []string{"diff web-server db-server"},
 		},
 		{
@@ -318,7 +348,7 @@ func TestCommandInput_getDiffSuggestions(t *testing.T) {
 			name:     "single resource for second - no suggestions",
 			provider: &mockDiffProvider{names: []string{"only-one"}},
 			args:     "only-one ",
-			want:     nil, // can't diff with self
+			want:     nil,
 		},
 	}
 

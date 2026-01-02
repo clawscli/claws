@@ -473,37 +473,64 @@ func (c *CommandInput) GetSuggestions() []string {
 	return suggestions
 }
 
-// getDiffSuggestions returns resource name suggestions for diff command
-// Supports: :diff <name1> and :diff <name1> <name2>
 func (c *CommandInput) getDiffSuggestions(args string) []string {
 	if c.diffProvider == nil {
 		return nil
 	}
 
-	var suggestions []string
 	names := c.diffProvider.GetResourceNames()
-
-	// Check if we're completing the second name (has space after first name)
 	parts := strings.SplitN(args, " ", 2)
+
 	if len(parts) == 2 {
-		// Completing second name: "diff name1 <prefix>"
 		firstName := parts[0]
 		secondPrefix := strings.ToLower(parts[1])
+
+		var filtered []string
 		for _, name := range names {
-			if name != firstName && (secondPrefix == "" || strings.Contains(strings.ToLower(name), secondPrefix)) {
-				suggestions = append(suggestions, "diff "+firstName+" "+name)
+			if name != firstName {
+				filtered = append(filtered, name)
 			}
 		}
-	} else {
-		// Completing first name: "diff <prefix>"
-		prefix := strings.ToLower(args)
-		for _, name := range names {
-			if prefix == "" || strings.Contains(strings.ToLower(name), prefix) {
-				suggestions = append(suggestions, "diff "+name)
-			}
+
+		matched := matchNamesWithFallback(filtered, secondPrefix)
+		var suggestions []string
+		for _, name := range matched {
+			suggestions = append(suggestions, "diff "+firstName+" "+name)
 		}
+		return suggestions
+	}
+
+	prefix := strings.ToLower(args)
+	matched := matchNamesWithFallback(names, prefix)
+	var suggestions []string
+	for _, name := range matched {
+		suggestions = append(suggestions, "diff "+name)
 	}
 	return suggestions
+}
+
+func matchNamesWithFallback(names []string, pattern string) []string {
+	if pattern == "" {
+		return names
+	}
+
+	var prefixMatches []string
+	for _, name := range names {
+		if strings.HasPrefix(strings.ToLower(name), pattern) {
+			prefixMatches = append(prefixMatches, name)
+		}
+	}
+	if len(prefixMatches) > 0 {
+		return prefixMatches
+	}
+
+	var fuzzyMatches []string
+	for _, name := range names {
+		if fuzzyMatch(name, pattern) {
+			fuzzyMatches = append(fuzzyMatches, name)
+		}
+	}
+	return fuzzyMatches
 }
 
 // getTagSuggestions returns tag key/value suggestions with command prefix
