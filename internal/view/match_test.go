@@ -76,10 +76,16 @@ func TestMatchNamesWithFallback(t *testing.T) {
 			want:    []string{"web-server"},
 		},
 		{
-			name:    "case insensitive prefix",
+			name:    "case insensitive prefix lowercase pattern",
 			names:   []string{"Web-Server", "DB-Server", "Cache"},
 			pattern: "web",
 			want:    []string{"Web-Server"},
+		},
+		{
+			name:    "case insensitive prefix uppercase pattern",
+			names:   []string{"web-server", "web-api", "db-server"},
+			pattern: "WEB",
+			want:    []string{"web-api", "web-server"},
 		},
 		{
 			name:    "no match returns empty",

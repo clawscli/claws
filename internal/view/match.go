@@ -27,6 +27,8 @@ func matchNamesWithFallback(names []string, pattern string) []string {
 		return result
 	}
 
+	pattern = strings.ToLower(pattern)
+
 	var prefixMatches []string
 	for _, name := range names {
 		if strings.HasPrefix(strings.ToLower(name), pattern) {
