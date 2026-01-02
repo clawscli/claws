@@ -175,13 +175,12 @@ func (s ProfileSelection) ID() string {
 }
 
 type Config struct {
-	mu                 sync.RWMutex
-	regions            []string
-	selections         []ProfileSelection
-	accountIDs         map[string]string
-	warnings           []string
-	readOnly           bool
-	persistenceEnabled bool
+	mu         sync.RWMutex
+	regions    []string
+	selections []ProfileSelection
+	accountIDs map[string]string
+	warnings   []string
+	readOnly   bool
 }
 
 var (
@@ -339,12 +338,4 @@ func (c *Config) SetReadOnly(readOnly bool) {
 
 func (c *Config) AddWarning(msg string) {
 	doWithLock(&c.mu, func() { c.warnings = append(c.warnings, msg) })
-}
-
-func (c *Config) PersistenceEnabled() bool {
-	return withRLock(&c.mu, func() bool { return c.persistenceEnabled })
-}
-
-func (c *Config) SetPersistenceEnabled(enabled bool) {
-	doWithLock(&c.mu, func() { c.persistenceEnabled = enabled })
 }

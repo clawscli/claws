@@ -61,12 +61,13 @@ type StartupConfig struct {
 }
 
 type FileConfig struct {
-	mu          sync.RWMutex      `yaml:"-"`
-	Timeouts    TimeoutConfig     `yaml:"timeouts,omitempty"`
-	Concurrency ConcurrencyConfig `yaml:"concurrency,omitempty"`
-	CloudWatch  CloudWatchConfig  `yaml:"cloudwatch,omitempty"`
-	Persistence PersistenceConfig `yaml:"persistence"`
-	Startup     StartupConfig     `yaml:"startup,omitempty"`
+	mu                  sync.RWMutex      `yaml:"-"`
+	persistenceOverride *bool             `yaml:"-"` // CLI flag override (not persisted)
+	Timeouts            TimeoutConfig     `yaml:"timeouts,omitempty"`
+	Concurrency         ConcurrencyConfig `yaml:"concurrency,omitempty"`
+	CloudWatch          CloudWatchConfig  `yaml:"cloudwatch,omitempty"`
+	Persistence         PersistenceConfig `yaml:"persistence"`
+	Startup             StartupConfig     `yaml:"startup,omitempty"`
 }
 
 // Duration wraps time.Duration for YAML marshal/unmarshal as string (e.g., "5s", "30s")
@@ -283,7 +284,16 @@ func (c *FileConfig) MetricsWindow() time.Duration {
 }
 
 func (c *FileConfig) PersistenceEnabled() bool {
-	return withRLock(&c.mu, func() bool { return c.Persistence.Enabled })
+	return withRLock(&c.mu, func() bool {
+		if c.persistenceOverride != nil {
+			return *c.persistenceOverride
+		}
+		return c.Persistence.Enabled
+	})
+}
+
+func (c *FileConfig) SetPersistenceEnabled(enabled bool) {
+	doWithLock(&c.mu, func() { c.persistenceOverride = &enabled })
 }
 
 func (c *FileConfig) SetStartup(regions []string, profile string) {
@@ -299,7 +309,7 @@ func (c *FileConfig) GetStartup() ([]string, string) {
 		profile string
 	}
 	r := withRLock(&c.mu, func() result {
-		return result{c.Startup.Regions, c.Startup.Profile}
+		return result{append([]string(nil), c.Startup.Regions...), c.Startup.Profile}
 	})
 	return r.regions, r.profile
 }
