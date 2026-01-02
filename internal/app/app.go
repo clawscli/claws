@@ -19,9 +19,6 @@ import (
 	"github.com/clawscli/claws/internal/view"
 )
 
-// awsInitTimeout is the maximum time to wait for AWS context initialization
-const awsInitTimeout = 5 * time.Second
-
 // clearErrorMsg is sent to clear transient errors after a timeout
 type clearErrorMsg struct{}
 
@@ -113,7 +110,7 @@ func (a *App) Init() tea.Cmd {
 	// Initialize AWS context in background (region detection, account ID fetch)
 	// Use timeout to avoid indefinite hang on network issues
 	initAWSCmd := func() tea.Msg {
-		ctx, cancel := context.WithTimeout(a.ctx, awsInitTimeout)
+		ctx, cancel := context.WithTimeout(a.ctx, config.File().AWSInitTimeout())
 		defer cancel()
 		err := aws.InitContext(ctx)
 		return awsContextReadyMsg{err: err}
@@ -336,6 +333,17 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case navmsg.RegionChangedMsg:
 		log.Info("regions changed", "regions", msg.Regions)
+		// Persist regions if enabled (NoPersist already reflects CLI flag and config)
+		if !config.Global().NoPersist() {
+			profile := ""
+			if sel := config.Global().Selection(); sel.IsNamedProfile() {
+				profile = sel.ProfileName
+			}
+			config.File().SetStartup(msg.Regions, profile)
+			if err := config.File().Save(); err != nil {
+				log.Warn("failed to persist config", "error", err)
+			}
+		}
 		// Pop views until we find a refreshable one (ResourceBrowser or ServiceBrowser)
 		for len(a.viewStack) > 0 {
 			a.currentView = a.viewStack[len(a.viewStack)-1]
@@ -356,12 +364,24 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case navmsg.ProfilesChangedMsg:
 		log.Info("profiles changed", "count", len(msg.Selections))
+		// Persist profile if enabled (NoPersist already reflects CLI flag and config)
+		if !config.Global().NoPersist() {
+			profile := ""
+			if len(msg.Selections) > 0 && msg.Selections[0].IsNamedProfile() {
+				profile = msg.Selections[0].ProfileName
+			}
+			regions := config.Global().Regions()
+			config.File().SetStartup(regions, profile)
+			if err := config.File().Save(); err != nil {
+				log.Warn("failed to persist config", "error", err)
+			}
+		}
 		a.profileRefreshID++
 		a.profileRefreshing = true
 		a.profileRefreshError = nil
 		refreshID := a.profileRefreshID
 		refreshCmd := func() tea.Msg {
-			ctx, cancel := context.WithTimeout(a.ctx, awsInitTimeout)
+			ctx, cancel := context.WithTimeout(a.ctx, config.File().AWSInitTimeout())
 			defer cancel()
 			region, accountIDs, err := aws.RefreshContextData(ctx)
 			return profileRefreshDoneMsg{

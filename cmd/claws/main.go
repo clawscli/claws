@@ -23,8 +23,17 @@ func main() {
 
 	propagateAllProxy()
 
-	// Apply CLI options to global config
+	fileCfg := config.File()
 	cfg := config.Global()
+
+	// Determine persistence: CLI flags override config
+	if opts.persist != nil {
+		// CLI flag explicitly set
+		cfg.SetNoPersist(!*opts.persist)
+	} else {
+		// Use config file setting (default: disabled)
+		cfg.SetNoPersist(!fileCfg.PersistenceEnabled())
+	}
 
 	// Check environment variables (CLI flags take precedence)
 	if !opts.readOnly {
@@ -46,19 +55,22 @@ func main() {
 	}
 
 	if opts.envCreds {
-		// Use environment credentials, ignore ~/.aws config
 		cfg.UseEnvOnly()
 	} else if opts.profile != "" {
 		cfg.UseProfile(opts.profile)
-		// Don't set AWS_PROFILE globally - it interferes with EnvOnly mode
-		// when switching profiles. SelectionLoadOptions uses WithSharedConfigProfile
-		// for SDK calls, and BuildSubprocessEnv handles subprocess environment.
+	} else if startupRegions, startupProfile := fileCfg.GetStartup(); startupProfile != "" {
+		cfg.UseProfile(startupProfile)
+		if len(startupRegions) > 0 {
+			cfg.SetRegions(startupRegions)
+		}
 	}
-	// else: SDKDefault is the zero value, no action needed
+
 	if opts.region != "" {
 		cfg.SetRegion(opts.region)
-		// Don't set AWS_REGION globally - SelectionLoadOptions handles SDK calls,
-		// and BuildSubprocessEnv handles subprocess environment.
+	} else if opts.profile == "" && !opts.envCreds {
+		if startupRegions, _ := fileCfg.GetStartup(); len(startupRegions) > 0 {
+			cfg.SetRegions(startupRegions)
+		}
 	}
 
 	// Enable logging if log file specified
@@ -86,12 +98,12 @@ func main() {
 	}
 }
 
-// cliOptions holds command line options
 type cliOptions struct {
 	profile  string
 	region   string
 	readOnly bool
 	envCreds bool
+	persist  *bool // nil = use config, true = enable, false = disable
 	logFile  string
 }
 
@@ -118,6 +130,12 @@ func parseFlags() cliOptions {
 			opts.readOnly = true
 		case "-e", "--env":
 			opts.envCreds = true
+		case "--persist":
+			t := true
+			opts.persist = &t
+		case "--no-persist":
+			f := false
+			opts.persist = &f
 		case "-l", "--log-file":
 			if i+1 < len(args) {
 				i++
@@ -158,6 +176,10 @@ func printUsage() {
 	fmt.Println("        Useful for instance profiles, ECS task roles, Lambda, etc.")
 	fmt.Println("  -ro, --read-only")
 	fmt.Println("        Run in read-only mode (disable dangerous actions)")
+	fmt.Println("  --persist")
+	fmt.Println("        Enable saving region/profile selection to config file")
+	fmt.Println("  --no-persist")
+	fmt.Println("        Disable saving region/profile selection to config file")
 	fmt.Println("  -l, --log-file <path>")
 	fmt.Println("        Enable debug logging to specified file")
 	fmt.Println("  -v, --version")

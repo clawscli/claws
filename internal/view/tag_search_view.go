@@ -6,7 +6,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"time"
 
 	"charm.land/bubbles/v2/spinner"
 	"charm.land/bubbles/v2/table"
@@ -24,10 +23,7 @@ import (
 	"github.com/clawscli/claws/internal/ui"
 )
 
-const (
-	tagSearchTimeout = 30 * time.Second
-	tagSearchLimit   = 100 // AWS Resource Groups Tagging API max per request
-)
+const tagSearchLimit = 100
 
 type taggedARN struct {
 	ARN    *aws.ARN
@@ -131,7 +127,7 @@ func (v *TagSearchView) fetchTaggedResources(regions []string, existingTokens ma
 		err       error
 	}
 
-	ctx, cancel := context.WithTimeout(v.ctx, tagSearchTimeout)
+	ctx, cancel := context.WithTimeout(v.ctx, config.File().TagSearchTimeout())
 	defer cancel()
 
 	results := make(chan regionResult, len(regions))

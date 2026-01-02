@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/clawscli/claws/internal/aws"
+	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/metrics"
 	"github.com/clawscli/claws/internal/render"
@@ -44,7 +45,7 @@ func (r *ResourceBrowser) loadMetricsCmd() tea.Cmd {
 			return nil
 		}
 
-		ctx, cancel := context.WithTimeout(baseCtx, metricsLoadTimeout)
+		ctx, cancel := context.WithTimeout(baseCtx, config.File().MetricsLoadTimeout())
 		defer cancel()
 
 		byRegion := make(map[string][]resourceInfo)

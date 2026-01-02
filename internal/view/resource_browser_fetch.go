@@ -16,11 +16,6 @@ import (
 	"github.com/clawscli/claws/internal/render"
 )
 
-const (
-	multiRegionFetchTimeout = 30 * time.Second
-	maxConcurrentFetches    = 50 // TODO: make configurable via config file
-)
-
 type listResourcesResult struct {
 	resources []dao.Resource
 	nextToken string
@@ -72,11 +67,11 @@ func fetchParallel[K comparable](
 	fetch func(context.Context, K) ([]dao.Resource, string, error),
 	formatError func(K, error) string,
 ) parallelFetchResult[K] {
-	ctx, cancel := context.WithTimeout(ctx, multiRegionFetchTimeout)
+	ctx, cancel := context.WithTimeout(ctx, config.File().MultiRegionFetchTimeout())
 	defer cancel()
 
 	results := make(chan parallelFetchItem[K], len(keys))
-	sem := make(chan struct{}, maxConcurrentFetches)
+	sem := make(chan struct{}, config.File().MaxConcurrentFetches())
 	var wg sync.WaitGroup
 
 	for _, key := range keys {

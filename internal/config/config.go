@@ -174,7 +174,6 @@ func (s ProfileSelection) ID() string {
 	}
 }
 
-// Config holds global application configuration
 type Config struct {
 	mu         sync.RWMutex
 	regions    []string
@@ -182,6 +181,7 @@ type Config struct {
 	accountIDs map[string]string
 	warnings   []string
 	readOnly   bool
+	noPersist  bool
 }
 
 var (
@@ -351,4 +351,12 @@ func (c *Config) SetReadOnly(readOnly bool) {
 
 func (c *Config) AddWarning(msg string) {
 	doWithLock(&c.mu, func() { c.warnings = append(c.warnings, msg) })
+}
+
+func (c *Config) NoPersist() bool {
+	return withRLock(&c.mu, func() bool { return c.noPersist })
+}
+
+func (c *Config) SetNoPersist(noPersist bool) {
+	doWithLock(&c.mu, func() { c.noPersist = noPersist })
 }

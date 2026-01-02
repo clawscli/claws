@@ -24,10 +24,7 @@ import (
 
 // ResourceBrowser displays resources of a specific type
 
-const (
-	logTokenMaxLen     = 20
-	metricsLoadTimeout = 30 * time.Second
-)
+const logTokenMaxLen = 20
 
 // resourceBrowserStyles holds cached lipgloss styles for performance
 type resourceBrowserStyles struct {
