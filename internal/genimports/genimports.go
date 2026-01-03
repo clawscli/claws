@@ -125,8 +125,8 @@ func readPackageName(filePath string) string {
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
-		if strings.HasPrefix(line, "package ") {
-			return strings.TrimPrefix(line, "package ")
+		if pkg, ok := strings.CutPrefix(line, "package "); ok {
+			return pkg
 		}
 	}
 	return ""

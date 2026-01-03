@@ -1,6 +1,8 @@
 package genimports
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -163,5 +165,233 @@ func TestGetPackageInfoFallbackPackageName(t *testing.T) {
 
 	if info.PackageName != "trainingjobs" {
 		t.Errorf("PackageName = %q, want %q", info.PackageName, "trainingjobs")
+	}
+}
+
+func TestFindRegisterPackages(t *testing.T) {
+	t.Run("finds register.go files", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		svc1Dir := filepath.Join(tmpDir, "custom", "ec2", "instances")
+		svc2Dir := filepath.Join(tmpDir, "custom", "s3", "buckets")
+
+		if err := os.MkdirAll(svc1Dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(svc2Dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(svc1Dir, "register.go"), []byte("package instances\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(svc2Dir, "register.go"), []byte("package buckets\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		packages, err := FindRegisterPackages(tmpDir)
+		if err != nil {
+			t.Fatalf("FindRegisterPackages() error = %v", err)
+		}
+
+		if len(packages) != 2 {
+			t.Errorf("FindRegisterPackages() returned %d packages, want 2", len(packages))
+		}
+		if len(packages) >= 2 && packages[0] > packages[1] {
+			t.Error("FindRegisterPackages() packages not sorted")
+		}
+	})
+
+	t.Run("returns error for missing custom dir", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		_, err := FindRegisterPackages(tmpDir)
+		if err == nil {
+			t.Error("FindRegisterPackages() expected error for missing custom dir")
+		}
+	})
+
+	t.Run("ignores non-register.go files", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		svcDir := filepath.Join(tmpDir, "custom", "ec2", "instances")
+		if err := os.MkdirAll(svcDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(svcDir, "dao.go"), []byte("package instances\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(svcDir, "render.go"), []byte("package instances\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		packages, err := FindRegisterPackages(tmpDir)
+		if err != nil {
+			t.Fatalf("FindRegisterPackages() error = %v", err)
+		}
+
+		if len(packages) != 0 {
+			t.Errorf("FindRegisterPackages() returned %d packages, want 0", len(packages))
+		}
+	})
+
+	t.Run("handles hyphenated directories", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		svcDir := filepath.Join(tmpDir, "custom", "bedrock-agent", "knowledge-bases")
+		if err := os.MkdirAll(svcDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(svcDir, "register.go"), []byte("package knowledgebases\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		packages, err := FindRegisterPackages(tmpDir)
+		if err != nil {
+			t.Fatalf("FindRegisterPackages() error = %v", err)
+		}
+
+		if len(packages) != 1 {
+			t.Fatalf("FindRegisterPackages() returned %d packages, want 1", len(packages))
+		}
+
+		want := ModulePrefix + "/custom/bedrock-agent/knowledge-bases"
+		if packages[0] != want {
+			t.Errorf("FindRegisterPackages()[0] = %q, want %q", packages[0], want)
+		}
+	})
+}
+
+func TestGetProjectRoot(t *testing.T) {
+	t.Run("returns current dir when not in cmd/claws", func(t *testing.T) {
+		origWd, err := os.Getwd()
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = os.Chdir(origWd) }()
+
+		tmpDir := t.TempDir()
+		if err := os.Chdir(tmpDir); err != nil {
+			t.Fatal(err)
+		}
+
+		root, err := GetProjectRoot()
+		if err != nil {
+			t.Fatalf("GetProjectRoot() error = %v", err)
+		}
+
+		if root != tmpDir {
+			t.Errorf("GetProjectRoot() = %q, want %q", root, tmpDir)
+		}
+	})
+
+	t.Run("goes up two levels from cmd/claws", func(t *testing.T) {
+		origWd, err := os.Getwd()
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = os.Chdir(origWd) }()
+
+		tmpDir := t.TempDir()
+		cmdClawsDir := filepath.Join(tmpDir, "cmd", "claws")
+		if err := os.MkdirAll(cmdClawsDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chdir(cmdClawsDir); err != nil {
+			t.Fatal(err)
+		}
+
+		root, err := GetProjectRoot()
+		if err != nil {
+			t.Fatalf("GetProjectRoot() error = %v", err)
+		}
+
+		expected := filepath.Join(cmdClawsDir, "..", "..")
+		if root != expected {
+			t.Errorf("GetProjectRoot() = %q, want %q", root, expected)
+		}
+	})
+}
+
+func TestReadPackageName(t *testing.T) {
+	t.Run("reads package name from file", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		filePath := filepath.Join(tmpDir, "test.go")
+		content := "package mypackage\n\nfunc main() {}\n"
+		if err := os.WriteFile(filePath, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		got := readPackageName(filePath)
+		if got != "mypackage" {
+			t.Errorf("readPackageName() = %q, want %q", got, "mypackage")
+		}
+	})
+
+	t.Run("returns empty string for missing file", func(t *testing.T) {
+		got := readPackageName("/nonexistent/path/file.go")
+		if got != "" {
+			t.Errorf("readPackageName() = %q, want empty string", got)
+		}
+	})
+
+	t.Run("returns empty string for file without package", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		filePath := filepath.Join(tmpDir, "test.go")
+		content := "func main() {}\n"
+		if err := os.WriteFile(filePath, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		got := readPackageName(filePath)
+		if got != "" {
+			t.Errorf("readPackageName() = %q, want empty string", got)
+		}
+	})
+
+	t.Run("handles package with trailing content", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		filePath := filepath.Join(tmpDir, "test.go")
+		content := "package main // comment\n"
+		if err := os.WriteFile(filePath, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		got := readPackageName(filePath)
+		if got != "main // comment" {
+			t.Errorf("readPackageName() = %q, want %q", got, "main // comment")
+		}
+	})
+
+	t.Run("reads empty file", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		filePath := filepath.Join(tmpDir, "empty.go")
+		if err := os.WriteFile(filePath, []byte(""), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		got := readPackageName(filePath)
+		if got != "" {
+			t.Errorf("readPackageName() = %q, want empty string", got)
+		}
+	})
+}
+
+func TestGetPackageInfoWithRealFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	pkgDir := filepath.Join(tmpDir, "custom", "ec2", "instances")
+	if err := os.MkdirAll(pkgDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(pkgDir, "register.go"), []byte("package instances\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	info := GetPackageInfo(tmpDir, "github.com/clawscli/claws/custom/ec2/instances")
+
+	if info.PackageName != "instances" {
+		t.Errorf("PackageName = %q, want %q", info.PackageName, "instances")
+	}
+	if info.Service != "ec2" {
+		t.Errorf("Service = %q, want %q", info.Service, "ec2")
+	}
+	if info.Resource != "instances" {
+		t.Errorf("Resource = %q, want %q", info.Resource, "instances")
 	}
 }
