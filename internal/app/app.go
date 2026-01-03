@@ -315,7 +315,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return a, nil
 		}
 		if msg.region != "" {
-			config.Global().SetRegion(msg.region)
+			config.Global().AddRegion(msg.region)
 		}
 		if len(msg.accountIDs) > 0 {
 			for profileID, accountID := range msg.accountIDs {
@@ -358,7 +358,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(msg.Selections) > 0 && msg.Selections[0].IsNamedProfile() {
 				profile = msg.Selections[0].ProfileName
 			}
-			existingRegions, _ := config.File().GetStartup()
+			existingRegions := config.Global().Regions()
 			config.File().SetStartup(existingRegions, profile)
 			if err := config.File().Save(); err != nil {
 				log.Warn("failed to persist config", "error", err)

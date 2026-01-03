@@ -4,6 +4,7 @@ import (
 	"maps"
 	"os"
 	"regexp"
+	"slices"
 	"sync"
 )
 
@@ -213,6 +214,15 @@ func (c *Config) Regions() []string {
 
 func (c *Config) SetRegion(region string) {
 	doWithLock(&c.mu, func() { c.regions = []string{region} })
+}
+
+// AddRegion adds a region to the existing regions if not already present.
+func (c *Config) AddRegion(region string) {
+	doWithLock(&c.mu, func() {
+		if !slices.Contains(c.regions, region) {
+			c.regions = append(c.regions, region)
+		}
+	})
 }
 
 func (c *Config) SetRegions(regions []string) {
