@@ -61,9 +61,6 @@ func TestDiffView_SetSize(t *testing.T) {
 	if dv.width != 100 {
 		t.Errorf("width = %d, want 100", dv.width)
 	}
-	if dv.height != 50 {
-		t.Errorf("height = %d, want 50", dv.height)
-	}
 }
 
 func TestDiffView_Update_Esc(t *testing.T) {

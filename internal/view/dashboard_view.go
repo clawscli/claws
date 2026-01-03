@@ -31,9 +31,9 @@ type dashboardStyles struct {
 func newDashboardStyles() dashboardStyles {
 	t := ui.Current()
 	return dashboardStyles{
-		warning:   lipgloss.NewStyle().Foreground(t.Warning),
-		danger:    lipgloss.NewStyle().Foreground(t.Danger),
-		success:   lipgloss.NewStyle().Foreground(t.Success),
+		warning:   ui.WarningStyle(),
+		danger:    ui.DangerStyle(),
+		success:   ui.SuccessStyle(),
 		dim:       lipgloss.NewStyle().Foreground(t.TextMuted),
 		highlight: ui.SelectedStyle(),
 	}

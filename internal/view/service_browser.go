@@ -91,8 +91,7 @@ func newServiceBrowserStyles() serviceBrowserStyles {
 		title: ui.TableHeaderStyle().
 			Padding(0, 1).
 			MarginBottom(1),
-		category: lipgloss.NewStyle().
-			Foreground(t.TextDim).
+		category: ui.DimStyle().
 			Bold(true).
 			MarginTop(1).
 			MarginBottom(0),
@@ -110,10 +109,8 @@ func newServiceBrowserStyles() serviceBrowserStyles {
 		serviceNameSe: lipgloss.NewStyle().
 			Bold(true).
 			Foreground(t.Primary),
-		aliases: lipgloss.NewStyle().
-			Foreground(t.TextDim),
-		aliasesSel: lipgloss.NewStyle().
-			Foreground(t.TextDim),
+		aliases:    ui.DimStyle(),
+		aliasesSel: ui.DimStyle(),
 		filterPrompt: lipgloss.NewStyle().
 			Foreground(t.Primary),
 	}

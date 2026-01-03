@@ -29,7 +29,7 @@ func newCommandInputStyles() commandInputStyles {
 	t := ui.Current()
 	return commandInputStyles{
 		input:      lipgloss.NewStyle().Background(t.Background).Foreground(t.Text).Padding(0, 1),
-		suggestion: lipgloss.NewStyle().Foreground(t.TextDim),
+		suggestion: ui.DimStyle(),
 		highlight:  ui.HighlightStyle(),
 	}
 }
@@ -55,7 +55,6 @@ type CommandInput struct {
 	registry    *registry.Registry
 	textInput   textinput.Model
 	active      bool
-	width       int
 	suggestions []string
 	suggIdx     int
 	styles      commandInputStyles
@@ -195,7 +194,6 @@ func (c *CommandInput) View() string {
 
 // SetWidth sets the input width
 func (c *CommandInput) SetWidth(width int) {
-	c.width = width
 	c.textInput.SetWidth(width - 4)
 }
 

@@ -22,7 +22,6 @@ type DiffView struct {
 	resourceType string
 	vp           ViewportState
 	width        int
-	height       int
 	styles       diffViewStyles
 }
 
@@ -92,7 +91,6 @@ func (d *DiffView) View() tea.View {
 // SetSize implements View
 func (d *DiffView) SetSize(width, height int) tea.Cmd {
 	d.width = width
-	d.height = height
 
 	// Reserve space for header
 	headerHeight := 3

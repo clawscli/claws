@@ -28,7 +28,7 @@ func newDetailViewStyles() detailViewStyles {
 	t := ui.Current()
 	return detailViewStyles{
 		title: ui.TitleStyle(),
-		label: lipgloss.NewStyle().Foreground(t.TextDim).Width(15),
+		label: ui.DimStyle().Width(15),
 		value: lipgloss.NewStyle().Foreground(t.Text),
 	}
 }
@@ -41,8 +41,6 @@ type DetailView struct {
 	resType     string
 	vp          ViewportState
 	headerPanel *HeaderPanel
-	width       int
-	height      int
 	registry    *registry.Registry
 	dao         dao.DAO
 	refreshing  bool
@@ -191,10 +189,6 @@ func (d *DetailView) View() tea.View {
 
 // SetSize implements View
 func (d *DetailView) SetSize(width, height int) tea.Cmd {
-	d.width = width
-	d.height = height
-
-	// Set header panel width
 	d.headerPanel.SetWidth(width)
 
 	// Calculate header height dynamically

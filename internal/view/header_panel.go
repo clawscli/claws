@@ -46,7 +46,7 @@ func newHeaderPanelStyles() headerPanelStyles {
 	t := ui.Current()
 	return headerPanelStyles{
 		panel:     lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder()).BorderForeground(t.Border).Padding(0, 1),
-		label:     lipgloss.NewStyle().Foreground(t.TextDim),
+		label:     ui.DimStyle(),
 		value:     lipgloss.NewStyle().Foreground(t.Text),
 		accent:    ui.HighlightStyle(),
 		dim:       lipgloss.NewStyle().Foreground(t.TextMuted),

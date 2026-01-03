@@ -21,14 +21,12 @@ func newHelpViewStyles() helpViewStyles {
 	return helpViewStyles{
 		title:   ui.TitleStyle(),
 		section: ui.SectionStyle().MarginTop(1),
-		key:     lipgloss.NewStyle().Foreground(t.Success).Width(15),
+		key:     ui.SuccessStyle().Width(15),
 		desc:    lipgloss.NewStyle().Foreground(t.Text),
 	}
 }
 
 type HelpView struct {
-	width  int
-	height int
 	styles helpViewStyles
 	vp     ViewportState
 }
@@ -166,9 +164,6 @@ func (h *HelpView) View() tea.View {
 }
 
 func (h *HelpView) SetSize(width, height int) tea.Cmd {
-	h.width = width
-	h.height = height
-
 	h.vp.SetSize(width, height)
 	h.vp.Model.SetContent(h.renderContent())
 	return nil

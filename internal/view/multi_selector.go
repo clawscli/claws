@@ -29,7 +29,7 @@ func newSelectorStyles() selectorStyles {
 		title:        ui.TableHeaderStyle().Padding(0, 1),
 		item:         lipgloss.NewStyle().PaddingLeft(2),
 		itemSelected: ui.SelectedStyle().PaddingLeft(2),
-		itemChecked:  lipgloss.NewStyle().PaddingLeft(2).Foreground(t.Success),
+		itemChecked:  ui.SuccessStyle().PaddingLeft(2),
 		filter:       lipgloss.NewStyle().Foreground(t.Accent),
 	}
 }

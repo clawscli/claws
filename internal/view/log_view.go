@@ -43,8 +43,6 @@ type LogView struct {
 	loading bool
 	paused  bool
 	err     error
-	width   int
-	height  int
 
 	lastEventTime   int64
 	oldestEventTime int64
@@ -72,8 +70,8 @@ func newLogViewStyles() logViewStyles {
 		timestamp: lipgloss.NewStyle().Foreground(t.Secondary),
 		message:   lipgloss.NewStyle().Foreground(t.Text),
 		paused:    ui.BoldWarningStyle(),
-		error:     lipgloss.NewStyle().Foreground(t.Danger),
-		dim:       lipgloss.NewStyle().Foreground(t.TextDim),
+		error:     ui.DangerStyle(),
+		dim:       ui.DimStyle(),
 	}
 }
 
@@ -402,10 +400,7 @@ func (v *LogView) View() tea.View {
 }
 
 func (v *LogView) SetSize(width, height int) tea.Cmd {
-	v.width = width
-	v.height = height
 	viewportHeight := height - viewportHeaderOffset
-
 	v.vp.SetSize(width, viewportHeight)
 	v.updateViewportContent()
 	return nil
