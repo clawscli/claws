@@ -19,7 +19,12 @@ import (
 	"github.com/clawscli/claws/internal/view"
 )
 
-// clearErrorMsg is sent to clear transient errors after a timeout
+const (
+	modalWidthHelp    = 70
+	modalWidthRegion  = 45
+	modalWidthProfile = 55
+)
+
 type clearErrorMsg struct{}
 
 // awsContextReadyMsg is sent when AWS context initialization completes
@@ -223,24 +228,12 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, a.keys.Help):
 			helpView := view.NewHelpView()
-			a.modal = &view.Modal{Content: helpView, Width: 70}
+			a.modal = &view.Modal{Content: helpView, Width: modalWidthHelp}
 			return a, a.modal.SetSize(a.width, a.height)
-
-		case key.Matches(msg, a.keys.Command):
-			a.commandMode = true
-			// Set completion providers if current view is a ResourceBrowser
-			if rb, ok := a.currentView.(*view.ResourceBrowser); ok {
-				a.commandInput.SetTagProvider(rb)
-				a.commandInput.SetDiffProvider(rb)
-			} else {
-				a.commandInput.SetTagProvider(nil)
-				a.commandInput.SetDiffProvider(nil)
-			}
-			return a, a.commandInput.Activate()
 
 		case key.Matches(msg, a.keys.Region):
 			regionSelector := view.NewRegionSelector(a.ctx)
-			a.modal = &view.Modal{Content: regionSelector, Width: 45}
+			a.modal = &view.Modal{Content: regionSelector, Width: modalWidthRegion}
 			return a, tea.Batch(
 				regionSelector.Init(),
 				a.modal.SetSize(a.width, a.height),
@@ -248,7 +241,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, a.keys.Profile):
 			profileSelector := view.NewProfileSelector()
-			a.modal = &view.Modal{Content: profileSelector, Width: 55}
+			a.modal = &view.Modal{Content: profileSelector, Width: modalWidthProfile}
 			return a, tea.Batch(
 				profileSelector.Init(),
 				a.modal.SetSize(a.width, a.height),
