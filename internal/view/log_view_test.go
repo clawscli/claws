@@ -190,15 +190,6 @@ func TestLogViewStatusLine(t *testing.T) {
 	}
 }
 
-func TestLogViewHasActiveInput(t *testing.T) {
-	ctx := context.Background()
-	lv := NewLogView(ctx, "/aws/test")
-
-	if lv.HasActiveInput() {
-		t.Error("Expected HasActiveInput() to return false")
-	}
-}
-
 func TestLogViewViewStringStates(t *testing.T) {
 	ctx := context.Background()
 

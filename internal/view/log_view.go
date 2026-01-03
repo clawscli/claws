@@ -45,6 +45,8 @@ type LogView struct {
 	paused  bool
 	err     error
 	ready   bool
+	width   int
+	height  int
 
 	lastEventTime   int64
 	oldestEventTime int64
@@ -402,6 +404,8 @@ func (v *LogView) View() tea.View {
 }
 
 func (v *LogView) SetSize(width, height int) tea.Cmd {
+	v.width = width
+	v.height = height
 	viewportHeight := height - viewportHeaderOffset
 
 	if !v.ready {
@@ -425,8 +429,4 @@ func (v *LogView) StatusLine() string {
 		return fmt.Sprintf("⏳ THROTTLED (%ds) • %s", int(v.pollInterval.Seconds()), status)
 	}
 	return "▶ STREAMING • " + status
-}
-
-func (v *LogView) HasActiveInput() bool {
-	return false
 }
