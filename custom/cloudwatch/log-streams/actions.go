@@ -39,7 +39,7 @@ func getCloudWatchLogsClient(ctx context.Context) (*cloudwatchlogs.Client, error
 }
 
 func executeDeleteLogStream(ctx context.Context, resource dao.Resource) action.ActionResult {
-	ls, ok := resource.(*LogStreamResource)
+	ls, ok := dao.UnwrapResource(resource).(*LogStreamResource)
 	if !ok {
 		return action.InvalidResourceResult()
 	}

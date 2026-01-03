@@ -31,7 +31,7 @@ func NewLogStreamRenderer() render.Renderer {
 }
 
 func getLastEvent(r dao.Resource) string {
-	if ls, ok := r.(*LogStreamResource); ok {
+	if ls, ok := dao.UnwrapResource(r).(*LogStreamResource); ok {
 		lastEvent := ls.LastEventTimestamp()
 		if lastEvent > 0 {
 			t := time.UnixMilli(lastEvent)
@@ -42,7 +42,7 @@ func getLastEvent(r dao.Resource) string {
 }
 
 func getAge(r dao.Resource) string {
-	if ls, ok := r.(*LogStreamResource); ok {
+	if ls, ok := dao.UnwrapResource(r).(*LogStreamResource); ok {
 		creationTime := ls.CreationTime()
 		if creationTime > 0 {
 			t := time.UnixMilli(creationTime)
@@ -54,7 +54,7 @@ func getAge(r dao.Resource) string {
 
 // RenderDetail renders detailed log stream information
 func (r *LogStreamRenderer) RenderDetail(resource dao.Resource) string {
-	ls, ok := resource.(*LogStreamResource)
+	ls, ok := dao.UnwrapResource(resource).(*LogStreamResource)
 	if !ok {
 		return ""
 	}
@@ -95,7 +95,7 @@ func (r *LogStreamRenderer) RenderDetail(resource dao.Resource) string {
 
 // RenderSummary returns summary fields for the header panel
 func (r *LogStreamRenderer) RenderSummary(resource dao.Resource) []render.SummaryField {
-	ls, ok := resource.(*LogStreamResource)
+	ls, ok := dao.UnwrapResource(resource).(*LogStreamResource)
 	if !ok {
 		return r.BaseRenderer.RenderSummary(resource)
 	}
@@ -119,7 +119,7 @@ func (r *LogStreamRenderer) RenderSummary(resource dao.Resource) []render.Summar
 }
 
 func (r *LogStreamRenderer) Navigations(resource dao.Resource) []render.Navigation {
-	ls, ok := resource.(*LogStreamResource)
+	ls, ok := dao.UnwrapResource(resource).(*LogStreamResource)
 	if !ok {
 		return nil
 	}

@@ -34,14 +34,14 @@ func NewLogGroupRenderer() render.Renderer {
 }
 
 func getSize(r dao.Resource) string {
-	if lg, ok := r.(*LogGroupResource); ok {
+	if lg, ok := dao.UnwrapResource(r).(*LogGroupResource); ok {
 		return render.FormatSize(lg.StoredBytes())
 	}
 	return "-"
 }
 
 func getRetention(r dao.Resource) string {
-	if lg, ok := r.(*LogGroupResource); ok {
+	if lg, ok := dao.UnwrapResource(r).(*LogGroupResource); ok {
 		days := lg.RetentionDays()
 		if days == 0 {
 			return "Never"
@@ -55,7 +55,7 @@ func getRetention(r dao.Resource) string {
 }
 
 func getClass(r dao.Resource) string {
-	if lg, ok := r.(*LogGroupResource); ok {
+	if lg, ok := dao.UnwrapResource(r).(*LogGroupResource); ok {
 		class := lg.LogGroupClass()
 		if class == "" || class == "STANDARD" {
 			return "Standard"
@@ -66,7 +66,7 @@ func getClass(r dao.Resource) string {
 }
 
 func getAge(r dao.Resource) string {
-	if lg, ok := r.(*LogGroupResource); ok {
+	if lg, ok := dao.UnwrapResource(r).(*LogGroupResource); ok {
 		creationTime := lg.CreationTime()
 		if creationTime > 0 {
 			t := time.UnixMilli(creationTime)
@@ -78,7 +78,7 @@ func getAge(r dao.Resource) string {
 
 // RenderDetail renders detailed log group information
 func (r *LogGroupRenderer) RenderDetail(resource dao.Resource) string {
-	lg, ok := resource.(*LogGroupResource)
+	lg, ok := dao.UnwrapResource(resource).(*LogGroupResource)
 	if !ok {
 		return ""
 	}
@@ -138,7 +138,7 @@ func (r *LogGroupRenderer) RenderDetail(resource dao.Resource) string {
 
 // RenderSummary returns summary fields for the header panel
 func (r *LogGroupRenderer) RenderSummary(resource dao.Resource) []render.SummaryField {
-	lg, ok := resource.(*LogGroupResource)
+	lg, ok := dao.UnwrapResource(resource).(*LogGroupResource)
 	if !ok {
 		return r.BaseRenderer.RenderSummary(resource)
 	}
@@ -173,7 +173,7 @@ func (r *LogGroupRenderer) RenderSummary(resource dao.Resource) []render.Summary
 }
 
 func (r *LogGroupRenderer) Navigations(resource dao.Resource) []render.Navigation {
-	lg, ok := resource.(*LogGroupResource)
+	lg, ok := dao.UnwrapResource(resource).(*LogGroupResource)
 	if !ok {
 		return nil
 	}
