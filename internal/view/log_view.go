@@ -24,6 +24,9 @@ const (
 	defaultLogPollInterval = 3 * time.Second
 	maxLogPollInterval     = 30 * time.Second
 	logFetchTimeout        = 10 * time.Second
+	initialLogBufferSize   = 500
+	maxLogBufferSize       = 1000
+	logFetchLimit          = 100
 )
 
 // LogView displays CloudWatch Logs with real-time streaming via polling.
@@ -84,7 +87,7 @@ func NewLogView(ctx context.Context, logGroupName string) *LogView {
 		logGroupName: logGroupName,
 		spinner:      s,
 		styles:       newLogViewStyles(),
-		logs:         make([]logEntry, 0, 500),
+		logs:         make([]logEntry, 0, initialLogBufferSize),
 		loading:      true,
 		pollInterval: defaultLogPollInterval,
 	}
@@ -130,6 +133,9 @@ func (v *LogView) fetchLogsCmd() tea.Cmd {
 }
 
 func (v *LogView) fetchLogs(startTime int64) tea.Msg {
+	if err := v.ctx.Err(); err != nil {
+		return logsLoadedMsg{err: err}
+	}
 	if v.client == nil {
 		return logsLoadedMsg{err: errors.New("client not initialized")}
 	}
@@ -139,7 +145,7 @@ func (v *LogView) fetchLogs(startTime int64) tea.Msg {
 
 	input := &cloudwatchlogs.FilterLogEventsInput{
 		LogGroupName: appaws.StringPtr(v.logGroupName),
-		Limit:        appaws.Int32Ptr(100),
+		Limit:        appaws.Int32Ptr(logFetchLimit),
 	}
 
 	if v.logStreamName != "" {
@@ -204,8 +210,8 @@ func (v *LogView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if len(msg.entries) > 0 {
 			v.logs = append(v.logs, msg.entries...)
-			if len(v.logs) > 1000 {
-				v.logs = v.logs[len(v.logs)-1000:]
+			if len(v.logs) > maxLogBufferSize {
+				v.logs = v.logs[len(v.logs)-maxLogBufferSize:]
 			}
 			if v.ready {
 				v.updateViewportContent()
