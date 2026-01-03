@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go/format"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 
@@ -52,6 +53,21 @@ func main() {
 	}
 
 	fmt.Printf("Generated %d constants.go files\n", constantsCount)
+
+	if err := verifyBuild(projectRoot); err != nil {
+		fmt.Fprintf(os.Stderr, "Build verification failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("Build verification passed")
+}
+
+func verifyBuild(projectRoot string) error {
+	cmd := exec.Command("go", "build", "./cmd/claws")
+	cmd.Dir = projectRoot
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
 
 func generateConstantsFiles(projectRoot string, packages []string) (int, error) {
