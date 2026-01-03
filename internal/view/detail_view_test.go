@@ -230,8 +230,7 @@ func TestDetailViewLoadingPlaceholderReplacement(t *testing.T) {
 			dv.refreshing = tt.refreshing
 			dv.SetSize(100, 50)
 
-			// Get the viewport content
-			content := dv.viewport.View()
+			content := dv.vp.Model.View()
 
 			for _, want := range tt.wantContains {
 				if !strings.Contains(content, want) {

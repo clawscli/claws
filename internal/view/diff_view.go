@@ -4,7 +4,6 @@ import (
 	"context"
 	"strings"
 
-	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -14,7 +13,6 @@ import (
 	"github.com/clawscli/claws/internal/ui"
 )
 
-// DiffView displays side-by-side comparison of two resources
 type DiffView struct {
 	ctx          context.Context
 	left         dao.Resource
@@ -22,8 +20,7 @@ type DiffView struct {
 	renderer     render.Renderer
 	service      string
 	resourceType string
-	viewport     viewport.Model
-	ready        bool
+	vp           ViewportState
 	width        int
 	height       int
 	styles       diffViewStyles
@@ -75,17 +72,16 @@ func (d *DiffView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	var cmd tea.Cmd
-	d.viewport, cmd = d.viewport.Update(msg)
+	d.vp.Model, cmd = d.vp.Model.Update(msg)
 	return d, cmd
 }
 
-// ViewString returns the view content as a string
 func (d *DiffView) ViewString() string {
-	if !d.ready {
+	if !d.vp.Ready {
 		return "Loading..."
 	}
 
-	return d.viewport.View()
+	return d.vp.Model.View()
 }
 
 // View implements tea.Model
@@ -105,16 +101,10 @@ func (d *DiffView) SetSize(width, height int) tea.Cmd {
 		viewportHeight = 5
 	}
 
-	if !d.ready {
-		d.viewport = viewport.New(viewport.WithWidth(width), viewport.WithHeight(viewportHeight))
-		d.ready = true
-	} else {
-		d.viewport.SetWidth(width)
-		d.viewport.SetHeight(viewportHeight)
-	}
+	d.vp.SetSize(width, viewportHeight)
 
 	content := d.renderSideBySide()
-	d.viewport.SetContent(content)
+	d.vp.Model.SetContent(content)
 
 	return nil
 }

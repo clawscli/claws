@@ -102,12 +102,22 @@ func WarningStyle() lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(current.Warning)
 }
 
-// DangerStyle returns a style for danger/error states
 func DangerStyle() lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(current.Danger)
 }
 
-// NewSpinner creates a consistently styled spinner for loading states
+func TitleStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Bold(true).Foreground(current.Primary)
+}
+
+func SelectedStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Background(current.Selection).Foreground(current.SelectionText)
+}
+
+func TableHeaderStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Background(current.TableHeader).Foreground(current.TableHeaderText)
+}
+
 func NewSpinner() spinner.Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot

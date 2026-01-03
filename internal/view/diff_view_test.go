@@ -49,16 +49,14 @@ func TestDiffView_SetSize(t *testing.T) {
 
 	dv := NewDiffView(ctx, left, right, nil, "ec2", "instances")
 
-	// Initially not ready
-	if dv.ready {
-		t.Error("Expected ready to be false initially")
+	if dv.vp.Ready {
+		t.Error("Expected vp.Ready to be false initially")
 	}
 
-	// SetSize should initialize viewport
 	dv.SetSize(100, 50)
 
-	if !dv.ready {
-		t.Error("Expected ready to be true after SetSize")
+	if !dv.vp.Ready {
+		t.Error("Expected vp.Ready to be true after SetSize")
 	}
 	if dv.width != 100 {
 		t.Errorf("width = %d, want 100", dv.width)

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"charm.land/bubbles/v2/spinner"
-	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
@@ -36,15 +35,14 @@ type LogView struct {
 	logGroupName  string
 	logStreamName string
 
-	viewport viewport.Model
-	spinner  spinner.Model
-	styles   logViewStyles
+	vp      ViewportState
+	spinner spinner.Model
+	styles  logViewStyles
 
 	logs    []logEntry
 	loading bool
 	paused  bool
 	err     error
-	ready   bool
 	width   int
 	height  int
 
@@ -266,7 +264,7 @@ func (v *LogView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if msg.lastEventTime > 0 {
 					v.oldestEventTime = msg.lastEventTime
 				}
-				if v.ready {
+				if v.vp.Ready {
 					v.updateViewportContent()
 				}
 			}
@@ -283,9 +281,9 @@ func (v *LogView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(v.logs) > maxLogBufferSize {
 				v.logs = v.logs[len(v.logs)-maxLogBufferSize:]
 			}
-			if v.ready {
+			if v.vp.Ready {
 				v.updateViewportContent()
-				v.viewport.GotoBottom()
+				v.vp.Model.GotoBottom()
 			}
 		}
 		if !v.paused {
@@ -308,19 +306,19 @@ func (v *LogView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return v, nil
 		case "g":
-			if v.ready {
-				v.viewport.GotoTop()
+			if v.vp.Ready {
+				v.vp.Model.GotoTop()
 			}
 			return v, nil
 		case "G":
-			if v.ready {
-				v.viewport.GotoBottom()
+			if v.vp.Ready {
+				v.vp.Model.GotoBottom()
 			}
 			return v, nil
 		case "c":
 			v.logs = v.logs[:0]
 			v.oldestEventTime = 0
-			if v.ready {
+			if v.vp.Ready {
 				v.updateViewportContent()
 			}
 			return v, nil
@@ -340,9 +338,9 @@ func (v *LogView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	if v.ready {
+	if v.vp.Ready {
 		var cmd tea.Cmd
-		v.viewport, cmd = v.viewport.Update(msg)
+		v.vp.Model, cmd = v.vp.Model.Update(msg)
 		return v, cmd
 	}
 	return v, nil
@@ -355,11 +353,11 @@ func (v *LogView) updateViewportContent() {
 		msg := v.styles.message.Render(entry.message)
 		sb.WriteString(fmt.Sprintf("%s %s\n", ts, msg))
 	}
-	v.viewport.SetContent(sb.String())
+	v.vp.Model.SetContent(sb.String())
 }
 
 func (v *LogView) ViewString() string {
-	if !v.ready {
+	if !v.vp.Ready {
 		return "Loading..."
 	}
 
@@ -395,7 +393,7 @@ func (v *LogView) ViewString() string {
 		return sb.String()
 	}
 
-	sb.WriteString(v.viewport.View())
+	sb.WriteString(v.vp.Model.View())
 	return sb.String()
 }
 
@@ -408,14 +406,7 @@ func (v *LogView) SetSize(width, height int) tea.Cmd {
 	v.height = height
 	viewportHeight := height - viewportHeaderOffset
 
-	if !v.ready {
-		v.viewport = viewport.New(viewport.WithWidth(width), viewport.WithHeight(viewportHeight))
-		v.ready = true
-	} else {
-		v.viewport.SetWidth(width)
-		v.viewport.SetHeight(viewportHeight)
-	}
-
+	v.vp.SetSize(width, viewportHeight)
 	v.updateViewportContent()
 	return nil
 }

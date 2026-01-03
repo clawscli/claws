@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"charm.land/bubbles/v2/textinput"
-	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
@@ -41,8 +40,7 @@ type MultiSelector[T SelectorItem] struct {
 	cursor   int
 	selected map[string]bool
 
-	viewport viewport.Model
-	ready    bool
+	vp ViewportState
 
 	filterInput  textinput.Model
 	filterActive bool
@@ -136,7 +134,7 @@ func (m *MultiSelector[T]) HandleUpdate(msg tea.Msg) (tea.Cmd, SelectorKeyResult
 	switch msg := msg.(type) {
 	case tea.MouseWheelMsg:
 		var cmd tea.Cmd
-		m.viewport, cmd = m.viewport.Update(msg)
+		m.vp.Model, cmd = m.vp.Model.Update(msg)
 		return cmd, KeyHandled
 
 	case tea.MouseMotionMsg:
@@ -228,7 +226,7 @@ func (m *MultiSelector[T]) HandleUpdate(msg tea.Msg) (tea.Cmd, SelectorKeyResult
 	}
 
 	var cmd tea.Cmd
-	m.viewport, cmd = m.viewport.Update(msg)
+	m.vp.Model, cmd = m.vp.Model.Update(msg)
 	if cmd != nil {
 		return cmd, KeyHandled
 	}
@@ -277,18 +275,18 @@ func (m *MultiSelector[T]) clampCursor() {
 }
 
 func (m *MultiSelector[T]) updateViewport() {
-	if !m.ready {
+	if !m.vp.Ready {
 		return
 	}
-	m.viewport.SetContent(m.renderContent())
+	m.vp.Model.SetContent(m.renderContent())
 
 	if m.cursor >= 0 {
-		viewportHeight := m.viewport.Height()
+		viewportHeight := m.vp.Model.Height()
 		if viewportHeight > 0 {
-			if m.cursor < m.viewport.YOffset() {
-				m.viewport.SetYOffset(m.cursor)
-			} else if m.cursor >= m.viewport.YOffset()+viewportHeight {
-				m.viewport.SetYOffset(m.cursor - viewportHeight + 1)
+			if m.cursor < m.vp.Model.YOffset() {
+				m.vp.Model.SetYOffset(m.cursor)
+			} else if m.cursor >= m.vp.Model.YOffset()+viewportHeight {
+				m.vp.Model.SetYOffset(m.cursor - viewportHeight + 1)
 			}
 		}
 	}
@@ -327,7 +325,7 @@ func (m *MultiSelector[T]) renderContent() string {
 }
 
 func (m *MultiSelector[T]) getItemAtPosition(y int) int {
-	if !m.ready {
+	if !m.vp.Ready {
 		return -1
 	}
 	headerHeight := 1
@@ -335,7 +333,7 @@ func (m *MultiSelector[T]) getItemAtPosition(y int) int {
 		headerHeight++
 	}
 
-	contentY := y - headerHeight + m.viewport.YOffset()
+	contentY := y - headerHeight + m.vp.Model.YOffset()
 	if contentY >= 0 && contentY < len(m.filtered) {
 		return contentY
 	}
@@ -354,11 +352,11 @@ func (m *MultiSelector[T]) ViewString() string {
 		filterView = m.styles.filter.Render("filter: "+m.filterText) + "\n"
 	}
 
-	if !m.ready {
+	if !m.vp.Ready {
 		return title + "\n" + filterView + "Loading..."
 	}
 
-	return title + "\n" + filterView + m.viewport.View()
+	return title + "\n" + filterView + m.vp.Model.View()
 }
 
 func (m *MultiSelector[T]) SetSize(width, height int) {
@@ -367,13 +365,7 @@ func (m *MultiSelector[T]) SetSize(width, height int) {
 		viewportHeight--
 	}
 
-	if !m.ready {
-		m.viewport = viewport.New(viewport.WithWidth(width), viewport.WithHeight(viewportHeight))
-		m.ready = true
-	} else {
-		m.viewport.SetWidth(width)
-		m.viewport.SetHeight(viewportHeight)
-	}
+	m.vp.SetSize(width, viewportHeight)
 	m.updateViewport()
 }
 

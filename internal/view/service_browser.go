@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"charm.land/bubbles/v2/textinput"
-	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
@@ -50,8 +49,7 @@ type ServiceBrowser struct {
 	headerPanel *HeaderPanel
 
 	// Viewport for scrolling
-	viewport viewport.Model
-	ready    bool
+	vp ViewportState
 
 	// Filter
 	filterInput  textinput.Model
@@ -205,9 +203,8 @@ func (s *ServiceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return s.handleNavigation(msg)
 
 	case tea.MouseWheelMsg:
-		// Pass wheel events to viewport for scrolling
 		var cmd tea.Cmd
-		s.viewport, cmd = s.viewport.Update(msg)
+		s.vp.Model, cmd = s.vp.Model.Update(msg)
 		return s, cmd
 
 	case tea.MouseMotionMsg:
@@ -362,33 +359,28 @@ func (s *ServiceBrowser) handleNavigation(msg tea.KeyPressMsg) (tea.Model, tea.C
 	return s, nil
 }
 
-// updateViewport updates the viewport content and scrolls to make cursor visible
 func (s *ServiceBrowser) updateViewport() {
-	if !s.ready {
+	if !s.vp.Ready {
 		return
 	}
 	content := s.renderContent()
-	s.viewport.SetContent(content)
+	s.vp.Model.SetContent(content)
 
-	// Count total lines and find cursor line by scanning rendered content
 	lines := strings.Split(content, "\n")
 	totalLines := len(lines)
 
-	// Estimate cursor position based on proportion through flatItems
 	if len(s.flatItems) == 0 {
 		return
 	}
 
-	// Calculate approximate line position
 	cursorRatio := float64(s.cursor) / float64(len(s.flatItems))
 	targetLine := int(cursorRatio * float64(totalLines))
 
-	vpHeight := s.viewport.Height()
-	currentTop := s.viewport.YOffset()
+	vpHeight := s.vp.Model.Height()
+	currentTop := s.vp.Model.YOffset()
 
-	// Scroll if cursor is outside visible area
 	if targetLine < currentTop {
-		s.viewport.SetYOffset(max(0, targetLine-2))
+		s.vp.Model.SetYOffset(max(0, targetLine-2))
 	} else if targetLine > currentTop+vpHeight-cellHeight {
 		newOffset := targetLine - vpHeight + cellHeight + 2
 		if newOffset > totalLines-vpHeight {
@@ -397,7 +389,7 @@ func (s *ServiceBrowser) updateViewport() {
 		if newOffset < 0 {
 			newOffset = 0
 		}
-		s.viewport.SetYOffset(newOffset)
+		s.vp.Model.SetYOffset(newOffset)
 	}
 }
 
@@ -458,18 +450,15 @@ func (s *ServiceBrowser) selectCurrentService() (tea.Model, tea.Cmd) {
 	return s, nil
 }
 
-// getItemAtPosition returns the item index at the given (x, y) position, or -1 if none
 func (s *ServiceBrowser) getItemAtPosition(x, y int) int {
-	if !s.ready || len(s.itemPositions) == 0 {
+	if !s.vp.Ready || len(s.itemPositions) == 0 {
 		return -1
 	}
 
-	// Calculate header panel height dynamically
 	headerStr := s.headerPanel.RenderHome()
 	headerHeight := s.headerPanel.Height(headerStr)
 
-	// Adjust y for header and viewport scroll offset
-	contentY := y - headerHeight + s.viewport.YOffset()
+	contentY := y - headerHeight + s.vp.Model.YOffset()
 	if contentY < 0 {
 		return -1
 	}
@@ -489,22 +478,19 @@ func (s *ServiceBrowser) getItemAtPosition(x, y int) int {
 	return -1
 }
 
-// ViewString returns the view content as a string
 func (s *ServiceBrowser) ViewString() string {
-	// Header panel (always visible at top)
 	header := s.headerPanel.RenderHome()
 
-	if !s.ready {
+	if !s.vp.Ready {
 		return header + "\n" + "Loading..."
 	}
 
-	// Filter input
 	var footer string
 	if s.filterActive {
 		footer = "\n" + s.styles.filterPrompt.Render(s.filterInput.View())
 	}
 
-	return header + "\n" + s.viewport.View() + footer
+	return header + "\n" + s.vp.Model.View() + footer
 }
 
 // View implements tea.Model
@@ -641,22 +627,13 @@ func (s *ServiceBrowser) SetSize(width, height int) tea.Cmd {
 	headerStr := s.headerPanel.RenderHome()
 	headerHeight := s.headerPanel.Height(headerStr)
 
-	// height - header + extra space
 	vpHeight := height - headerHeight + 1
 	if vpHeight < 5 {
 		vpHeight = 5
 	}
 
-	if !s.ready {
-		s.viewport = viewport.New(viewport.WithWidth(width), viewport.WithHeight(vpHeight))
-		s.ready = true
-	} else {
-		s.viewport.SetWidth(width)
-		s.viewport.SetHeight(vpHeight)
-	}
-
-	// Update viewport content
-	s.viewport.SetContent(s.renderContent())
+	s.vp.SetSize(width, vpHeight)
+	s.vp.Model.SetContent(s.renderContent())
 
 	return nil
 }
