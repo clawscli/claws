@@ -245,8 +245,7 @@ func (m *ActionMenu) getConfirmToken(act action.Action) string {
 }
 
 func (m *ActionMenu) executeAction(act action.Action) (tea.Model, tea.Cmd) {
-	switch act.Type {
-	case action.ActionTypeExec:
+	if act.Type == action.ActionTypeExec {
 		m.lastExecAction = &act
 		execCmd, err := action.ExpandVariables(act.Command, m.resource)
 		if err != nil {
@@ -269,55 +268,15 @@ func (m *ActionMenu) executeAction(act action.Action) (tea.Model, tea.Cmd) {
 			}
 			return execResultMsg{success: true, message: "Session ended"}
 		})
-
-	case action.ActionTypeView:
-		return m.executeViewAction(act)
-
-	default:
-		result := action.ExecuteWithDAO(m.ctx, act, m.resource, m.service, m.resType)
-		m.result = &result
-		if result.FollowUpMsg != nil {
-			log.Debug("action has follow-up message", "action", act.Name, "msgType", fmt.Sprintf("%T", result.FollowUpMsg))
-			return m, func() tea.Msg { return result.FollowUpMsg }
-		}
-		return m, nil
-	}
-}
-
-func (m *ActionMenu) executeViewAction(act action.Action) (tea.Model, tea.Cmd) {
-	switch act.Target {
-	case action.ViewTargetLogView:
-		return m.openLogView()
-	default:
-		m.result = &action.ActionResult{
-			Success: false,
-			Error:   fmt.Errorf("unknown view target: %s", act.Target),
-		}
-		return m, nil
-	}
-}
-
-func (m *ActionMenu) openLogView() (tea.Model, tea.Cmd) {
-	var logView *LogView
-
-	if provider, ok := m.resource.(action.LogGroupNameProvider); ok {
-		logGroupName := provider.LogGroupName()
-		if streamProvider, ok := m.resource.(logStreamNameProvider); ok {
-			logView = NewLogViewWithStream(m.ctx, logGroupName, streamProvider.LogStreamName())
-		} else {
-			logView = NewLogView(m.ctx, logGroupName)
-		}
-	} else {
-		logView = NewLogView(m.ctx, m.resource.GetID())
 	}
 
-	return m, func() tea.Msg {
-		return NavigateMsg{View: logView}
+	result := action.ExecuteWithDAO(m.ctx, act, m.resource, m.service, m.resType)
+	m.result = &result
+	if result.FollowUpMsg != nil {
+		log.Debug("action has follow-up message", "action", act.Name, "msgType", fmt.Sprintf("%T", result.FollowUpMsg))
+		return m, func() tea.Msg { return result.FollowUpMsg }
 	}
-}
-
-type logStreamNameProvider interface {
-	LogStreamName() string
+	return m, nil
 }
 
 // execResultMsg is sent when an exec action completes

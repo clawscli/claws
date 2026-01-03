@@ -212,7 +212,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, a.keys.Quit):
 			switch a.currentView.(type) {
-			case *view.DetailView, *view.DiffView:
+			case *view.DetailView, *view.DiffView, *view.LogView:
 				if len(a.viewStack) > 0 {
 					a.currentView = a.viewStack[len(a.viewStack)-1]
 					a.viewStack = a.viewStack[:len(a.viewStack)-1]

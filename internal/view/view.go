@@ -124,7 +124,6 @@ func (h *NavigationHelper) FormatShortcuts(resource dao.Resource) string {
 	return strings.Join(parts, " ")
 }
 
-// HandleKey handles navigation key press and returns a command if navigation occurred
 func (h *NavigationHelper) HandleKey(key string, resource dao.Resource) tea.Cmd {
 	if h.Renderer == nil || h.Registry == nil {
 		return nil
@@ -138,6 +137,10 @@ func (h *NavigationHelper) HandleKey(key string, resource dao.Resource) tea.Cmd 
 	navigations := navigator.Navigations(resource)
 	for _, nav := range navigations {
 		if nav.Key == key {
+			if nav.ViewType != "" {
+				return h.createCustomView(nav, resource)
+			}
+
 			var newBrowser *ResourceBrowser
 			if nav.AutoReload {
 				interval := nav.ReloadInterval
@@ -170,4 +173,35 @@ func (h *NavigationHelper) HandleKey(key string, resource dao.Resource) tea.Cmd 
 	}
 
 	return nil
+}
+
+func (h *NavigationHelper) createCustomView(nav render.Navigation, resource dao.Resource) tea.Cmd {
+	switch nav.ViewType {
+	case render.ViewTypeLogView:
+		return h.createLogView(resource)
+	default:
+		return nil
+	}
+}
+
+func (h *NavigationHelper) createLogView(resource dao.Resource) tea.Cmd {
+	var logView *LogView
+
+	type logGroupProvider interface{ LogGroupName() string }
+	type logStreamProvider interface{ LogStreamName() string }
+
+	if p, ok := resource.(logGroupProvider); ok {
+		logGroupName := p.LogGroupName()
+		if sp, ok := resource.(logStreamProvider); ok {
+			logView = NewLogViewWithStream(h.Ctx, logGroupName, sp.LogStreamName())
+		} else {
+			logView = NewLogView(h.Ctx, logGroupName)
+		}
+	} else {
+		logView = NewLogView(h.Ctx, resource.GetID())
+	}
+
+	return func() tea.Msg {
+		return NavigateMsg{View: logView}
+	}
 }

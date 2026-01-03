@@ -58,14 +58,6 @@ const (
 const (
 	ActionNameSSOLogin = "SSO Login"
 	ActionNameLogin    = "Login"
-
-	ActionNameTailLogs      = "Tail Logs"
-	ActionNameViewRecent1h  = "View Recent (1h)"
-	ActionNameViewRecent24h = "View Recent (24h)"
-)
-
-const (
-	ViewTargetLogView = "log-view"
 )
 
 type Action struct {
@@ -173,21 +165,9 @@ var ReadOnlyAllowlist = map[string]bool{
 	"InvokeFunctionDryRun": true,
 }
 
-// ReadOnlyExecAllowlist defines exec actions allowed in read-only mode.
-// Auth workflows and read-only operations are allowed.
-// Arbitrary shells (ECS Exec, SSM Session) are denied - they provide
-// interactive access that could modify resources.
-//
-// Security rationale for each allowed action:
 var ReadOnlyExecAllowlist = map[string]bool{
-	// SSO Login: Authentication workflow, no resource changes
 	ActionNameSSOLogin: true,
-	// Login: Opens browser for console login, no resource changes
-	ActionNameLogin: true,
-	// Log viewing: Read-only CloudWatch Logs access
-	ActionNameTailLogs:      true,
-	ActionNameViewRecent1h:  true,
-	ActionNameViewRecent24h: true,
+	ActionNameLogin:    true,
 }
 
 // IsAllowedInReadOnly returns whether the action can be executed in read-only mode.

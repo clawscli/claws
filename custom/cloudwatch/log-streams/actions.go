@@ -14,12 +14,6 @@ import (
 func init() {
 	action.Global.Register("cloudwatch", "log-streams", []action.Action{
 		{
-			Name:     action.ActionNameTailLogs,
-			Shortcut: "t",
-			Type:     action.ActionTypeView,
-			Target:   action.ViewTargetLogView,
-		},
-		{
 			Name:      "Delete",
 			Shortcut:  "D",
 			Type:      action.ActionTypeAPI,
@@ -28,11 +22,9 @@ func init() {
 		},
 	})
 
-	// Register executor
 	action.RegisterExecutor("cloudwatch", "log-streams", executeLogStreamAction)
 }
 
-// executeLogStreamAction executes an action on a CloudWatch Log Stream
 func executeLogStreamAction(ctx context.Context, act action.Action, resource dao.Resource) action.ActionResult {
 	switch act.Operation {
 	case "DeleteLogStream":

@@ -118,7 +118,6 @@ func (r *LogStreamRenderer) RenderSummary(resource dao.Resource) []render.Summar
 	return fields
 }
 
-// Navigations returns navigation shortcuts
 func (r *LogStreamRenderer) Navigations(resource dao.Resource) []render.Navigation {
 	ls, ok := resource.(*LogStreamResource)
 	if !ok {
@@ -126,6 +125,11 @@ func (r *LogStreamRenderer) Navigations(resource dao.Resource) []render.Navigati
 	}
 
 	return []render.Navigation{
+		{
+			Key:      "t",
+			Label:    "Tail",
+			ViewType: render.ViewTypeLogView,
+		},
 		{
 			Key:         "g",
 			Label:       "Log Group",

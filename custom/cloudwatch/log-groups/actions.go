@@ -14,12 +14,6 @@ import (
 func init() {
 	action.Global.Register("cloudwatch", "log-groups", []action.Action{
 		{
-			Name:     action.ActionNameTailLogs,
-			Shortcut: "t",
-			Type:     action.ActionTypeView,
-			Target:   action.ViewTargetLogView,
-		},
-		{
 			Name:      "Delete",
 			Shortcut:  "D",
 			Type:      action.ActionTypeAPI,

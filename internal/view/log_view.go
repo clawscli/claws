@@ -184,7 +184,7 @@ func (v *LogView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyPressMsg:
 		switch msg.String() {
-		case " ":
+		case "space":
 			v.paused = !v.paused
 			if !v.paused {
 				return v, v.tickCmd()

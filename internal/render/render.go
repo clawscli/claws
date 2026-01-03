@@ -26,16 +26,18 @@ type SummaryField struct {
 	Style lipgloss.Style // Optional styling for the value
 }
 
-// Navigation defines a navigation shortcut to related resources
+const ViewTypeLogView = "log-view"
+
 type Navigation struct {
-	Key            string        // Shortcut key (e.g., "s" for subnets)
-	Label          string        // Display label (e.g., "Subnets")
-	Service        string        // Target service (e.g., "vpc")
-	Resource       string        // Target resource type (e.g., "subnets")
-	FilterField    string        // Field name to filter by (e.g., "VpcId")
-	FilterValue    string        // Value to filter by (extracted from current resource)
-	AutoReload     bool          // Enable auto-reload for this navigation
-	ReloadInterval time.Duration // Auto-reload interval (default: 3s)
+	Key            string
+	Label          string
+	Service        string
+	Resource       string
+	FilterField    string
+	FilterValue    string
+	AutoReload     bool
+	ReloadInterval time.Duration
+	ViewType       string
 }
 
 // Renderer defines the interface for rendering resources in table format
