@@ -2,7 +2,6 @@ package view
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -13,8 +12,10 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs/types"
 
 	appaws "github.com/clawscli/claws/internal/aws"
+	"github.com/clawscli/claws/internal/config"
 	apperrors "github.com/clawscli/claws/internal/errors"
 	"github.com/clawscli/claws/internal/log"
 	"github.com/clawscli/claws/internal/ui"
@@ -23,14 +24,12 @@ import (
 const (
 	defaultLogPollInterval = 3 * time.Second
 	maxLogPollInterval     = 30 * time.Second
-	logFetchTimeout        = 10 * time.Second
 	initialLogBufferSize   = 500
 	maxLogBufferSize       = 1000
 	logFetchLimit          = 100
+	viewportHeaderOffset   = 4 // header(1) + status(2) + spacing(1)
 )
 
-// LogView displays CloudWatch Logs with real-time streaming via polling.
-// Supports pause/resume, scroll, and clear operations.
 type LogView struct {
 	ctx           context.Context
 	client        *cloudwatchlogs.Client
@@ -80,13 +79,10 @@ func newLogViewStyles() logViewStyles {
 }
 
 func NewLogView(ctx context.Context, logGroupName string) *LogView {
-	s := spinner.New()
-	s.Spinner = spinner.Dot
-
 	return &LogView{
 		ctx:          ctx,
 		logGroupName: logGroupName,
-		spinner:      s,
+		spinner:      ui.NewSpinner(),
 		styles:       newLogViewStyles(),
 		logs:         make([]logEntry, 0, initialLogBufferSize),
 		loading:      true,
@@ -129,64 +125,14 @@ func (v *LogView) initClient() tea.Msg {
 		return logsLoadedMsg{err: apperrors.Wrap(err, "init AWS config")}
 	}
 	v.client = cloudwatchlogs.NewFromConfig(cfg)
-	return v.fetchLogs(v.lastEventTime)
+	return v.doFetchLogs(v.lastEventTime, 0, false)
 }
 
-// fetchLogsCmd captures lastEventTime to avoid data race in the command goroutine.
 func (v *LogView) fetchLogsCmd() tea.Cmd {
 	startTime := v.lastEventTime
 	return func() tea.Msg {
-		return v.fetchLogs(startTime)
+		return v.doFetchLogs(startTime, 0, false)
 	}
-}
-
-func (v *LogView) fetchLogs(startTime int64) tea.Msg {
-	if err := v.ctx.Err(); err != nil {
-		return logsLoadedMsg{err: err}
-	}
-	if v.client == nil {
-		return logsLoadedMsg{err: errors.New("client not initialized")}
-	}
-
-	ctx, cancel := context.WithTimeout(v.ctx, logFetchTimeout)
-	defer cancel()
-
-	input := &cloudwatchlogs.FilterLogEventsInput{
-		LogGroupName: appaws.StringPtr(v.logGroupName),
-		Limit:        appaws.Int32Ptr(logFetchLimit),
-	}
-
-	if v.logStreamName != "" {
-		input.LogStreamNames = []string{v.logStreamName}
-	}
-
-	if startTime > 0 {
-		input.StartTime = appaws.Int64Ptr(startTime + 1)
-	} else {
-		input.StartTime = appaws.Int64Ptr(time.Now().Add(-1 * time.Hour).UnixMilli())
-	}
-
-	output, err := v.client.FilterLogEvents(ctx, input)
-	if err != nil {
-		throttled := apperrors.IsThrottling(err)
-		return logsLoadedMsg{err: apperrors.Wrap(err, "filter log events"), throttled: throttled}
-	}
-
-	var maxEventTime int64
-	entries := make([]logEntry, 0, len(output.Events))
-	for _, event := range output.Events {
-		ts := time.UnixMilli(appaws.Int64(event.Timestamp))
-		msg := appaws.Str(event.Message)
-		entries = append(entries, logEntry{
-			timestamp: ts,
-			message:   strings.TrimSuffix(msg, "\n"),
-		})
-		if eventTs := appaws.Int64(event.Timestamp); eventTs > maxEventTime {
-			maxEventTime = eventTs
-		}
-	}
-
-	return logsLoadedMsg{entries: entries, lastEventTime: maxEventTime}
 }
 
 func (v *LogView) fetchOlderLogsCmd() tea.Cmd {
@@ -195,54 +141,95 @@ func (v *LogView) fetchOlderLogsCmd() tea.Cmd {
 		return nil
 	}
 	return func() tea.Msg {
-		return v.fetchOlderLogs(endTime)
+		return v.doFetchLogs(0, endTime, true)
 	}
 }
 
-func (v *LogView) fetchOlderLogs(endTime int64) tea.Msg {
+func (v *LogView) doFetchLogs(startTime, endTime int64, older bool) tea.Msg {
 	if err := v.ctx.Err(); err != nil {
-		return logsLoadedMsg{err: err, older: true}
+		return logsLoadedMsg{err: err, older: older}
 	}
 	if v.client == nil {
-		return logsLoadedMsg{err: errors.New("client not initialized"), older: true}
+		return logsLoadedMsg{
+			err:   apperrors.Wrap(fmt.Errorf("CloudWatch Logs client not initialized"), "fetch logs"),
+			older: older,
+		}
 	}
 
-	ctx, cancel := context.WithTimeout(v.ctx, logFetchTimeout)
+	ctx, cancel := context.WithTimeout(v.ctx, config.File().LogFetchTimeout())
 	defer cancel()
 
 	input := &cloudwatchlogs.FilterLogEventsInput{
 		LogGroupName: appaws.StringPtr(v.logGroupName),
 		Limit:        appaws.Int32Ptr(logFetchLimit),
-		StartTime:    appaws.Int64Ptr(endTime - time.Hour.Milliseconds()),
-		EndTime:      appaws.Int64Ptr(endTime - 1),
 	}
 
 	if v.logStreamName != "" {
 		input.LogStreamNames = []string{v.logStreamName}
 	}
 
-	output, err := v.client.FilterLogEvents(ctx, input)
-	if err != nil {
-		throttled := apperrors.IsThrottling(err)
-		return logsLoadedMsg{err: apperrors.Wrap(err, "filter log events"), throttled: throttled, older: true}
+	if older {
+		input.StartTime = appaws.Int64Ptr(endTime - time.Hour.Milliseconds())
+		input.EndTime = appaws.Int64Ptr(endTime - 1)
+	} else if startTime > 0 {
+		input.StartTime = appaws.Int64Ptr(startTime + 1)
+	} else {
+		input.StartTime = appaws.Int64Ptr(time.Now().Add(-1 * time.Hour).UnixMilli())
 	}
 
-	var minEventTime int64
-	entries := make([]logEntry, 0, len(output.Events))
-	for _, event := range output.Events {
+	output, err := v.client.FilterLogEvents(ctx, input)
+	if err != nil {
+		return v.handleFetchError(err, older)
+	}
+
+	return v.processLogEvents(output.Events, older)
+}
+
+func (v *LogView) handleFetchError(err error, older bool) logsLoadedMsg {
+	var wrappedErr error
+	throttled := apperrors.IsThrottling(err)
+
+	switch {
+	case apperrors.IsNotFound(err):
+		if v.logStreamName != "" {
+			wrappedErr = apperrors.Wrap(err, "log stream not found")
+		} else {
+			wrappedErr = apperrors.Wrap(err, "log group not found")
+		}
+	case apperrors.IsAccessDenied(err):
+		wrappedErr = apperrors.Wrap(err, "access denied to CloudWatch Logs")
+	default:
+		wrappedErr = apperrors.Wrap(err, "filter log events")
+	}
+
+	return logsLoadedMsg{err: wrappedErr, throttled: throttled, older: older}
+}
+
+func (v *LogView) processLogEvents(events []types.FilteredLogEvent, older bool) logsLoadedMsg {
+	var boundaryTime int64
+	entries := make([]logEntry, 0, len(events))
+
+	for _, event := range events {
 		ts := time.UnixMilli(appaws.Int64(event.Timestamp))
 		msg := appaws.Str(event.Message)
 		entries = append(entries, logEntry{
 			timestamp: ts,
 			message:   strings.TrimSuffix(msg, "\n"),
 		})
+
 		eventTs := appaws.Int64(event.Timestamp)
-		if minEventTime == 0 || eventTs < minEventTime {
-			minEventTime = eventTs
+		if older {
+			if boundaryTime == 0 || eventTs < boundaryTime {
+				boundaryTime = eventTs
+			}
+		} else {
+			if eventTs > boundaryTime {
+				boundaryTime = eventTs
+			}
 		}
 	}
 
-	return logsLoadedMsg{entries: entries, lastEventTime: minEventTime, older: true}
+	return logsLoadedMsg{entries: entries, lastEventTime: boundaryTime, older: older}
 }
 
 func (v *LogView) tickCmd() tea.Cmd {
@@ -418,7 +405,7 @@ func (v *LogView) View() tea.View {
 func (v *LogView) SetSize(width, height int) tea.Cmd {
 	v.width = width
 	v.height = height
-	viewportHeight := height - 4
+	viewportHeight := height - viewportHeaderOffset
 
 	if !v.ready {
 		v.viewport = viewport.New(viewport.WithWidth(width), viewport.WithHeight(viewportHeight))

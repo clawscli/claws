@@ -395,6 +395,7 @@ timeouts:
   multi_region_fetch: 60s # Multi-region parallel fetch timeout (default: 30s)
   tag_search: 45s         # Tag search timeout (default: 30s)
   metrics_load: 30s       # CloudWatch metrics load timeout (default: 30s)
+  log_fetch: 15s          # CloudWatch Logs fetch timeout (default: 10s)
 
 concurrency:
   max_fetches: 100        # Max concurrent API fetches (default: 50)

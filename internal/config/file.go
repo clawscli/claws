@@ -16,6 +16,7 @@ const (
 	DefaultMultiRegionFetchTimeout = 30 * time.Second
 	DefaultTagSearchTimeout        = 30 * time.Second
 	DefaultMetricsLoadTimeout      = 30 * time.Second
+	DefaultLogFetchTimeout         = 10 * time.Second
 	DefaultMetricsWindow           = 15 * time.Minute
 	DefaultMaxConcurrentFetches    = 50
 )
@@ -41,6 +42,7 @@ type TimeoutConfig struct {
 	MultiRegionFetch Duration `yaml:"multi_region_fetch,omitempty"`
 	TagSearch        Duration `yaml:"tag_search,omitempty"`
 	MetricsLoad      Duration `yaml:"metrics_load,omitempty"`
+	LogFetch         Duration `yaml:"log_fetch,omitempty"`
 }
 
 type CloudWatchConfig struct {
@@ -224,6 +226,9 @@ func (c *FileConfig) applyDefaults() {
 	if c.Timeouts.MetricsLoad <= 0 {
 		c.Timeouts.MetricsLoad = Duration(DefaultMetricsLoadTimeout)
 	}
+	if c.Timeouts.LogFetch <= 0 {
+		c.Timeouts.LogFetch = Duration(DefaultLogFetchTimeout)
+	}
 	if c.CloudWatch.Window <= 0 {
 		c.CloudWatch.Window = Duration(DefaultMetricsWindow)
 	}
@@ -265,6 +270,15 @@ func (c *FileConfig) MetricsLoadTimeout() time.Duration {
 			return DefaultMetricsLoadTimeout
 		}
 		return c.Timeouts.MetricsLoad.Duration()
+	})
+}
+
+func (c *FileConfig) LogFetchTimeout() time.Duration {
+	return withRLock(&c.mu, func() time.Duration {
+		if c.Timeouts.LogFetch == 0 {
+			return DefaultLogFetchTimeout
+		}
+		return c.Timeouts.LogFetch.Duration()
 	})
 }
 
