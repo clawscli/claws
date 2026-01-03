@@ -1,9 +1,0 @@
-[hooks]
-    postCreate = go mod download
-    postCreate = gtr-link-agents
-    postCreate = ln -sf "$REPO_ROOT/.claude" "$WORKTREE_PATH/.claude"
-[defaults]
-    ai = opencode
-[gtr]
-    defaultBranch = develop
-

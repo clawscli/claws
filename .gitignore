@@ -52,3 +52,4 @@ claws.log
 # Node.js
 node_modules/
 .claude
+.gtrconfig
