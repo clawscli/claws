@@ -2,6 +2,7 @@ package view
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -11,10 +12,10 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 
 	appaws "github.com/clawscli/claws/internal/aws"
+	apperrors "github.com/clawscli/claws/internal/errors"
 	"github.com/clawscli/claws/internal/ui"
 )
 
@@ -106,7 +107,7 @@ func (v *LogView) Init() tea.Cmd {
 func (v *LogView) initClient() tea.Msg {
 	cfg, err := appaws.NewConfig(v.ctx)
 	if err != nil {
-		return logsLoadedMsg{err: fmt.Errorf("init AWS config: %w", err)}
+		return logsLoadedMsg{err: apperrors.Wrap(err, "init AWS config")}
 	}
 	v.client = cloudwatchlogs.NewFromConfig(cfg)
 	return v.fetchLogs(v.lastEventTime)
@@ -122,12 +123,12 @@ func (v *LogView) fetchLogsCmd() tea.Cmd {
 
 func (v *LogView) fetchLogs(startTime int64) tea.Msg {
 	if v.client == nil {
-		return logsLoadedMsg{err: fmt.Errorf("client not initialized")}
+		return logsLoadedMsg{err: errors.New("client not initialized")}
 	}
 
 	input := &cloudwatchlogs.FilterLogEventsInput{
-		LogGroupName: aws.String(v.logGroupName),
-		Limit:        aws.Int32(100),
+		LogGroupName: appaws.StringPtr(v.logGroupName),
+		Limit:        appaws.Int32Ptr(100),
 	}
 
 	if v.logStreamName != "" {
@@ -135,26 +136,26 @@ func (v *LogView) fetchLogs(startTime int64) tea.Msg {
 	}
 
 	if startTime > 0 {
-		input.StartTime = aws.Int64(startTime + 1)
+		input.StartTime = appaws.Int64Ptr(startTime + 1)
 	} else {
-		input.StartTime = aws.Int64(time.Now().Add(-1 * time.Hour).UnixMilli())
+		input.StartTime = appaws.Int64Ptr(time.Now().Add(-1 * time.Hour).UnixMilli())
 	}
 
 	output, err := v.client.FilterLogEvents(v.ctx, input)
 	if err != nil {
-		return logsLoadedMsg{err: fmt.Errorf("filter log events: %w", err)}
+		return logsLoadedMsg{err: apperrors.Wrap(err, "filter log events")}
 	}
 
 	var maxEventTime int64
 	entries := make([]logEntry, 0, len(output.Events))
 	for _, event := range output.Events {
-		ts := time.UnixMilli(aws.ToInt64(event.Timestamp))
-		msg := aws.ToString(event.Message)
+		ts := time.UnixMilli(appaws.Int64(event.Timestamp))
+		msg := appaws.Str(event.Message)
 		entries = append(entries, logEntry{
 			timestamp: ts,
 			message:   strings.TrimSuffix(msg, "\n"),
 		})
-		if eventTs := aws.ToInt64(event.Timestamp); eventTs > maxEventTime {
+		if eventTs := appaws.Int64(event.Timestamp); eventTs > maxEventTime {
 			maxEventTime = eventTs
 		}
 	}

@@ -53,6 +53,11 @@ func Int32Ptr(i int32) *int32 {
 	return aws.Int32(i)
 }
 
+// Int64Ptr returns a pointer to the given int64.
+func Int64Ptr(i int64) *int64 {
+	return aws.Int64(i)
+}
+
 // ExtractResourceName extracts the resource name from an AWS ARN.
 // e.g., "arn:aws:iam::123456789012:role/MyRole" -> "MyRole"
 // e.g., "arn:aws:ecs:us-east-1:123456789012:cluster/my-cluster" -> "my-cluster"

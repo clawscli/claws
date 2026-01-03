@@ -117,6 +117,9 @@ func (d *LogStreamDAO) Delete(ctx context.Context, id string) error {
 
 	_, err := d.client.DeleteLogStream(ctx, input)
 	if err != nil {
+		if apperrors.IsNotFound(err) {
+			return nil
+		}
 		return apperrors.Wrapf(err, "delete log stream %s", id)
 	}
 
