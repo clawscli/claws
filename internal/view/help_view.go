@@ -1,7 +1,6 @@
 package view
 
 import (
-	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
@@ -18,21 +17,17 @@ type helpViewStyles struct {
 }
 
 func newHelpViewStyles() helpViewStyles {
-	t := ui.Current()
 	return helpViewStyles{
-		title:   lipgloss.NewStyle().Bold(true).Foreground(t.Primary).MarginBottom(1),
-		section: lipgloss.NewStyle().Bold(true).Foreground(t.Secondary).MarginTop(1),
-		key:     lipgloss.NewStyle().Foreground(t.Success).Width(15),
-		desc:    lipgloss.NewStyle().Foreground(t.Text),
+		title:   ui.TitleStyle(),
+		section: ui.SectionStyle().MarginTop(1),
+		key:     ui.SuccessStyle().Width(15),
+		desc:    ui.TextStyle(),
 	}
 }
 
 type HelpView struct {
-	width    int
-	height   int
-	styles   helpViewStyles
-	viewport viewport.Model
-	ready    bool
+	styles helpViewStyles
+	vp     ViewportState
 }
 
 // NewHelpView creates a new HelpView
@@ -47,10 +42,9 @@ func (h *HelpView) Init() tea.Cmd {
 	return nil
 }
 
-// Update implements tea.Model
 func (h *HelpView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
-	h.viewport, cmd = h.viewport.Update(msg)
+	h.vp.Model, cmd = h.vp.Model.Update(msg)
 	return h, cmd
 }
 
@@ -156,12 +150,11 @@ func (h *HelpView) renderContent() string {
 	return out
 }
 
-// ViewString returns the view content as a string
 func (h *HelpView) ViewString() string {
-	if !h.ready {
-		return "Loading..."
+	if !h.vp.Ready {
+		return LoadingMessage
 	}
-	return h.viewport.View()
+	return h.vp.Model.View()
 }
 
 // View implements tea.Model
@@ -169,19 +162,9 @@ func (h *HelpView) View() tea.View {
 	return tea.NewView(h.ViewString())
 }
 
-// SetSize implements View
 func (h *HelpView) SetSize(width, height int) tea.Cmd {
-	h.width = width
-	h.height = height
-
-	if !h.ready {
-		h.viewport = viewport.New(viewport.WithWidth(width), viewport.WithHeight(height))
-		h.ready = true
-	} else {
-		h.viewport.SetWidth(width)
-		h.viewport.SetHeight(height)
-	}
-	h.viewport.SetContent(h.renderContent())
+	h.vp.SetSize(width, height)
+	h.vp.Model.SetContent(h.renderContent())
 	return nil
 }
 

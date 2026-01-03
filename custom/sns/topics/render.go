@@ -6,6 +6,7 @@ import (
 
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/render"
+	"github.com/clawscli/claws/internal/ui"
 )
 
 // Ensure TopicRenderer implements render.Navigator
@@ -149,23 +150,23 @@ func (r *TopicRenderer) RenderDetail(resource dao.Resource) string {
 	}
 	if role, ok := tr.Attrs["HTTPSuccessFeedbackRoleArn"]; ok && role != "" {
 		loggingSection()
-		d.FieldStyled("HTTP", "Enabled", render.SuccessStyle())
+		d.FieldStyled("HTTP", "Enabled", ui.SuccessStyle())
 	}
 	if role, ok := tr.Attrs["LambdaSuccessFeedbackRoleArn"]; ok && role != "" {
 		loggingSection()
-		d.FieldStyled("Lambda", "Enabled", render.SuccessStyle())
+		d.FieldStyled("Lambda", "Enabled", ui.SuccessStyle())
 	}
 	if role, ok := tr.Attrs["SQSSuccessFeedbackRoleArn"]; ok && role != "" {
 		loggingSection()
-		d.FieldStyled("SQS", "Enabled", render.SuccessStyle())
+		d.FieldStyled("SQS", "Enabled", ui.SuccessStyle())
 	}
 	if role, ok := tr.Attrs["FirehoseSuccessFeedbackRoleArn"]; ok && role != "" {
 		loggingSection()
-		d.FieldStyled("Firehose", "Enabled", render.SuccessStyle())
+		d.FieldStyled("Firehose", "Enabled", ui.SuccessStyle())
 	}
 	if role, ok := tr.Attrs["ApplicationSuccessFeedbackRoleArn"]; ok && role != "" {
 		loggingSection()
-		d.FieldStyled("Application", "Enabled", render.SuccessStyle())
+		d.FieldStyled("Application", "Enabled", ui.SuccessStyle())
 	}
 
 	// Encryption

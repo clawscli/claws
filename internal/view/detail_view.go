@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"charm.land/bubbles/v2/spinner"
-	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
@@ -26,11 +25,10 @@ type detailViewStyles struct {
 }
 
 func newDetailViewStyles() detailViewStyles {
-	t := ui.Current()
 	return detailViewStyles{
-		title: lipgloss.NewStyle().Bold(true).Foreground(t.Primary),
-		label: lipgloss.NewStyle().Foreground(t.TextDim).Width(15),
-		value: lipgloss.NewStyle().Foreground(t.Text),
+		title: ui.TitleStyle(),
+		label: ui.DimStyle().Width(15),
+		value: ui.TextStyle(),
 	}
 }
 
@@ -40,15 +38,12 @@ type DetailView struct {
 	renderer    render.Renderer
 	service     string
 	resType     string
-	viewport    viewport.Model
+	vp          ViewportState
 	headerPanel *HeaderPanel
-	ready       bool
-	width       int
-	height      int
 	registry    *registry.Registry
-	dao         dao.DAO // for async refresh
-	refreshing  bool    // true while fetching extended details
-	refreshErr  error   // error from last refresh attempt
+	dao         dao.DAO
+	refreshing  bool
+	refreshErr  error
 	spinner     spinner.Model
 	styles      detailViewStyles
 }
@@ -110,12 +105,10 @@ func (d *DetailView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			d.refreshErr = msg.err
 		} else {
 			d.refreshErr = nil
-			// Merge refreshed resource with original to preserve List-only fields
 			d.resource = mergeResources(d.resource, msg.resource)
-			// Re-render content with refreshed data
-			if d.ready {
+			if d.vp.Ready {
 				content := d.renderContent()
-				d.viewport.SetContent(content)
+				d.vp.Model.SetContent(content)
 			}
 		}
 		return d, nil
@@ -149,9 +142,8 @@ func (d *DetailView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// Pass other messages to viewport for scrolling
 	var cmd tea.Cmd
-	d.viewport, cmd = d.viewport.Update(msg)
+	d.vp.Model, cmd = d.vp.Model.Update(msg)
 	return d, cmd
 }
 
@@ -174,22 +166,19 @@ func (d *DetailView) handleNavigation(key string) (tea.Model, tea.Cmd) {
 	return nil, nil
 }
 
-// ViewString returns the view content as a string
 func (d *DetailView) ViewString() string {
-	if !d.ready {
-		return "Loading..."
+	if !d.vp.Ready {
+		return LoadingMessage
 	}
 
-	// Get summary fields for header
 	var summaryFields []render.SummaryField
 	if d.renderer != nil {
 		summaryFields = d.renderer.RenderSummary(dao.UnwrapResource(d.resource))
 	}
 
-	// Render header panel
 	header := d.headerPanel.Render(d.service, d.resType, summaryFields)
 
-	return header + "\n" + d.viewport.View()
+	return header + "\n" + d.vp.Model.View()
 }
 
 // View implements tea.Model
@@ -199,10 +188,6 @@ func (d *DetailView) View() tea.View {
 
 // SetSize implements View
 func (d *DetailView) SetSize(width, height int) tea.Cmd {
-	d.width = width
-	d.height = height
-
-	// Set header panel width
 	d.headerPanel.SetWidth(width)
 
 	// Calculate header height dynamically
@@ -213,23 +198,12 @@ func (d *DetailView) SetSize(width, height int) tea.Cmd {
 	headerStr := d.headerPanel.Render(d.service, d.resType, summaryFields)
 	headerHeight := d.headerPanel.Height(headerStr)
 
-	// height - header + extra space
-	viewportHeight := height - headerHeight + 1
-	if viewportHeight < 5 {
-		viewportHeight = 5
-	}
+	viewportHeight := max(height-headerHeight+1, 5)
 
-	if !d.ready {
-		d.viewport = viewport.New(viewport.WithWidth(width), viewport.WithHeight(viewportHeight))
-		d.ready = true
-	} else {
-		d.viewport.SetWidth(width)
-		d.viewport.SetHeight(viewportHeight)
-	}
+	d.vp.SetSize(width, viewportHeight)
 
-	// Render content
 	content := d.renderContent()
-	d.viewport.SetContent(content)
+	d.vp.Model.SetContent(content)
 
 	return nil
 }
@@ -286,7 +260,7 @@ func (d *DetailView) renderContent() string {
 	// Match placeholders only at line endings to avoid replacing substrings
 	// (e.g., "Not configured server" should not be replaced).
 	if d.refreshing && detail != "" {
-		loading := ui.DimStyle().Render("Loading...")
+		loading := ui.DimStyle().Render(LoadingMessage)
 
 		// Replace placeholders at end of line or end of content
 		for _, placeholder := range []string{render.NotConfigured, render.Empty, render.NoValue} {

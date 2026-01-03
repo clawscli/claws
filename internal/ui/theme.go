@@ -107,7 +107,109 @@ func DangerStyle() lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(current.Danger)
 }
 
-// NewSpinner creates a consistently styled spinner for loading states
+func TitleStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Bold(true).Foreground(current.Primary)
+}
+
+func SelectedStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Background(current.Selection).Foreground(current.SelectionText)
+}
+
+func TableHeaderStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Background(current.TableHeader).Foreground(current.TableHeaderText)
+}
+
+func SectionStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Bold(true).Foreground(current.Secondary)
+}
+
+func HighlightStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Bold(true).Foreground(current.Accent)
+}
+
+func BoldSuccessStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Bold(true).Foreground(current.Success)
+}
+
+func BoldDangerStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Bold(true).Foreground(current.Danger)
+}
+
+func BoldWarningStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Bold(true).Foreground(current.Warning)
+}
+
+func BoldPendingStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Bold(true).Foreground(current.Pending)
+}
+
+// AccentStyle returns a style for accent-colored text (non-bold)
+func AccentStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(current.Accent)
+}
+
+// MutedStyle returns a style for very dim/muted text
+func MutedStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(current.TextMuted)
+}
+
+// TextStyle returns a style for normal text
+func TextStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(current.Text)
+}
+
+// TextBrightStyle returns a style for emphasized text
+func TextBrightStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(current.TextBright)
+}
+
+// SecondaryStyle returns a style for secondary-colored text
+func SecondaryStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(current.Secondary)
+}
+
+// BorderStyle returns a style for border-colored text (separators)
+func BorderStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(current.Border)
+}
+
+// PrimaryStyle returns a style for primary-colored text (non-bold)
+func PrimaryStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(current.Primary)
+}
+
+// InfoStyle returns a style for info states
+func InfoStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(current.Info)
+}
+
+// PendingStyle returns a style for pending states
+func PendingStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(current.Pending)
+}
+
+func BoxStyle() lipgloss.Style {
+	return lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(current.Border).
+		Padding(0, 1)
+}
+
+func InputStyle() lipgloss.Style {
+	return lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(current.Border).
+		Padding(0, 1)
+}
+
+// InputFieldStyle returns a style for input fields (filter, command input)
+func InputFieldStyle() lipgloss.Style {
+	return lipgloss.NewStyle().
+		Background(current.Background).
+		Foreground(current.Text).
+		Padding(0, 1)
+}
+
 func NewSpinner() spinner.Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot

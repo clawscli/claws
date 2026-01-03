@@ -6,6 +6,7 @@ import (
 
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/render"
+	"github.com/clawscli/claws/internal/ui"
 )
 
 // DistributionRenderer renders CloudFront distributions
@@ -165,7 +166,7 @@ func (r *DistributionRenderer) RenderDetail(resource dao.Resource) string {
 	d.Field("Price Class", dist.PriceClass())
 	d.Field("HTTP Version", dist.HttpVersion())
 	if dist.IsIPV6Enabled {
-		d.FieldStyled("IPv6", "Enabled", render.SuccessStyle())
+		d.FieldStyled("IPv6", "Enabled", ui.SuccessStyle())
 	} else {
 		d.Field("IPv6", "Disabled")
 	}
@@ -173,7 +174,7 @@ func (r *DistributionRenderer) RenderDetail(resource dao.Resource) string {
 	// Access Logging
 	if dist.Logging != nil && dist.Logging.Enabled != nil && *dist.Logging.Enabled {
 		d.Section("Access Logging")
-		d.FieldStyled("Status", "Enabled", render.SuccessStyle())
+		d.FieldStyled("Status", "Enabled", ui.SuccessStyle())
 		if dist.Logging.Bucket != nil {
 			d.Field("Bucket", *dist.Logging.Bucket)
 		}

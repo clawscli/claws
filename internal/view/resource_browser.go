@@ -3,6 +3,7 @@ package view
 import (
 	"context"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 	"time"
@@ -37,14 +38,13 @@ type resourceBrowserStyles struct {
 }
 
 func newResourceBrowserStyles() resourceBrowserStyles {
-	t := ui.Current()
 	return resourceBrowserStyles{
-		count:        lipgloss.NewStyle().Foreground(t.TextDim),
-		filterBg:     lipgloss.NewStyle().Background(t.Background).Foreground(t.Text).Padding(0, 1),
-		filterActive: lipgloss.NewStyle().Foreground(t.Accent).Italic(true),
-		tabSingle:    lipgloss.NewStyle().Foreground(t.Primary),
-		tabActive:    lipgloss.NewStyle().Background(t.Selection).Foreground(t.SelectionText).Padding(0, 1),
-		tabInactive:  lipgloss.NewStyle().Foreground(t.TextDim).Padding(0, 1),
+		count:        ui.DimStyle(),
+		filterBg:     ui.InputFieldStyle(),
+		filterActive: ui.AccentStyle().Italic(true),
+		tabSingle:    ui.PrimaryStyle(),
+		tabActive:    ui.SelectedStyle().Padding(0, 1),
+		tabInactive:  ui.DimStyle().Padding(0, 1),
 	}
 }
 
@@ -407,10 +407,7 @@ func (r *ResourceBrowser) GetTagKeys() []string {
 		}
 	}
 
-	keys := make([]string, 0, len(keySet))
-	for key := range keySet {
-		keys = append(keys, key)
-	}
+	keys := slices.Collect(maps.Keys(keySet))
 	slices.Sort(keys)
 	return keys
 }
@@ -432,10 +429,7 @@ func (r *ResourceBrowser) GetTagValues(key string) []string {
 		}
 	}
 
-	values := make([]string, 0, len(valueSet))
-	for value := range valueSet {
-		values = append(values, value)
-	}
+	values := slices.Collect(maps.Keys(valueSet))
 	slices.Sort(values)
 	return values
 }

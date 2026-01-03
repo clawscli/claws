@@ -39,11 +39,8 @@ const (
 )
 
 func renderPanel(title, content string, width, height int, t *ui.Theme, hovered bool) string {
-	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(t.Primary)
-	boxHeight := height - 1
-	if boxHeight < 3 {
-		boxHeight = 3
-	}
+	titleStyle := ui.TitleStyle()
+	boxHeight := max(height-1, 3)
 
 	borderColor := t.Border
 	if hovered {
@@ -62,24 +59,15 @@ func renderPanel(title, content string, width, height int, t *ui.Theme, hovered 
 		borderStyle.Render(content))
 }
 
-func renderBar(value, max float64, width int, t *ui.Theme) string {
-	if max <= 0 || width <= 0 {
+func renderBar(value, maxVal float64, width int, t *ui.Theme) string {
+	if maxVal <= 0 || width <= 0 {
 		return ""
 	}
-	ratio := value / max
-	if ratio > 1 {
-		ratio = 1
-	}
-	filled := int(ratio * float64(width))
-	if filled < 0 {
-		filled = 0
-	}
-	if filled > width {
-		filled = width
-	}
+	ratio := min(value/maxVal, 1.0)
+	filled := min(max(int(ratio*float64(width)), 0), width)
 
-	barStyle := lipgloss.NewStyle().Foreground(t.Accent)
-	emptyStyle := lipgloss.NewStyle().Foreground(t.TextMuted)
+	barStyle := ui.AccentStyle()
+	emptyStyle := ui.MutedStyle()
 
 	return barStyle.Render(strings.Repeat("█", filled)) +
 		emptyStyle.Render(strings.Repeat("░", width-filled))
@@ -101,22 +89,15 @@ func (d *DashboardView) renderCostContent(contentWidth, contentHeight int, t *ui
 			available := contentWidth - costValueWidth - costPadding
 			nameWidth := available * costNameWidthRatio / 100
 			barWidth := available - nameWidth
-			if nameWidth < minCostNameWidth {
-				nameWidth = minCostNameWidth
-			}
-			if barWidth < minCostBarWidth {
-				barWidth = minCostBarWidth
-			}
-			maxServices := contentHeight - 2
-			if maxServices < 3 {
-				maxServices = 3
-			}
+			nameWidth = max(nameWidth, minCostNameWidth)
+			barWidth = max(barWidth, minCostBarWidth)
+			maxServices := max(contentHeight-2, 3)
 			showCount := min(len(d.costTop), maxServices)
 
-			for i := 0; i < showCount; i++ {
+			for i := range showCount {
 				c := d.costTop[i]
 				bar := renderBar(c.cost, maxCost, barWidth, t)
-				name := truncateValue(c.service, nameWidth)
+				name := TruncateString(c.service, nameWidth)
 				line := fmt.Sprintf("%-*s %s %8.0f", nameWidth, name, bar, c.cost)
 				if i == focusRow {
 					line = s.highlight.Render(line)
@@ -151,8 +132,8 @@ func (d *DashboardView) renderOpsContent(contentWidth, contentHeight int, focusR
 	} else if alarmCount > 0 {
 		lines = append(lines, s.danger.Render(fmt.Sprintf("Alarms: %d in ALARM", alarmCount)))
 		maxShow := min(alarmCount, contentHeight-3)
-		for i := 0; i < maxShow; i++ {
-			line := "  " + s.danger.Render("• ") + truncateValue(d.alarms[i].name, contentWidth-bulletIndentWidth)
+		for i := range maxShow {
+			line := "  " + s.danger.Render("• ") + TruncateString(d.alarms[i].name, contentWidth-bulletIndentWidth)
 			if i == focusRow {
 				line = s.highlight.Render(line)
 			}
@@ -170,9 +151,9 @@ func (d *DashboardView) renderOpsContent(contentWidth, contentHeight int, focusR
 		lines = append(lines, s.warning.Render(fmt.Sprintf("Health: %d open", len(d.healthItems))))
 		remaining := contentHeight - len(lines) - 1
 		maxShow := min(len(d.healthItems), remaining)
-		for i := 0; i < maxShow; i++ {
+		for i := range maxShow {
 			h := d.healthItems[i]
-			line := "  " + s.warning.Render("• ") + truncateValue(h.service+": "+h.eventType, contentWidth-bulletIndentWidth)
+			line := "  " + s.warning.Render("• ") + TruncateString(h.service+": "+h.eventType, contentWidth-bulletIndentWidth)
 			if alarmCount+i == focusRow {
 				line = s.highlight.Render(line)
 			}
@@ -209,13 +190,13 @@ func (d *DashboardView) renderSecurityContent(contentWidth, contentHeight int, f
 			lines = append(lines, s.warning.Render(fmt.Sprintf("High: %d 🟠", high)))
 		}
 		maxShow := min(len(d.secItems), contentHeight-len(lines)-1)
-		for i := 0; i < maxShow; i++ {
+		for i := range maxShow {
 			item := d.secItems[i]
 			style := s.warning
 			if item.severity == "CRITICAL" {
 				style = s.danger
 			}
-			line := "  " + style.Render("• ") + truncateValue(item.title, contentWidth-bulletIndentWidth)
+			line := "  " + style.Render("• ") + TruncateString(item.title, contentWidth-bulletIndentWidth)
 			if i == focusRow {
 				line = s.highlight.Render(line)
 			}
@@ -256,13 +237,13 @@ func (d *DashboardView) renderOptimizationContent(contentWidth, contentHeight in
 		}
 		if len(d.taItems) > 0 {
 			maxShow := min(len(d.taItems), contentHeight-len(lines)-1)
-			for i := 0; i < maxShow; i++ {
+			for i := range maxShow {
 				item := d.taItems[i]
 				style := s.warning
 				if item.status == "error" {
 					style = s.danger
 				}
-				line := "  " + style.Render("• ") + truncateValue(item.name, contentWidth-bulletIndentWidth)
+				line := "  " + style.Render("• ") + TruncateString(item.name, contentWidth-bulletIndentWidth)
 				if i == focusRow {
 					line = s.highlight.Render(line)
 				}

@@ -6,6 +6,7 @@ import (
 
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/render"
+	"github.com/clawscli/claws/internal/ui"
 )
 
 // ClusterRenderer renders ElastiCache clusters
@@ -151,7 +152,7 @@ func (r *ClusterRenderer) RenderDetail(resource dao.Resource) string {
 				nodeId = *node.CacheNodeId
 			}
 			if status == "available" {
-				d.FieldStyled(nodeId, status, render.SuccessStyle())
+				d.FieldStyled(nodeId, status, ui.SuccessStyle())
 			} else {
 				d.Field(nodeId, status)
 			}
@@ -161,17 +162,17 @@ func (r *ClusterRenderer) RenderDetail(resource dao.Resource) string {
 	// Security
 	d.Section("Security")
 	if cluster.TransitEncryptionEnabled() {
-		d.FieldStyled("Transit Encryption", "Enabled", render.SuccessStyle())
+		d.FieldStyled("Transit Encryption", "Enabled", ui.SuccessStyle())
 	} else {
 		d.Field("Transit Encryption", "Disabled")
 	}
 	if cluster.AtRestEncryptionEnabled() {
-		d.FieldStyled("At-Rest Encryption", "Enabled", render.SuccessStyle())
+		d.FieldStyled("At-Rest Encryption", "Enabled", ui.SuccessStyle())
 	} else {
 		d.Field("At-Rest Encryption", "Disabled")
 	}
 	if cluster.Item.AuthTokenEnabled != nil && *cluster.Item.AuthTokenEnabled {
-		d.FieldStyled("AUTH Token", "Enabled", render.SuccessStyle())
+		d.FieldStyled("AUTH Token", "Enabled", ui.SuccessStyle())
 	}
 	d.Field("Auto Minor Version Upgrade", formatBool(cluster.AutoMinorVersionUpgrade()))
 

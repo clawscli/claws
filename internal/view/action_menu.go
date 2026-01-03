@@ -36,16 +36,16 @@ type actionMenuStyles struct {
 func newActionMenuStyles() actionMenuStyles {
 	t := ui.Current()
 	return actionMenuStyles{
-		title:     lipgloss.NewStyle().Bold(true).Foreground(t.Primary).MarginBottom(1),
+		title:     ui.TitleStyle(),
 		item:      lipgloss.NewStyle().PaddingLeft(2),
-		selected:  lipgloss.NewStyle().PaddingLeft(2).Background(t.Selection).Foreground(t.SelectionText),
-		shortcut:  lipgloss.NewStyle().Foreground(t.Secondary),
-		box:       lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(t.Border).Padding(0, 1).MarginTop(1),
-		dangerBox: lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(t.Danger).Padding(0, 1).MarginTop(1),
-		yes:       lipgloss.NewStyle().Bold(true).Foreground(t.Success),
-		no:        lipgloss.NewStyle().Bold(true).Foreground(t.Danger),
+		selected:  ui.SelectedStyle().PaddingLeft(2),
+		shortcut:  ui.SecondaryStyle(),
+		box:       ui.BoxStyle().MarginTop(1),
+		dangerBox: ui.BoxStyle().BorderForeground(t.Danger).MarginTop(1),
+		yes:       ui.BoldSuccessStyle(),
+		no:        ui.BoldDangerStyle(),
 		bold:      lipgloss.NewStyle().Bold(true),
-		input:     lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(t.Border).Padding(0, 1),
+		input:     ui.InputStyle(),
 	}
 }
 
@@ -343,7 +343,7 @@ func (m *ActionMenu) renderDangerousConfirm(act action.Action) string {
 	s := m.styles
 	t := ui.Current()
 
-	dangerTitle := lipgloss.NewStyle().Bold(true).Foreground(t.Danger).Render("⚠ DANGER")
+	dangerTitle := ui.BoldDangerStyle().Render("⚠ DANGER")
 	content := dangerTitle + "\n\n"
 	content += fmt.Sprintf("You are about to %s:\n", s.no.Render(act.Name))
 	content += s.bold.Render(m.dangerous.token) + "\n\n"

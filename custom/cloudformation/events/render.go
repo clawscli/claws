@@ -6,6 +6,7 @@ import (
 
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/render"
+	"github.com/clawscli/claws/internal/ui"
 )
 
 // EventRenderer renders CloudFormation stack events
@@ -140,13 +141,13 @@ func (r *EventRenderer) RenderSummary(resource dao.Resource) []render.SummaryFie
 func cfnResourceStatusColorer(status string) render.Style {
 	switch {
 	case strings.HasSuffix(status, "_COMPLETE") && !strings.Contains(status, "ROLLBACK") && !strings.Contains(status, "DELETE"):
-		return render.SuccessStyle()
+		return ui.SuccessStyle()
 	case strings.Contains(status, "IN_PROGRESS"):
-		return render.WarningStyle()
+		return ui.WarningStyle()
 	case strings.Contains(status, "FAILED") || strings.Contains(status, "ROLLBACK"):
-		return render.DangerStyle()
+		return ui.DangerStyle()
 	case strings.Contains(status, "DELETE_COMPLETE") || strings.Contains(status, "SKIPPED"):
-		return render.DimStyle()
+		return ui.DimStyle()
 	default:
 		return render.DefaultStyle()
 	}

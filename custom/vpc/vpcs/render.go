@@ -6,6 +6,7 @@ import (
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/render"
+	"github.com/clawscli/claws/internal/ui"
 )
 
 // Ensure VPCRenderer implements render.Navigator
@@ -117,12 +118,12 @@ func (r *VPCRenderer) RenderDetail(resource dao.Resource) string {
 	// DNS Settings
 	d.Section("DNS Settings")
 	if vr.EnableDnsSupport {
-		d.FieldStyled("DNS Resolution", "Enabled", render.SuccessStyle())
+		d.FieldStyled("DNS Resolution", "Enabled", ui.SuccessStyle())
 	} else {
 		d.Field("DNS Resolution", "Disabled")
 	}
 	if vr.EnableDnsHostnames {
-		d.FieldStyled("DNS Hostnames", "Enabled", render.SuccessStyle())
+		d.FieldStyled("DNS Hostnames", "Enabled", ui.SuccessStyle())
 	} else {
 		d.Field("DNS Hostnames", "Disabled")
 	}

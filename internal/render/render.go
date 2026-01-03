@@ -128,18 +128,17 @@ type Colorer func(value string) lipgloss.Style
 // StateColorer returns a colorer for common state values
 func StateColorer() Colorer {
 	return func(value string) lipgloss.Style {
-		t := ui.Current()
 		switch value {
 		case "running", "available", "active", "healthy":
-			return lipgloss.NewStyle().Foreground(t.Success)
+			return ui.SuccessStyle()
 		case "in-use", "attached":
-			return lipgloss.NewStyle().Foreground(t.Info)
+			return ui.InfoStyle()
 		case "stopped", "stopping", "deleting":
-			return lipgloss.NewStyle().Foreground(t.Warning)
+			return ui.WarningStyle()
 		case "terminated", "failed", "error", "unhealthy", "deleted":
-			return lipgloss.NewStyle().Foreground(t.Danger)
+			return ui.DangerStyle()
 		case "pending", "starting", "creating":
-			return lipgloss.NewStyle().Foreground(t.Pending)
+			return ui.PendingStyle()
 		default:
 			return lipgloss.NewStyle()
 		}
@@ -202,26 +201,6 @@ func FormatDuration(d time.Duration) string {
 
 // Style is an alias for lipgloss.Style for convenience
 type Style = lipgloss.Style
-
-// SuccessStyle returns a green style for success states
-func SuccessStyle() lipgloss.Style {
-	return ui.SuccessStyle()
-}
-
-// WarningStyle returns a yellow style for warning states
-func WarningStyle() lipgloss.Style {
-	return ui.WarningStyle()
-}
-
-// DangerStyle returns a red style for danger/error states
-func DangerStyle() lipgloss.Style {
-	return ui.DangerStyle()
-}
-
-// DimStyle returns a dimmed gray style
-func DimStyle() lipgloss.Style {
-	return ui.DimStyle()
-}
 
 // DefaultStyle returns a default unstyled style
 func DefaultStyle() lipgloss.Style {

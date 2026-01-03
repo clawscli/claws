@@ -6,6 +6,7 @@ import (
 
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/render"
+	"github.com/clawscli/claws/internal/ui"
 )
 
 // SecretRenderer renders Secrets Manager secrets
@@ -86,7 +87,7 @@ func (r *SecretRenderer) RenderDetail(resource dao.Resource) string {
 	// Deletion Status
 	if secret.DeletedDate != nil {
 		d.Section("Deletion")
-		d.FieldStyled("Status", "SCHEDULED FOR DELETION", render.DangerStyle())
+		d.FieldStyled("Status", "SCHEDULED FOR DELETION", ui.DangerStyle())
 		d.Field("Deletion Date", *secret.DeletedDate)
 	}
 
@@ -101,7 +102,7 @@ func (r *SecretRenderer) RenderDetail(resource dao.Resource) string {
 	// Rotation
 	d.Section("Rotation")
 	if secret.RotationEnabled {
-		d.FieldStyled("Rotation", "Enabled", render.SuccessStyle())
+		d.FieldStyled("Rotation", "Enabled", ui.SuccessStyle())
 		if secret.RotationLambdaARN != "" {
 			d.Field("Lambda ARN", secret.RotationLambdaARN)
 		}

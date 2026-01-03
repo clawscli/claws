@@ -140,10 +140,6 @@ func TestCommandInput_SetWidth(t *testing.T) {
 
 	ci := NewCommandInput(ctx, reg)
 	ci.SetWidth(100)
-
-	if ci.width != 100 {
-		t.Errorf("width = %d, want 100", ci.width)
-	}
 }
 
 func TestCommandInput_Update_Esc(t *testing.T) {

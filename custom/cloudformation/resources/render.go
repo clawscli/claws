@@ -8,6 +8,7 @@ import (
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/registry"
 	"github.com/clawscli/claws/internal/render"
+	"github.com/clawscli/claws/internal/ui"
 )
 
 // Ensure ResourceRenderer implements render.Navigator
@@ -148,13 +149,13 @@ func (r *ResourceRenderer) RenderSummary(resource dao.Resource) []render.Summary
 func cfnResourceStatusColorer(status string) render.Style {
 	switch {
 	case strings.HasSuffix(status, "_COMPLETE") && !strings.Contains(status, "ROLLBACK") && !strings.Contains(status, "DELETE"):
-		return render.SuccessStyle()
+		return ui.SuccessStyle()
 	case strings.Contains(status, "IN_PROGRESS"):
-		return render.WarningStyle()
+		return ui.WarningStyle()
 	case strings.Contains(status, "FAILED") || strings.Contains(status, "ROLLBACK"):
-		return render.DangerStyle()
+		return ui.DangerStyle()
 	case strings.Contains(status, "DELETE_COMPLETE") || strings.Contains(status, "SKIPPED"):
-		return render.DimStyle()
+		return ui.DimStyle()
 	default:
 		return render.DefaultStyle()
 	}
@@ -164,11 +165,11 @@ func cfnResourceStatusColorer(status string) render.Style {
 func driftColorer(status string) render.Style {
 	switch status {
 	case "IN_SYNC":
-		return render.SuccessStyle()
+		return ui.SuccessStyle()
 	case "MODIFIED", "DELETED":
-		return render.DangerStyle()
+		return ui.DangerStyle()
 	case "NOT_CHECKED":
-		return render.DimStyle()
+		return ui.DimStyle()
 	default:
 		return render.DefaultStyle()
 	}

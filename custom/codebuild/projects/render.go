@@ -6,6 +6,7 @@ import (
 
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/render"
+	"github.com/clawscli/claws/internal/ui"
 )
 
 // ProjectRenderer renders CodeBuild projects
@@ -164,13 +165,13 @@ func (r *ProjectRenderer) RenderDetail(resource dao.Resource) string {
 		logs := project.Project.LogsConfig
 		d.Section("Logging")
 		if logs.CloudWatchLogs != nil && logs.CloudWatchLogs.Status == "ENABLED" {
-			d.FieldStyled("CloudWatch Logs", "Enabled", render.SuccessStyle())
+			d.FieldStyled("CloudWatch Logs", "Enabled", ui.SuccessStyle())
 			if logs.CloudWatchLogs.GroupName != nil {
 				d.Field("  Log Group", *logs.CloudWatchLogs.GroupName)
 			}
 		}
 		if logs.S3Logs != nil && logs.S3Logs.Status == "ENABLED" {
-			d.FieldStyled("S3 Logs", "Enabled", render.SuccessStyle())
+			d.FieldStyled("S3 Logs", "Enabled", ui.SuccessStyle())
 			if logs.S3Logs.Location != nil {
 				d.Field("  Location", *logs.S3Logs.Location)
 			}

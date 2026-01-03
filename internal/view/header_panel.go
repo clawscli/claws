@@ -1,11 +1,11 @@
 package view
 
 import (
+	"cmp"
 	"strconv"
 	"strings"
 
 	"charm.land/lipgloss/v2"
-	"github.com/mattn/go-runewidth"
 
 	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/registry"
@@ -20,16 +20,6 @@ const (
 	// maxFieldValueWidth is the maximum width for a single field value before truncation
 	maxFieldValueWidth = 30
 )
-
-// truncateValue truncates a string to maxWidth, adding "…" if truncated
-func truncateValue(s string, maxWidth int) string {
-	if runewidth.StringWidth(s) <= maxWidth {
-		return s
-	}
-	// Truncate to fit maxWidth-1 to leave room for ellipsis
-	truncated := runewidth.Truncate(s, maxWidth-1, "")
-	return truncated + "…"
-}
 
 // HeaderPanel renders the fixed header panel at the top of resource views
 // headerPanelStyles holds cached lipgloss styles for performance
@@ -46,11 +36,11 @@ func newHeaderPanelStyles() headerPanelStyles {
 	t := ui.Current()
 	return headerPanelStyles{
 		panel:     lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder()).BorderForeground(t.Border).Padding(0, 1),
-		label:     lipgloss.NewStyle().Foreground(t.TextDim),
-		value:     lipgloss.NewStyle().Foreground(t.Text),
-		accent:    lipgloss.NewStyle().Foreground(t.Accent).Bold(true),
-		dim:       lipgloss.NewStyle().Foreground(t.TextMuted),
-		separator: lipgloss.NewStyle().Foreground(t.Border),
+		label:     ui.DimStyle(),
+		value:     ui.TextStyle(),
+		accent:    ui.HighlightStyle(),
+		dim:       ui.MutedStyle(),
+		separator: ui.BorderStyle(),
 	}
 }
 
@@ -77,19 +67,11 @@ func (h *HeaderPanel) renderContextLine(service, resourceType string) string {
 		accountDisplay = formatMultiAccounts(selections, cfg.AccountIDs())
 	} else {
 		profileDisplay = cfg.Selection().DisplayName()
-		accountDisplay = cfg.AccountID()
-		if accountDisplay == "" {
-			accountDisplay = "-"
-		}
+		accountDisplay = cmp.Or(cfg.AccountID(), "-")
 	}
 
-	var regionDisplay string
 	regions := cfg.Regions()
-	if len(regions) == 0 {
-		regionDisplay = "-"
-	} else {
-		regionDisplay = strings.Join(regions, ", ")
-	}
+	regionDisplay := cmp.Or(strings.Join(regions, ", "), "-")
 
 	line := s.label.Render("Profile: ") + s.value.Render(profileDisplay) +
 		s.dim.Render("  │  ") +
@@ -118,7 +100,7 @@ func formatMultiProfiles(selections []config.ProfileSelection) string {
 		return strings.Join(names, ", ")
 	}
 	names := make([]string, maxShow)
-	for i := 0; i < maxShow; i++ {
+	for i := range maxShow {
 		names[i] = selections[i].DisplayName()
 	}
 	return strings.Join(names, ", ") + " (+" + strconv.Itoa(len(selections)-maxShow) + ")"
@@ -139,13 +121,6 @@ func formatMultiAccounts(selections []config.ProfileSelection, accountIDs map[st
 		return strings.Join(accounts, ", ")
 	}
 	return strings.Join(accounts[:maxShow], ", ") + " (+" + strconv.Itoa(len(accounts)-maxShow) + ")"
-}
-
-// RenderContextLine renders the AWS account/region context line.
-// Can be used standalone by other views.
-func RenderContextLine(service, resourceType string) string {
-	h := &HeaderPanel{styles: newHeaderPanelStyles()}
-	return h.renderContextLine(service, resourceType)
 }
 
 // SetWidth sets the panel width
@@ -205,7 +180,7 @@ func (h *HeaderPanel) Render(service, resourceType string, summaryFields []rende
 			}
 
 			// Truncate long values to prevent line wrapping
-			truncatedValue := truncateValue(field.Value, maxFieldValueWidth)
+			truncatedValue := TruncateString(field.Value, maxFieldValueWidth)
 
 			// Format field with appropriate styling
 			var styledValue string

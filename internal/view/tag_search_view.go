@@ -3,7 +3,8 @@ package view
 import (
 	"context"
 	"fmt"
-	"sort"
+	"maps"
+	"slices"
 	"strings"
 	"sync"
 
@@ -32,10 +33,27 @@ type taggedARN struct {
 	RawARN string
 }
 
+type tagSearchViewStyles struct {
+	header       lipgloss.Style
+	status       lipgloss.Style
+	filterWrap   lipgloss.Style
+	filterActive lipgloss.Style
+}
+
+func newTagSearchViewStyles() tagSearchViewStyles {
+	return tagSearchViewStyles{
+		header:       ui.TableHeaderStyle().Padding(0, 1),
+		status:       ui.DimStyle().Padding(0, 1),
+		filterWrap:   lipgloss.NewStyle().Padding(0, 1),
+		filterActive: ui.AccentStyle().Italic(true),
+	}
+}
+
 type TagSearchView struct {
 	ctx       context.Context
 	registry  *registry.Registry
 	tagFilter string
+	styles    tagSearchViewStyles
 
 	table     table.Model
 	resources []taggedARN
@@ -66,6 +84,7 @@ func NewTagSearchView(ctx context.Context, reg *registry.Registry, tagFilter str
 		ctx:         ctx,
 		registry:    reg,
 		tagFilter:   tagFilter,
+		styles:      newTagSearchViewStyles(),
 		loading:     true,
 		filterInput: ti,
 		spinner:     ui.NewSpinner(),
@@ -555,18 +574,13 @@ func (v *TagSearchView) buildTable() {
 }
 
 func (v *TagSearchView) ViewString() string {
-	theme := ui.Current()
+	s := v.styles
 
 	title := "Tag Search"
 	if v.tagFilter != "" {
 		title = fmt.Sprintf("Tag Search: %s", v.tagFilter)
 	}
-	header := lipgloss.NewStyle().
-		Foreground(theme.TableHeaderText).
-		Background(theme.TableHeader).
-		Padding(0, 1).
-		Width(v.width).
-		Render(title)
+	header := s.header.Width(v.width).Render(title)
 
 	if v.loading {
 		return header + "\n" + v.spinner.View() + " Searching..."
@@ -591,21 +605,13 @@ func (v *TagSearchView) ViewString() string {
 		statusLine += fmt.Sprintf(" [%d region errors]", len(v.partialErrors))
 	}
 
-	status := lipgloss.NewStyle().
-		Foreground(theme.TextDim).
-		Padding(0, 1).
-		Render(statusLine)
+	status := s.status.Render(statusLine)
 
 	filterView := ""
 	if v.filterActive {
-		filterView = lipgloss.NewStyle().
-			Padding(0, 1).
-			Render(v.filterInput.View()) + "\n"
+		filterView = s.filterWrap.Render(v.filterInput.View()) + "\n"
 	} else if v.filterText != "" {
-		filterView = lipgloss.NewStyle().
-			Foreground(theme.Accent).
-			Italic(true).
-			Render(fmt.Sprintf("filter: %s", v.filterText)) + "\n"
+		filterView = s.filterActive.Render(fmt.Sprintf("filter: %s", v.filterText)) + "\n"
 	}
 
 	if len(v.filtered) == 0 && len(v.resources) > 0 {
@@ -683,11 +689,8 @@ func (v *TagSearchView) GetTagKeys() []string {
 		}
 	}
 
-	keys := make([]string, 0, len(keySet))
-	for key := range keySet {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
+	keys := slices.Collect(maps.Keys(keySet))
+	slices.Sort(keys)
 	return keys
 }
 
@@ -703,11 +706,8 @@ func (v *TagSearchView) GetTagValues(key string) []string {
 		}
 	}
 
-	values := make([]string, 0, len(valueSet))
-	for val := range valueSet {
-		values = append(values, val)
-	}
-	sort.Strings(values)
+	values := slices.Collect(maps.Keys(valueSet))
+	slices.Sort(values)
 	return values
 }
 
@@ -716,11 +716,8 @@ func formatTags(tags map[string]string, maxLen int) string {
 		return ""
 	}
 
-	keys := make([]string, 0, len(tags))
-	for k := range tags {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
+	keys := slices.Collect(maps.Keys(tags))
+	slices.Sort(keys)
 
 	var parts []string
 	for _, k := range keys {

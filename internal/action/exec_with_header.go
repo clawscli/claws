@@ -1,13 +1,13 @@
 package action
 
 import (
+	"cmp"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"strings"
 
-	"charm.land/lipgloss/v2"
 	"golang.org/x/term"
 
 	"github.com/clawscli/claws/internal/aws"
@@ -18,9 +18,7 @@ import (
 
 func setAWSEnv(cmd *exec.Cmd, region string) {
 	cfg := config.Global()
-	if region == "" {
-		region = cfg.Region()
-	}
+	region = cmp.Or(region, cfg.Region())
 	cmd.Env = aws.BuildSubprocessEnv(cmd.Env, cfg.Selection(), region)
 }
 
@@ -149,8 +147,7 @@ func (e *ExecWithHeader) Run() error {
 	_, _ = fmt.Fprint(stdout, header)
 
 	// Print separator
-	separatorStyle := lipgloss.NewStyle().Foreground(ui.Current().TextDim)
-	_, _ = fmt.Fprintln(stdout, separatorStyle.Render(strings.Repeat("─", width)))
+	_, _ = fmt.Fprintln(stdout, ui.DimStyle().Render(strings.Repeat("─", width)))
 	headerLines++
 
 	// Set scroll region to exclude header (1-indexed)
@@ -186,7 +183,7 @@ func (e *ExecWithHeader) Run() error {
 
 	// If command failed, show error and wait for keypress
 	if err != nil {
-		errorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#ff0000")).Bold(true)
+		errorStyle := ui.BoldDangerStyle()
 		_, _ = fmt.Fprintln(stdout)
 		_, _ = fmt.Fprintln(stdout, errorStyle.Render("Command failed: ")+err.Error())
 		_, _ = fmt.Fprintln(stdout)
@@ -210,37 +207,22 @@ func (e *ExecWithHeader) buildHeader(_ int) string {
 	}
 	accountID := config.Global().AccountID()
 
-	// Styles
-	t := ui.Current()
-
-	titleStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(t.Primary)
-
-	labelStyle := lipgloss.NewStyle().
-		Foreground(t.TextDim)
-
-	valueStyle := lipgloss.NewStyle().
-		Foreground(t.TextBright)
-
-	regionStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(t.Secondary)
+	titleStyle := ui.TitleStyle()
+	labelStyle := ui.DimStyle()
+	valueStyle := ui.TextBrightStyle()
+	regionStyle := ui.SectionStyle()
 
 	var lines []string
 
-	// Title line
 	title := fmt.Sprintf("%s/%s", e.Service, e.ResType)
 	lines = append(lines, titleStyle.Render(title))
 
-	// Resource info
 	resourceLine := labelStyle.Render("Resource: ") + valueStyle.Render(e.Resource.GetName())
 	if id := e.Resource.GetID(); id != e.Resource.GetName() {
 		resourceLine += labelStyle.Render(" (") + valueStyle.Render(id) + labelStyle.Render(")")
 	}
 	lines = append(lines, resourceLine)
 
-	// Context line: Profile, Region, Account
 	contextParts := []string{
 		labelStyle.Render("Profile: ") + valueStyle.Render(profileDisplay),
 	}
@@ -252,9 +234,7 @@ func (e *ExecWithHeader) buildHeader(_ int) string {
 	}
 	lines = append(lines, strings.Join(contextParts, " "))
 
-	// Hint line
-	hintStyle := lipgloss.NewStyle().Foreground(ui.Current().TextDim).Italic(true)
-	lines = append(lines, hintStyle.Render("Press Ctrl+D or type 'exit' to return to claws"))
+	lines = append(lines, ui.DimStyle().Italic(true).Render("Press Ctrl+D or type 'exit' to return to claws"))
 
 	return strings.Join(lines, "\n")
 }

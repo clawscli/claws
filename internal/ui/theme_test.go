@@ -117,6 +117,174 @@ func TestNewSpinner(t *testing.T) {
 	}
 }
 
+func TestTitleStyle(t *testing.T) {
+	style := TitleStyle()
+	rendered := style.Render("title")
+	if rendered == "" {
+		t.Error("TitleStyle().Render() should produce output")
+	}
+}
+
+func TestSelectedStyle(t *testing.T) {
+	style := SelectedStyle()
+	rendered := style.Render("selected")
+	if rendered == "" {
+		t.Error("SelectedStyle().Render() should produce output")
+	}
+}
+
+func TestTableHeaderStyle(t *testing.T) {
+	style := TableHeaderStyle()
+	rendered := style.Render("header")
+	if rendered == "" {
+		t.Error("TableHeaderStyle().Render() should produce output")
+	}
+}
+
+func TestSectionStyle(t *testing.T) {
+	style := SectionStyle()
+	rendered := style.Render("section")
+	if rendered == "" {
+		t.Error("SectionStyle().Render() should produce output")
+	}
+}
+
+func TestHighlightStyle(t *testing.T) {
+	style := HighlightStyle()
+	rendered := style.Render("highlight")
+	if rendered == "" {
+		t.Error("HighlightStyle().Render() should produce output")
+	}
+}
+
+func TestBoldSuccessStyle(t *testing.T) {
+	style := BoldSuccessStyle()
+	rendered := style.Render("bold success")
+	if rendered == "" {
+		t.Error("BoldSuccessStyle().Render() should produce output")
+	}
+}
+
+func TestBoldDangerStyle(t *testing.T) {
+	style := BoldDangerStyle()
+	rendered := style.Render("bold danger")
+	if rendered == "" {
+		t.Error("BoldDangerStyle().Render() should produce output")
+	}
+}
+
+func TestBoldWarningStyle(t *testing.T) {
+	style := BoldWarningStyle()
+	rendered := style.Render("bold warning")
+	if rendered == "" {
+		t.Error("BoldWarningStyle().Render() should produce output")
+	}
+}
+
+func TestBoldPendingStyle(t *testing.T) {
+	style := BoldPendingStyle()
+	rendered := style.Render("bold pending")
+	if rendered == "" {
+		t.Error("BoldPendingStyle().Render() should produce output")
+	}
+}
+
+func TestAccentStyle(t *testing.T) {
+	style := AccentStyle()
+	rendered := style.Render("accent")
+	if rendered == "" {
+		t.Error("AccentStyle().Render() should produce output")
+	}
+}
+
+func TestMutedStyle(t *testing.T) {
+	style := MutedStyle()
+	rendered := style.Render("muted")
+	if rendered == "" {
+		t.Error("MutedStyle().Render() should produce output")
+	}
+}
+
+func TestTextStyle(t *testing.T) {
+	style := TextStyle()
+	rendered := style.Render("text")
+	if rendered == "" {
+		t.Error("TextStyle().Render() should produce output")
+	}
+}
+
+func TestTextBrightStyle(t *testing.T) {
+	style := TextBrightStyle()
+	rendered := style.Render("bright")
+	if rendered == "" {
+		t.Error("TextBrightStyle().Render() should produce output")
+	}
+}
+
+func TestSecondaryStyle(t *testing.T) {
+	style := SecondaryStyle()
+	rendered := style.Render("secondary")
+	if rendered == "" {
+		t.Error("SecondaryStyle().Render() should produce output")
+	}
+}
+
+func TestBorderStyle(t *testing.T) {
+	style := BorderStyle()
+	rendered := style.Render("border")
+	if rendered == "" {
+		t.Error("BorderStyle().Render() should produce output")
+	}
+}
+
+func TestPrimaryStyle(t *testing.T) {
+	style := PrimaryStyle()
+	rendered := style.Render("primary")
+	if rendered == "" {
+		t.Error("PrimaryStyle().Render() should produce output")
+	}
+}
+
+func TestInfoStyle(t *testing.T) {
+	style := InfoStyle()
+	rendered := style.Render("info")
+	if rendered == "" {
+		t.Error("InfoStyle().Render() should produce output")
+	}
+}
+
+func TestPendingStyle(t *testing.T) {
+	style := PendingStyle()
+	rendered := style.Render("pending")
+	if rendered == "" {
+		t.Error("PendingStyle().Render() should produce output")
+	}
+}
+
+func TestBoxStyle(t *testing.T) {
+	style := BoxStyle()
+	rendered := style.Render("box content")
+	if rendered == "" {
+		t.Error("BoxStyle().Render() should produce output")
+	}
+}
+
+func TestInputStyle(t *testing.T) {
+	style := InputStyle()
+	rendered := style.Render("input content")
+	if rendered == "" {
+		t.Error("InputStyle().Render() should produce output")
+	}
+}
+
+func TestInputFieldStyle(t *testing.T) {
+	style := InputFieldStyle()
+	rendered := style.Render("filter text")
+	if rendered == "" {
+		t.Error("InputFieldStyle().Render() should produce output")
+	}
+}
+
 func TestThemeFields(t *testing.T) {
 	theme := DefaultTheme()
 

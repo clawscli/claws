@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/clawscli/claws/internal/dao"
+	"github.com/clawscli/claws/internal/ui"
 )
 
 func TestFormatAge(t *testing.T) {
@@ -278,10 +279,10 @@ func TestTagsColumn(t *testing.T) {
 
 func TestStyleHelpers(t *testing.T) {
 	// These just verify the functions don't panic
-	_ = SuccessStyle().Render("test")
-	_ = WarningStyle().Render("test")
-	_ = DangerStyle().Render("test")
-	_ = DimStyle().Render("test")
+	_ = ui.SuccessStyle().Render("test")
+	_ = ui.WarningStyle().Render("test")
+	_ = ui.DangerStyle().Render("test")
+	_ = ui.DimStyle().Render("test")
 	_ = DefaultStyle().Render("test")
 }
 
@@ -393,7 +394,7 @@ func TestDetailBuilder_Section(t *testing.T) {
 
 func TestDetailBuilder_FieldStyled(t *testing.T) {
 	d := NewDetailBuilder()
-	d.FieldStyled("Status", "running", SuccessStyle())
+	d.FieldStyled("Status", "running", ui.SuccessStyle())
 	result := d.String()
 	if !strings.Contains(result, "Status") {
 		t.Errorf("FieldStyled() should contain label, got: %s", result)

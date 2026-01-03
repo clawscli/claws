@@ -61,7 +61,7 @@ func TestIsEscKey(t *testing.T) {
 	}
 }
 
-// truncateOrPad tests
+// TruncateOrPadString tests
 
 func TestTruncateOrPad(t *testing.T) {
 	tests := []struct {
@@ -120,16 +120,16 @@ func TestTruncateOrPad(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := truncateOrPad(tt.input, tt.width)
+			got := TruncateOrPadString(tt.input, tt.width)
 
 			// Check visual width (rune count for plain text with ellipsis)
 			gotLen := len([]rune(got))
 			if tt.wantLen > 0 && gotLen != tt.wantLen {
-				t.Errorf("truncateOrPad(%q, %d) rune len = %d, want %d (got=%q)", tt.input, tt.width, gotLen, tt.wantLen, got)
+				t.Errorf("TruncateOrPadString(%q, %d) rune len = %d, want %d (got=%q)", tt.input, tt.width, gotLen, tt.wantLen, got)
 			}
 
 			if tt.wantEnd != "" && !strings.HasSuffix(got, tt.wantEnd) {
-				t.Errorf("truncateOrPad(%q, %d) = %q, want suffix %q", tt.input, tt.width, got, tt.wantEnd)
+				t.Errorf("TruncateOrPadString(%q, %d) = %q, want suffix %q", tt.input, tt.width, got, tt.wantEnd)
 			}
 		})
 	}

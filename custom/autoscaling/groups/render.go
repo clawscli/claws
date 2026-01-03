@@ -6,6 +6,7 @@ import (
 
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/render"
+	"github.com/clawscli/claws/internal/ui"
 )
 
 // AutoScalingGroupRenderer renders Auto Scaling Groups
@@ -192,9 +193,9 @@ func (r *AutoScalingGroupRenderer) RenderDetail(resource dao.Resource) string {
 			}
 			if proc.ProcessName != nil {
 				if reason != "" {
-					d.FieldStyled(*proc.ProcessName, reason, render.WarningStyle())
+					d.FieldStyled(*proc.ProcessName, reason, ui.WarningStyle())
 				} else {
-					d.FieldStyled(*proc.ProcessName, "Suspended", render.WarningStyle())
+					d.FieldStyled(*proc.ProcessName, "Suspended", ui.WarningStyle())
 				}
 			}
 		}

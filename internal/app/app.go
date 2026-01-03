@@ -48,12 +48,12 @@ type appStyles struct {
 func newAppStyles(width int) appStyles {
 	t := ui.Current()
 	return appStyles{
-		status:       lipgloss.NewStyle().Background(t.TableHeader).Foreground(t.TableHeaderText).Padding(0, 1).Width(width),
+		status:       ui.TableHeaderStyle().Padding(0, 1).Width(width),
 		readOnly:     lipgloss.NewStyle().Background(t.Warning).Foreground(lipgloss.Color("#000000")).Bold(true).Padding(0, 1),
-		warningTitle: lipgloss.NewStyle().Bold(true).Foreground(t.Pending).MarginBottom(1),
-		warningItem:  lipgloss.NewStyle().Foreground(t.Warning),
-		warningDim:   lipgloss.NewStyle().Foreground(t.TextDim).MarginTop(1),
-		warningBox:   lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(t.Pending).Padding(1, 2),
+		warningTitle: ui.BoldPendingStyle().MarginBottom(1),
+		warningItem:  ui.WarningStyle(),
+		warningDim:   ui.DimStyle().MarginTop(1),
+		warningBox:   ui.BoxStyle().BorderForeground(t.Pending).Padding(1, 2),
 	}
 }
 

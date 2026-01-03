@@ -43,14 +43,13 @@ func DefaultDetailStyles() DetailStyles {
 	if cachedDetailStyles != nil {
 		return *cachedDetailStyles
 	}
-	t := ui.Current()
 	styles := DetailStyles{
-		Title:   lipgloss.NewStyle().Bold(true).Foreground(t.Primary),
-		Section: lipgloss.NewStyle().Bold(true).Foreground(t.Secondary).MarginTop(1),
-		Label:   lipgloss.NewStyle().Foreground(t.TextDim).Width(32),
-		Value:   lipgloss.NewStyle().Foreground(t.Text),
-		Dim:     lipgloss.NewStyle().Foreground(t.TextDim),
-		Success: lipgloss.NewStyle().Foreground(t.Success),
+		Title:   ui.TitleStyle(),
+		Section: ui.SectionStyle().MarginTop(1),
+		Label:   ui.DimStyle().Width(32),
+		Value:   ui.TextStyle(),
+		Dim:     ui.DimStyle(),
+		Success: ui.SuccessStyle(),
 	}
 	cachedDetailStyles = &styles
 	return styles

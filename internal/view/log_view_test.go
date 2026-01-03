@@ -259,8 +259,8 @@ func TestLogViewSetSize(t *testing.T) {
 	if cmd != nil {
 		t.Error("Expected SetSize to return nil cmd")
 	}
-	if !lv.ready {
-		t.Error("Expected ready to be true after SetSize")
+	if !lv.vp.Ready {
+		t.Error("Expected vp.Ready to be true after SetSize")
 	}
 }
 

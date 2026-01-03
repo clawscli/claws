@@ -7,6 +7,7 @@ import (
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/render"
+	"github.com/clawscli/claws/internal/ui"
 )
 
 // ServiceRenderer renders ECS services
@@ -155,7 +156,7 @@ func (r *ServiceRenderer) RenderDetail(resource dao.Resource) string {
 		if dc.DeploymentCircuitBreaker != nil {
 			cb := dc.DeploymentCircuitBreaker
 			if cb.Enable {
-				d.FieldStyled("Circuit Breaker", "Enabled", render.SuccessStyle())
+				d.FieldStyled("Circuit Breaker", "Enabled", ui.SuccessStyle())
 				if cb.Rollback {
 					d.Field("Rollback on Failure", "Enabled")
 				}

@@ -155,28 +155,28 @@ func TestDetailViewLoadingPlaceholderReplacement(t *testing.T) {
 			name:            "refreshing replaces NotConfigured at line end",
 			detail:          "Status: " + render.NotConfigured + "\n",
 			refreshing:      true,
-			wantContains:    []string{"Loading..."},
+			wantContains:    []string{LoadingMessage},
 			wantNotContains: []string{render.NotConfigured},
 		},
 		{
 			name:            "refreshing replaces Empty at line end",
 			detail:          "Items: " + render.Empty + "\n",
 			refreshing:      true,
-			wantContains:    []string{"Loading..."},
+			wantContains:    []string{LoadingMessage},
 			wantNotContains: []string{render.Empty},
 		},
 		{
 			name:            "refreshing replaces NoValue at line end",
 			detail:          "Comment: " + render.NoValue + "\n",
 			refreshing:      true,
-			wantContains:    []string{"Loading..."},
+			wantContains:    []string{LoadingMessage},
 			wantNotContains: []string{render.NoValue},
 		},
 		{
 			name:            "refreshing replaces placeholder at EOF without newline",
 			detail:          "Status: " + render.NotConfigured,
 			refreshing:      true,
-			wantContains:    []string{"Loading..."},
+			wantContains:    []string{LoadingMessage},
 			wantNotContains: []string{render.NotConfigured},
 		},
 		{
@@ -197,21 +197,21 @@ func TestDetailViewLoadingPlaceholderReplacement(t *testing.T) {
 			name:            "refreshing replaces multiple different placeholders",
 			detail:          "Status: " + render.NotConfigured + "\nItems: " + render.Empty + "\nComment: " + render.NoValue + "\n",
 			refreshing:      true,
-			wantContains:    []string{"Loading..."},
+			wantContains:    []string{LoadingMessage},
 			wantNotContains: []string{render.NotConfigured, render.Empty, render.NoValue},
 		},
 		{
 			name:            "refreshing replaces multiple same placeholders",
 			detail:          "Status: " + render.NotConfigured + "\nEncryption: " + render.NotConfigured + "\n",
 			refreshing:      true,
-			wantContains:    []string{"Loading..."},
+			wantContains:    []string{LoadingMessage},
 			wantNotContains: []string{render.NotConfigured},
 		},
 		{
 			name:            "refreshing replaces consecutive placeholders",
 			detail:          "Status: " + render.NotConfigured + "\n" + render.NoValue + "\n",
 			refreshing:      true,
-			wantContains:    []string{"Loading..."},
+			wantContains:    []string{LoadingMessage},
 			wantNotContains: []string{render.NotConfigured, render.NoValue},
 		},
 		{
@@ -230,8 +230,7 @@ func TestDetailViewLoadingPlaceholderReplacement(t *testing.T) {
 			dv.refreshing = tt.refreshing
 			dv.SetSize(100, 50)
 
-			// Get the viewport content
-			content := dv.viewport.View()
+			content := dv.vp.Model.View()
 
 			for _, want := range tt.wantContains {
 				if !strings.Contains(content, want) {
