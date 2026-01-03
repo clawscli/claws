@@ -36,9 +36,9 @@ type actionMenuStyles struct {
 func newActionMenuStyles() actionMenuStyles {
 	t := ui.Current()
 	return actionMenuStyles{
-		title:     lipgloss.NewStyle().Bold(true).Foreground(t.Primary).MarginBottom(1),
+		title:     ui.TitleStyle(),
 		item:      lipgloss.NewStyle().PaddingLeft(2),
-		selected:  lipgloss.NewStyle().PaddingLeft(2).Background(t.Selection).Foreground(t.SelectionText),
+		selected:  ui.SelectedStyle().PaddingLeft(2),
 		shortcut:  lipgloss.NewStyle().Foreground(t.Secondary),
 		box:       lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(t.Border).Padding(0, 1).MarginTop(1),
 		dangerBox: lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(t.Danger).Padding(0, 1).MarginTop(1),

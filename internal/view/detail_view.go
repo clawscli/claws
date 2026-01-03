@@ -27,7 +27,7 @@ type detailViewStyles struct {
 func newDetailViewStyles() detailViewStyles {
 	t := ui.Current()
 	return detailViewStyles{
-		title: lipgloss.NewStyle().Bold(true).Foreground(t.Primary),
+		title: ui.TitleStyle(),
 		label: lipgloss.NewStyle().Foreground(t.TextDim).Width(15),
 		value: lipgloss.NewStyle().Foreground(t.Text),
 	}

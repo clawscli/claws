@@ -39,7 +39,7 @@ const (
 )
 
 func renderPanel(title, content string, width, height int, t *ui.Theme, hovered bool) string {
-	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(t.Primary)
+	titleStyle := ui.TitleStyle()
 	boxHeight := height - 1
 	if boxHeight < 3 {
 		boxHeight = 3

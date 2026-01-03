@@ -102,6 +102,7 @@ func WarningStyle() lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(current.Warning)
 }
 
+// DangerStyle returns a style for danger/error states
 func DangerStyle() lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(current.Danger)
 }

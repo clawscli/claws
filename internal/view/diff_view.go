@@ -36,7 +36,7 @@ type diffViewStyles struct {
 func newDiffViewStyles() diffViewStyles {
 	t := ui.Current()
 	return diffViewStyles{
-		title:     lipgloss.NewStyle().Bold(true).Foreground(t.Primary),
+		title:     ui.TitleStyle(),
 		header:    lipgloss.NewStyle().Bold(true).Foreground(t.Secondary),
 		content:   lipgloss.NewStyle().Foreground(t.Text),
 		separator: lipgloss.NewStyle().Foreground(t.TableBorder),

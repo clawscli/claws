@@ -19,7 +19,7 @@ type helpViewStyles struct {
 func newHelpViewStyles() helpViewStyles {
 	t := ui.Current()
 	return helpViewStyles{
-		title:   lipgloss.NewStyle().Bold(true).Foreground(t.Primary).MarginBottom(1),
+		title:   ui.TitleStyle(),
 		section: lipgloss.NewStyle().Bold(true).Foreground(t.Secondary).MarginTop(1),
 		key:     lipgloss.NewStyle().Foreground(t.Success).Width(15),
 		desc:    lipgloss.NewStyle().Foreground(t.Text),

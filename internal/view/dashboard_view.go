@@ -35,7 +35,7 @@ func newDashboardStyles() dashboardStyles {
 		danger:    lipgloss.NewStyle().Foreground(t.Danger),
 		success:   lipgloss.NewStyle().Foreground(t.Success),
 		dim:       lipgloss.NewStyle().Foreground(t.TextMuted),
-		highlight: lipgloss.NewStyle().Background(t.Selection).Foreground(t.SelectionText),
+		highlight: ui.SelectedStyle(),
 	}
 }
 

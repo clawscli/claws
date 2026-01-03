@@ -26,9 +26,9 @@ type selectorStyles struct {
 func newSelectorStyles() selectorStyles {
 	t := ui.Current()
 	return selectorStyles{
-		title:        lipgloss.NewStyle().Background(t.TableHeader).Foreground(t.TableHeaderText).Padding(0, 1),
+		title:        ui.TableHeaderStyle().Padding(0, 1),
 		item:         lipgloss.NewStyle().PaddingLeft(2),
-		itemSelected: lipgloss.NewStyle().PaddingLeft(2).Background(t.Selection).Foreground(t.SelectionText),
+		itemSelected: ui.SelectedStyle().PaddingLeft(2),
 		itemChecked:  lipgloss.NewStyle().PaddingLeft(2).Foreground(t.Success),
 		filter:       lipgloss.NewStyle().Foreground(t.Accent),
 	}

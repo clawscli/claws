@@ -68,7 +68,7 @@ type logViewStyles struct {
 func newLogViewStyles() logViewStyles {
 	t := ui.Current()
 	return logViewStyles{
-		header:    lipgloss.NewStyle().Bold(true).Foreground(t.Primary).MarginBottom(1),
+		header:    ui.TitleStyle(),
 		timestamp: lipgloss.NewStyle().Foreground(t.Secondary),
 		message:   lipgloss.NewStyle().Foreground(t.Text),
 		paused:    lipgloss.NewStyle().Bold(true).Foreground(t.Warning),
