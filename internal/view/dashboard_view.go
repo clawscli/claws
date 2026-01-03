@@ -29,12 +29,11 @@ type dashboardStyles struct {
 }
 
 func newDashboardStyles() dashboardStyles {
-	t := ui.Current()
 	return dashboardStyles{
 		warning:   ui.WarningStyle(),
 		danger:    ui.DangerStyle(),
 		success:   ui.SuccessStyle(),
-		dim:       lipgloss.NewStyle().Foreground(t.TextMuted),
+		dim:       ui.MutedStyle(),
 		highlight: ui.SelectedStyle(),
 	}
 }

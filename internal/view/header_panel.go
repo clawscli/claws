@@ -1,6 +1,7 @@
 package view
 
 import (
+	"cmp"
 	"strconv"
 	"strings"
 
@@ -49,7 +50,7 @@ func newHeaderPanelStyles() headerPanelStyles {
 		label:     ui.DimStyle(),
 		value:     lipgloss.NewStyle().Foreground(t.Text),
 		accent:    ui.HighlightStyle(),
-		dim:       lipgloss.NewStyle().Foreground(t.TextMuted),
+		dim:       ui.MutedStyle(),
 		separator: lipgloss.NewStyle().Foreground(t.Border),
 	}
 }
@@ -77,19 +78,11 @@ func (h *HeaderPanel) renderContextLine(service, resourceType string) string {
 		accountDisplay = formatMultiAccounts(selections, cfg.AccountIDs())
 	} else {
 		profileDisplay = cfg.Selection().DisplayName()
-		accountDisplay = cfg.AccountID()
-		if accountDisplay == "" {
-			accountDisplay = "-"
-		}
+		accountDisplay = cmp.Or(cfg.AccountID(), "-")
 	}
 
-	var regionDisplay string
 	regions := cfg.Regions()
-	if len(regions) == 0 {
-		regionDisplay = "-"
-	} else {
-		regionDisplay = strings.Join(regions, ", ")
-	}
+	regionDisplay := cmp.Or(strings.Join(regions, ", "), "-")
 
 	line := s.label.Render("Profile: ") + s.value.Render(profileDisplay) +
 		s.dim.Render("  │  ") +
@@ -118,7 +111,7 @@ func formatMultiProfiles(selections []config.ProfileSelection) string {
 		return strings.Join(names, ", ")
 	}
 	names := make([]string, maxShow)
-	for i := 0; i < maxShow; i++ {
+	for i := range maxShow {
 		names[i] = selections[i].DisplayName()
 	}
 	return strings.Join(names, ", ") + " (+" + strconv.Itoa(len(selections)-maxShow) + ")"
@@ -139,13 +132,6 @@ func formatMultiAccounts(selections []config.ProfileSelection, accountIDs map[st
 		return strings.Join(accounts, ", ")
 	}
 	return strings.Join(accounts[:maxShow], ", ") + " (+" + strconv.Itoa(len(accounts)-maxShow) + ")"
-}
-
-// RenderContextLine renders the AWS account/region context line.
-// Can be used standalone by other views.
-func RenderContextLine(service, resourceType string) string {
-	h := &HeaderPanel{styles: newHeaderPanelStyles()}
-	return h.renderContextLine(service, resourceType)
 }
 
 // SetWidth sets the panel width

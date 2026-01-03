@@ -106,11 +106,9 @@ func newServiceBrowserStyles() serviceBrowserStyles {
 		serviceName: lipgloss.NewStyle().
 			Bold(true).
 			Foreground(t.Text),
-		serviceNameSe: lipgloss.NewStyle().
-			Bold(true).
-			Foreground(t.Primary),
-		aliases:    ui.DimStyle(),
-		aliasesSel: ui.DimStyle(),
+		serviceNameSe: ui.TitleStyle(),
+		aliases:       ui.DimStyle(),
+		aliasesSel:    ui.DimStyle(),
 		filterPrompt: lipgloss.NewStyle().
 			Foreground(t.Primary),
 	}
@@ -471,7 +469,7 @@ func (s *ServiceBrowser) ViewString() string {
 	header := s.headerPanel.RenderHome()
 
 	if !s.vp.Ready {
-		return header + "\n" + "Loading..."
+		return header + "\n" + LoadingMessage
 	}
 
 	var footer string

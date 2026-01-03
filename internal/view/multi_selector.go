@@ -353,7 +353,7 @@ func (m *MultiSelector[T]) ViewString() string {
 	}
 
 	if !m.vp.Ready {
-		return title + "\n" + filterView + "Loading..."
+		return title + "\n" + filterView + LoadingMessage
 	}
 
 	return title + "\n" + filterView + m.vp.Model.View()

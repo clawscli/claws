@@ -143,6 +143,11 @@ func BoldPendingStyle() lipgloss.Style {
 	return lipgloss.NewStyle().Bold(true).Foreground(current.Pending)
 }
 
+// MutedStyle returns a style for very dim/muted text
+func MutedStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(current.TextMuted)
+}
+
 func NewSpinner() spinner.Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot

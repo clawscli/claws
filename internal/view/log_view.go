@@ -356,7 +356,7 @@ func (v *LogView) updateViewportContent() {
 
 func (v *LogView) ViewString() string {
 	if !v.vp.Ready {
-		return "Loading..."
+		return LoadingMessage
 	}
 
 	var sb strings.Builder

@@ -77,7 +77,7 @@ func (d *DiffView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (d *DiffView) ViewString() string {
 	if !d.vp.Ready {
-		return "Loading..."
+		return LoadingMessage
 	}
 
 	return d.vp.Model.View()

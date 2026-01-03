@@ -153,7 +153,7 @@ func (h *HelpView) renderContent() string {
 
 func (h *HelpView) ViewString() string {
 	if !h.vp.Ready {
-		return "Loading..."
+		return LoadingMessage
 	}
 	return h.vp.Model.View()
 }

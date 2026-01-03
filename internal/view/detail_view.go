@@ -169,7 +169,7 @@ func (d *DetailView) handleNavigation(key string) (tea.Model, tea.Cmd) {
 
 func (d *DetailView) ViewString() string {
 	if !d.vp.Ready {
-		return "Loading..."
+		return LoadingMessage
 	}
 
 	var summaryFields []render.SummaryField
@@ -261,7 +261,7 @@ func (d *DetailView) renderContent() string {
 	// Match placeholders only at line endings to avoid replacing substrings
 	// (e.g., "Not configured server" should not be replaced).
 	if d.refreshing && detail != "" {
-		loading := ui.DimStyle().Render("Loading...")
+		loading := ui.DimStyle().Render(LoadingMessage)
 
 		// Replace placeholders at end of line or end of content
 		for _, placeholder := range []string{render.NotConfigured, render.Empty, render.NoValue} {
