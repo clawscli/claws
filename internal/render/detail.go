@@ -46,7 +46,7 @@ func DefaultDetailStyles() DetailStyles {
 	t := ui.Current()
 	styles := DetailStyles{
 		Title:   ui.TitleStyle(),
-		Section: lipgloss.NewStyle().Bold(true).Foreground(t.Secondary).MarginTop(1),
+		Section: ui.SectionStyle().MarginTop(1),
 		Label:   lipgloss.NewStyle().Foreground(t.TextDim).Width(32),
 		Value:   lipgloss.NewStyle().Foreground(t.Text),
 		Dim:     lipgloss.NewStyle().Foreground(t.TextDim),

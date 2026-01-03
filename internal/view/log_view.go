@@ -71,7 +71,7 @@ func newLogViewStyles() logViewStyles {
 		header:    ui.TitleStyle(),
 		timestamp: lipgloss.NewStyle().Foreground(t.Secondary),
 		message:   lipgloss.NewStyle().Foreground(t.Text),
-		paused:    lipgloss.NewStyle().Bold(true).Foreground(t.Warning),
+		paused:    ui.BoldWarningStyle(),
 		error:     lipgloss.NewStyle().Foreground(t.Danger),
 		dim:       lipgloss.NewStyle().Foreground(t.TextDim),
 	}

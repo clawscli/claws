@@ -37,7 +37,7 @@ func newDiffViewStyles() diffViewStyles {
 	t := ui.Current()
 	return diffViewStyles{
 		title:     ui.TitleStyle(),
-		header:    lipgloss.NewStyle().Bold(true).Foreground(t.Secondary),
+		header:    ui.SectionStyle(),
 		content:   lipgloss.NewStyle().Foreground(t.Text),
 		separator: lipgloss.NewStyle().Foreground(t.TableBorder),
 	}

@@ -119,6 +119,30 @@ func TableHeaderStyle() lipgloss.Style {
 	return lipgloss.NewStyle().Background(current.TableHeader).Foreground(current.TableHeaderText)
 }
 
+func SectionStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Bold(true).Foreground(current.Secondary)
+}
+
+func HighlightStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Bold(true).Foreground(current.Accent)
+}
+
+func BoldSuccessStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Bold(true).Foreground(current.Success)
+}
+
+func BoldDangerStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Bold(true).Foreground(current.Danger)
+}
+
+func BoldWarningStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Bold(true).Foreground(current.Warning)
+}
+
+func BoldPendingStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Bold(true).Foreground(current.Pending)
+}
+
 func NewSpinner() spinner.Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot

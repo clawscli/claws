@@ -186,7 +186,7 @@ func (e *ExecWithHeader) Run() error {
 
 	// If command failed, show error and wait for keypress
 	if err != nil {
-		errorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#ff0000")).Bold(true)
+		errorStyle := ui.BoldDangerStyle()
 		_, _ = fmt.Fprintln(stdout)
 		_, _ = fmt.Fprintln(stdout, errorStyle.Render("Command failed: ")+err.Error())
 		_, _ = fmt.Fprintln(stdout)

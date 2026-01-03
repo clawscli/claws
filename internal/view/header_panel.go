@@ -48,7 +48,7 @@ func newHeaderPanelStyles() headerPanelStyles {
 		panel:     lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder()).BorderForeground(t.Border).Padding(0, 1),
 		label:     lipgloss.NewStyle().Foreground(t.TextDim),
 		value:     lipgloss.NewStyle().Foreground(t.Text),
-		accent:    lipgloss.NewStyle().Foreground(t.Accent).Bold(true),
+		accent:    ui.HighlightStyle(),
 		dim:       lipgloss.NewStyle().Foreground(t.TextMuted),
 		separator: lipgloss.NewStyle().Foreground(t.Border),
 	}

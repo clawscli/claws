@@ -30,7 +30,7 @@ func newCommandInputStyles() commandInputStyles {
 	return commandInputStyles{
 		input:      lipgloss.NewStyle().Background(t.Background).Foreground(t.Text).Padding(0, 1),
 		suggestion: lipgloss.NewStyle().Foreground(t.TextDim),
-		highlight:  lipgloss.NewStyle().Bold(true).Foreground(t.Accent),
+		highlight:  ui.HighlightStyle(),
 	}
 }
 

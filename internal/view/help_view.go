@@ -20,7 +20,7 @@ func newHelpViewStyles() helpViewStyles {
 	t := ui.Current()
 	return helpViewStyles{
 		title:   ui.TitleStyle(),
-		section: lipgloss.NewStyle().Bold(true).Foreground(t.Secondary).MarginTop(1),
+		section: ui.SectionStyle().MarginTop(1),
 		key:     lipgloss.NewStyle().Foreground(t.Success).Width(15),
 		desc:    lipgloss.NewStyle().Foreground(t.Text),
 	}

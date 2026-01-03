@@ -246,7 +246,7 @@ func (d *DashboardView) computeRowFromContentLine(panelIdx, lineY int) int {
 		line := 0
 		if len(d.alarms) > 0 {
 			line++
-			for i := 0; i < len(d.alarms); i++ {
+			for i := range d.alarms {
 				if lineY == line {
 					return i
 				}
@@ -258,7 +258,7 @@ func (d *DashboardView) computeRowFromContentLine(panelIdx, lineY int) int {
 		if len(d.healthItems) > 0 {
 			line++
 			alarmCount := len(d.alarms)
-			for i := 0; i < len(d.healthItems); i++ {
+			for i := range d.healthItems {
 				if lineY == line {
 					return alarmCount + i
 				}
