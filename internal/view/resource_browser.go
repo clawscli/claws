@@ -3,6 +3,7 @@ package view
 import (
 	"context"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 	"time"
@@ -407,10 +408,7 @@ func (r *ResourceBrowser) GetTagKeys() []string {
 		}
 	}
 
-	keys := make([]string, 0, len(keySet))
-	for key := range keySet {
-		keys = append(keys, key)
-	}
+	keys := slices.Collect(maps.Keys(keySet))
 	slices.Sort(keys)
 	return keys
 }
@@ -432,10 +430,7 @@ func (r *ResourceBrowser) GetTagValues(key string) []string {
 		}
 	}
 
-	values := make([]string, 0, len(valueSet))
-	for value := range valueSet {
-		values = append(values, value)
-	}
+	values := slices.Collect(maps.Keys(valueSet))
 	slices.Sort(values)
 	return values
 }

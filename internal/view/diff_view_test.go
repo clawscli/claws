@@ -112,7 +112,7 @@ func TestDiffView_View_NotReady(t *testing.T) {
 
 	// Without SetSize, should show loading
 	view := dv.ViewString()
-	if view != "Loading..." {
-		t.Errorf("ViewString() = %q, want 'Loading...'", view)
+	if view != LoadingMessage {
+		t.Errorf("ViewString() = %q, want %q", view, LoadingMessage)
 	}
 }

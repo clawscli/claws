@@ -1,6 +1,7 @@
 package action
 
 import (
+	"cmp"
 	"fmt"
 	"io"
 	"os"
@@ -18,9 +19,7 @@ import (
 
 func setAWSEnv(cmd *exec.Cmd, region string) {
 	cfg := config.Global()
-	if region == "" {
-		region = cfg.Region()
-	}
+	region = cmp.Or(region, cfg.Region())
 	cmd.Env = aws.BuildSubprocessEnv(cmd.Env, cfg.Selection(), region)
 }
 

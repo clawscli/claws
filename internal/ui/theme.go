@@ -143,6 +143,11 @@ func BoldPendingStyle() lipgloss.Style {
 	return lipgloss.NewStyle().Bold(true).Foreground(current.Pending)
 }
 
+// AccentStyle returns a style for accent-colored text (non-bold)
+func AccentStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(current.Accent)
+}
+
 // MutedStyle returns a style for very dim/muted text
 func MutedStyle() lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(current.TextMuted)

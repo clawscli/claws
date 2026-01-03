@@ -24,13 +24,12 @@ type selectorStyles struct {
 }
 
 func newSelectorStyles() selectorStyles {
-	t := ui.Current()
 	return selectorStyles{
 		title:        ui.TableHeaderStyle().Padding(0, 1),
 		item:         lipgloss.NewStyle().PaddingLeft(2),
 		itemSelected: ui.SelectedStyle().PaddingLeft(2),
 		itemChecked:  ui.SuccessStyle().PaddingLeft(2),
-		filter:       lipgloss.NewStyle().Foreground(t.Accent),
+		filter:       ui.AccentStyle(),
 	}
 }
 

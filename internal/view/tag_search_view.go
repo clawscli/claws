@@ -3,7 +3,8 @@ package view
 import (
 	"context"
 	"fmt"
-	"sort"
+	"maps"
+	"slices"
 	"strings"
 	"sync"
 
@@ -683,11 +684,8 @@ func (v *TagSearchView) GetTagKeys() []string {
 		}
 	}
 
-	keys := make([]string, 0, len(keySet))
-	for key := range keySet {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
+	keys := slices.Collect(maps.Keys(keySet))
+	slices.Sort(keys)
 	return keys
 }
 
@@ -703,11 +701,8 @@ func (v *TagSearchView) GetTagValues(key string) []string {
 		}
 	}
 
-	values := make([]string, 0, len(valueSet))
-	for val := range valueSet {
-		values = append(values, val)
-	}
-	sort.Strings(values)
+	values := slices.Collect(maps.Keys(valueSet))
+	slices.Sort(values)
 	return values
 }
 
@@ -716,11 +711,8 @@ func formatTags(tags map[string]string, maxLen int) string {
 		return ""
 	}
 
-	keys := make([]string, 0, len(tags))
-	for k := range tags {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
+	keys := slices.Collect(maps.Keys(tags))
+	slices.Sort(keys)
 
 	var parts []string
 	for _, k := range keys {

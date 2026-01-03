@@ -66,8 +66,8 @@ func renderBar(value, maxVal float64, width int, t *ui.Theme) string {
 	ratio := min(value/maxVal, 1.0)
 	filled := min(max(int(ratio*float64(width)), 0), width)
 
-	barStyle := lipgloss.NewStyle().Foreground(t.Accent)
-	emptyStyle := lipgloss.NewStyle().Foreground(t.TextMuted)
+	barStyle := ui.AccentStyle()
+	emptyStyle := ui.MutedStyle()
 
 	return barStyle.Render(strings.Repeat("█", filled)) +
 		emptyStyle.Render(strings.Repeat("░", width-filled))

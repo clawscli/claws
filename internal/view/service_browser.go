@@ -39,8 +39,6 @@ type ServiceBrowser struct {
 
 	cursor int // Current selection index in flatItems
 	cols   int // Number of columns in grid
-	width  int
-	height int
 
 	// Mouse hit testing - populated during render
 	itemPositions []itemPosition
@@ -595,9 +593,6 @@ func (s *ServiceBrowser) renderCell(item serviceItem, selected bool) string {
 
 // SetSize implements View
 func (s *ServiceBrowser) SetSize(width, height int) tea.Cmd {
-	s.width = width
-	s.height = height
-
 	// Set header panel width
 	s.headerPanel.SetWidth(width)
 
