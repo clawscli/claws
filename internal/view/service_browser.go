@@ -88,9 +88,7 @@ type serviceBrowserStyles struct {
 func newServiceBrowserStyles() serviceBrowserStyles {
 	t := ui.Current()
 	return serviceBrowserStyles{
-		title: lipgloss.NewStyle().
-			Background(t.TableHeader).
-			Foreground(t.TableHeaderText).
+		title: ui.TableHeaderStyle().
 			Padding(0, 1).
 			MarginBottom(1),
 		category: lipgloss.NewStyle().
@@ -102,11 +100,10 @@ func newServiceBrowserStyles() serviceBrowserStyles {
 			Width(cellWidth).
 			Height(cellHeight).
 			Padding(0, 1),
-		cellSelected: lipgloss.NewStyle().
+		cellSelected: ui.SelectedStyle().
 			Width(cellWidth).
 			Height(cellHeight).
-			Padding(0, 1).
-			Background(t.Selection),
+			Padding(0, 1),
 		serviceName: lipgloss.NewStyle().
 			Bold(true).
 			Foreground(t.Text),
@@ -383,12 +380,7 @@ func (s *ServiceBrowser) updateViewport() {
 		s.vp.Model.SetYOffset(max(0, targetLine-2))
 	} else if targetLine > currentTop+vpHeight-cellHeight {
 		newOffset := targetLine - vpHeight + cellHeight + 2
-		if newOffset > totalLines-vpHeight {
-			newOffset = totalLines - vpHeight
-		}
-		if newOffset < 0 {
-			newOffset = 0
-		}
+		newOffset = max(0, min(newOffset, totalLines-vpHeight))
 		s.vp.Model.SetYOffset(newOffset)
 	}
 }
@@ -537,9 +529,9 @@ func (s *ServiceBrowser) renderContent() string {
 
 		// Render services in grid
 		rows := (len(catItems) + s.cols - 1) / s.cols
-		for row := 0; row < rows; row++ {
+		for row := range rows {
 			var cells []string
-			for col := 0; col < s.cols; col++ {
+			for col := range s.cols {
 				idx := row*s.cols + col
 				if idx < len(catItems) {
 					selected := globalIdx+idx == s.cursor
@@ -550,7 +542,7 @@ func (s *ServiceBrowser) renderContent() string {
 			rowHeight := strings.Count(rowContent, "\n") + 1 // +1 for the line after
 
 			// Record positions for items in this row
-			for col := 0; col < s.cols; col++ {
+			for col := range s.cols {
 				idx := row*s.cols + col
 				if idx < len(catItems) {
 					s.itemPositions = append(s.itemPositions, itemPosition{
@@ -615,22 +607,13 @@ func (s *ServiceBrowser) SetSize(width, height int) tea.Cmd {
 	s.headerPanel.SetWidth(width)
 
 	// Calculate columns based on width
-	s.cols = (width - cellPaddingX) / cellWidth
-	if s.cols < minColumns {
-		s.cols = minColumns
-	}
-	if s.cols > maxColumns {
-		s.cols = maxColumns
-	}
+	s.cols = max(minColumns, min((width-cellPaddingX)/cellWidth, maxColumns))
 
 	// Calculate header height dynamically
 	headerStr := s.headerPanel.RenderHome()
 	headerHeight := s.headerPanel.Height(headerStr)
 
-	vpHeight := height - headerHeight + 1
-	if vpHeight < 5 {
-		vpHeight = 5
-	}
+	vpHeight := max(height-headerHeight+1, 5)
 
 	s.vp.SetSize(width, vpHeight)
 	s.vp.Model.SetContent(s.renderContent())

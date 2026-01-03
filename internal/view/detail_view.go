@@ -205,10 +205,7 @@ func (d *DetailView) SetSize(width, height int) tea.Cmd {
 	headerStr := d.headerPanel.Render(d.service, d.resType, summaryFields)
 	headerHeight := d.headerPanel.Height(headerStr)
 
-	viewportHeight := height - headerHeight + 1
-	if viewportHeight < 5 {
-		viewportHeight = 5
-	}
+	viewportHeight := max(height-headerHeight+1, 5)
 
 	d.vp.SetSize(width, viewportHeight)
 

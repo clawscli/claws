@@ -96,10 +96,7 @@ func (d *DiffView) SetSize(width, height int) tea.Cmd {
 
 	// Reserve space for header
 	headerHeight := 3
-	viewportHeight := height - headerHeight
-	if viewportHeight < 5 {
-		viewportHeight = 5
-	}
+	viewportHeight := max(height-headerHeight, 5)
 
 	d.vp.SetSize(width, viewportHeight)
 
@@ -151,12 +148,9 @@ func (d *DiffView) renderSideBySide() string {
 	out.WriteString("\n")
 
 	// Render side by side
-	maxLines := len(leftLines)
-	if len(rightLines) > maxLines {
-		maxLines = len(rightLines)
-	}
+	maxLines := max(len(leftLines), len(rightLines))
 
-	for i := 0; i < maxLines; i++ {
+	for i := range maxLines {
 		leftLine := ""
 		rightLine := ""
 
