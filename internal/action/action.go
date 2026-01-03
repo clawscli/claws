@@ -55,15 +55,17 @@ const (
 	ConfirmDangerous
 )
 
-// Action names - used for read-only allowlist and cross-package references
 const (
 	ActionNameSSOLogin = "SSO Login"
-	ActionNameLogin    = "Login" // :login command - console login
+	ActionNameLogin    = "Login"
 
-	// Read-only safe exec actions (read-only operations)
 	ActionNameTailLogs      = "Tail Logs"
 	ActionNameViewRecent1h  = "View Recent (1h)"
 	ActionNameViewRecent24h = "View Recent (24h)"
+)
+
+const (
+	ViewTargetLogView = "log-view"
 )
 
 type Action struct {

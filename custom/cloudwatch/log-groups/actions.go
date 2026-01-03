@@ -16,20 +16,8 @@ func init() {
 		{
 			Name:     action.ActionNameTailLogs,
 			Shortcut: "t",
-			Type:     action.ActionTypeExec,
-			Command:  `aws logs tail "${ID}" --since 1h --follow`,
-		},
-		{
-			Name:     action.ActionNameViewRecent1h,
-			Shortcut: "1",
-			Type:     action.ActionTypeExec,
-			Command:  `aws logs tail "${ID}" --since 1h | less -R`,
-		},
-		{
-			Name:     action.ActionNameViewRecent24h,
-			Shortcut: "2",
-			Type:     action.ActionTypeExec,
-			Command:  `aws logs tail "${ID}" --since 24h | less -R`,
+			Type:     action.ActionTypeView,
+			Target:   action.ViewTargetLogView,
 		},
 		{
 			Name:      "Delete",

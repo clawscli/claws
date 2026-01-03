@@ -12,25 +12,12 @@ import (
 )
 
 func init() {
-	// Register actions for CloudWatch Log Streams
 	action.Global.Register("cloudwatch", "log-streams", []action.Action{
 		{
 			Name:     action.ActionNameTailLogs,
 			Shortcut: "t",
-			Type:     action.ActionTypeExec,
-			Command:  `aws logs tail "${LOG_GROUP}" --log-stream-names "${NAME}" --since 1h --follow`,
-		},
-		{
-			Name:     action.ActionNameViewRecent1h,
-			Shortcut: "1",
-			Type:     action.ActionTypeExec,
-			Command:  `aws logs tail "${LOG_GROUP}" --log-stream-names "${NAME}" --since 1h | less -R`,
-		},
-		{
-			Name:     action.ActionNameViewRecent24h,
-			Shortcut: "2",
-			Type:     action.ActionTypeExec,
-			Command:  `aws logs tail "${LOG_GROUP}" --log-stream-names "${NAME}" --since 24h | less -R`,
+			Type:     action.ActionTypeView,
+			Target:   action.ViewTargetLogView,
 		},
 		{
 			Name:      "Delete",

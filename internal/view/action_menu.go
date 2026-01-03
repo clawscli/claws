@@ -245,11 +245,9 @@ func (m *ActionMenu) getConfirmToken(act action.Action) string {
 }
 
 func (m *ActionMenu) executeAction(act action.Action) (tea.Model, tea.Cmd) {
-	if act.Type == action.ActionTypeExec {
-		// Record action for post-exec follow-up handling
+	switch act.Type {
+	case action.ActionTypeExec:
 		m.lastExecAction = &act
-
-		// For exec actions, use tea.Exec to suspend bubbletea
 		execCmd, err := action.ExpandVariables(act.Command, m.resource)
 		if err != nil {
 			return m, func() tea.Msg {
@@ -271,18 +269,55 @@ func (m *ActionMenu) executeAction(act action.Action) (tea.Model, tea.Cmd) {
 			}
 			return execResultMsg{success: true, message: "Session ended"}
 		})
+
+	case action.ActionTypeView:
+		return m.executeViewAction(act)
+
+	default:
+		result := action.ExecuteWithDAO(m.ctx, act, m.resource, m.service, m.resType)
+		m.result = &result
+		if result.FollowUpMsg != nil {
+			log.Debug("action has follow-up message", "action", act.Name, "msgType", fmt.Sprintf("%T", result.FollowUpMsg))
+			return m, func() tea.Msg { return result.FollowUpMsg }
+		}
+		return m, nil
+	}
+}
+
+func (m *ActionMenu) executeViewAction(act action.Action) (tea.Model, tea.Cmd) {
+	switch act.Target {
+	case action.ViewTargetLogView:
+		return m.openLogView()
+	default:
+		m.result = &action.ActionResult{
+			Success: false,
+			Error:   fmt.Errorf("unknown view target: %s", act.Target),
+		}
+		return m, nil
+	}
+}
+
+func (m *ActionMenu) openLogView() (tea.Model, tea.Cmd) {
+	var logView *LogView
+
+	if provider, ok := m.resource.(action.LogGroupNameProvider); ok {
+		logGroupName := provider.LogGroupName()
+		if streamProvider, ok := m.resource.(logStreamNameProvider); ok {
+			logView = NewLogViewWithStream(m.ctx, logGroupName, streamProvider.LogStreamName())
+		} else {
+			logView = NewLogView(m.ctx, logGroupName)
+		}
+	} else {
+		logView = NewLogView(m.ctx, m.resource.GetID())
 	}
 
-	// For other actions, execute directly
-	result := action.ExecuteWithDAO(m.ctx, act, m.resource, m.service, m.resType)
-	m.result = &result
-
-	// If action has a follow-up message, send it
-	if result.FollowUpMsg != nil {
-		log.Debug("action has follow-up message", "action", act.Name, "msgType", fmt.Sprintf("%T", result.FollowUpMsg))
-		return m, func() tea.Msg { return result.FollowUpMsg }
+	return m, func() tea.Msg {
+		return NavigateMsg{View: logView}
 	}
-	return m, nil
+}
+
+type logStreamNameProvider interface {
+	LogStreamName() string
 }
 
 // execResultMsg is sent when an exec action completes
