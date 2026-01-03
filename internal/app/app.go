@@ -83,6 +83,7 @@ type App struct {
 	profileRefreshError error
 
 	modal         *view.Modal
+	modalStack    []*view.Modal
 	modalRenderer *view.ModalRenderer
 
 	styles appStyles
@@ -323,11 +324,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case navmsg.RegionChangedMsg:
 		log.Info("regions changed", "regions", msg.Regions)
 		if config.File().PersistenceEnabled() {
-			profile := ""
-			if sel := config.Global().Selection(); sel.IsNamedProfile() {
-				profile = sel.ProfileName
-			}
-			config.File().SetStartup(msg.Regions, profile)
+			_, existingProfile := config.File().GetStartup()
+			config.File().SetStartup(msg.Regions, existingProfile)
 			if err := config.File().Save(); err != nil {
 				log.Warn("failed to persist config", "error", err)
 			}
@@ -357,8 +355,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(msg.Selections) > 0 && msg.Selections[0].IsNamedProfile() {
 				profile = msg.Selections[0].ProfileName
 			}
-			regions := config.Global().Regions()
-			config.File().SetStartup(regions, profile)
+			existingRegions, _ := config.File().GetStartup()
+			config.File().SetStartup(existingRegions, profile)
 			if err := config.File().Save(); err != nil {
 				log.Warn("failed to persist config", "error", err)
 			}
@@ -384,10 +382,6 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		for len(a.viewStack) > 0 {
 			a.currentView = a.viewStack[len(a.viewStack)-1]
 			a.viewStack = a.viewStack[:len(a.viewStack)-1]
-
-			if _, ok := a.currentView.(*view.ProfileSelector); ok {
-				continue
-			}
 
 			if r, ok := a.currentView.(view.Refreshable); ok && r.CanRefresh() {
 				cmds = append(cmds,
@@ -513,11 +507,18 @@ func (a *App) renderWarnings() string {
 func (a *App) handleModalUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case view.HideModalMsg:
-		a.modal = nil
-		return a, nil
+		return a.popModal()
+
+	case view.ShowModalMsg:
+		if a.modal != nil {
+			a.modalStack = append(a.modalStack, a.modal)
+		}
+		a.modal = msg.Modal
+		return a, a.modal.SetSize(a.width, a.height)
 
 	case view.NavigateMsg:
 		a.modal = nil
+		a.modalStack = nil
 		log.Debug("modal navigate", "clearStack", msg.ClearStack, "stackDepth", len(a.viewStack))
 		if msg.ClearStack {
 			a.viewStack = nil
@@ -532,10 +533,12 @@ func (a *App) handleModalUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case navmsg.RegionChangedMsg:
 		a.modal = nil
+		a.modalStack = nil
 		return a.Update(msg)
 
 	case navmsg.ProfilesChangedMsg:
 		a.modal = nil
+		a.modalStack = nil
 		return a.Update(msg)
 
 	case tea.KeyPressMsg:
@@ -543,8 +546,7 @@ func (a *App) handleModalUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if ic, ok := a.modal.Content.(view.InputCapture); ok && ic.HasActiveInput() {
 				break
 			}
-			a.modal = nil
-			return a, nil
+			return a.popModal()
 		}
 
 	case tea.WindowSizeMsg:
@@ -562,6 +564,16 @@ func (a *App) handleModalUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 	modal, cmd := a.modal.Update(msg)
 	a.modal = modal
 	return a, cmd
+}
+
+func (a *App) popModal() (tea.Model, tea.Cmd) {
+	if len(a.modalStack) > 0 {
+		a.modal = a.modalStack[len(a.modalStack)-1]
+		a.modalStack = a.modalStack[:len(a.modalStack)-1]
+		return a, a.modal.SetSize(a.width, a.height)
+	}
+	a.modal = nil
+	return a, nil
 }
 
 type keyMap struct {

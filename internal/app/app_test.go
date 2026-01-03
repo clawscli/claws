@@ -522,6 +522,39 @@ func TestMessageClosesModal(t *testing.T) {
 	}
 }
 
+func TestModalStackPushPop(t *testing.T) {
+	app := newTestApp(t)
+	app.currentView = &MockView{name: "Dashboard"}
+
+	parentModal := &view.Modal{Content: &MockView{name: "ParentModal"}}
+	app.modal = parentModal
+
+	childModal := &view.Modal{Content: &MockView{name: "ChildModal"}}
+	app.Update(view.ShowModalMsg{Modal: childModal})
+
+	if app.modal.Content.StatusLine() != "ChildModal" {
+		t.Errorf("Expected ChildModal, got %s", app.modal.Content.StatusLine())
+	}
+	if len(app.modalStack) != 1 {
+		t.Errorf("Expected modalStack length 1, got %d", len(app.modalStack))
+	}
+
+	app.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+
+	if app.modal.Content.StatusLine() != "ParentModal" {
+		t.Errorf("Expected ParentModal after esc, got %s", app.modal.Content.StatusLine())
+	}
+	if len(app.modalStack) != 0 {
+		t.Errorf("Expected empty modalStack, got %d", len(app.modalStack))
+	}
+
+	app.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+
+	if app.modal != nil {
+		t.Error("Expected modal nil after second esc")
+	}
+}
+
 func TestWarningScreenDismissal(t *testing.T) {
 	tests := []struct {
 		name string

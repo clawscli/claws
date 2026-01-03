@@ -143,7 +143,7 @@ func (d *DetailView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if actions := action.Global.Get(d.service, d.resType); len(actions) > 0 {
 				actionMenu := NewActionMenu(d.ctx, dao.UnwrapResource(d.resource), d.service, d.resType)
 				return d, func() tea.Msg {
-					return ShowModalMsg{Modal: &Modal{Content: actionMenu}}
+					return ShowModalMsg{Modal: &Modal{Content: actionMenu, Width: ModalWidthActionMenu}}
 				}
 			}
 		}
