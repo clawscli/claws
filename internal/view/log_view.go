@@ -18,6 +18,8 @@ import (
 	"github.com/clawscli/claws/internal/ui"
 )
 
+const defaultLogPollInterval = 3 * time.Second
+
 type LogView struct {
 	ctx           context.Context
 	client        *cloudwatchlogs.Client
@@ -75,7 +77,7 @@ func NewLogView(ctx context.Context, logGroupName string) *LogView {
 		styles:       newLogViewStyles(),
 		logs:         make([]logEntry, 0, 500),
 		loading:      true,
-		pollInterval: 3 * time.Second,
+		pollInterval: defaultLogPollInterval,
 	}
 }
 
@@ -86,8 +88,9 @@ func NewLogViewWithStream(ctx context.Context, logGroupName, logStreamName strin
 }
 
 type logsLoadedMsg struct {
-	entries []logEntry
-	err     error
+	entries       []logEntry
+	lastEventTime int64
+	err           error
 }
 
 type logTickMsg time.Time
@@ -105,10 +108,18 @@ func (v *LogView) initClient() tea.Msg {
 		return logsLoadedMsg{err: fmt.Errorf("init AWS config: %w", err)}
 	}
 	v.client = cloudwatchlogs.NewFromConfig(cfg)
-	return v.fetchLogs()
+	return v.fetchLogs(v.lastEventTime)
 }
 
-func (v *LogView) fetchLogs() tea.Msg {
+// fetchLogsCmd captures lastEventTime to avoid data race in the command goroutine.
+func (v *LogView) fetchLogsCmd() tea.Cmd {
+	startTime := v.lastEventTime
+	return func() tea.Msg {
+		return v.fetchLogs(startTime)
+	}
+}
+
+func (v *LogView) fetchLogs(startTime int64) tea.Msg {
 	if v.client == nil {
 		return logsLoadedMsg{err: fmt.Errorf("client not initialized")}
 	}
@@ -122,8 +133,8 @@ func (v *LogView) fetchLogs() tea.Msg {
 		input.LogStreamNames = []string{v.logStreamName}
 	}
 
-	if v.lastEventTime > 0 {
-		input.StartTime = aws.Int64(v.lastEventTime + 1)
+	if startTime > 0 {
+		input.StartTime = aws.Int64(startTime + 1)
 	} else {
 		input.StartTime = aws.Int64(time.Now().Add(-1 * time.Hour).UnixMilli())
 	}
@@ -133,6 +144,7 @@ func (v *LogView) fetchLogs() tea.Msg {
 		return logsLoadedMsg{err: fmt.Errorf("filter log events: %w", err)}
 	}
 
+	var maxEventTime int64
 	entries := make([]logEntry, 0, len(output.Events))
 	for _, event := range output.Events {
 		ts := time.UnixMilli(aws.ToInt64(event.Timestamp))
@@ -141,12 +153,12 @@ func (v *LogView) fetchLogs() tea.Msg {
 			timestamp: ts,
 			message:   strings.TrimSuffix(msg, "\n"),
 		})
-		if aws.ToInt64(event.Timestamp) > v.lastEventTime {
-			v.lastEventTime = aws.ToInt64(event.Timestamp)
+		if eventTs := aws.ToInt64(event.Timestamp); eventTs > maxEventTime {
+			maxEventTime = eventTs
 		}
 	}
 
-	return logsLoadedMsg{entries: entries}
+	return logsLoadedMsg{entries: entries, lastEventTime: maxEventTime}
 }
 
 func (v *LogView) tickCmd() tea.Cmd {
@@ -162,6 +174,9 @@ func (v *LogView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			v.err = msg.err
 			return v, nil
+		}
+		if msg.lastEventTime > v.lastEventTime {
+			v.lastEventTime = msg.lastEventTime
 		}
 		if len(msg.entries) > 0 {
 			v.logs = append(v.logs, msg.entries...)
@@ -180,7 +195,7 @@ func (v *LogView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if v.paused {
 			return v, nil
 		}
-		return v, func() tea.Msg { return v.fetchLogs() }
+		return v, v.fetchLogsCmd()
 
 	case tea.KeyPressMsg:
 		switch msg.String() {
