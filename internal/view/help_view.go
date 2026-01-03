@@ -17,12 +17,11 @@ type helpViewStyles struct {
 }
 
 func newHelpViewStyles() helpViewStyles {
-	t := ui.Current()
 	return helpViewStyles{
 		title:   ui.TitleStyle(),
 		section: ui.SectionStyle().MarginTop(1),
 		key:     ui.SuccessStyle().Width(15),
-		desc:    lipgloss.NewStyle().Foreground(t.Text),
+		desc:    ui.TextStyle(),
 	}
 }
 

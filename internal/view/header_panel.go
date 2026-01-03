@@ -48,10 +48,10 @@ func newHeaderPanelStyles() headerPanelStyles {
 	return headerPanelStyles{
 		panel:     lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder()).BorderForeground(t.Border).Padding(0, 1),
 		label:     ui.DimStyle(),
-		value:     lipgloss.NewStyle().Foreground(t.Text),
+		value:     ui.TextStyle(),
 		accent:    ui.HighlightStyle(),
 		dim:       ui.MutedStyle(),
-		separator: lipgloss.NewStyle().Foreground(t.Border),
+		separator: ui.BorderStyle(),
 	}
 }
 

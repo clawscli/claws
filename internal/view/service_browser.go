@@ -72,7 +72,6 @@ type flatItem struct {
 }
 
 type serviceBrowserStyles struct {
-	title         lipgloss.Style
 	category      lipgloss.Style
 	cell          lipgloss.Style
 	cellSelected  lipgloss.Style
@@ -84,11 +83,7 @@ type serviceBrowserStyles struct {
 }
 
 func newServiceBrowserStyles() serviceBrowserStyles {
-	t := ui.Current()
 	return serviceBrowserStyles{
-		title: ui.TableHeaderStyle().
-			Padding(0, 1).
-			MarginBottom(1),
 		category: ui.DimStyle().
 			Bold(true).
 			MarginTop(1).
@@ -101,14 +96,11 @@ func newServiceBrowserStyles() serviceBrowserStyles {
 			Width(cellWidth).
 			Height(cellHeight).
 			Padding(0, 1),
-		serviceName: lipgloss.NewStyle().
-			Bold(true).
-			Foreground(t.Text),
+		serviceName:   ui.TextStyle().Bold(true),
 		serviceNameSe: ui.TitleStyle(),
 		aliases:       ui.DimStyle(),
 		aliasesSel:    ui.DimStyle(),
-		filterPrompt: lipgloss.NewStyle().
-			Foreground(t.Primary),
+		filterPrompt:  ui.PrimaryStyle(),
 	}
 }
 

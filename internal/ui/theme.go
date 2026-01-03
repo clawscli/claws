@@ -153,6 +153,26 @@ func MutedStyle() lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(current.TextMuted)
 }
 
+// TextStyle returns a style for normal text
+func TextStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(current.Text)
+}
+
+// SecondaryStyle returns a style for secondary-colored text
+func SecondaryStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(current.Secondary)
+}
+
+// BorderStyle returns a style for border-colored text (separators)
+func BorderStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(current.Border)
+}
+
+// PrimaryStyle returns a style for primary-colored text (non-bold)
+func PrimaryStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(current.Primary)
+}
+
 func NewSpinner() spinner.Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot

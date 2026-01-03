@@ -64,11 +64,10 @@ type logViewStyles struct {
 }
 
 func newLogViewStyles() logViewStyles {
-	t := ui.Current()
 	return logViewStyles{
 		header:    ui.TitleStyle(),
-		timestamp: lipgloss.NewStyle().Foreground(t.Secondary),
-		message:   lipgloss.NewStyle().Foreground(t.Text),
+		timestamp: ui.SecondaryStyle(),
+		message:   ui.TextStyle(),
 		paused:    ui.BoldWarningStyle(),
 		error:     ui.DangerStyle(),
 		dim:       ui.DimStyle(),

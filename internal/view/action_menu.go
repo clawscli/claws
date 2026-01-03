@@ -39,7 +39,7 @@ func newActionMenuStyles() actionMenuStyles {
 		title:     ui.TitleStyle(),
 		item:      lipgloss.NewStyle().PaddingLeft(2),
 		selected:  ui.SelectedStyle().PaddingLeft(2),
-		shortcut:  lipgloss.NewStyle().Foreground(t.Secondary),
+		shortcut:  ui.SecondaryStyle(),
 		box:       lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(t.Border).Padding(0, 1).MarginTop(1),
 		dangerBox: lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(t.Danger).Padding(0, 1).MarginTop(1),
 		yes:       ui.BoldSuccessStyle(),

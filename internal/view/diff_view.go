@@ -28,7 +28,6 @@ type DiffView struct {
 type diffViewStyles struct {
 	title     lipgloss.Style
 	header    lipgloss.Style
-	content   lipgloss.Style
 	separator lipgloss.Style
 }
 
@@ -37,7 +36,6 @@ func newDiffViewStyles() diffViewStyles {
 	return diffViewStyles{
 		title:     ui.TitleStyle(),
 		header:    ui.SectionStyle(),
-		content:   lipgloss.NewStyle().Foreground(t.Text),
 		separator: lipgloss.NewStyle().Foreground(t.TableBorder),
 	}
 }

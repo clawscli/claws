@@ -25,11 +25,10 @@ type detailViewStyles struct {
 }
 
 func newDetailViewStyles() detailViewStyles {
-	t := ui.Current()
 	return detailViewStyles{
 		title: ui.TitleStyle(),
 		label: ui.DimStyle().Width(15),
-		value: lipgloss.NewStyle().Foreground(t.Text),
+		value: ui.TextStyle(),
 	}
 }
 
