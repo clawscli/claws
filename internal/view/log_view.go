@@ -197,9 +197,9 @@ func (v *LogView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if msg.throttled {
 				v.pollInterval = min(v.pollInterval*2, maxLogPollInterval)
 				log.Info("throttled, backing off", "interval", v.pollInterval)
-			}
-			if !v.paused {
-				return v, v.tickCmd()
+				if !v.paused {
+					return v, v.tickCmd()
+				}
 			}
 			return v, nil
 		}
