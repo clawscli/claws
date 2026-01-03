@@ -116,6 +116,9 @@ func (v *LogView) Init() tea.Cmd {
 }
 
 func (v *LogView) initClient() tea.Msg {
+	if err := v.ctx.Err(); err != nil {
+		return logsLoadedMsg{err: err}
+	}
 	cfg, err := appaws.NewConfig(v.ctx)
 	if err != nil {
 		return logsLoadedMsg{err: apperrors.Wrap(err, "init AWS config")}
@@ -347,6 +350,9 @@ func (v *LogView) StatusLine() string {
 	status := "Space:pause/resume g/G:top/bottom c:clear Esc:back"
 	if v.paused {
 		return "⏸ PAUSED • " + status
+	}
+	if v.pollInterval > defaultLogPollInterval {
+		return fmt.Sprintf("⏳ THROTTLED (%ds) • %s", int(v.pollInterval.Seconds()), status)
 	}
 	return "▶ STREAMING • " + status
 }
