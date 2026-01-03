@@ -20,8 +20,14 @@ import (
 	"github.com/clawscli/claws/internal/ui"
 )
 
-const defaultLogPollInterval = 3 * time.Second
+const (
+	defaultLogPollInterval = 3 * time.Second
+	maxLogPollInterval     = 30 * time.Second
+	logFetchTimeout        = 10 * time.Second
+)
 
+// LogView displays CloudWatch Logs with real-time streaming via polling.
+// Supports pause/resume, scroll, and clear operations.
 type LogView struct {
 	ctx           context.Context
 	client        *cloudwatchlogs.Client
@@ -94,6 +100,7 @@ type logsLoadedMsg struct {
 	entries       []logEntry
 	lastEventTime int64
 	err           error
+	throttled     bool
 }
 
 type logTickMsg time.Time
@@ -127,6 +134,9 @@ func (v *LogView) fetchLogs(startTime int64) tea.Msg {
 		return logsLoadedMsg{err: errors.New("client not initialized")}
 	}
 
+	ctx, cancel := context.WithTimeout(v.ctx, logFetchTimeout)
+	defer cancel()
+
 	input := &cloudwatchlogs.FilterLogEventsInput{
 		LogGroupName: appaws.StringPtr(v.logGroupName),
 		Limit:        appaws.Int32Ptr(100),
@@ -142,9 +152,10 @@ func (v *LogView) fetchLogs(startTime int64) tea.Msg {
 		input.StartTime = appaws.Int64Ptr(time.Now().Add(-1 * time.Hour).UnixMilli())
 	}
 
-	output, err := v.client.FilterLogEvents(v.ctx, input)
+	output, err := v.client.FilterLogEvents(ctx, input)
 	if err != nil {
-		return logsLoadedMsg{err: apperrors.Wrap(err, "filter log events")}
+		throttled := apperrors.IsThrottling(err)
+		return logsLoadedMsg{err: apperrors.Wrap(err, "filter log events"), throttled: throttled}
 	}
 
 	var maxEventTime int64
@@ -177,8 +188,16 @@ func (v *LogView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			log.Warn("failed to fetch log events", "error", msg.err)
 			v.err = msg.err
+			if msg.throttled {
+				v.pollInterval = min(v.pollInterval*2, maxLogPollInterval)
+				log.Info("throttled, backing off", "interval", v.pollInterval)
+			}
+			if !v.paused {
+				return v, v.tickCmd()
+			}
 			return v, nil
 		}
+		v.pollInterval = defaultLogPollInterval
 		if msg.lastEventTime > v.lastEventTime {
 			v.lastEventTime = msg.lastEventTime
 		}
