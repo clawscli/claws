@@ -256,6 +256,9 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case view.ShowModalMsg:
+		if a.modal != nil {
+			a.modalStack = append(a.modalStack, a.modal)
+		}
 		a.modal = msg.Modal
 		return a, a.modal.SetSize(a.width, a.height)
 

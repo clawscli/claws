@@ -555,6 +555,64 @@ func TestModalStackPushPop(t *testing.T) {
 	}
 }
 
+func TestShowModalFromNormalState(t *testing.T) {
+	app := newTestApp(t)
+	app.currentView = &MockView{name: "Dashboard"}
+	app.modal = nil
+	app.modalStack = nil
+
+	modal := &view.Modal{Content: &MockView{name: "TestModal"}}
+	app.Update(view.ShowModalMsg{Modal: modal})
+
+	if app.modal == nil {
+		t.Error("Expected modal to be set")
+	}
+	if app.modal.Content.StatusLine() != "TestModal" {
+		t.Errorf("Expected TestModal, got %s", app.modal.Content.StatusLine())
+	}
+	if len(app.modalStack) != 0 {
+		t.Errorf("Expected empty modalStack when showing from normal state, got %d", len(app.modalStack))
+	}
+}
+
+func TestModalStackClearedOnRegionChange(t *testing.T) {
+	app := newTestApp(t)
+	app.currentView = &MockView{name: "Dashboard"}
+
+	parentModal := &view.Modal{Content: &MockView{name: "ParentModal"}}
+	childModal := &view.Modal{Content: &MockView{name: "ChildModal"}}
+	app.modal = childModal
+	app.modalStack = []*view.Modal{parentModal}
+
+	app.Update(navmsg.RegionChangedMsg{Regions: []string{"us-west-2"}})
+
+	if app.modal != nil {
+		t.Error("Expected modal nil after RegionChangedMsg")
+	}
+	if len(app.modalStack) != 0 {
+		t.Errorf("Expected empty modalStack after RegionChangedMsg, got %d", len(app.modalStack))
+	}
+}
+
+func TestModalStackClearedOnProfileChange(t *testing.T) {
+	app := newTestApp(t)
+	app.currentView = &MockView{name: "Dashboard"}
+
+	parentModal := &view.Modal{Content: &MockView{name: "ParentModal"}}
+	childModal := &view.Modal{Content: &MockView{name: "ChildModal"}}
+	app.modal = childModal
+	app.modalStack = []*view.Modal{parentModal}
+
+	app.Update(navmsg.ProfilesChangedMsg{Selections: nil})
+
+	if app.modal != nil {
+		t.Error("Expected modal nil after ProfilesChangedMsg")
+	}
+	if len(app.modalStack) != 0 {
+		t.Errorf("Expected empty modalStack after ProfilesChangedMsg, got %d", len(app.modalStack))
+	}
+}
+
 func TestWarningScreenDismissal(t *testing.T) {
 	tests := []struct {
 		name string

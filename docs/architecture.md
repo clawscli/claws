@@ -311,10 +311,37 @@ ui.DangerStyle()            // Helper for error color
 | Detail View | Detailed resource information with scrolling |
 | Command Mode | `:` command input for navigation and sorting |
 | Filter Mode | `/` search input for filtering |
-| Help View | `?` key bindings reference |
-| Action Menu | `a` available actions for resource |
-| Region Selector | `R` AWS region switching |
-| Profile Selector | `P` AWS profile switching |
+| Help View | `?` key bindings reference (modal) |
+| Action Menu | `a` available actions for resource (modal) |
+| Region Selector | `R` AWS region switching (modal) |
+| Profile Selector | `P` AWS profile switching (modal) |
+
+### Modal System
+
+Some views (Help, Region Selector, Profile Selector, Action Menu) display as modals that overlay the current view rather than pushing to the view stack.
+
+**Key Characteristics:**
+- Modals don't affect the view stack (`viewStack` remains unchanged)
+- Support nesting via modal stack (e.g., Profile Selector → Profile Detail)
+- Dismissed with `esc`, `q`, or `backspace`
+- Automatically cleared on region/profile change
+
+**Modal Stack Flow:**
+```
+┌─────────────────────────────────────────────────────────────┐
+│  ShowModalMsg    →  Push current modal to stack, show new   │
+│  HideModalMsg    →  Pop stack (restore previous or close)   │
+│  NavigateMsg     →  Clear stack, close all modals           │
+│  Region/Profile  →  Clear stack, refresh underlying view    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Width Constants** (`internal/view/modal.go`):
+- `ModalWidthHelp = 70`
+- `ModalWidthRegion = 45`
+- `ModalWidthProfile = 55`
+- `ModalWidthProfileDetail = 65`
+- `ModalWidthActionMenu = 60`
 
 ## Configuration
 
