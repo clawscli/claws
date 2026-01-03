@@ -22,7 +22,7 @@ type VPCDAO struct {
 func NewVPCDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new vpc/vpcs dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &VPCDAO{
 		BaseDAO: dao.NewBaseDAO("vpc", "vpcs"),

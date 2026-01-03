@@ -21,7 +21,7 @@ type VectorIndexDAO struct {
 func NewVectorIndexDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new s3vectors/indexes dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &VectorIndexDAO{
 		BaseDAO: dao.NewBaseDAO("s3vectors", "indexes"),

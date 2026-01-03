@@ -22,7 +22,7 @@ type ParameterDAO struct {
 func NewParameterDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new ssm/parameters dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &ParameterDAO{
 		BaseDAO: dao.NewBaseDAO("ssm", "parameters"),

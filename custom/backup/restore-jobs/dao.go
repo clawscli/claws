@@ -24,7 +24,7 @@ type RestoreJobDAO struct {
 func NewRestoreJobDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new backup/restore-jobs dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &RestoreJobDAO{
 		BaseDAO: dao.NewBaseDAO("backup", "restore-jobs"),

@@ -22,7 +22,7 @@ type FlowDAO struct {
 func NewFlowDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new bedrock-agent/flows dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &FlowDAO{
 		BaseDAO: dao.NewBaseDAO("bedrock-agent", "flows"),

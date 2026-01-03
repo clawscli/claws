@@ -22,7 +22,7 @@ type ResourceDAO struct {
 func NewResourceDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new cfn/resources dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &ResourceDAO{
 		BaseDAO: dao.NewBaseDAO("cloudformation", "resources"),

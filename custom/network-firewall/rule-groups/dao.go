@@ -21,7 +21,7 @@ type RuleGroupDAO struct {
 func NewRuleGroupDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new networkfirewall/rulegroups dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &RuleGroupDAO{
 		BaseDAO: dao.NewBaseDAO("network-firewall", "rule-groups"),

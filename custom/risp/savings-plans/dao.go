@@ -24,7 +24,7 @@ type SavingsPlanDAO struct {
 func NewSavingsPlanDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new risp/savings-plans dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &SavingsPlanDAO{
 		BaseDAO: dao.NewBaseDAO("risp", "savings-plans"),

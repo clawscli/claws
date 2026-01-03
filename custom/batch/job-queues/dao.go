@@ -22,7 +22,7 @@ type JobQueueDAO struct {
 func NewJobQueueDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new batch/job-queues dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &JobQueueDAO{
 		BaseDAO: dao.NewBaseDAO("batch", "job-queues"),

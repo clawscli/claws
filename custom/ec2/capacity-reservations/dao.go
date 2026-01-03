@@ -23,7 +23,7 @@ type CapacityReservationDAO struct {
 func NewCapacityReservationDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new ec2/capacityreservations dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &CapacityReservationDAO{
 		BaseDAO: dao.NewBaseDAO("ec2", "capacity-reservations"),

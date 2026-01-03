@@ -22,7 +22,7 @@ type EndpointDAO struct {
 func NewEndpointDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new sagemaker/endpoints dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &EndpointDAO{
 		BaseDAO: dao.NewBaseDAO("sagemaker", "endpoints"),

@@ -22,7 +22,7 @@ type StateMachineDAO struct {
 func NewStateMachineDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new stepfunctions/state-machines dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &StateMachineDAO{
 		BaseDAO: dao.NewBaseDAO("stepfunctions", "state-machines"),

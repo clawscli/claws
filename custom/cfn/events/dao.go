@@ -22,7 +22,7 @@ type EventDAO struct {
 func NewEventDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new cfn/events dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &EventDAO{
 		BaseDAO: dao.NewBaseDAO("cloudformation", "events"),

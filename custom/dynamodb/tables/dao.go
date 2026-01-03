@@ -23,7 +23,7 @@ type TableDAO struct {
 func NewTableDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new dynamodb/tables dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &TableDAO{
 		BaseDAO: dao.NewBaseDAO("dynamodb", "tables"),

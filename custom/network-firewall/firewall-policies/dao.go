@@ -21,7 +21,7 @@ type FirewallPolicyDAO struct {
 func NewFirewallPolicyDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new networkfirewall/firewallpolicies dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &FirewallPolicyDAO{
 		BaseDAO: dao.NewBaseDAO("network-firewall", "firewall-policies"),

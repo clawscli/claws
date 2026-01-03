@@ -22,7 +22,7 @@ type JobDAO struct {
 func NewJobDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new transcribe/jobs dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &JobDAO{
 		BaseDAO: dao.NewBaseDAO("transcribe", "jobs"),

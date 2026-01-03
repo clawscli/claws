@@ -21,7 +21,7 @@ type GroupDAO struct {
 func NewGroupDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new xray/groups dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &GroupDAO{
 		BaseDAO: dao.NewBaseDAO("xray", "groups"),

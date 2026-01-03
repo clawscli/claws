@@ -23,7 +23,7 @@ type LaunchTemplateDAO struct {
 func NewLaunchTemplateDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new ec2/launchtemplates dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &LaunchTemplateDAO{
 		BaseDAO: dao.NewBaseDAO("ec2", "launch-templates"),

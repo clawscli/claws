@@ -21,7 +21,7 @@ type UserPoolDAO struct {
 func NewUserPoolDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new cognito-idp/user-pools dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &UserPoolDAO{
 		BaseDAO: dao.NewBaseDAO("cognito-idp", "user-pools"),

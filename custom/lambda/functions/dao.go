@@ -22,7 +22,7 @@ type FunctionDAO struct {
 func NewFunctionDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new lambda/functions dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &FunctionDAO{
 		BaseDAO: dao.NewBaseDAO("lambda", "functions"),

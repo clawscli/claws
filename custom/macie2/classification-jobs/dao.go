@@ -22,7 +22,7 @@ type ClassificationJobDAO struct {
 func NewClassificationJobDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new macie/classificationjobs dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &ClassificationJobDAO{
 		BaseDAO: dao.NewBaseDAO("macie2", "classification-jobs"),

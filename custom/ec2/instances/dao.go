@@ -24,7 +24,7 @@ type InstanceDAO struct {
 func NewInstanceDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new ec2/instances dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &InstanceDAO{
 		BaseDAO:   dao.NewBaseDAO("ec2", "instances"),

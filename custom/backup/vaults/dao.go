@@ -22,7 +22,7 @@ type VaultDAO struct {
 func NewVaultDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new backup/vaults dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &VaultDAO{
 		BaseDAO: dao.NewBaseDAO("backup", "vaults"),

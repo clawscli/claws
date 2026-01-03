@@ -44,6 +44,29 @@ func main() {
 	}
 
 	fmt.Printf("Generated %s with %d imports\n", outputFileName, len(packages))
+
+	constantsCount, err := generateConstantsFiles(projectRoot, packages)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error generating constants files: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Generated %d constants.go files\n", constantsCount)
+}
+
+func generateConstantsFiles(projectRoot string, packages []string) (int, error) {
+	count := 0
+	for _, pkg := range packages {
+		info := genimports.GetPackageInfo(projectRoot, pkg)
+		content := genimports.GenerateConstantsFile(info.PackageName, info.Service, info.Resource)
+
+		outputPath := filepath.Join(projectRoot, info.DirPath, "constants.go")
+		if err := os.WriteFile(outputPath, content, 0o644); err != nil {
+			return count, fmt.Errorf("write %s: %w", outputPath, err)
+		}
+		count++
+	}
+	return count, nil
 }
 
 func generateImportsFile(grouped map[string][]string) []byte {

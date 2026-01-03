@@ -21,7 +21,7 @@ type ConfigurationDAO struct {
 func NewConfigurationDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new licensemanager/configurations dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &ConfigurationDAO{
 		BaseDAO: dao.NewBaseDAO("license-manager", "configurations"),

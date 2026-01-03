@@ -22,7 +22,7 @@ type SecurityGroupDAO struct {
 func NewSecurityGroupDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new ec2/securitygroups dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &SecurityGroupDAO{
 		BaseDAO: dao.NewBaseDAO("ec2", "security-groups"),

@@ -21,7 +21,7 @@ type StreamDAO struct {
 func NewStreamDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new kinesis/streams dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &StreamDAO{
 		BaseDAO: dao.NewBaseDAO("kinesis", "streams"),

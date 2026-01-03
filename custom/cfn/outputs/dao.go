@@ -22,7 +22,7 @@ type OutputDAO struct {
 func NewOutputDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new cfn/outputs dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &OutputDAO{
 		BaseDAO: dao.NewBaseDAO("cloudformation", "outputs"),

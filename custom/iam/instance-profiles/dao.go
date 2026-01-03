@@ -22,7 +22,7 @@ type InstanceProfileDAO struct {
 func NewInstanceProfileDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new iam/instanceprofiles dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &InstanceProfileDAO{
 		BaseDAO: dao.NewBaseDAO("iam", "instance-profiles"),

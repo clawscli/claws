@@ -23,7 +23,7 @@ type ProtectedResourceDAO struct {
 func NewProtectedResourceDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new backup/protected-resources dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &ProtectedResourceDAO{
 		BaseDAO: dao.NewBaseDAO("backup", "protected-resources"),

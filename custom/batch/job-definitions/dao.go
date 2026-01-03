@@ -23,7 +23,7 @@ type JobDefinitionDAO struct {
 func NewJobDefinitionDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new batch/job-definitions dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &JobDefinitionDAO{
 		BaseDAO: dao.NewBaseDAO("batch", "job-definitions"),

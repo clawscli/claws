@@ -22,7 +22,7 @@ type VirtualInterfaceDAO struct {
 func NewVirtualInterfaceDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new directconnect/virtualinterfaces dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &VirtualInterfaceDAO{
 		BaseDAO: dao.NewBaseDAO("directconnect", "virtual-interfaces"),

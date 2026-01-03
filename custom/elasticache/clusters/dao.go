@@ -22,7 +22,7 @@ type ClusterDAO struct {
 func NewClusterDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new elasticache/clusters dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &ClusterDAO{
 		BaseDAO: dao.NewBaseDAO("elasticache", "clusters"),

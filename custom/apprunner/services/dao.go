@@ -22,7 +22,7 @@ type ServiceDAO struct {
 func NewServiceDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new apprunner/services dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &ServiceDAO{
 		BaseDAO: dao.NewBaseDAO("apprunner", "services"),

@@ -22,7 +22,7 @@ type TrainingJobDAO struct {
 func NewTrainingJobDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new sagemaker/trainingjobs dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &TrainingJobDAO{
 		BaseDAO: dao.NewBaseDAO("sagemaker", "training-jobs"),

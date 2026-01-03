@@ -22,7 +22,7 @@ type StackDAO struct {
 func NewStackDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new cfn/stacks dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &StackDAO{
 		BaseDAO: dao.NewBaseDAO("cloudformation", "stacks"),

@@ -22,7 +22,7 @@ type KeyDAO struct {
 func NewKeyDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new kms/keys dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &KeyDAO{
 		BaseDAO: dao.NewBaseDAO("kms", "keys"),

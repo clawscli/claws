@@ -24,7 +24,7 @@ type TaskExecutionDAO struct {
 func NewTaskExecutionDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new datasync/task-executions dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &TaskExecutionDAO{
 		BaseDAO: dao.NewBaseDAO("datasync", "task-executions"),
