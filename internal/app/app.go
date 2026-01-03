@@ -19,12 +19,6 @@ import (
 	"github.com/clawscli/claws/internal/view"
 )
 
-const (
-	modalWidthHelp    = 70
-	modalWidthRegion  = 45
-	modalWidthProfile = 55
-)
-
 type clearErrorMsg struct{}
 
 // awsContextReadyMsg is sent when AWS context initialization completes
@@ -228,7 +222,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, a.keys.Help):
 			helpView := view.NewHelpView()
-			a.modal = &view.Modal{Content: helpView, Width: modalWidthHelp}
+			a.modal = &view.Modal{Content: helpView, Width: view.ModalWidthHelp}
 			return a, a.modal.SetSize(a.width, a.height)
 
 		case key.Matches(msg, a.keys.Command):
@@ -245,7 +239,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, a.keys.Region):
 			regionSelector := view.NewRegionSelector(a.ctx)
-			a.modal = &view.Modal{Content: regionSelector, Width: modalWidthRegion}
+			a.modal = &view.Modal{Content: regionSelector, Width: view.ModalWidthRegion}
 			return a, tea.Batch(
 				regionSelector.Init(),
 				a.modal.SetSize(a.width, a.height),
@@ -253,7 +247,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, a.keys.Profile):
 			profileSelector := view.NewProfileSelector()
-			a.modal = &view.Modal{Content: profileSelector, Width: modalWidthProfile}
+			a.modal = &view.Modal{Content: profileSelector, Width: view.ModalWidthProfile}
 			return a, tea.Batch(
 				profileSelector.Init(),
 				a.modal.SetSize(a.width, a.height),

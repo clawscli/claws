@@ -16,6 +16,11 @@ const (
 	modalDefaultWidth   = 60
 	modalContentOffsetX = 3
 	modalContentOffsetY = 2
+
+	// Modal widths for specific views
+	ModalWidthHelp    = 70
+	ModalWidthRegion  = 45
+	ModalWidthProfile = 55
 )
 
 type Modal struct {
