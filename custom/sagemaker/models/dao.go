@@ -22,7 +22,7 @@ type ModelDAO struct {
 func NewModelDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new sagemaker/models dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &ModelDAO{
 		BaseDAO: dao.NewBaseDAO("sagemaker", "models"),

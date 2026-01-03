@@ -23,7 +23,7 @@ func NewMonitorDAO(ctx context.Context) (dao.DAO, error) {
 	// Cost Explorer API is only available in us-east-1
 	cfg, err := appaws.NewConfigWithRegion(ctx, appaws.CostExplorerRegion)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new ce/monitors dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &MonitorDAO{
 		BaseDAO: dao.NewBaseDAO("ce", "monitors"),

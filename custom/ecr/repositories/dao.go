@@ -22,7 +22,7 @@ type RepositoryDAO struct {
 func NewRepositoryDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new ecr/repositories dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &RepositoryDAO{
 		BaseDAO: dao.NewBaseDAO("ecr", "repositories"),

@@ -22,7 +22,7 @@ type DataSourceDAO struct {
 func NewDataSourceDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new appsync/data-sources dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &DataSourceDAO{
 		BaseDAO: dao.NewBaseDAO("appsync", "data-sources"),

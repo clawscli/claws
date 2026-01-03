@@ -27,7 +27,7 @@ type RecommendationDAO struct {
 func NewRecommendationDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new compute-optimizer/recommendations dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &RecommendationDAO{
 		BaseDAO: dao.NewBaseDAO("compute-optimizer", "recommendations"),

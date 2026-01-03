@@ -27,7 +27,7 @@ func NewAnomalyDAO(ctx context.Context) (dao.DAO, error) {
 	// Cost Explorer API is only available in us-east-1
 	cfg, err := appaws.NewConfigWithRegion(ctx, appaws.CostExplorerRegion)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new ce/anomalies dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &AnomalyDAO{
 		BaseDAO: dao.NewBaseDAO("ce", "anomalies"),

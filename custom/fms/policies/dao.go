@@ -21,7 +21,7 @@ type PolicyDAO struct {
 func NewPolicyDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new fms/policies dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &PolicyDAO{
 		BaseDAO: dao.NewBaseDAO("fms", "policies"),

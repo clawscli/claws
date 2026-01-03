@@ -22,7 +22,7 @@ type SelectionDAO struct {
 func NewSelectionDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new backup/selections dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &SelectionDAO{
 		BaseDAO: dao.NewBaseDAO("backup", "selections"),

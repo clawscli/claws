@@ -24,7 +24,7 @@ type CopyJobDAO struct {
 func NewCopyJobDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new backup/copy-jobs dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &CopyJobDAO{
 		BaseDAO: dao.NewBaseDAO("backup", "copy-jobs"),

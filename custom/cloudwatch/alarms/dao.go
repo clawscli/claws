@@ -23,7 +23,7 @@ type AlarmDAO struct {
 func NewAlarmDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new cloudwatch/alarms dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &AlarmDAO{
 		BaseDAO: dao.NewBaseDAO("cloudwatch", "alarms"),

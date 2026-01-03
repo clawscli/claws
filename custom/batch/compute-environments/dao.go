@@ -22,7 +22,7 @@ type ComputeEnvironmentDAO struct {
 func NewComputeEnvironmentDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new batch/compute-environments dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &ComputeEnvironmentDAO{
 		BaseDAO: dao.NewBaseDAO("batch", "compute-environments"),

@@ -31,7 +31,7 @@ type UserDAO struct {
 func NewUserDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new iam/users dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &UserDAO{
 		BaseDAO: dao.NewBaseDAO("iam", "users"),

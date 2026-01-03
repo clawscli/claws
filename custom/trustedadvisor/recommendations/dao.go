@@ -23,7 +23,7 @@ type RecommendationDAO struct {
 func NewRecommendationDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new trustedadvisor/recommendations dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &RecommendationDAO{
 		BaseDAO: dao.NewBaseDAO("trustedadvisor", "recommendations"),

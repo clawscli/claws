@@ -22,7 +22,7 @@ type SummaryDAO struct {
 func NewSummaryDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new compute-optimizer/summary dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &SummaryDAO{
 		BaseDAO: dao.NewBaseDAO("compute-optimizer", "summary"),

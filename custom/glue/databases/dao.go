@@ -22,7 +22,7 @@ type DatabaseDAO struct {
 func NewDatabaseDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new glue/databases dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &DatabaseDAO{
 		BaseDAO: dao.NewBaseDAO("glue", "databases"),

@@ -23,7 +23,7 @@ type TGWAttachmentDAO struct {
 func NewTGWAttachmentDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new vpc/tgw-attachments dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &TGWAttachmentDAO{
 		BaseDAO: dao.NewBaseDAO("vpc", "tgw-attachments"),

@@ -22,7 +22,7 @@ type NotebookDAO struct {
 func NewNotebookDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new sagemaker/notebooks dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &NotebookDAO{
 		BaseDAO: dao.NewBaseDAO("sagemaker", "notebooks"),

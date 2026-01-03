@@ -21,7 +21,7 @@ type RoleDAO struct {
 func NewRoleDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new iam/roles dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &RoleDAO{
 		BaseDAO: dao.NewBaseDAO("iam", "roles"),

@@ -22,7 +22,7 @@ type ElasticIPDAO struct {
 func NewElasticIPDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new ec2/elasticips dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &ElasticIPDAO{
 		BaseDAO: dao.NewBaseDAO("ec2", "elastic-ips"),

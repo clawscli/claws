@@ -22,7 +22,7 @@ type SnapshotDAO struct {
 func NewSnapshotDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new rds/snapshots dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &SnapshotDAO{
 		BaseDAO: dao.NewBaseDAO("rds", "snapshots"),

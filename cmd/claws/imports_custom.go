@@ -8,7 +8,7 @@
 package main
 
 import (
-	// Access Analyzer
+	// IAM Access Analyzer
 	_ "github.com/clawscli/claws/custom/accessanalyzer/analyzers"
 	_ "github.com/clawscli/claws/custom/accessanalyzer/findings"
 
@@ -80,10 +80,10 @@ import (
 	_ "github.com/clawscli/claws/custom/ce/monitors"
 
 	// CloudFormation
-	_ "github.com/clawscli/claws/custom/cfn/events"
-	_ "github.com/clawscli/claws/custom/cfn/outputs"
-	_ "github.com/clawscli/claws/custom/cfn/resources"
-	_ "github.com/clawscli/claws/custom/cfn/stacks"
+	_ "github.com/clawscli/claws/custom/cloudformation/events"
+	_ "github.com/clawscli/claws/custom/cloudformation/outputs"
+	_ "github.com/clawscli/claws/custom/cloudformation/resources"
+	_ "github.com/clawscli/claws/custom/cloudformation/stacks"
 
 	// CloudFront
 	_ "github.com/clawscli/claws/custom/cloudfront/distributions"
@@ -155,7 +155,7 @@ import (
 	// ElastiCache
 	_ "github.com/clawscli/claws/custom/elasticache/clusters"
 
-	// ELBv2 (ALB/NLB/GLB)
+	// Elastic Load Balancing
 	_ "github.com/clawscli/claws/custom/elbv2/load-balancers"
 	_ "github.com/clawscli/claws/custom/elbv2/target-groups"
 	_ "github.com/clawscli/claws/custom/elbv2/targets"
@@ -236,11 +236,11 @@ import (
 	_ "github.com/clawscli/claws/custom/redshift/clusters"
 	_ "github.com/clawscli/claws/custom/redshift/snapshots"
 
-	// RI/SP (Reserved Instances, Savings Plans)
+	// RI/SP
 	_ "github.com/clawscli/claws/custom/risp/reserved-instances"
 	_ "github.com/clawscli/claws/custom/risp/savings-plans"
 
-	// Route53
+	// Route 53
 	_ "github.com/clawscli/claws/custom/route53/hosted-zones"
 	_ "github.com/clawscli/claws/custom/route53/record-sets"
 
@@ -274,7 +274,7 @@ import (
 	// SQS
 	_ "github.com/clawscli/claws/custom/sqs/queues"
 
-	// SSM
+	// Systems Manager
 	_ "github.com/clawscli/claws/custom/ssm/parameters"
 
 	// Step Functions

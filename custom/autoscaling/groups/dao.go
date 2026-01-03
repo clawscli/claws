@@ -23,7 +23,7 @@ type AutoScalingGroupDAO struct {
 func NewAutoScalingGroupDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new autoscaling/groups dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &AutoScalingGroupDAO{
 		BaseDAO: dao.NewBaseDAO("autoscaling", "groups"),

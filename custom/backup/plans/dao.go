@@ -22,7 +22,7 @@ type BackupPlanDAO struct {
 func NewBackupPlanDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new backup/plans dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &BackupPlanDAO{
 		BaseDAO: dao.NewBaseDAO("backup", "plans"),

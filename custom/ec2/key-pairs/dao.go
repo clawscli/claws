@@ -22,7 +22,7 @@ type KeyPairDAO struct {
 func NewKeyPairDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new ec2/keypairs dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &KeyPairDAO{
 		BaseDAO: dao.NewBaseDAO("ec2", "key-pairs"),

@@ -21,7 +21,7 @@ type GraphQLApiDAO struct {
 func NewGraphQLApiDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new appsync/graphql-apis dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &GraphQLApiDAO{
 		BaseDAO: dao.NewBaseDAO("appsync", "graphql-apis"),

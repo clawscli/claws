@@ -22,7 +22,7 @@ type SubscriptionDAO struct {
 func NewSubscriptionDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new sns/subscriptions dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &SubscriptionDAO{
 		BaseDAO: dao.NewBaseDAO("sns", "subscriptions"),

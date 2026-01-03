@@ -22,7 +22,7 @@ type CrawlerDAO struct {
 func NewCrawlerDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new glue/crawlers dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &CrawlerDAO{
 		BaseDAO: dao.NewBaseDAO("glue", "crawlers"),

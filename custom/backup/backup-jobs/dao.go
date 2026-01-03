@@ -23,7 +23,7 @@ type BackupJobDAO struct {
 func NewBackupJobDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new backup/backup-jobs dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &BackupJobDAO{
 		BaseDAO: dao.NewBaseDAO("backup", "backup-jobs"),

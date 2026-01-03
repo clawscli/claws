@@ -22,7 +22,7 @@ type VolumeDAO struct {
 func NewVolumeDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new ec2/volumes dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &VolumeDAO{
 		BaseDAO: dao.NewBaseDAO("ec2", "volumes"),

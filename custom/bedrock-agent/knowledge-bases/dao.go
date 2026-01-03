@@ -22,7 +22,7 @@ type KnowledgeBaseDAO struct {
 func NewKnowledgeBaseDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new bedrock-agent/knowledge-bases dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &KnowledgeBaseDAO{
 		BaseDAO: dao.NewBaseDAO("bedrock-agent", "knowledge-bases"),

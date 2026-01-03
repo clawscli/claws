@@ -22,7 +22,7 @@ type WebACLDAO struct {
 func NewWebACLDAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new wafv2/webacls dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &WebACLDAO{
 		BaseDAO: dao.NewBaseDAO("wafv2", "web-acls"),

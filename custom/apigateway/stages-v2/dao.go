@@ -23,7 +23,7 @@ type StageV2DAO struct {
 func NewStageV2DAO(ctx context.Context) (dao.DAO, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, apperrors.Wrap(err, "new apigateway/stages-v2 dao")
+		return nil, apperrors.Wrap(err, "new "+ServiceResourcePath+" dao")
 	}
 	return &StageV2DAO{
 		BaseDAO: dao.NewBaseDAO("apigateway", "stages-v2"),
