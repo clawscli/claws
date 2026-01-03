@@ -31,11 +31,10 @@ type diffViewStyles struct {
 }
 
 func newDiffViewStyles() diffViewStyles {
-	t := ui.Current()
 	return diffViewStyles{
 		title:     ui.TitleStyle(),
 		header:    ui.SectionStyle(),
-		separator: lipgloss.NewStyle().Foreground(t.TableBorder),
+		separator: ui.MutedStyle(),
 	}
 }
 

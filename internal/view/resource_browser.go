@@ -38,12 +38,11 @@ type resourceBrowserStyles struct {
 }
 
 func newResourceBrowserStyles() resourceBrowserStyles {
-	t := ui.Current()
 	return resourceBrowserStyles{
 		count:        ui.DimStyle(),
-		filterBg:     lipgloss.NewStyle().Background(t.Background).Foreground(t.Text).Padding(0, 1),
-		filterActive: lipgloss.NewStyle().Foreground(t.Accent).Italic(true),
-		tabSingle:    lipgloss.NewStyle().Foreground(t.Primary),
+		filterBg:     ui.InputFieldStyle(),
+		filterActive: ui.AccentStyle().Italic(true),
+		tabSingle:    ui.PrimaryStyle(),
 		tabActive:    ui.SelectedStyle().Padding(0, 1),
 		tabInactive:  ui.DimStyle().Padding(0, 1),
 	}

@@ -277,6 +277,14 @@ func TestInputStyle(t *testing.T) {
 	}
 }
 
+func TestInputFieldStyle(t *testing.T) {
+	style := InputFieldStyle()
+	rendered := style.Render("filter text")
+	if rendered == "" {
+		t.Error("InputFieldStyle().Render() should produce output")
+	}
+}
+
 func TestThemeFields(t *testing.T) {
 	theme := DefaultTheme()
 

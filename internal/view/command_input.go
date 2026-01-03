@@ -26,9 +26,8 @@ type commandInputStyles struct {
 }
 
 func newCommandInputStyles() commandInputStyles {
-	t := ui.Current()
 	return commandInputStyles{
-		input:      lipgloss.NewStyle().Background(t.Background).Foreground(t.Text).Padding(0, 1),
+		input:      ui.InputFieldStyle(),
 		suggestion: ui.DimStyle(),
 		highlight:  ui.HighlightStyle(),
 	}

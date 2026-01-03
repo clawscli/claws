@@ -202,6 +202,14 @@ func InputStyle() lipgloss.Style {
 		Padding(0, 1)
 }
 
+// InputFieldStyle returns a style for input fields (filter, command input)
+func InputFieldStyle() lipgloss.Style {
+	return lipgloss.NewStyle().
+		Background(current.Background).
+		Foreground(current.Text).
+		Padding(0, 1)
+}
+
 func NewSpinner() spinner.Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
