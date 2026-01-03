@@ -222,13 +222,9 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return a, tea.Quit
 
 		case key.Matches(msg, a.keys.Help):
-			// Show full help view
 			helpView := view.NewHelpView()
-			if a.currentView != nil {
-				a.viewStack = append(a.viewStack, a.currentView)
-			}
-			a.currentView = helpView
-			return a, a.currentView.SetSize(a.width, a.height-2)
+			a.modal = &view.Modal{Content: helpView, Width: 70}
+			return a, a.modal.SetSize(a.width, a.height)
 
 		case key.Matches(msg, a.keys.Command):
 			a.commandMode = true
@@ -244,24 +240,18 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case key.Matches(msg, a.keys.Region):
 			regionSelector := view.NewRegionSelector(a.ctx)
-			if a.currentView != nil {
-				a.viewStack = append(a.viewStack, a.currentView)
-			}
-			a.currentView = regionSelector
+			a.modal = &view.Modal{Content: regionSelector, Width: 45}
 			return a, tea.Batch(
-				a.currentView.Init(),
-				a.currentView.SetSize(a.width, a.height-2),
+				regionSelector.Init(),
+				a.modal.SetSize(a.width, a.height),
 			)
 
 		case key.Matches(msg, a.keys.Profile):
 			profileSelector := view.NewProfileSelector()
-			if a.currentView != nil {
-				a.viewStack = append(a.viewStack, a.currentView)
-			}
-			a.currentView = profileSelector
+			a.modal = &view.Modal{Content: profileSelector, Width: 55}
 			return a, tea.Batch(
-				a.currentView.Init(),
-				a.currentView.SetSize(a.width, a.height-2),
+				profileSelector.Init(),
+				a.modal.SetSize(a.width, a.height),
 			)
 		}
 
@@ -540,6 +530,14 @@ func (a *App) handleModalUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.currentView.Init(),
 			a.currentView.SetSize(a.width, a.height-2),
 		)
+
+	case navmsg.RegionChangedMsg:
+		a.modal = nil
+		return a.Update(msg)
+
+	case navmsg.ProfilesChangedMsg:
+		a.modal = nil
+		return a.Update(msg)
 
 	case tea.KeyPressMsg:
 		if view.IsEscKey(msg) || msg.Code == tea.KeyBackspace || msg.String() == "q" {

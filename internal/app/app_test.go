@@ -465,6 +465,144 @@ func TestModalNavigateClosesModal(t *testing.T) {
 	}
 }
 
+func TestRegionSelectorAsModal(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	app := New(ctx, reg)
+	app.width = 100
+	app.height = 50
+
+	dashboard := &MockView{name: "Dashboard"}
+	app.currentView = dashboard
+	app.viewStack = nil
+
+	keyMsg := tea.KeyPressMsg{Code: 0, Text: "R"}
+	app.Update(keyMsg)
+
+	if app.modal == nil {
+		t.Error("Expected modal to be set after R key")
+	}
+	if app.currentView.StatusLine() != "Dashboard" {
+		t.Errorf("Expected currentView to remain Dashboard, got %s", app.currentView.StatusLine())
+	}
+	if len(app.viewStack) != 0 {
+		t.Errorf("Expected viewStack to remain empty, got %d", len(app.viewStack))
+	}
+}
+
+func TestProfileSelectorAsModal(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	app := New(ctx, reg)
+	app.width = 100
+	app.height = 50
+
+	dashboard := &MockView{name: "Dashboard"}
+	app.currentView = dashboard
+	app.viewStack = nil
+
+	keyMsg := tea.KeyPressMsg{Code: 0, Text: "P"}
+	app.Update(keyMsg)
+
+	if app.modal == nil {
+		t.Error("Expected modal to be set after P key")
+	}
+	if app.currentView.StatusLine() != "Dashboard" {
+		t.Errorf("Expected currentView to remain Dashboard, got %s", app.currentView.StatusLine())
+	}
+}
+
+func TestHelpViewAsModal(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	app := New(ctx, reg)
+	app.width = 100
+	app.height = 50
+
+	dashboard := &MockView{name: "Dashboard"}
+	app.currentView = dashboard
+	app.viewStack = nil
+
+	keyMsg := tea.KeyPressMsg{Code: 0, Text: "?"}
+	app.Update(keyMsg)
+
+	if app.modal == nil {
+		t.Error("Expected modal to be set after ? key")
+	}
+	if app.currentView.StatusLine() != "Dashboard" {
+		t.Errorf("Expected currentView to remain Dashboard, got %s", app.currentView.StatusLine())
+	}
+}
+
+func TestModalClosesWithQ(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	app := New(ctx, reg)
+	app.width = 100
+	app.height = 50
+
+	dashboard := &MockView{name: "Dashboard"}
+	app.currentView = dashboard
+	modalContent := &MockView{name: "RegionSelector"}
+	app.modal = &view.Modal{Content: modalContent}
+
+	qKeyMsg := tea.KeyPressMsg{Code: 0, Text: "q"}
+	app.Update(qKeyMsg)
+
+	if app.modal != nil {
+		t.Error("Expected modal to be nil after q key")
+	}
+	if app.currentView.StatusLine() != "Dashboard" {
+		t.Errorf("Expected currentView to remain Dashboard, got %s", app.currentView.StatusLine())
+	}
+}
+
+func TestRegionChangedMsgClosesModal(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	app := New(ctx, reg)
+	app.width = 100
+	app.height = 50
+
+	dashboard := &MockView{name: "Dashboard"}
+	app.currentView = dashboard
+	modalContent := &MockView{name: "RegionSelector"}
+	app.modal = &view.Modal{Content: modalContent}
+
+	msg := navmsg.RegionChangedMsg{Regions: []string{"us-west-2"}}
+	app.Update(msg)
+
+	if app.modal != nil {
+		t.Error("Expected modal to be closed after RegionChangedMsg")
+	}
+}
+
+func TestProfilesChangedMsgClosesModal(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	app := New(ctx, reg)
+	app.width = 100
+	app.height = 50
+
+	dashboard := &MockView{name: "Dashboard"}
+	app.currentView = dashboard
+	modalContent := &MockView{name: "ProfileSelector"}
+	app.modal = &view.Modal{Content: modalContent}
+
+	msg := navmsg.ProfilesChangedMsg{Selections: nil}
+	app.Update(msg)
+
+	if app.modal != nil {
+		t.Error("Expected modal to be closed after ProfilesChangedMsg")
+	}
+}
+
 func TestWarningScreenDismissal(t *testing.T) {
 	tests := []struct {
 		name string
