@@ -198,6 +198,7 @@ func (v *LogView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return v, nil
 		}
 		v.pollInterval = defaultLogPollInterval
+		v.err = nil
 		if msg.lastEventTime > v.lastEventTime {
 			v.lastEventTime = msg.lastEventTime
 		}
