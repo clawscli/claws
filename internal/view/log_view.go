@@ -16,6 +16,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	apperrors "github.com/clawscli/claws/internal/errors"
+	"github.com/clawscli/claws/internal/log"
 	"github.com/clawscli/claws/internal/ui"
 )
 
@@ -174,6 +175,7 @@ func (v *LogView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case logsLoadedMsg:
 		v.loading = false
 		if msg.err != nil {
+			log.Warn("failed to fetch log events", "error", msg.err)
 			v.err = msg.err
 			return v, nil
 		}
@@ -254,6 +256,10 @@ func (v *LogView) updateViewportContent() {
 }
 
 func (v *LogView) ViewString() string {
+	if !v.ready {
+		return "Loading..."
+	}
+
 	var sb strings.Builder
 
 	title := v.logGroupName
@@ -286,10 +292,6 @@ func (v *LogView) ViewString() string {
 		return sb.String()
 	}
 
-	if !v.ready {
-		return sb.String()
-	}
-
 	sb.WriteString(v.viewport.View())
 	return sb.String()
 }
@@ -302,8 +304,15 @@ func (v *LogView) SetSize(width, height int) tea.Cmd {
 	v.width = width
 	v.height = height
 	viewportHeight := height - 4
-	v.viewport = viewport.New(viewport.WithWidth(width), viewport.WithHeight(viewportHeight))
-	v.ready = true
+
+	if !v.ready {
+		v.viewport = viewport.New(viewport.WithWidth(width), viewport.WithHeight(viewportHeight))
+		v.ready = true
+	} else {
+		v.viewport.SetWidth(width)
+		v.viewport.SetHeight(viewportHeight)
+	}
+
 	v.updateViewportContent()
 	return nil
 }
