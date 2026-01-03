@@ -590,7 +590,6 @@ func TestAction_Struct(t *testing.T) {
 		Type:      ActionTypeAPI,
 		Command:   "test cmd",
 		Operation: "TestOp",
-		Target:    "ec2/instances",
 		Confirm:   ConfirmSimple,
 	}
 

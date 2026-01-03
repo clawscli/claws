@@ -107,6 +107,7 @@ func DefaultFileConfig() *FileConfig {
 			MultiRegionFetch: Duration(DefaultMultiRegionFetchTimeout),
 			TagSearch:        Duration(DefaultTagSearchTimeout),
 			MetricsLoad:      Duration(DefaultMetricsLoadTimeout),
+			LogFetch:         Duration(DefaultLogFetchTimeout),
 		},
 		Concurrency: ConcurrencyConfig{
 			MaxFetches: DefaultMaxConcurrentFetches,

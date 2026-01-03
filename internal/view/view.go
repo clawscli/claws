@@ -124,6 +124,7 @@ func (h *NavigationHelper) FormatShortcuts(resource dao.Resource) string {
 	return strings.Join(parts, " ")
 }
 
+// HandleKey handles navigation key press and returns a command if navigation occurred
 func (h *NavigationHelper) HandleKey(key string, resource dao.Resource) tea.Cmd {
 	if h.Renderer == nil || h.Registry == nil {
 		return nil

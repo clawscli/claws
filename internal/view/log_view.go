@@ -40,12 +40,11 @@ type LogView struct {
 	spinner  spinner.Model
 	styles   logViewStyles
 
-	logs          []logEntry
-	loading       bool
-	paused        bool
-	err           error
-	ready         bool
-	width, height int
+	logs    []logEntry
+	loading bool
+	paused  bool
+	err     error
+	ready   bool
 
 	lastEventTime   int64
 	oldestEventTime int64
@@ -403,8 +402,6 @@ func (v *LogView) View() tea.View {
 }
 
 func (v *LogView) SetSize(width, height int) tea.Cmd {
-	v.width = width
-	v.height = height
 	viewportHeight := height - viewportHeaderOffset
 
 	if !v.ready {

@@ -26,8 +26,10 @@ type SummaryField struct {
 	Style lipgloss.Style // Optional styling for the value
 }
 
+// ViewTypeLogView indicates navigation should open a LogView instead of ResourceBrowser
 const ViewTypeLogView = "log-view"
 
+// Navigation defines a navigation shortcut to related resources or custom views
 type Navigation struct {
 	Key            string
 	Label          string

@@ -65,7 +65,6 @@ type Action struct {
 	Type      ActionType
 	Command   string
 	Operation string
-	Target    string
 	Confirm   ConfirmLevel
 
 	// SkipAWSEnv skips AWS env injection for exec commands.
