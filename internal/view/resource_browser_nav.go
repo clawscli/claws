@@ -113,7 +113,7 @@ func (r *ResourceBrowser) StatusLine() string {
 		if hasActions {
 			base += " a:actions"
 		}
-		base += " m:mark" + metricsHint
+		base += " m:mark y:copy" + metricsHint
 		if navInfo != "" {
 			base += " " + navInfo
 		}
@@ -124,7 +124,7 @@ func (r *ResourceBrowser) StatusLine() string {
 	if hasActions {
 		base += " a:actions"
 	}
-	base += " m:mark" + metricsHint
+	base += " m:mark y:copy" + metricsHint
 	if navInfo != "" {
 		base += " " + navInfo
 	}

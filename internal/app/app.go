@@ -11,6 +11,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/clawscli/claws/internal/aws"
+	"github.com/clawscli/claws/internal/clipboard"
 	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/log"
 	navmsg "github.com/clawscli/claws/internal/msg"
@@ -20,6 +21,8 @@ import (
 )
 
 type clearErrorMsg struct{}
+
+type clearFlashMsg struct{}
 
 // awsContextReadyMsg is sent when AWS context initialization completes
 type awsContextReadyMsg struct {
@@ -85,6 +88,8 @@ type App struct {
 	modal         *view.Modal
 	modalStack    []*view.Modal
 	modalRenderer *view.ModalRenderer
+
+	clipboardFlash string
 
 	styles appStyles
 }
@@ -273,6 +278,16 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.err = nil
 		return a, nil
 
+	case clipboard.CopiedMsg:
+		a.clipboardFlash = "Copied " + msg.Label
+		return a, tea.Tick(2*time.Second, func(t time.Time) tea.Msg {
+			return clearFlashMsg{}
+		})
+
+	case clearFlashMsg:
+		a.clipboardFlash = ""
+		return a, nil
+
 	case awsContextReadyMsg:
 		a.awsInitializing = false
 		if msg.err != nil {
@@ -365,6 +380,8 @@ func (a *App) View() tea.View {
 	var statusContent string
 	if a.err != nil {
 		statusContent = ui.DangerStyle().Render("Error: " + a.err.Error())
+	} else if a.clipboardFlash != "" {
+		statusContent = ui.SuccessStyle().Render("✓ " + a.clipboardFlash)
 	} else if a.currentView != nil {
 		statusContent = a.currentView.StatusLine()
 	}

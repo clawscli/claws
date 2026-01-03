@@ -5,6 +5,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/clawscli/claws/internal/action"
+	"github.com/clawscli/claws/internal/clipboard"
 	"github.com/clawscli/claws/internal/dao"
 )
 
@@ -48,6 +49,10 @@ func (r *ResourceBrowser) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 		return r.handleNumberKey(msg.String())
 	case "N":
 		return r.handleLoadNextPage()
+	case "y":
+		return r.handleCopyID()
+	case "Y":
+		return r.handleCopyARN()
 	}
 
 	return nil, nil
@@ -273,4 +278,24 @@ func (r *ResourceBrowser) openDetailView() (tea.Model, tea.Cmd) {
 	return r, func() tea.Msg {
 		return NavigateMsg{View: detailView}
 	}
+}
+
+func (r *ResourceBrowser) handleCopyID() (tea.Model, tea.Cmd) {
+	if len(r.filtered) == 0 || r.table.Cursor() >= len(r.filtered) {
+		return r, nil
+	}
+	resource := dao.UnwrapResource(r.filtered[r.table.Cursor()])
+	return r, clipboard.CopyID(resource.GetID())
+}
+
+func (r *ResourceBrowser) handleCopyARN() (tea.Model, tea.Cmd) {
+	if len(r.filtered) == 0 || r.table.Cursor() >= len(r.filtered) {
+		return r, nil
+	}
+	resource := dao.UnwrapResource(r.filtered[r.table.Cursor()])
+	arn := resource.GetARN()
+	if arn == "" {
+		return r, nil
+	}
+	return r, clipboard.CopyARN(arn)
 }
