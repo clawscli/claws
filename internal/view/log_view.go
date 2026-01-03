@@ -48,8 +48,9 @@ type LogView struct {
 	ready         bool
 	width, height int
 
-	lastEventTime int64
-	pollInterval  time.Duration
+	lastEventTime   int64
+	oldestEventTime int64
+	pollInterval    time.Duration
 }
 
 type logEntry struct {
@@ -93,9 +94,12 @@ func NewLogView(ctx context.Context, logGroupName string) *LogView {
 	}
 }
 
-func NewLogViewWithStream(ctx context.Context, logGroupName, logStreamName string) *LogView {
+func NewLogViewWithStream(ctx context.Context, logGroupName, logStreamName string, lastEventTime int64) *LogView {
 	v := NewLogView(ctx, logGroupName)
 	v.logStreamName = logStreamName
+	if lastEventTime > 0 {
+		v.lastEventTime = lastEventTime - time.Hour.Milliseconds()
+	}
 	return v
 }
 
@@ -104,6 +108,7 @@ type logsLoadedMsg struct {
 	lastEventTime int64
 	err           error
 	throttled     bool
+	older         bool
 }
 
 type logTickMsg time.Time
@@ -184,6 +189,62 @@ func (v *LogView) fetchLogs(startTime int64) tea.Msg {
 	return logsLoadedMsg{entries: entries, lastEventTime: maxEventTime}
 }
 
+func (v *LogView) fetchOlderLogsCmd() tea.Cmd {
+	endTime := v.oldestEventTime
+	if endTime == 0 {
+		return nil
+	}
+	return func() tea.Msg {
+		return v.fetchOlderLogs(endTime)
+	}
+}
+
+func (v *LogView) fetchOlderLogs(endTime int64) tea.Msg {
+	if err := v.ctx.Err(); err != nil {
+		return logsLoadedMsg{err: err, older: true}
+	}
+	if v.client == nil {
+		return logsLoadedMsg{err: errors.New("client not initialized"), older: true}
+	}
+
+	ctx, cancel := context.WithTimeout(v.ctx, logFetchTimeout)
+	defer cancel()
+
+	input := &cloudwatchlogs.FilterLogEventsInput{
+		LogGroupName: appaws.StringPtr(v.logGroupName),
+		Limit:        appaws.Int32Ptr(logFetchLimit),
+		StartTime:    appaws.Int64Ptr(endTime - time.Hour.Milliseconds()),
+		EndTime:      appaws.Int64Ptr(endTime - 1),
+	}
+
+	if v.logStreamName != "" {
+		input.LogStreamNames = []string{v.logStreamName}
+	}
+
+	output, err := v.client.FilterLogEvents(ctx, input)
+	if err != nil {
+		throttled := apperrors.IsThrottling(err)
+		return logsLoadedMsg{err: apperrors.Wrap(err, "filter log events"), throttled: throttled, older: true}
+	}
+
+	var minEventTime int64
+	entries := make([]logEntry, 0, len(output.Events))
+	for _, event := range output.Events {
+		ts := time.UnixMilli(appaws.Int64(event.Timestamp))
+		msg := appaws.Str(event.Message)
+		entries = append(entries, logEntry{
+			timestamp: ts,
+			message:   strings.TrimSuffix(msg, "\n"),
+		})
+		eventTs := appaws.Int64(event.Timestamp)
+		if minEventTime == 0 || eventTs < minEventTime {
+			minEventTime = eventTs
+		}
+	}
+
+	return logsLoadedMsg{entries: entries, lastEventTime: minEventTime, older: true}
+}
+
 func (v *LogView) tickCmd() tea.Cmd {
 	return tea.Tick(v.pollInterval, func(t time.Time) tea.Msg {
 		return logTickMsg(t)
@@ -200,7 +261,7 @@ func (v *LogView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if msg.throttled {
 				v.pollInterval = min(v.pollInterval*2, maxLogPollInterval)
 				log.Info("throttled, backing off", "interval", v.pollInterval)
-				if !v.paused {
+				if !v.paused && !msg.older {
 					return v, v.tickCmd()
 				}
 			}
@@ -208,10 +269,28 @@ func (v *LogView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		v.pollInterval = defaultLogPollInterval
 		v.err = nil
+		if msg.older {
+			if len(msg.entries) > 0 {
+				v.logs = append(msg.entries, v.logs...)
+				if len(v.logs) > maxLogBufferSize {
+					v.logs = v.logs[:maxLogBufferSize]
+				}
+				if msg.lastEventTime > 0 {
+					v.oldestEventTime = msg.lastEventTime
+				}
+				if v.ready {
+					v.updateViewportContent()
+				}
+			}
+			return v, nil
+		}
 		if msg.lastEventTime > v.lastEventTime {
 			v.lastEventTime = msg.lastEventTime
 		}
 		if len(msg.entries) > 0 {
+			if v.oldestEventTime == 0 && len(msg.entries) > 0 {
+				v.oldestEventTime = msg.entries[0].timestamp.UnixMilli()
+			}
 			v.logs = append(v.logs, msg.entries...)
 			if len(v.logs) > maxLogBufferSize {
 				v.logs = v.logs[len(v.logs)-maxLogBufferSize:]
@@ -252,8 +331,15 @@ func (v *LogView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return v, nil
 		case "c":
 			v.logs = v.logs[:0]
+			v.oldestEventTime = 0
 			if v.ready {
 				v.updateViewportContent()
+			}
+			return v, nil
+		case "p":
+			if v.oldestEventTime > 0 && !v.loading {
+				v.loading = true
+				return v, v.fetchOlderLogsCmd()
 			}
 			return v, nil
 		}
@@ -347,7 +433,7 @@ func (v *LogView) SetSize(width, height int) tea.Cmd {
 }
 
 func (v *LogView) StatusLine() string {
-	status := "Space:pause/resume g/G:top/bottom c:clear Esc:back"
+	status := "Space:pause/resume p:older g/G:top/bottom c:clear Esc:back"
 	if v.paused {
 		return "⏸ PAUSED • " + status
 	}

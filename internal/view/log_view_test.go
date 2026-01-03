@@ -33,7 +33,7 @@ func TestNewLogView(t *testing.T) {
 
 func TestNewLogViewWithStream(t *testing.T) {
 	ctx := context.Background()
-	lv := NewLogViewWithStream(ctx, "/aws/lambda/my-function", "2024/01/01/[$LATEST]abc123")
+	lv := NewLogViewWithStream(ctx, "/aws/lambda/my-function", "2024/01/01/[$LATEST]abc123", 0)
 
 	if lv.logGroupName != "/aws/lambda/my-function" {
 		t.Errorf("logGroupName = %q, want %q", lv.logGroupName, "/aws/lambda/my-function")

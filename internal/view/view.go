@@ -189,13 +189,18 @@ func (h *NavigationHelper) createLogView(resource dao.Resource) tea.Cmd {
 
 	type logGroupProvider interface{ LogGroupName() string }
 	type logStreamProvider interface{ LogStreamName() string }
+	type lastEventProvider interface{ LastEventTimestamp() int64 }
 
 	unwrapped := dao.UnwrapResource(resource)
 
 	if p, ok := unwrapped.(logGroupProvider); ok {
 		logGroupName := p.LogGroupName()
 		if sp, ok := unwrapped.(logStreamProvider); ok {
-			logView = NewLogViewWithStream(h.Ctx, logGroupName, sp.LogStreamName())
+			var lastEvent int64
+			if lp, ok := unwrapped.(lastEventProvider); ok {
+				lastEvent = lp.LastEventTimestamp()
+			}
+			logView = NewLogViewWithStream(h.Ctx, logGroupName, sp.LogStreamName(), lastEvent)
 		} else {
 			logView = NewLogView(h.Ctx, logGroupName)
 		}
