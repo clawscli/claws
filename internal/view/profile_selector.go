@@ -355,6 +355,6 @@ func (p *ProfileSelector) toggleDetail() (tea.Model, tea.Cmd) {
 	info, hasInfo := p.profileInfo[profile.id]
 	detailView := NewProfileDetailView(profile, info, hasInfo)
 	return p, func() tea.Msg {
-		return ShowModalMsg{Modal: &Modal{Content: detailView}}
+		return ShowModalMsg{Modal: &Modal{Content: detailView, Width: ModalWidthProfileDetail}}
 	}
 }

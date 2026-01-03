@@ -155,7 +155,7 @@ func (r *ResourceBrowser) handleAction() (tea.Model, tea.Cmd) {
 			ctx, resource := r.contextForResource(r.filtered[r.table.Cursor()])
 			actionMenu := NewActionMenu(ctx, resource, r.service, r.resourceType)
 			return r, func() tea.Msg {
-				return ShowModalMsg{Modal: &Modal{Content: actionMenu}}
+				return ShowModalMsg{Modal: &Modal{Content: actionMenu, Width: ModalWidthActionMenu}}
 			}
 		}
 	}
