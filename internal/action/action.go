@@ -44,7 +44,6 @@ type ActionType string
 const (
 	ActionTypeExec ActionType = "exec"
 	ActionTypeAPI  ActionType = "api"
-	ActionTypeView ActionType = "view"
 )
 
 type ConfirmLevel int
@@ -173,8 +172,6 @@ var ReadOnlyExecAllowlist = map[string]bool{
 // IsAllowedInReadOnly returns whether the action can be executed in read-only mode.
 func IsAllowedInReadOnly(act Action) bool {
 	switch act.Type {
-	case ActionTypeView:
-		return true
 	case ActionTypeExec:
 		return ReadOnlyExecAllowlist[act.Name]
 	case ActionTypeAPI:

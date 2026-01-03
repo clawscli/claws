@@ -34,6 +34,7 @@ type LogView struct {
 	loading       bool
 	paused        bool
 	err           error
+	ready         bool
 	width, height int
 
 	lastEventTime int64
@@ -183,8 +184,10 @@ func (v *LogView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(v.logs) > 1000 {
 				v.logs = v.logs[len(v.logs)-1000:]
 			}
-			v.updateViewportContent()
-			v.viewport.GotoBottom()
+			if v.ready {
+				v.updateViewportContent()
+				v.viewport.GotoBottom()
+			}
 		}
 		if !v.paused {
 			return v, v.tickCmd()
@@ -206,14 +209,20 @@ func (v *LogView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return v, nil
 		case "g":
-			v.viewport.GotoTop()
+			if v.ready {
+				v.viewport.GotoTop()
+			}
 			return v, nil
 		case "G":
-			v.viewport.GotoBottom()
+			if v.ready {
+				v.viewport.GotoBottom()
+			}
 			return v, nil
 		case "c":
 			v.logs = v.logs[:0]
-			v.updateViewportContent()
+			if v.ready {
+				v.updateViewportContent()
+			}
 			return v, nil
 		}
 
@@ -225,9 +234,12 @@ func (v *LogView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	var cmd tea.Cmd
-	v.viewport, cmd = v.viewport.Update(msg)
-	return v, cmd
+	if v.ready {
+		var cmd tea.Cmd
+		v.viewport, cmd = v.viewport.Update(msg)
+		return v, cmd
+	}
+	return v, nil
 }
 
 func (v *LogView) updateViewportContent() {
@@ -273,6 +285,10 @@ func (v *LogView) ViewString() string {
 		return sb.String()
 	}
 
+	if !v.ready {
+		return sb.String()
+	}
+
 	sb.WriteString(v.viewport.View())
 	return sb.String()
 }
@@ -286,6 +302,7 @@ func (v *LogView) SetSize(width, height int) tea.Cmd {
 	v.height = height
 	viewportHeight := height - 4
 	v.viewport = viewport.New(viewport.WithWidth(width), viewport.WithHeight(viewportHeight))
+	v.ready = true
 	v.updateViewportContent()
 	return nil
 }
