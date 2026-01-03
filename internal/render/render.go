@@ -202,26 +202,6 @@ func FormatDuration(d time.Duration) string {
 // Style is an alias for lipgloss.Style for convenience
 type Style = lipgloss.Style
 
-// SuccessStyle returns a green style for success states
-func SuccessStyle() lipgloss.Style {
-	return ui.SuccessStyle()
-}
-
-// WarningStyle returns a yellow style for warning states
-func WarningStyle() lipgloss.Style {
-	return ui.WarningStyle()
-}
-
-// DangerStyle returns a red style for danger/error states
-func DangerStyle() lipgloss.Style {
-	return ui.DangerStyle()
-}
-
-// DimStyle returns a dimmed gray style
-func DimStyle() lipgloss.Style {
-	return ui.DimStyle()
-}
-
 // DefaultStyle returns a default unstyled style
 func DefaultStyle() lipgloss.Style {
 	return lipgloss.NewStyle()

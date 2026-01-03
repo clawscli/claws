@@ -6,7 +6,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/charmbracelet/x/ansi"
 
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/render"
@@ -132,8 +131,8 @@ func (d *DiffView) renderSideBySide() string {
 	colWidth := (d.width - 3) / 2
 
 	// Column headers
-	leftHeader := truncateOrPad("◀ "+d.left.GetName(), colWidth)
-	rightHeader := truncateOrPad(d.right.GetName()+" ▶", colWidth)
+	leftHeader := TruncateOrPadString("◀ "+d.left.GetName(), colWidth)
+	rightHeader := TruncateOrPadString(d.right.GetName()+" ▶", colWidth)
 	out.WriteString(s.header.Render(leftHeader))
 	out.WriteString(s.separator.Render(" │ "))
 	out.WriteString(s.header.Render(rightHeader))
@@ -157,29 +156,11 @@ func (d *DiffView) renderSideBySide() string {
 			rightLine = rightLines[i]
 		}
 
-		out.WriteString(truncateOrPad(leftLine, colWidth))
+		out.WriteString(TruncateOrPadString(leftLine, colWidth))
 		out.WriteString(s.separator.Render(" │ "))
-		out.WriteString(truncateOrPad(rightLine, colWidth))
+		out.WriteString(TruncateOrPadString(rightLine, colWidth))
 		out.WriteString("\n")
 	}
 
 	return out.String()
-}
-
-// truncateOrPad ensures a string is exactly the specified width
-func truncateOrPad(s string, width int) string {
-	if width <= 0 {
-		return ""
-	}
-
-	// Use lipgloss.Width for proper ANSI-aware width calculation
-	plainLen := lipgloss.Width(s)
-
-	if plainLen > width {
-		// Use ansi.Truncate for proper ANSI-aware truncation
-		return ansi.Truncate(s, width, "…")
-	}
-
-	// Pad with spaces
-	return s + strings.Repeat(" ", width-plainLen)
 }

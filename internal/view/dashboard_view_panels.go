@@ -97,7 +97,7 @@ func (d *DashboardView) renderCostContent(contentWidth, contentHeight int, t *ui
 			for i := range showCount {
 				c := d.costTop[i]
 				bar := renderBar(c.cost, maxCost, barWidth, t)
-				name := truncateValue(c.service, nameWidth)
+				name := TruncateString(c.service, nameWidth)
 				line := fmt.Sprintf("%-*s %s %8.0f", nameWidth, name, bar, c.cost)
 				if i == focusRow {
 					line = s.highlight.Render(line)
@@ -133,7 +133,7 @@ func (d *DashboardView) renderOpsContent(contentWidth, contentHeight int, focusR
 		lines = append(lines, s.danger.Render(fmt.Sprintf("Alarms: %d in ALARM", alarmCount)))
 		maxShow := min(alarmCount, contentHeight-3)
 		for i := range maxShow {
-			line := "  " + s.danger.Render("• ") + truncateValue(d.alarms[i].name, contentWidth-bulletIndentWidth)
+			line := "  " + s.danger.Render("• ") + TruncateString(d.alarms[i].name, contentWidth-bulletIndentWidth)
 			if i == focusRow {
 				line = s.highlight.Render(line)
 			}
@@ -153,7 +153,7 @@ func (d *DashboardView) renderOpsContent(contentWidth, contentHeight int, focusR
 		maxShow := min(len(d.healthItems), remaining)
 		for i := range maxShow {
 			h := d.healthItems[i]
-			line := "  " + s.warning.Render("• ") + truncateValue(h.service+": "+h.eventType, contentWidth-bulletIndentWidth)
+			line := "  " + s.warning.Render("• ") + TruncateString(h.service+": "+h.eventType, contentWidth-bulletIndentWidth)
 			if alarmCount+i == focusRow {
 				line = s.highlight.Render(line)
 			}
@@ -196,7 +196,7 @@ func (d *DashboardView) renderSecurityContent(contentWidth, contentHeight int, f
 			if item.severity == "CRITICAL" {
 				style = s.danger
 			}
-			line := "  " + style.Render("• ") + truncateValue(item.title, contentWidth-bulletIndentWidth)
+			line := "  " + style.Render("• ") + TruncateString(item.title, contentWidth-bulletIndentWidth)
 			if i == focusRow {
 				line = s.highlight.Render(line)
 			}
@@ -243,7 +243,7 @@ func (d *DashboardView) renderOptimizationContent(contentWidth, contentHeight in
 				if item.status == "error" {
 					style = s.danger
 				}
-				line := "  " + style.Render("• ") + truncateValue(item.name, contentWidth-bulletIndentWidth)
+				line := "  " + style.Render("• ") + TruncateString(item.name, contentWidth-bulletIndentWidth)
 				if i == focusRow {
 					line = s.highlight.Render(line)
 				}

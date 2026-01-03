@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
-	"github.com/mattn/go-runewidth"
 
 	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/registry"
@@ -21,16 +20,6 @@ const (
 	// maxFieldValueWidth is the maximum width for a single field value before truncation
 	maxFieldValueWidth = 30
 )
-
-// truncateValue truncates a string to maxWidth, adding "…" if truncated
-func truncateValue(s string, maxWidth int) string {
-	if runewidth.StringWidth(s) <= maxWidth {
-		return s
-	}
-	// Truncate to fit maxWidth-1 to leave room for ellipsis
-	truncated := runewidth.Truncate(s, maxWidth-1, "")
-	return truncated + "…"
-}
 
 // HeaderPanel renders the fixed header panel at the top of resource views
 // headerPanelStyles holds cached lipgloss styles for performance
@@ -191,7 +180,7 @@ func (h *HeaderPanel) Render(service, resourceType string, summaryFields []rende
 			}
 
 			// Truncate long values to prevent line wrapping
-			truncatedValue := truncateValue(field.Value, maxFieldValueWidth)
+			truncatedValue := TruncateString(field.Value, maxFieldValueWidth)
 
 			// Format field with appropriate styling
 			var styledValue string

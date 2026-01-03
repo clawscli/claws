@@ -7,6 +7,7 @@ import (
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/render"
+	"github.com/clawscli/claws/internal/ui"
 )
 
 // Ensure StackRenderer implements render.Navigator
@@ -244,13 +245,13 @@ func (r *StackRenderer) RenderSummary(resource dao.Resource) []render.SummaryFie
 func cfnStateColorer(status string) render.Style {
 	switch {
 	case strings.HasSuffix(status, "_COMPLETE") && !strings.Contains(status, "ROLLBACK") && !strings.Contains(status, "DELETE"):
-		return render.SuccessStyle()
+		return ui.SuccessStyle()
 	case strings.Contains(status, "IN_PROGRESS"):
-		return render.WarningStyle()
+		return ui.WarningStyle()
 	case strings.Contains(status, "FAILED") || strings.Contains(status, "ROLLBACK"):
-		return render.DangerStyle()
+		return ui.DangerStyle()
 	case strings.Contains(status, "DELETE_COMPLETE"):
-		return render.DimStyle()
+		return ui.DimStyle()
 	default:
 		return render.DefaultStyle()
 	}
@@ -260,11 +261,11 @@ func cfnStateColorer(status string) render.Style {
 func driftColorer(status string) render.Style {
 	switch status {
 	case "IN_SYNC":
-		return render.SuccessStyle()
+		return ui.SuccessStyle()
 	case "DRIFTED":
-		return render.DangerStyle()
+		return ui.DangerStyle()
 	case "NOT_CHECKED":
-		return render.DimStyle()
+		return ui.DimStyle()
 	default:
 		return render.DefaultStyle()
 	}

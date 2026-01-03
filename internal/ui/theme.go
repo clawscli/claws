@@ -188,6 +188,20 @@ func PendingStyle() lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(current.Pending)
 }
 
+func BoxStyle() lipgloss.Style {
+	return lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(current.Border).
+		Padding(0, 1)
+}
+
+func InputStyle() lipgloss.Style {
+	return lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(current.Border).
+		Padding(0, 1)
+}
+
 func NewSpinner() spinner.Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot

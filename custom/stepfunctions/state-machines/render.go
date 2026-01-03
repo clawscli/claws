@@ -7,6 +7,7 @@ import (
 
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/render"
+	"github.com/clawscli/claws/internal/ui"
 )
 
 // Ensure StateMachineRenderer implements render.Navigator
@@ -131,7 +132,7 @@ func (r *StateMachineRenderer) RenderDetail(resource dao.Resource) string {
 		tc := sr.Detail.TracingConfiguration
 		d.Section("Tracing (X-Ray)")
 		if tc.Enabled {
-			d.FieldStyled("X-Ray Tracing", "Enabled", render.SuccessStyle())
+			d.FieldStyled("X-Ray Tracing", "Enabled", ui.SuccessStyle())
 		} else {
 			d.Field("X-Ray Tracing", "Disabled")
 		}

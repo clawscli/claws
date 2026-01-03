@@ -3,11 +3,10 @@ package subnets
 import (
 	"fmt"
 
-	"charm.land/lipgloss/v2"
-
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/render"
+	"github.com/clawscli/claws/internal/ui"
 )
 
 // Ensure SubnetRenderer implements render.Navigator
@@ -126,9 +125,9 @@ func (r *SubnetRenderer) RenderDetail(resource dao.Resource) string {
 
 	// Public/Private subnet indicator
 	if sr.IsPublic() {
-		d.FieldStyled("Subnet Type", "Public", lipgloss.NewStyle().Foreground(lipgloss.Color("42")))
+		d.FieldStyled("Subnet Type", "Public", ui.SuccessStyle())
 	} else {
-		d.FieldStyled("Subnet Type", "Private", lipgloss.NewStyle().Foreground(lipgloss.Color("33")))
+		d.FieldStyled("Subnet Type", "Private", ui.SecondaryStyle())
 	}
 
 	if sr.Item.AvailabilityZoneId != nil {
