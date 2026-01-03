@@ -456,6 +456,20 @@ func TestKeyOpensModal(t *testing.T) {
 	}
 }
 
+func TestCommandModeActivation(t *testing.T) {
+	app := newTestApp(t)
+	app.currentView = &MockView{name: "Dashboard"}
+
+	app.Update(tea.KeyPressMsg{Code: 0, Text: ":"})
+
+	if !app.commandMode {
+		t.Error("Expected commandMode=true after ':' key")
+	}
+	if app.modal != nil {
+		t.Error("Expected no modal for command mode")
+	}
+}
+
 func TestModalClosesWithKey(t *testing.T) {
 	tests := []struct {
 		name string

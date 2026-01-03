@@ -231,6 +231,18 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.modal = &view.Modal{Content: helpView, Width: modalWidthHelp}
 			return a, a.modal.SetSize(a.width, a.height)
 
+		case key.Matches(msg, a.keys.Command):
+			a.commandMode = true
+			// Set completion providers if current view is a ResourceBrowser
+			if rb, ok := a.currentView.(*view.ResourceBrowser); ok {
+				a.commandInput.SetTagProvider(rb)
+				a.commandInput.SetDiffProvider(rb)
+			} else {
+				a.commandInput.SetTagProvider(nil)
+				a.commandInput.SetDiffProvider(nil)
+			}
+			return a, a.commandInput.Activate()
+
 		case key.Matches(msg, a.keys.Region):
 			regionSelector := view.NewRegionSelector(a.ctx)
 			a.modal = &view.Modal{Content: regionSelector, Width: modalWidthRegion}
