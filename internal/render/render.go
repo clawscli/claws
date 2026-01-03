@@ -128,18 +128,17 @@ type Colorer func(value string) lipgloss.Style
 // StateColorer returns a colorer for common state values
 func StateColorer() Colorer {
 	return func(value string) lipgloss.Style {
-		t := ui.Current()
 		switch value {
 		case "running", "available", "active", "healthy":
-			return lipgloss.NewStyle().Foreground(t.Success)
+			return ui.SuccessStyle()
 		case "in-use", "attached":
-			return lipgloss.NewStyle().Foreground(t.Info)
+			return ui.InfoStyle()
 		case "stopped", "stopping", "deleting":
-			return lipgloss.NewStyle().Foreground(t.Warning)
+			return ui.WarningStyle()
 		case "terminated", "failed", "error", "unhealthy", "deleted":
-			return lipgloss.NewStyle().Foreground(t.Danger)
+			return ui.DangerStyle()
 		case "pending", "starting", "creating":
-			return lipgloss.NewStyle().Foreground(t.Pending)
+			return ui.PendingStyle()
 		default:
 			return lipgloss.NewStyle()
 		}

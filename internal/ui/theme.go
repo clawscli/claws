@@ -158,6 +158,11 @@ func TextStyle() lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(current.Text)
 }
 
+// TextBrightStyle returns a style for emphasized text
+func TextBrightStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(current.TextBright)
+}
+
 // SecondaryStyle returns a style for secondary-colored text
 func SecondaryStyle() lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(current.Secondary)
@@ -171,6 +176,16 @@ func BorderStyle() lipgloss.Style {
 // PrimaryStyle returns a style for primary-colored text (non-bold)
 func PrimaryStyle() lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(current.Primary)
+}
+
+// InfoStyle returns a style for info states
+func InfoStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(current.Info)
+}
+
+// PendingStyle returns a style for pending states
+func PendingStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(current.Pending)
 }
 
 func NewSpinner() spinner.Model {
