@@ -1,4 +1,4 @@
-package cfn
+package cloudformation
 
 import (
 	"context"
