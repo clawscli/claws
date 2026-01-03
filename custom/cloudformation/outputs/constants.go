@@ -4,4 +4,4 @@
 package outputs
 
 // ServiceResourcePath is the canonical path for this resource type.
-const ServiceResourcePath = "cfn/outputs"
+const ServiceResourcePath = "cloudformation/outputs"

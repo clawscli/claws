@@ -208,6 +208,12 @@ func defaultDisplayNames() map[string]string {
 	}
 }
 
+// DefaultDisplayNames returns the default service display names map.
+// Used by code generation tools to maintain consistency with the UI.
+func DefaultDisplayNames() map[string]string {
+	return defaultDisplayNames()
+}
+
 // defaultCategories returns the ordered list of service categories
 func defaultCategories() []ServiceCategory {
 	return []ServiceCategory{

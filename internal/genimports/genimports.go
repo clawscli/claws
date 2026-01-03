@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/clawscli/claws/internal/registry"
 )
 
 const (
@@ -53,79 +55,8 @@ func GetProjectRoot() (string, error) {
 	return wd, nil
 }
 
-var ServiceDisplayNames = map[string]string{
-	"accessanalyzer":    "Access Analyzer",
-	"acm":               "ACM",
-	"apigateway":        "API Gateway",
-	"apprunner":         "App Runner",
-	"appsync":           "AppSync",
-	"athena":            "Athena",
-	"autoscaling":       "Auto Scaling",
-	"backup":            "AWS Backup",
-	"batch":             "Batch",
-	"bedrock":           "Bedrock",
-	"bedrock-agent":     "Bedrock Agent",
-	"bedrock-agentcore": "Bedrock AgentCore",
-	"budgets":           "Budgets",
-	"ce":                "Cost Explorer",
-	"cfn":               "CloudFormation",
-	"cloudfront":        "CloudFront",
-	"cloudtrail":        "CloudTrail",
-	"cloudwatch":        "CloudWatch",
-	"codebuild":         "CodeBuild",
-	"codepipeline":      "CodePipeline",
-	"cognito-idp":       "Cognito",
-	"compute-optimizer": "Compute Optimizer",
-	"configservice":     "Config",
-	"datasync":          "DataSync",
-	"detective":         "Detective",
-	"directconnect":     "Direct Connect",
-	"dynamodb":          "DynamoDB",
-	"ec2":               "EC2",
-	"ecr":               "ECR",
-	"ecs":               "ECS",
-	"elasticache":       "ElastiCache",
-	"elbv2":             "ELBv2 (ALB/NLB/GLB)",
-	"emr":               "EMR",
-	"events":            "EventBridge",
-	"fms":               "Firewall Manager",
-	"glue":              "Glue",
-	"guardduty":         "GuardDuty",
-	"health":            "Health",
-	"iam":               "IAM",
-	"inspector2":        "Inspector",
-	"kinesis":           "Kinesis",
-	"kms":               "KMS",
-	"lambda":            "Lambda",
-	"license-manager":   "License Manager",
-	"macie2":            "Macie",
-	"network-firewall":  "Network Firewall",
-	"opensearch":        "OpenSearch",
-	"organizations":     "Organizations",
-	"rds":               "RDS",
-	"redshift":          "Redshift",
-	"risp":              "RI/SP (Reserved Instances, Savings Plans)",
-	"route53":           "Route53",
-	"s3":                "S3",
-	"s3vectors":         "S3 Vectors",
-	"sagemaker":         "SageMaker",
-	"secretsmanager":    "Secrets Manager",
-	"securityhub":       "Security Hub",
-	"service-quotas":    "Service Quotas",
-	"sns":               "SNS",
-	"sqs":               "SQS",
-	"ssm":               "SSM",
-	"stepfunctions":     "Step Functions",
-	"transcribe":        "Transcribe",
-	"transfer":          "Transfer Family",
-	"trustedadvisor":    "Trusted Advisor",
-	"vpc":               "VPC",
-	"wafv2":             "WAF",
-	"xray":              "X-Ray",
-}
-
 func GetServiceDisplayName(service string) string {
-	if name, ok := ServiceDisplayNames[service]; ok {
+	if name, ok := registry.DefaultDisplayNames()[service]; ok {
 		return name
 	}
 	return strings.ToUpper(service[:1]) + service[1:]

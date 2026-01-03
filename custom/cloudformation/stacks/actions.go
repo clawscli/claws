@@ -6,7 +6,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 
-	cfnClient "github.com/clawscli/claws/custom/cfn"
+	cfnClient "github.com/clawscli/claws/custom/cloudformation"
 	"github.com/clawscli/claws/internal/action"
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"

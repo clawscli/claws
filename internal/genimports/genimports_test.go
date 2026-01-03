@@ -72,8 +72,7 @@ func TestGetServiceDisplayName(t *testing.T) {
 		{"s3", "S3"},
 		{"lambda", "Lambda"},
 		{"bedrock-agent", "Bedrock Agent"},
-		{"cloudformation", "Cloudformation"},
-		{"cfn", "CloudFormation"},
+		{"cloudformation", "CloudFormation"},
 		{"unknown", "Unknown"},
 	}
 
