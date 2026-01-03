@@ -149,6 +149,7 @@ func (d *DetailView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if arn := resource.GetARN(); arn != "" {
 				return d, clipboard.CopyARN(arn)
 			}
+			return d, clipboard.NoARN()
 		}
 	}
 

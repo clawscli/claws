@@ -11,8 +11,10 @@ import (
 
 type CopiedMsg struct {
 	Label string
-	Value string
+	Value string // retained for future use (logging, undo)
 }
+
+type NoARNMsg struct{}
 
 func Copy(label, value string) tea.Cmd {
 	return func() tea.Msg {
@@ -43,4 +45,8 @@ func CopyID(id string) tea.Cmd {
 
 func CopyARN(arn string) tea.Cmd {
 	return Copy("ARN", arn)
+}
+
+func NoARN() tea.Cmd {
+	return func() tea.Msg { return NoARNMsg{} }
 }

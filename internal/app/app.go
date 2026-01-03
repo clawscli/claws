@@ -89,7 +89,8 @@ type App struct {
 	modalStack    []*view.Modal
 	modalRenderer *view.ModalRenderer
 
-	clipboardFlash string
+	clipboardFlash   string
+	clipboardWarning bool
 
 	styles appStyles
 }
@@ -280,6 +281,14 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case clipboard.CopiedMsg:
 		a.clipboardFlash = "Copied " + msg.Label
+		a.clipboardWarning = false
+		return a, tea.Tick(2*time.Second, func(t time.Time) tea.Msg {
+			return clearFlashMsg{}
+		})
+
+	case clipboard.NoARNMsg:
+		a.clipboardFlash = "No ARN available"
+		a.clipboardWarning = true
 		return a, tea.Tick(2*time.Second, func(t time.Time) tea.Msg {
 			return clearFlashMsg{}
 		})
@@ -381,7 +390,11 @@ func (a *App) View() tea.View {
 	if a.err != nil {
 		statusContent = ui.DangerStyle().Render("Error: " + a.err.Error())
 	} else if a.clipboardFlash != "" {
-		statusContent = ui.SuccessStyle().Render("✓ " + a.clipboardFlash)
+		if a.clipboardWarning {
+			statusContent = ui.WarningStyle().Render("⚠ " + a.clipboardFlash)
+		} else {
+			statusContent = ui.SuccessStyle().Render("✓ " + a.clipboardFlash)
+		}
 	} else if a.currentView != nil {
 		statusContent = a.currentView.StatusLine()
 	}

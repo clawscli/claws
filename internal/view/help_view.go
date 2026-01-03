@@ -78,6 +78,8 @@ func (h *HelpView) renderContent() string {
 	out += s.key.Render("c") + s.desc.Render("Clear filter") + "\n"
 	out += s.key.Render("Ctrl+r") + s.desc.Render("Refresh resources") + "\n"
 	out += s.key.Render("a") + s.desc.Render("Show actions menu") + "\n"
+	out += s.key.Render("y") + s.desc.Render("Copy resource ID to clipboard") + "\n"
+	out += s.key.Render("Y") + s.desc.Render("Copy resource ARN to clipboard") + "\n"
 
 	// Filter Syntax
 	out += "\n" + s.section.Render("Filter Syntax") + "\n"

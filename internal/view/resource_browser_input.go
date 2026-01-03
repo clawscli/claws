@@ -295,7 +295,7 @@ func (r *ResourceBrowser) handleCopyARN() (tea.Model, tea.Cmd) {
 	resource := dao.UnwrapResource(r.filtered[r.table.Cursor()])
 	arn := resource.GetARN()
 	if arn == "" {
-		return r, nil
+		return r, clipboard.NoARN()
 	}
 	return r, clipboard.CopyARN(arn)
 }

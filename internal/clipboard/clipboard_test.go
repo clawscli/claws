@@ -34,3 +34,14 @@ func TestCopyARN(t *testing.T) {
 		t.Error("CopyARN should return a non-nil command")
 	}
 }
+
+func TestNoARN(t *testing.T) {
+	cmd := NoARN()
+	if cmd == nil {
+		t.Error("NoARN should return a non-nil command")
+	}
+	msg := cmd()
+	if _, ok := msg.(NoARNMsg); !ok {
+		t.Errorf("expected NoARNMsg, got %T", msg)
+	}
+}
