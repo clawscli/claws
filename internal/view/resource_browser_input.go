@@ -113,8 +113,9 @@ func (r *ResourceBrowser) handleEsc() (tea.Model, tea.Cmd) {
 }
 
 func (r *ResourceBrowser) handleMark() (tea.Model, tea.Cmd) {
-	if len(r.filtered) > 0 && r.table.Cursor() < len(r.filtered) {
-		resource := r.filtered[r.table.Cursor()]
+	cursor := r.table.Cursor()
+	if len(r.filtered) > 0 && cursor >= 0 && cursor < len(r.filtered) {
+		resource := r.filtered[cursor]
 		if r.markedResource != nil && r.markedResource.GetID() == resource.GetID() {
 			r.markedResource = nil
 		} else {
@@ -138,8 +139,9 @@ func (r *ResourceBrowser) handleMetricsToggle() (tea.Model, tea.Cmd) {
 }
 
 func (r *ResourceBrowser) handleEnter() (tea.Model, tea.Cmd) {
-	if len(r.filtered) > 0 && r.table.Cursor() < len(r.filtered) {
-		ctx, resource := r.contextForResource(r.filtered[r.table.Cursor()])
+	cursor := r.table.Cursor()
+	if len(r.filtered) > 0 && cursor >= 0 && cursor < len(r.filtered) {
+		ctx, resource := r.contextForResource(r.filtered[cursor])
 		if r.markedResource != nil && r.markedResource.GetID() != resource.GetID() {
 			diffView := NewDiffView(ctx, dao.UnwrapResource(r.markedResource), resource, r.renderer, r.service, r.resourceType)
 			return r, func() tea.Msg {
@@ -155,9 +157,10 @@ func (r *ResourceBrowser) handleEnter() (tea.Model, tea.Cmd) {
 }
 
 func (r *ResourceBrowser) handleAction() (tea.Model, tea.Cmd) {
-	if len(r.filtered) > 0 && r.table.Cursor() < len(r.filtered) {
+	cursor := r.table.Cursor()
+	if len(r.filtered) > 0 && cursor >= 0 && cursor < len(r.filtered) {
 		if actions := action.Global.Get(r.service, r.resourceType); len(actions) > 0 {
-			ctx, resource := r.contextForResource(r.filtered[r.table.Cursor()])
+			ctx, resource := r.contextForResource(r.filtered[cursor])
 			actionMenu := NewActionMenu(ctx, resource, r.service, r.resourceType)
 			return r, func() tea.Msg {
 				return ShowModalMsg{Modal: &Modal{Content: actionMenu, Width: ModalWidthActionMenu}}
@@ -281,21 +284,22 @@ func (r *ResourceBrowser) openDetailView() (tea.Model, tea.Cmd) {
 }
 
 func (r *ResourceBrowser) handleCopyID() (tea.Model, tea.Cmd) {
-	if len(r.filtered) == 0 || r.table.Cursor() >= len(r.filtered) {
-		return r, nil
+	cursor := r.table.Cursor()
+	if len(r.filtered) > 0 && cursor >= 0 && cursor < len(r.filtered) {
+		resource := dao.UnwrapResource(r.filtered[cursor])
+		return r, clipboard.CopyID(resource.GetID())
 	}
-	resource := dao.UnwrapResource(r.filtered[r.table.Cursor()])
-	return r, clipboard.CopyID(resource.GetID())
+	return r, nil
 }
 
 func (r *ResourceBrowser) handleCopyARN() (tea.Model, tea.Cmd) {
-	if len(r.filtered) == 0 || r.table.Cursor() >= len(r.filtered) {
-		return r, nil
-	}
-	resource := dao.UnwrapResource(r.filtered[r.table.Cursor()])
-	arn := resource.GetARN()
-	if arn == "" {
+	cursor := r.table.Cursor()
+	if len(r.filtered) > 0 && cursor >= 0 && cursor < len(r.filtered) {
+		resource := dao.UnwrapResource(r.filtered[cursor])
+		if arn := resource.GetARN(); arn != "" {
+			return r, clipboard.CopyARN(arn)
+		}
 		return r, clipboard.NoARN()
 	}
-	return r, clipboard.CopyARN(arn)
+	return r, nil
 }
