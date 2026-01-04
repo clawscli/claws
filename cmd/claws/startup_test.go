@@ -62,6 +62,13 @@ func TestResolveStartupService(t *testing.T) {
 			input:   "ec2/nonexistent",
 			wantErr: true,
 		},
+		{
+			name:         "alias with explicit resource override",
+			input:        "cfn/resources",
+			wantService:  "cloudformation",
+			wantResource: "resources",
+			wantErr:      false,
+		},
 	}
 
 	for _, tt := range tests {

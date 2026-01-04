@@ -368,6 +368,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			log.Warn("failed to get renderer for startup resource", "error", err)
 			return a, nil
 		}
+		// DAO is optional - DetailView handles nil gracefully (just disables refresh).
+		// Unlike renderer which is required for display, DAO only enables refresh functionality.
 		d, err := a.registry.GetDAO(a.ctx, a.startupPath.Service, a.startupPath.ResourceType)
 		if err != nil {
 			log.Warn("failed to get DAO for startup resource", "error", err)
