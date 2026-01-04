@@ -141,11 +141,10 @@ func (d *DetailView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return ShowModalMsg{Modal: &Modal{Content: actionMenu, Width: ModalWidthActionMenu}}
 				}
 			}
-		case "y", "Y":
+		case "y":
+			return d, clipboard.CopyID(dao.UnwrapResource(d.resource).GetID())
+		case "Y":
 			resource := dao.UnwrapResource(d.resource)
-			if msg.String() == "y" {
-				return d, clipboard.CopyID(resource.GetID())
-			}
 			if arn := resource.GetARN(); arn != "" {
 				return d, clipboard.CopyARN(arn)
 			}
