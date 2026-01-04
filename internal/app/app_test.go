@@ -33,6 +33,17 @@ func (m *MockView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+type RefreshableMockView struct {
+	MockView
+	canRefresh bool
+}
+
+func (m *RefreshableMockView) CanRefresh() bool { return m.canRefresh }
+
+func (m *RefreshableMockView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	return m, nil
+}
+
 func newTestApp(t *testing.T) *App {
 	t.Helper()
 	ctx := context.Background()
@@ -635,5 +646,132 @@ func TestWarningScreenDismissal(t *testing.T) {
 				t.Errorf("Expected showWarnings=false after %s key", tt.name)
 			}
 		})
+	}
+}
+
+func TestProfileChangeStaysOnCurrentRefreshableView(t *testing.T) {
+	app := newTestApp(t)
+
+	dashboard := &RefreshableMockView{MockView: MockView{name: "Dashboard"}, canRefresh: true}
+	resourceBrowser := &RefreshableMockView{MockView: MockView{name: "ResourceBrowser"}, canRefresh: true}
+
+	app.viewStack = []view.View{dashboard}
+	app.currentView = resourceBrowser
+
+	app.Update(navmsg.ProfilesChangedMsg{Selections: nil})
+
+	if app.currentView != resourceBrowser {
+		t.Errorf("Expected to stay on ResourceBrowser, got %T", app.currentView)
+	}
+	if len(app.viewStack) != 1 {
+		t.Errorf("Expected viewStack length 1, got %d", len(app.viewStack))
+	}
+}
+
+func TestRegionChangeStaysOnCurrentRefreshableView(t *testing.T) {
+	app := newTestApp(t)
+
+	dashboard := &RefreshableMockView{MockView: MockView{name: "Dashboard"}, canRefresh: true}
+	resourceBrowser := &RefreshableMockView{MockView: MockView{name: "ResourceBrowser"}, canRefresh: true}
+
+	app.viewStack = []view.View{dashboard}
+	app.currentView = resourceBrowser
+
+	app.Update(navmsg.RegionChangedMsg{Regions: []string{"us-east-1"}})
+
+	if app.currentView != resourceBrowser {
+		t.Errorf("Expected to stay on ResourceBrowser, got %T", app.currentView)
+	}
+	if len(app.viewStack) != 1 {
+		t.Errorf("Expected viewStack length 1, got %d", len(app.viewStack))
+	}
+}
+
+func TestProfileChangeFromNonRefreshableViewStaysOnCurrentView(t *testing.T) {
+	app := newTestApp(t)
+
+	dashboard := &RefreshableMockView{MockView: MockView{name: "Dashboard"}, canRefresh: true}
+	resourceBrowser := &RefreshableMockView{MockView: MockView{name: "ResourceBrowser"}, canRefresh: true}
+	detailView := &MockView{name: "DetailView"}
+
+	app.viewStack = []view.View{dashboard, resourceBrowser}
+	app.currentView = detailView
+
+	app.Update(navmsg.ProfilesChangedMsg{Selections: nil})
+
+	if app.currentView != detailView {
+		t.Errorf("Expected to stay on DetailView, got %T", app.currentView)
+	}
+	if len(app.viewStack) != 2 {
+		t.Errorf("Expected viewStack length 2, got %d", len(app.viewStack))
+	}
+}
+
+func TestRegionChangeFromNonRefreshableViewStaysOnCurrentView(t *testing.T) {
+	app := newTestApp(t)
+
+	dashboard := &RefreshableMockView{MockView: MockView{name: "Dashboard"}, canRefresh: true}
+	resourceBrowser := &RefreshableMockView{MockView: MockView{name: "ResourceBrowser"}, canRefresh: true}
+	detailView := &MockView{name: "DetailView"}
+
+	app.viewStack = []view.View{dashboard, resourceBrowser}
+	app.currentView = detailView
+
+	app.Update(navmsg.RegionChangedMsg{Regions: []string{"us-west-2"}})
+
+	if app.currentView != detailView {
+		t.Errorf("Expected to stay on DetailView, got %T", app.currentView)
+	}
+	if len(app.viewStack) != 2 {
+		t.Errorf("Expected viewStack length 2, got %d", len(app.viewStack))
+	}
+}
+
+func TestNavigateBackWithEmptyStack(t *testing.T) {
+	app := newTestApp(t)
+	app.currentView = &MockView{name: "Dashboard"}
+	app.viewStack = nil
+
+	cmd := app.navigateBack()
+
+	if cmd != nil {
+		t.Error("Expected nil cmd when stack is empty")
+	}
+	if app.currentView.StatusLine() != "Dashboard" {
+		t.Errorf("Expected currentView unchanged, got %s", app.currentView.StatusLine())
+	}
+}
+
+func TestRefreshCurrentViewWithNilView(t *testing.T) {
+	app := newTestApp(t)
+	app.currentView = nil
+
+	_, cmd := app.refreshCurrentView()
+
+	if cmd != nil {
+		t.Error("Expected nil cmd when currentView is nil")
+	}
+}
+
+func TestRefreshCurrentViewSendsRefreshMsgForRefreshableView(t *testing.T) {
+	app := newTestApp(t)
+	app.currentView = &RefreshableMockView{MockView: MockView{name: "ResourceBrowser"}, canRefresh: true}
+
+	_, cmd := app.refreshCurrentView()
+
+	if cmd == nil {
+		t.Fatal("Expected non-nil cmd for refreshable view")
+	}
+}
+
+func TestRefreshCurrentViewKeepsNonRefreshableViewUnchanged(t *testing.T) {
+	app := newTestApp(t)
+	nonRefreshable := &MockView{name: "DetailView"}
+	app.currentView = nonRefreshable
+
+	_, _ = app.refreshCurrentView()
+
+	if app.currentView != nonRefreshable {
+		t.Errorf("Expected currentView unchanged, got %T", app.currentView)
 	}
 }

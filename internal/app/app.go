@@ -152,13 +152,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				a.commandMode = false
 			}
 			if nav != nil {
-				// Navigate to the command result
-				if nav.ClearStack {
-					// Go home - clear the stack
-					a.viewStack = nil
-				} else if a.currentView != nil {
-					a.viewStack = append(a.viewStack, a.currentView)
-				}
+				a.pushOrClearStack(nav.ClearStack)
 				a.currentView = nav.View
 				cmds := []tea.Cmd{
 					cmd,
@@ -188,11 +182,10 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, nil
 
 	case tea.MouseClickMsg:
-		// Mouse back button navigates back (same as esc/backspace)
-		if msg.Button == tea.MouseBackward && len(a.viewStack) > 0 {
-			a.currentView = a.viewStack[len(a.viewStack)-1]
-			a.viewStack = a.viewStack[:len(a.viewStack)-1]
-			return a, a.currentView.SetSize(a.width, a.height-2)
+		if msg.Button == tea.MouseBackward {
+			if cmd := a.navigateBack(); cmd != nil {
+				return a, cmd
+			}
 		}
 
 	case tea.KeyPressMsg:
@@ -208,11 +201,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return a, cmd
 			}
-			// Otherwise, go back
-			if len(a.viewStack) > 0 {
-				a.currentView = a.viewStack[len(a.viewStack)-1]
-				a.viewStack = a.viewStack[:len(a.viewStack)-1]
-				return a, a.currentView.SetSize(a.width, a.height-2)
+			if cmd := a.navigateBack(); cmd != nil {
+				return a, cmd
 			}
 			return a, nil
 		}
@@ -221,10 +211,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, a.keys.Quit):
 			switch a.currentView.(type) {
 			case *view.DetailView, *view.DiffView, *view.LogView:
-				if len(a.viewStack) > 0 {
-					a.currentView = a.viewStack[len(a.viewStack)-1]
-					a.viewStack = a.viewStack[:len(a.viewStack)-1]
-					return a, a.currentView.SetSize(a.width, a.height-2)
+				if cmd := a.navigateBack(); cmd != nil {
+					return a, cmd
 				}
 			}
 			return a, tea.Quit
@@ -523,16 +511,49 @@ func (a *App) showModal(modal *view.Modal) (tea.Model, tea.Cmd) {
 
 func (a *App) handleNavigate(msg view.NavigateMsg) (tea.Model, tea.Cmd) {
 	log.Debug("navigating", "clearStack", msg.ClearStack, "stackDepth", len(a.viewStack))
-	if msg.ClearStack {
-		a.viewStack = nil
-	} else if a.currentView != nil {
-		a.viewStack = append(a.viewStack, a.currentView)
-	}
+	a.pushOrClearStack(msg.ClearStack)
 	a.currentView = msg.View
 	return a, tea.Batch(
 		a.currentView.Init(),
 		a.currentView.SetSize(a.width, a.height-2),
 	)
+}
+
+// popView pops the top view from the view stack.
+// Returns nil if the stack is empty.
+func (a *App) popView() view.View {
+	if len(a.viewStack) == 0 {
+		return nil
+	}
+	v := a.viewStack[len(a.viewStack)-1]
+	a.viewStack = a.viewStack[:len(a.viewStack)-1]
+	return v
+}
+
+// navigateBack pops from the view stack and sets it as the current view.
+// Calls Init() to ensure the view is properly reinitialized (important for stateful views).
+// Returns nil if the stack is empty (no-op).
+func (a *App) navigateBack() tea.Cmd {
+	v := a.popView()
+	if v == nil {
+		return nil
+	}
+	a.currentView = v
+	log.Debug("navigating back", "view", a.currentView.StatusLine(), "stackDepth", len(a.viewStack))
+	return tea.Batch(
+		a.currentView.Init(),
+		a.currentView.SetSize(a.width, a.height-2),
+	)
+}
+
+// pushOrClearStack either clears the view stack (for home navigation) or
+// pushes the current view onto the stack (for drill-down navigation).
+func (a *App) pushOrClearStack(clearStack bool) {
+	if clearStack {
+		a.viewStack = nil
+	} else if a.currentView != nil {
+		a.viewStack = append(a.viewStack, a.currentView)
+	}
 }
 
 func (a *App) handleRegionChanged(msg navmsg.RegionChangedMsg) (tea.Model, tea.Cmd) {
@@ -544,7 +565,7 @@ func (a *App) handleRegionChanged(msg navmsg.RegionChangedMsg) (tea.Model, tea.C
 			log.Warn("failed to persist config", "error", err)
 		}
 	}
-	return a.popToRefreshableView()
+	return a.refreshCurrentView()
 }
 
 func (a *App) handleProfilesChanged(msg navmsg.ProfilesChangedMsg) (tea.Model, tea.Cmd) {
@@ -576,44 +597,25 @@ func (a *App) handleProfilesChanged(msg navmsg.ProfilesChangedMsg) (tea.Model, t
 		}
 	}
 
-	cmds := []tea.Cmd{refreshCmd}
-
-	for len(a.viewStack) > 0 {
-		a.currentView = a.viewStack[len(a.viewStack)-1]
-		a.viewStack = a.viewStack[:len(a.viewStack)-1]
-
-		if r, ok := a.currentView.(view.Refreshable); ok && r.CanRefresh() {
-			cmds = append(cmds,
-				a.currentView.SetSize(a.width, a.height-2),
-				func() tea.Msg { return view.RefreshMsg{} },
-			)
-			return a, tea.Batch(cmds...)
-		}
-	}
-	a.currentView = view.NewDashboardView(a.ctx, a.registry)
-	cmds = append(cmds,
-		a.currentView.Init(),
-		a.currentView.SetSize(a.width, a.height-2),
-	)
-	return a, tea.Batch(cmds...)
+	_, viewCmd := a.refreshCurrentView()
+	return a, tea.Batch(refreshCmd, viewCmd)
 }
 
-func (a *App) popToRefreshableView() (tea.Model, tea.Cmd) {
-	for len(a.viewStack) > 0 {
-		a.currentView = a.viewStack[len(a.viewStack)-1]
-		a.viewStack = a.viewStack[:len(a.viewStack)-1]
-		if r, ok := a.currentView.(view.Refreshable); ok && r.CanRefresh() {
-			return a, tea.Batch(
-				a.currentView.SetSize(a.width, a.height-2),
-				func() tea.Msg { return view.RefreshMsg{} },
-			)
-		}
+// refreshCurrentView triggers a refresh on the current view if it's refreshable.
+// Unlike the previous popToRefreshableView(), this stays on the current view instead of
+// popping the stack to find a refreshable ancestor. This provides better UX by keeping
+// the user's context (e.g., staying on ResourceBrowser after profile/region change).
+func (a *App) refreshCurrentView() (tea.Model, tea.Cmd) {
+	if a.currentView == nil {
+		return a, nil
 	}
-	a.currentView = view.NewDashboardView(a.ctx, a.registry)
-	return a, tea.Batch(
-		a.currentView.Init(),
-		a.currentView.SetSize(a.width, a.height-2),
-	)
+	cmds := []tea.Cmd{a.currentView.SetSize(a.width, a.height-2)}
+	r, canRefresh := a.currentView.(view.Refreshable)
+	if canRefresh && r.CanRefresh() {
+		cmds = append(cmds, func() tea.Msg { return view.RefreshMsg{} })
+	}
+	log.Debug("refreshing current view", "view", a.currentView.StatusLine(), "refreshable", canRefresh && r.CanRefresh())
+	return a, tea.Batch(cmds...)
 }
 
 type keyMap struct {
