@@ -275,3 +275,47 @@ func (m *mockDAO) Supports(op dao.Operation) bool {
 	}
 	return true
 }
+
+func TestDetailViewCopyID(t *testing.T) {
+	resource := &mockResource{id: "i-1234567890abcdef0", name: "test-instance", arn: "arn:aws:ec2:us-east-1:123456789012:instance/i-1234567890abcdef0"}
+	ctx := context.Background()
+
+	dv := NewDetailView(ctx, resource, nil, "ec2", "instances", nil, nil)
+	dv.SetSize(100, 50)
+
+	_, cmd := dv.Update(tea.KeyPressMsg{Code: 'y'})
+	if cmd == nil {
+		t.Fatal("Expected cmd from 'y' key press")
+	}
+
+	msg := cmd()
+	if msg == nil {
+		t.Fatal("Expected message from clipboard command")
+	}
+}
+
+func TestDetailViewCopyARN(t *testing.T) {
+	resource := &mockResource{id: "i-1234567890abcdef0", name: "test-instance", arn: "arn:aws:ec2:us-east-1:123456789012:instance/i-1234567890abcdef0"}
+	ctx := context.Background()
+
+	dv := NewDetailView(ctx, resource, nil, "ec2", "instances", nil, nil)
+	dv.SetSize(100, 50)
+
+	_, cmd := dv.Update(tea.KeyPressMsg{Code: 'Y'})
+	if cmd == nil {
+		t.Fatal("Expected cmd from 'Y' key press")
+	}
+}
+
+func TestDetailViewCopyARNNoARN(t *testing.T) {
+	resource := &mockResource{id: "resource-1", name: "no-arn-resource", arn: ""}
+	ctx := context.Background()
+
+	dv := NewDetailView(ctx, resource, nil, "test", "items", nil, nil)
+	dv.SetSize(100, 50)
+
+	_, cmd := dv.Update(tea.KeyPressMsg{Code: 'Y'})
+	if cmd == nil {
+		t.Fatal("Expected cmd from 'Y' key press for NoARN")
+	}
+}
