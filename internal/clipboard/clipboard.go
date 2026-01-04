@@ -7,6 +7,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/atotto/clipboard"
+
+	"github.com/clawscli/claws/internal/log"
 )
 
 type CopiedMsg struct {
@@ -36,7 +38,9 @@ func writeOSC52(s string) {
 	} else {
 		seq = osc52
 	}
-	_, _ = os.Stdout.WriteString(seq)
+	if _, err := os.Stdout.WriteString(seq); err != nil {
+		log.Debug("OSC52 clipboard write failed", "error", err)
+	}
 }
 
 func CopyID(id string) tea.Cmd {
