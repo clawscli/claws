@@ -24,6 +24,8 @@ type clearErrorMsg struct{}
 
 type clearFlashMsg struct{}
 
+const flashDuration = 2 * time.Second
+
 // awsContextReadyMsg is sent when AWS context initialization completes
 type awsContextReadyMsg struct {
 	err error
@@ -282,14 +284,14 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case clipboard.CopiedMsg:
 		a.clipboardFlash = "Copied " + msg.Label
 		a.clipboardWarning = false
-		return a, tea.Tick(2*time.Second, func(t time.Time) tea.Msg {
+		return a, tea.Tick(flashDuration, func(t time.Time) tea.Msg {
 			return clearFlashMsg{}
 		})
 
 	case clipboard.NoARNMsg:
 		a.clipboardFlash = "No ARN available"
 		a.clipboardWarning = true
-		return a, tea.Tick(2*time.Second, func(t time.Time) tea.Msg {
+		return a, tea.Tick(flashDuration, func(t time.Time) tea.Msg {
 			return clearFlashMsg{}
 		})
 
