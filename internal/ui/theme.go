@@ -210,6 +210,15 @@ func InputFieldStyle() lipgloss.Style {
 		Padding(0, 1)
 }
 
+// ReadOnlyBadgeStyle returns a style for the READ-ONLY indicator badge
+func ReadOnlyBadgeStyle() lipgloss.Style {
+	return lipgloss.NewStyle().
+		Background(current.Warning).
+		Foreground(lipgloss.Color("#000000")). // TODO: extract to theme in #96
+		Bold(true).
+		Padding(0, 1)
+}
+
 func NewSpinner() spinner.Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot

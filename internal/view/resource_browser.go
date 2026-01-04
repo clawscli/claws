@@ -124,12 +124,7 @@ type ResourceBrowser struct {
 
 // NewResourceBrowser creates a new ResourceBrowser
 func NewResourceBrowser(ctx context.Context, reg *registry.Registry, service string) *ResourceBrowser {
-	resources := reg.ListResources(service)
-	resourceType := ""
-	if len(resources) > 0 {
-		resourceType = resources[0]
-	}
-
+	resourceType := reg.DefaultResource(service)
 	return newResourceBrowser(ctx, reg, service, resourceType)
 }
 

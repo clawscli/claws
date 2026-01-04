@@ -189,6 +189,35 @@ func TestRegistry_ListResources_ExcludesSubResources(t *testing.T) {
 	}
 }
 
+func TestRegistry_DefaultResource(t *testing.T) {
+	reg := New()
+
+	reg.RegisterCustom("ec2", "capacity-reservations", Entry{})
+	reg.RegisterCustom("ec2", "instances", Entry{})
+	reg.RegisterCustom("ec2", "volumes", Entry{})
+	reg.RegisterCustom("rds", "instances", Entry{})
+	reg.RegisterCustom("rds", "snapshots", Entry{})
+	reg.RegisterCustom("s3", "buckets", Entry{})
+
+	tests := []struct {
+		service string
+		want    string
+	}{
+		{"ec2", "instances"},
+		{"rds", "instances"},
+		{"s3", "buckets"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.service, func(t *testing.T) {
+			got := reg.DefaultResource(tt.service)
+			if got != tt.want {
+				t.Errorf("DefaultResource(%q) = %q, want %q", tt.service, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestRegistry_ResolveAlias(t *testing.T) {
 	reg := New()
 

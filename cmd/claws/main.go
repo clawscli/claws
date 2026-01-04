@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -52,6 +53,24 @@ func main() {
 
 	applyStartupConfig(opts, fileCfg, cfg)
 
+	// Validate and resolve startup service/resource
+	var startupPath *app.StartupPath
+	if opts.service != "" {
+		service, resourceType, err := resolveStartupService(opts.service)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		startupPath = &app.StartupPath{
+			Service:      service,
+			ResourceType: resourceType,
+			ResourceID:   opts.resourceID,
+		}
+	} else if opts.resourceID != "" {
+		fmt.Fprintln(os.Stderr, "Error: --resource-id requires --service")
+		os.Exit(1)
+	}
+
 	// Enable logging if log file specified
 	if opts.logFile != "" {
 		if err := log.EnableFile(opts.logFile); err != nil {
@@ -63,8 +82,7 @@ func main() {
 
 	ctx := context.Background()
 
-	// Create the application
-	application := app.New(ctx, registry.Global)
+	application := app.New(ctx, registry.Global, startupPath)
 
 	// Run the TUI
 	// Note: In v2, AltScreen and MouseMode are set via the View struct
@@ -78,12 +96,14 @@ func main() {
 }
 
 type cliOptions struct {
-	profile  string
-	region   string
-	readOnly bool
-	envCreds bool
-	persist  *bool // nil = use config, true = enable, false = disable
-	logFile  string
+	profile    string
+	region     string
+	readOnly   bool
+	envCreds   bool
+	persist    *bool // nil = use config, true = enable, false = disable
+	logFile    string
+	service    string // startup service (e.g., "ec2", "rds/snapshots", "cfn")
+	resourceID string // startup resource ID for direct DetailView navigation
 }
 
 // parseFlags parses command line flags and returns options
@@ -120,6 +140,16 @@ func parseFlags() cliOptions {
 				i++
 				opts.logFile = args[i]
 			}
+		case "-s", "--service":
+			if i+1 < len(args) {
+				i++
+				opts.service = args[i]
+			}
+		case "-i", "--resource-id":
+			if i+1 < len(args) {
+				i++
+				opts.resourceID = args[i]
+			}
 		case "-h", "--help":
 			showHelp = true
 		case "-v", "--version":
@@ -150,6 +180,11 @@ func printUsage() {
 	fmt.Println("        AWS profile to use")
 	fmt.Println("  -r, --region <region>")
 	fmt.Println("        AWS region to use")
+	fmt.Println("  -s, --service <service>[/<resource>]")
+	fmt.Println("        Start directly on a service/resource (e.g., ec2, rds/snapshots, cfn)")
+	fmt.Println("        Supports aliases: cfn, sg, logs, ddb, etc.")
+	fmt.Println("  -i, --resource-id <id>")
+	fmt.Println("        Open detail view for a specific resource (requires --service)")
 	fmt.Println("  -e, --env")
 	fmt.Println("        Use environment credentials (ignore ~/.aws config)")
 	fmt.Println("        Useful for instance profiles, ECS task roles, Lambda, etc.")
@@ -165,6 +200,12 @@ func printUsage() {
 	fmt.Println("        Show version")
 	fmt.Println("  -h, --help")
 	fmt.Println("        Show this help message")
+	fmt.Println()
+	fmt.Println("Examples:")
+	fmt.Println("  claws -s ec2              Open EC2 instances browser")
+	fmt.Println("  claws -s rds/snapshots    Open RDS snapshots browser")
+	fmt.Println("  claws -s cfn              Open CloudFormation stacks (alias)")
+	fmt.Println("  claws -s ec2 -i i-12345   Open detail view for instance i-12345")
 	fmt.Println()
 	fmt.Println("Environment Variables:")
 	fmt.Println("  CLAWS_READ_ONLY=1|true   Enable read-only mode")
@@ -193,6 +234,36 @@ func applyStartupConfig(opts cliOptions, fileCfg *config.FileConfig, cfg *config
 	} else if len(startupRegions) > 0 {
 		cfg.SetRegions(startupRegions)
 	}
+}
+
+// resolveStartupService validates and resolves a service string (e.g., "ec2", "rds/snapshots", "cfn")
+// to a valid service/resourceType pair. Supports aliases and service/resource syntax.
+func resolveStartupService(input string) (service, resourceType string, err error) {
+	parts := strings.SplitN(input, "/", 2)
+	service = parts[0]
+	if len(parts) > 1 {
+		resourceType = parts[1]
+	}
+
+	if resolved, resolvedRes, ok := registry.Global.ResolveAlias(service); ok {
+		service = resolved
+		if resolvedRes != "" && resourceType == "" {
+			resourceType = resolvedRes
+		}
+	}
+
+	if resourceType == "" {
+		resourceType = registry.Global.DefaultResource(service)
+		if resourceType == "" {
+			return "", "", fmt.Errorf("unknown service: %s", input)
+		}
+	}
+
+	if _, ok := registry.Global.Get(service, resourceType); !ok {
+		return "", "", fmt.Errorf("unknown resource: %s/%s", service, resourceType)
+	}
+
+	return service, resourceType, nil
 }
 
 // propagateAllProxy copies ALL_PROXY to HTTP_PROXY/HTTPS_PROXY if not set.

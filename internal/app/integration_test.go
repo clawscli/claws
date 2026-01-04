@@ -17,7 +17,7 @@ func TestEscKeyIntegration(t *testing.T) {
 	ctx := context.Background()
 	reg := registry.New()
 
-	app := New(ctx, reg)
+	app := New(ctx, reg, nil)
 
 	// Create a program with custom input/output
 	var out bytes.Buffer
@@ -124,7 +124,7 @@ func TestRawEscapeByteHandling(t *testing.T) {
 	ctx := context.Background()
 	reg := registry.New()
 
-	app := New(ctx, reg)
+	app := New(ctx, reg, nil)
 	app.width = 100
 	app.height = 50
 
@@ -160,7 +160,7 @@ func TestActualTeaProgram(t *testing.T) {
 	ctx := context.Background()
 	reg := registry.New()
 
-	app := New(ctx, reg)
+	app := New(ctx, reg, nil)
 
 	// Use a pipe for input
 	pr, pw := io.Pipe()

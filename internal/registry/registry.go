@@ -54,6 +54,7 @@ type Registry struct {
 	aliases      map[string]string         // alias -> service name or service/resource
 	displayNames map[string]string         // service -> display name for UI
 	categories   []ServiceCategory         // ordered list of service categories
+	userDefaults map[string]string         // user-configured default resources per service
 
 	// Cached computed values (aliases are immutable after init, safe to cache)
 	aliasListOnce       sync.Once           // guards aliasListCache initialization
@@ -481,6 +482,83 @@ func (r *Registry) ListResources(service string) []string {
 
 	slices.Sort(resources)
 	return resources
+}
+
+// defaultResources maps service names to their preferred default resource type.
+// When a service is accessed without specifying a resource type (e.g., `:ec2`),
+// this resource is used instead of alphabetically first.
+var defaultResources = map[string]string{
+	"apprunner":         "services",
+	"appsync":           "graphql-apis",
+	"athena":            "workgroups",
+	"autoscaling":       "groups",
+	"backup":            "vaults",
+	"batch":             "job-queues",
+	"bedrock-agent":     "agents",
+	"bedrock-agentcore": "runtimes",
+	"ce":                "costs",
+	"cloudformation":    "stacks",
+	"cloudtrail":        "trails",
+	"cloudwatch":        "alarms",
+	"codebuild":         "projects",
+	"codepipeline":      "pipelines",
+	"cognito-idp":       "user-pools",
+	"datasync":          "tasks",
+	"directconnect":     "connections",
+	"ec2":               "instances",
+	"ecr":               "repositories",
+	"ecs":               "clusters",
+	"elbv2":             "load-balancers",
+	"emr":               "clusters",
+	"events":            "rules",
+	"glue":              "jobs",
+	"guardduty":         "detectors",
+	"iam":               "roles",
+	"license-manager":   "licenses",
+	"macie2":            "findings",
+	"network-firewall":  "firewalls",
+	"organizations":     "accounts",
+	"rds":               "instances",
+	"redshift":          "clusters",
+	"risp":              "reserved-instances",
+	"route53":           "hosted-zones",
+	"sagemaker":         "endpoints",
+	"service-quotas":    "services",
+	"sns":               "topics",
+	"stepfunctions":     "state-machines",
+	"transfer":          "servers",
+	"vpc":               "vpcs",
+}
+
+// DefaultResource returns the preferred default resource type for a service.
+// Falls back to alphabetically first resource if no default is configured.
+func (r *Registry) DefaultResource(service string) string {
+	if def, ok := r.userDefaults[service]; ok {
+		if _, exists := r.Get(service, def); exists {
+			return def
+		}
+	}
+	if def, ok := defaultResources[service]; ok {
+		if _, exists := r.Get(service, def); exists {
+			return def
+		}
+	}
+	resources := r.ListResources(service)
+	if len(resources) > 0 {
+		return resources[0]
+	}
+	return ""
+}
+
+// SetDefaultResource allows overriding the default resource for a service.
+// User-configured defaults take precedence over built-in defaults.
+func (r *Registry) SetDefaultResource(service, resource string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.userDefaults == nil {
+		r.userDefaults = make(map[string]string)
+	}
+	r.userDefaults[service] = resource
 }
 
 // subResourceSet contains resources that are only accessible via navigation.

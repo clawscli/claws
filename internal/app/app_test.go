@@ -48,7 +48,7 @@ func newTestApp(t *testing.T) *App {
 	t.Helper()
 	ctx := context.Background()
 	reg := registry.New()
-	app := New(ctx, reg)
+	app := New(ctx, reg, nil)
 	app.width = 100
 	app.height = 50
 	return app

@@ -308,31 +308,21 @@ func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 		}
 	}
 
-	// If no resource specified, use first available
 	if resourceType == "" {
-		resources := c.registry.ListResources(service)
-		if len(resources) > 0 {
-			resourceType = resources[0]
-		}
+		resourceType = c.registry.DefaultResource(service)
 	}
 
-	// Check if service/resource exists
 	if _, ok := c.registry.Get(service, resourceType); !ok {
-		// Try to find partial match
 		for _, svc := range c.registry.ListServices() {
 			if strings.HasPrefix(svc, service) {
 				service = svc
-				resources := c.registry.ListResources(svc)
-				if len(resources) > 0 {
-					if resourceType == "" {
-						resourceType = resources[0]
-					} else {
-						// Find matching resource
-						for _, res := range resources {
-							if strings.HasPrefix(res, resourceType) {
-								resourceType = res
-								break
-							}
+				if resourceType == "" {
+					resourceType = c.registry.DefaultResource(svc)
+				} else {
+					for _, res := range c.registry.ListResources(svc) {
+						if strings.HasPrefix(res, resourceType) {
+							resourceType = res
+							break
 						}
 					}
 				}
