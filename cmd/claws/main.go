@@ -68,6 +68,7 @@ func main() {
 		}
 	} else if opts.resourceID != "" {
 		fmt.Fprintln(os.Stderr, "Error: --resource-id requires --service")
+		fmt.Fprintln(os.Stderr, "Example: claws -s ec2 -i i-1234567890abcdef0")
 		os.Exit(1)
 	}
 

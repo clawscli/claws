@@ -86,6 +86,11 @@ func TestResolveStartupService(t *testing.T) {
 			input:   "ec2/volumes/extra",
 			wantErr: true,
 		},
+		{
+			name:    "leading slash fails",
+			input:   "/instances",
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
