@@ -69,6 +69,25 @@ func TestResolveStartupService(t *testing.T) {
 			wantResource: "resources",
 			wantErr:      false,
 		},
+		{
+			name:    "empty string fails",
+			input:   "",
+			wantErr: true,
+		},
+		{
+			name:         "trailing slash uses default resource",
+			input:        "ec2/",
+			wantService:  "ec2",
+			wantResource: "instances",
+			wantErr:      false,
+		},
+		{
+			name:         "multiple slashes takes first segment",
+			input:        "ec2/volumes/extra",
+			wantService:  "ec2",
+			wantResource: "volumes/extra",
+			wantErr:      true,
+		},
 	}
 
 	for _, tt := range tests {

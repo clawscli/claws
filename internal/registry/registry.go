@@ -533,9 +533,13 @@ var defaultResources = map[string]string{
 // DefaultResource returns the preferred default resource type for a service.
 // Falls back to alphabetically first resource if no default is configured.
 func (r *Registry) DefaultResource(service string) string {
-	if def, ok := r.userDefaults[service]; ok {
-		if _, exists := r.Get(service, def); exists {
-			return def
+	r.mu.RLock()
+	userDefault := r.userDefaults[service]
+	r.mu.RUnlock()
+
+	if userDefault != "" {
+		if _, exists := r.Get(service, userDefault); exists {
+			return userDefault
 		}
 	}
 	if def, ok := defaultResources[service]; ok {

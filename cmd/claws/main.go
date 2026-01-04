@@ -61,10 +61,11 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
+		resourceID := strings.TrimSpace(opts.resourceID)
 		startupPath = &app.StartupPath{
 			Service:      service,
 			ResourceType: resourceType,
-			ResourceID:   opts.resourceID,
+			ResourceID:   resourceID,
 		}
 	} else if opts.resourceID != "" {
 		fmt.Fprintln(os.Stderr, "Error: --resource-id requires --service")
