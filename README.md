@@ -131,6 +131,14 @@ CLAWS_READ_ONLY=1 claws
 
 # Enable debug logging to file
 claws -l debug.log
+
+# Start directly on a service
+claws -s ec2              # EC2 instances
+claws -s rds/snapshots    # RDS snapshots
+claws -s cfn              # CloudFormation (alias)
+
+# Open detail view for specific resource
+claws -s ec2 -i i-1234567890abcdef0
 ```
 
 ## Key Bindings
