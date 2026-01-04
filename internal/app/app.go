@@ -353,6 +353,9 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, nil
 
 	case startupResourceMsg:
+		if a.startupPath == nil {
+			return a, nil
+		}
 		if msg.err != nil || msg.resource == nil {
 			if msg.err != nil {
 				log.Warn("startup resource fetch failed", "error", msg.err, "id", a.startupPath.ResourceID)

@@ -56,16 +56,15 @@ func main() {
 	// Validate and resolve startup service/resource
 	var startupPath *app.StartupPath
 	if opts.service != "" {
-		service, resourceType, err := resolveStartupService(opts.service)
+		service, resourceType, err := resolveStartupService(strings.TrimSpace(opts.service))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		resourceID := strings.TrimSpace(opts.resourceID)
 		startupPath = &app.StartupPath{
 			Service:      service,
 			ResourceType: resourceType,
-			ResourceID:   resourceID,
+			ResourceID:   strings.TrimSpace(opts.resourceID),
 		}
 	} else if opts.resourceID != "" {
 		fmt.Fprintln(os.Stderr, "Error: --resource-id requires --service")
@@ -244,6 +243,10 @@ func resolveStartupService(input string) (service, resourceType string, err erro
 	service = parts[0]
 	if len(parts) > 1 {
 		resourceType = parts[1]
+	}
+
+	if strings.Contains(resourceType, "/") {
+		return "", "", fmt.Errorf("invalid resource type: %s", resourceType)
 	}
 
 	if resolved, resolvedRes, ok := registry.Global.ResolveAlias(service); ok {

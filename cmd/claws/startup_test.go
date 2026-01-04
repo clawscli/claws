@@ -82,11 +82,9 @@ func TestResolveStartupService(t *testing.T) {
 			wantErr:      false,
 		},
 		{
-			name:         "multiple slashes takes first segment",
-			input:        "ec2/volumes/extra",
-			wantService:  "ec2",
-			wantResource: "volumes/extra",
-			wantErr:      true,
+			name:    "multiple slashes rejected",
+			input:   "ec2/volumes/extra",
+			wantErr: true,
 		},
 	}
 
