@@ -14,12 +14,13 @@ import (
 type mockResource struct {
 	id   string
 	name string
+	arn  string
 	tags map[string]string
 }
 
 func (m *mockResource) GetID() string              { return m.id }
 func (m *mockResource) GetName() string            { return m.name }
-func (m *mockResource) GetARN() string             { return "" }
+func (m *mockResource) GetARN() string             { return m.arn }
 func (m *mockResource) GetTags() map[string]string { return m.tags }
 func (m *mockResource) Raw() any                   { return nil }
 

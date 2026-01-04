@@ -605,3 +605,92 @@ func TestFetchParallelAllErrors(t *testing.T) {
 		t.Errorf("got %d errors, want 2", len(result.errors))
 	}
 }
+
+func TestResourceBrowserCopyID(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	browser := NewResourceBrowser(ctx, reg, "ec2")
+	browser.SetSize(100, 50)
+	browser.renderer = &mockRenderer{detail: "test"}
+
+	browser.resources = []dao.Resource{
+		&mockResource{id: "i-1234567890abcdef0", name: "instance-1", arn: "arn:aws:ec2:us-east-1:123456789012:instance/i-1234567890abcdef0"},
+	}
+	browser.applyFilter()
+	browser.buildTable()
+	browser.table.SetCursor(0)
+
+	_, cmd := browser.Update(tea.KeyPressMsg{Code: 'y'})
+	if cmd == nil {
+		t.Fatal("Expected cmd from 'y' key press")
+	}
+
+	msg := cmd()
+	if msg == nil {
+		t.Fatal("Expected message from clipboard command")
+	}
+}
+
+func TestResourceBrowserCopyARN(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	browser := NewResourceBrowser(ctx, reg, "ec2")
+	browser.SetSize(100, 50)
+	browser.renderer = &mockRenderer{detail: "test"}
+
+	browser.resources = []dao.Resource{
+		&mockResource{id: "i-1234567890abcdef0", name: "instance-1", arn: "arn:aws:ec2:us-east-1:123456789012:instance/i-1234567890abcdef0"},
+	}
+	browser.applyFilter()
+	browser.buildTable()
+	browser.table.SetCursor(0)
+
+	_, cmd := browser.Update(tea.KeyPressMsg{Code: 'Y'})
+	if cmd == nil {
+		t.Fatal("Expected cmd from 'Y' key press")
+	}
+}
+
+func TestResourceBrowserCopyARNNoARN(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	browser := NewResourceBrowser(ctx, reg, "ec2")
+	browser.SetSize(100, 50)
+	browser.renderer = &mockRenderer{detail: "test"}
+
+	browser.resources = []dao.Resource{
+		&mockResource{id: "resource-1", name: "no-arn-resource", arn: ""},
+	}
+	browser.applyFilter()
+	browser.buildTable()
+	browser.table.SetCursor(0)
+
+	_, cmd := browser.Update(tea.KeyPressMsg{Code: 'Y'})
+	if cmd == nil {
+		t.Fatal("Expected cmd from 'Y' key press for NoARN")
+	}
+}
+
+func TestResourceBrowserCopyEmptyList(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	browser := NewResourceBrowser(ctx, reg, "ec2")
+	browser.SetSize(100, 50)
+	browser.resources = []dao.Resource{}
+	browser.applyFilter()
+	browser.buildTable()
+
+	_, cmdY := browser.Update(tea.KeyPressMsg{Code: 'y'})
+	if cmdY != nil {
+		t.Error("Expected nil cmd for 'y' on empty list")
+	}
+
+	_, cmdShiftY := browser.Update(tea.KeyPressMsg{Code: 'Y'})
+	if cmdShiftY != nil {
+		t.Error("Expected nil cmd for 'Y' on empty list")
+	}
+}

@@ -157,6 +157,8 @@ claws -l debug.log
 | `c` | Clear filter and mark |
 | `N` | Load next page (pagination) |
 | `M` | Toggle inline metrics (EC2, RDS, Lambda) |
+| `y` | Copy resource ID to clipboard |
+| `Y` | Copy resource ARN to clipboard |
 | `Ctrl+r` | Refresh (including metrics) |
 | `R` | Select AWS region(s) (multi-select supported) |
 | `P` | Select AWS profile(s) (multi-select supported) |

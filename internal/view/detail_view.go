@@ -9,6 +9,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/clawscli/claws/internal/action"
+	"github.com/clawscli/claws/internal/clipboard"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/log"
 	"github.com/clawscli/claws/internal/registry"
@@ -132,13 +133,22 @@ func (d *DetailView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return model, cmd
 		}
 
-		if msg.String() == "a" {
+		switch msg.String() {
+		case "a":
 			if actions := action.Global.Get(d.service, d.resType); len(actions) > 0 {
 				actionMenu := NewActionMenu(d.ctx, dao.UnwrapResource(d.resource), d.service, d.resType)
 				return d, func() tea.Msg {
 					return ShowModalMsg{Modal: &Modal{Content: actionMenu, Width: ModalWidthActionMenu}}
 				}
 			}
+		case "y":
+			return d, clipboard.CopyID(dao.UnwrapResource(d.resource).GetID())
+		case "Y":
+			resource := dao.UnwrapResource(d.resource)
+			if arn := resource.GetARN(); arn != "" {
+				return d, clipboard.CopyARN(arn)
+			}
+			return d, clipboard.NoARN()
 		}
 	}
 
@@ -224,7 +234,8 @@ func (d *DetailView) StatusLine() string {
 		parts = append(parts, "a:actions")
 	}
 
-	// Add navigation shortcuts
+	parts = append(parts, "y:copy")
+
 	if navInfo := d.getNavigationShortcuts(); navInfo != "" {
 		parts = append(parts, navInfo)
 	}
