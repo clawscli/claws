@@ -83,12 +83,14 @@ type serviceBrowserStyles struct {
 }
 
 func newServiceBrowserStyles() serviceBrowserStyles {
+	t := ui.Current()
 	return serviceBrowserStyles{
 		category: ui.DimStyle().
 			Bold(true).
 			MarginTop(1).
 			MarginBottom(0),
 		cell: lipgloss.NewStyle().
+			Foreground(t.Text).
 			Width(cellWidth).
 			Height(cellHeight).
 			Padding(0, 1),

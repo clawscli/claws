@@ -421,6 +421,16 @@ startup:                  # Applied on launch if present
   regions:
     - us-east-1
     - us-west-2
+
+theme:                    # Custom color scheme (all optional)
+  primary: "#aa55ff"      # Hex (#RGB or #RRGGBB) or ANSI 256 number
+  secondary: "33"
+  accent: "#86d9e6"
+  success: "#2ecc71"
+  warning: "#f39c12"
+  danger: "#e74c3c"
+  badge_foreground: "16"  # READ-ONLY badge text
+  badge_background: "214" # READ-ONLY badge background
 ```
 
 The config file is **not created automatically**. Create it manually if needed.

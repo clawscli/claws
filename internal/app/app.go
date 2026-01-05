@@ -430,41 +430,46 @@ func (a *App) View() tea.View {
 		content = a.currentView.ViewString()
 	}
 
-	if a.commandMode {
-		cmdView := a.commandInput.View()
-		return newAltScreenView(content + "\n" + cmdView)
-	}
-
 	var statusContent string
-	if a.err != nil {
-		statusContent = ui.DangerStyle().Render("Error: " + a.err.Error())
-	} else if a.clipboardFlash != "" {
-		if a.clipboardWarning {
-			statusContent = ui.WarningStyle().Render("⚠ " + a.clipboardFlash)
-		} else {
-			statusContent = ui.SuccessStyle().Render("✓ " + a.clipboardFlash)
+	if a.commandMode {
+		statusContent = a.commandInput.View()
+	} else {
+		if a.err != nil {
+			statusContent = ui.DangerStyle().Render("Error: " + a.err.Error())
+		} else if a.clipboardFlash != "" {
+			if a.clipboardWarning {
+				statusContent = ui.WarningStyle().Render("⚠ " + a.clipboardFlash)
+			} else {
+				statusContent = ui.SuccessStyle().Render("✓ " + a.clipboardFlash)
+			}
+		} else if a.currentView != nil {
+			statusContent = a.currentView.StatusLine()
 		}
-	} else if a.currentView != nil {
-		statusContent = a.currentView.StatusLine()
-	}
 
-	if config.Global().ReadOnly() {
-		roIndicator := a.styles.readOnly.Render("READ-ONLY")
-		statusContent = roIndicator + " " + statusContent
-	}
+		if config.Global().ReadOnly() {
+			roIndicator := a.styles.readOnly.Render("READ-ONLY")
+			statusContent = roIndicator + " " + statusContent
+		}
 
-	if a.awsInitializing {
-		statusContent = ui.DimStyle().Render("AWS initializing...") + " • " + statusContent
-	}
+		if a.awsInitializing {
+			statusContent = ui.DimStyle().Render("AWS initializing...") + " • " + statusContent
+		}
 
-	if a.profileRefreshError != nil {
-		statusContent = ui.WarningStyle().Render("⚠ Profile error") + " • " + statusContent
-	} else if a.profileRefreshing {
-		statusContent = ui.DimStyle().Render("Refreshing profile...") + " • " + statusContent
+		if a.profileRefreshError != nil {
+			statusContent = ui.WarningStyle().Render("⚠ Profile error") + " • " + statusContent
+		} else if a.profileRefreshing {
+			statusContent = ui.DimStyle().Render("Refreshing profile...") + " • " + statusContent
+		}
 	}
 
 	status := a.styles.status.Render(statusContent)
-	mainView := content + "\n" + status
+
+	contentHeight := a.height - 1
+	if contentHeight < 1 {
+		contentHeight = 1
+	}
+	paddedContent := lipgloss.NewStyle().Height(contentHeight).Render(content)
+	mainView := paddedContent + "\n" + status
 
 	if a.modal != nil {
 		return newAltScreenView(a.modalRenderer.Render(a.modal, mainView, a.width, a.height))

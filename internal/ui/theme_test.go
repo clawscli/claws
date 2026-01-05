@@ -3,6 +3,8 @@ package ui
 import (
 	"image/color"
 	"testing"
+
+	"github.com/clawscli/claws/internal/config"
 )
 
 func TestDefaultTheme(t *testing.T) {
@@ -285,6 +287,14 @@ func TestInputFieldStyle(t *testing.T) {
 	}
 }
 
+func TestReadOnlyBadgeStyle(t *testing.T) {
+	style := ReadOnlyBadgeStyle()
+	rendered := style.Render("READ-ONLY")
+	if rendered == "" {
+		t.Error("ReadOnlyBadgeStyle().Render() should produce output")
+	}
+}
+
 func TestThemeFields(t *testing.T) {
 	theme := DefaultTheme()
 
@@ -338,5 +348,170 @@ func TestThemeFields(t *testing.T) {
 		if tc.color == nil {
 			t.Errorf("%s color should not be nil", tc.name)
 		}
+	}
+
+	// Test badge colors
+	badgeColors := []struct {
+		name  string
+		color color.Color
+	}{
+		{"BadgeForeground", theme.BadgeForeground},
+		{"BadgeBackground", theme.BadgeBackground},
+	}
+
+	for _, tc := range badgeColors {
+		if tc.color == nil {
+			t.Errorf("%s color should not be nil", tc.name)
+		}
+	}
+}
+
+func TestParseColor(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantNil bool
+		wantErr bool
+	}{
+		{"empty string", "", true, false},
+		{"whitespace only", "   ", true, false},
+		{"valid hex 6", "#ff5733", false, false},
+		{"valid hex 6 upper", "#FF5733", false, false},
+		{"valid hex 3", "#f00", false, false},
+		{"valid hex 3 upper", "#F00", false, false},
+		{"valid ANSI 0", "0", false, false},
+		{"valid ANSI 170", "170", false, false},
+		{"valid ANSI 255", "255", false, false},
+		{"invalid hex short", "#ff", false, true},
+		{"invalid hex long", "#ff57331", false, true},
+		{"invalid hex chars", "#gggggg", false, true},
+		{"invalid ANSI negative", "-1", false, true},
+		{"invalid ANSI over 255", "256", false, true},
+		{"invalid string", "red", false, true},
+		{"invalid mixed", "ff5733", false, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, err := ParseColor(tt.input)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("ParseColor(%q) expected error, got nil", tt.input)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("ParseColor(%q) unexpected error: %v", tt.input, err)
+				return
+			}
+
+			if tt.wantNil && c != nil {
+				t.Errorf("ParseColor(%q) expected nil, got %v", tt.input, c)
+			}
+			if !tt.wantNil && c == nil {
+				t.Errorf("ParseColor(%q) expected color, got nil", tt.input)
+			}
+		})
+	}
+}
+
+func TestParseColorHex3Expansion(t *testing.T) {
+	c, err := ParseColor("#f00")
+	if err != nil {
+		t.Fatalf("ParseColor(#f00) unexpected error: %v", err)
+	}
+	if c == nil {
+		t.Fatal("ParseColor(#f00) returned nil")
+	}
+
+	r, g, b, _ := c.RGBA()
+	if r>>8 != 0xff || g>>8 != 0 || b>>8 != 0 {
+		t.Errorf("ParseColor(#f00) expected red, got R=%d G=%d B=%d", r>>8, g>>8, b>>8)
+	}
+}
+
+func TestSetTheme(t *testing.T) {
+	original := Current()
+
+	newTheme := DefaultTheme()
+	newTheme.Primary = nil
+
+	SetTheme(newTheme)
+	if Current() != newTheme {
+		t.Error("SetTheme did not set the theme")
+	}
+
+	SetTheme(nil)
+	if Current() != newTheme {
+		t.Error("SetTheme(nil) should not change theme")
+	}
+
+	SetTheme(original)
+}
+
+func TestApplyConfig(t *testing.T) {
+	original := Current()
+	defer SetTheme(original)
+
+	cfg := config.ThemeConfig{
+		Primary: "#ff0000",
+		Success: "42",
+		Danger:  "#f00",
+	}
+
+	ApplyConfig(cfg)
+
+	theme := Current()
+
+	r, g, b, _ := theme.Primary.RGBA()
+	if r>>8 != 0xff || g>>8 != 0 || b>>8 != 0 {
+		t.Errorf("Primary expected red, got R=%d G=%d B=%d", r>>8, g>>8, b>>8)
+	}
+
+	if theme.Secondary == nil {
+		t.Error("Secondary should use default, not nil")
+	}
+}
+
+func TestApplyConfigInvalidColor(t *testing.T) {
+	original := Current()
+	defer SetTheme(original)
+
+	defaultTheme := DefaultTheme()
+
+	cfg := config.ThemeConfig{
+		Primary: "invalid",
+		Success: "#gggggg",
+	}
+
+	ApplyConfig(cfg)
+
+	theme := Current()
+
+	if !colorsEqual(theme.Primary, defaultTheme.Primary) {
+		t.Error("Invalid primary should fallback to default")
+	}
+	if !colorsEqual(theme.Success, defaultTheme.Success) {
+		t.Error("Invalid success should fallback to default")
+	}
+}
+
+func TestApplyConfigEmpty(t *testing.T) {
+	original := Current()
+	defer SetTheme(original)
+
+	defaultTheme := DefaultTheme()
+
+	ApplyConfig(config.ThemeConfig{})
+
+	theme := Current()
+
+	if !colorsEqual(theme.Primary, defaultTheme.Primary) {
+		t.Error("Empty config should use default primary")
+	}
+	if !colorsEqual(theme.Success, defaultTheme.Success) {
+		t.Error("Empty config should use default success")
 	}
 }

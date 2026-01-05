@@ -14,7 +14,7 @@ func (r *ResourceBrowser) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 		return r.handleFilterInput(msg)
 	}
 
-	if len(r.filtered) > 0 && r.table.Cursor() < len(r.filtered) {
+	if len(r.filtered) > 0 && r.tc.Cursor() < len(r.filtered) {
 		if nav, cmd := r.handleNavigation(msg.String()); cmd != nil {
 			return nav, cmd
 		}
@@ -53,6 +53,36 @@ func (r *ResourceBrowser) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 		return r.handleCopyID()
 	case "Y":
 		return r.handleCopyARN()
+	case "j", "down":
+		r.tc.SetCursor(r.tc.Cursor()+1, len(r.filtered))
+		r.tc.UpdateScrollOffset(len(r.filtered))
+		r.buildTable()
+		return r, nil
+	case "k", "up":
+		r.tc.SetCursor(r.tc.Cursor()-1, len(r.filtered))
+		r.tc.UpdateScrollOffset(len(r.filtered))
+		r.buildTable()
+		return r, nil
+	case "ctrl+d", "pgdown":
+		r.tc.SetCursor(r.tc.Cursor()+r.tc.TableHeight()/2, len(r.filtered))
+		r.tc.UpdateScrollOffset(len(r.filtered))
+		r.buildTable()
+		return r, nil
+	case "ctrl+u", "pgup":
+		r.tc.SetCursor(r.tc.Cursor()-r.tc.TableHeight()/2, len(r.filtered))
+		r.tc.UpdateScrollOffset(len(r.filtered))
+		r.buildTable()
+		return r, nil
+	case "g", "home":
+		r.tc.SetCursor(0, len(r.filtered))
+		r.tc.UpdateScrollOffset(len(r.filtered))
+		r.buildTable()
+		return r, nil
+	case "G", "end":
+		r.tc.SetCursor(len(r.filtered)-1, len(r.filtered))
+		r.tc.UpdateScrollOffset(len(r.filtered))
+		r.buildTable()
+		return r, nil
 	}
 
 	return nil, nil
@@ -113,7 +143,7 @@ func (r *ResourceBrowser) handleEsc() (tea.Model, tea.Cmd) {
 }
 
 func (r *ResourceBrowser) handleMark() (tea.Model, tea.Cmd) {
-	cursor := r.table.Cursor()
+	cursor := r.tc.Cursor()
 	if len(r.filtered) > 0 && cursor >= 0 && cursor < len(r.filtered) {
 		resource := r.filtered[cursor]
 		if r.markedResource != nil && r.markedResource.GetID() == resource.GetID() {
@@ -139,7 +169,7 @@ func (r *ResourceBrowser) handleMetricsToggle() (tea.Model, tea.Cmd) {
 }
 
 func (r *ResourceBrowser) handleEnter() (tea.Model, tea.Cmd) {
-	cursor := r.table.Cursor()
+	cursor := r.tc.Cursor()
 	if len(r.filtered) > 0 && cursor >= 0 && cursor < len(r.filtered) {
 		ctx, resource := r.contextForResource(r.filtered[cursor])
 		if r.markedResource != nil && r.markedResource.GetID() != resource.GetID() {
@@ -157,7 +187,7 @@ func (r *ResourceBrowser) handleEnter() (tea.Model, tea.Cmd) {
 }
 
 func (r *ResourceBrowser) handleAction() (tea.Model, tea.Cmd) {
-	cursor := r.table.Cursor()
+	cursor := r.tc.Cursor()
 	if len(r.filtered) > 0 && cursor >= 0 && cursor < len(r.filtered) {
 		if actions := action.Global.Get(r.service, r.resourceType); len(actions) > 0 {
 			ctx, resource := r.contextForResource(r.filtered[cursor])
@@ -194,14 +224,22 @@ func (r *ResourceBrowser) handleLoadNextPage() (tea.Model, tea.Cmd) {
 }
 
 func (r *ResourceBrowser) handleMouseWheel(msg tea.MouseWheelMsg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-	r.table, cmd = r.table.Update(msg)
-	return r, cmd
+	delta := 0
+	switch msg.Button {
+	case tea.MouseWheelUp:
+		delta = -3
+	case tea.MouseWheelDown:
+		delta = 3
+	}
+	r.tc.AdjustScrollOffset(delta, len(r.filtered))
+	r.buildTable()
+	return r, nil
 }
 
 func (r *ResourceBrowser) handleMouseMotion(msg tea.MouseMotionMsg) (tea.Model, tea.Cmd) {
-	if idx := r.getRowAtPosition(msg.Y); idx >= 0 && idx != r.table.Cursor() {
-		r.table.SetCursor(idx)
+	if idx := r.getRowAtPosition(msg.Y); idx >= 0 && idx != r.tc.Cursor() {
+		r.tc.SetCursor(idx, len(r.filtered))
+		r.buildTable()
 	}
 	return r, nil
 }
@@ -229,16 +267,18 @@ func (r *ResourceBrowser) getRowAtPosition(y int) int {
 		headerHeight++
 	}
 	tableHeaderRows := 1
-	row := y - headerHeight - tableHeaderRows
-	if row >= 0 && row < len(r.filtered) {
-		return row
+	visualRow := y - headerHeight - tableHeaderRows
+	dataIdx := visualRow + r.tc.ScrollOffset()
+	if visualRow >= 0 && dataIdx >= 0 && dataIdx < len(r.filtered) {
+		return dataIdx
 	}
 	return -1
 }
 
 func (r *ResourceBrowser) handleMouseClick(x, y int) (tea.Model, tea.Cmd) {
 	if row := r.getRowAtPosition(y); row >= 0 {
-		r.table.SetCursor(row)
+		r.tc.SetCursor(row, len(r.filtered))
+		r.buildTable()
 		return r.openDetailView()
 	}
 	return r, nil
@@ -272,7 +312,7 @@ func (r *ResourceBrowser) switchToTab(idx int) (tea.Model, tea.Cmd) {
 }
 
 func (r *ResourceBrowser) openDetailView() (tea.Model, tea.Cmd) {
-	cursor := r.table.Cursor()
+	cursor := r.tc.Cursor()
 	if len(r.filtered) == 0 || cursor < 0 || cursor >= len(r.filtered) {
 		return r, nil
 	}
@@ -284,7 +324,7 @@ func (r *ResourceBrowser) openDetailView() (tea.Model, tea.Cmd) {
 }
 
 func (r *ResourceBrowser) handleCopyID() (tea.Model, tea.Cmd) {
-	cursor := r.table.Cursor()
+	cursor := r.tc.Cursor()
 	if len(r.filtered) > 0 && cursor >= 0 && cursor < len(r.filtered) {
 		resource := dao.UnwrapResource(r.filtered[cursor])
 		return r, clipboard.CopyID(resource.GetID())
@@ -293,7 +333,7 @@ func (r *ResourceBrowser) handleCopyID() (tea.Model, tea.Cmd) {
 }
 
 func (r *ResourceBrowser) handleCopyARN() (tea.Model, tea.Cmd) {
-	cursor := r.table.Cursor()
+	cursor := r.tc.Cursor()
 	if len(r.filtered) > 0 && cursor >= 0 && cursor < len(r.filtered) {
 		resource := dao.UnwrapResource(r.filtered[cursor])
 		if arn := resource.GetARN(); arn != "" {

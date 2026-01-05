@@ -62,6 +62,46 @@ type StartupConfig struct {
 	Profile string   `yaml:"profile,omitempty"`
 }
 
+// ThemeConfig holds custom color overrides for the UI theme.
+// Colors can be specified as hex ("#ff5733", "#f00") or ANSI 256 numbers ("170").
+// Empty strings use the default color.
+type ThemeConfig struct {
+	// Primary colors
+	Primary   string `yaml:"primary,omitempty"`
+	Secondary string `yaml:"secondary,omitempty"`
+	Accent    string `yaml:"accent,omitempty"`
+
+	// Text colors
+	Text       string `yaml:"text,omitempty"`
+	TextBright string `yaml:"text_bright,omitempty"`
+	TextDim    string `yaml:"text_dim,omitempty"`
+	TextMuted  string `yaml:"text_muted,omitempty"`
+
+	// Semantic colors
+	Success string `yaml:"success,omitempty"`
+	Warning string `yaml:"warning,omitempty"`
+	Danger  string `yaml:"danger,omitempty"`
+	Info    string `yaml:"info,omitempty"`
+	Pending string `yaml:"pending,omitempty"`
+
+	// UI element colors
+	Border          string `yaml:"border,omitempty"`
+	BorderHighlight string `yaml:"border_highlight,omitempty"`
+	Background      string `yaml:"background,omitempty"`
+	BackgroundAlt   string `yaml:"background_alt,omitempty"`
+	Selection       string `yaml:"selection,omitempty"`
+	SelectionText   string `yaml:"selection_text,omitempty"`
+
+	// Table colors
+	TableHeader     string `yaml:"table_header,omitempty"`
+	TableHeaderText string `yaml:"table_header_text,omitempty"`
+	TableBorder     string `yaml:"table_border,omitempty"`
+
+	// Badge colors
+	BadgeForeground string `yaml:"badge_foreground,omitempty"`
+	BadgeBackground string `yaml:"badge_background,omitempty"`
+}
+
 type FileConfig struct {
 	mu                  sync.RWMutex      `yaml:"-"`
 	persistenceOverride *bool             `yaml:"-"` // CLI flag override (not persisted)
@@ -70,6 +110,7 @@ type FileConfig struct {
 	CloudWatch          CloudWatchConfig  `yaml:"cloudwatch,omitempty"`
 	Persistence         PersistenceConfig `yaml:"persistence"`
 	Startup             StartupConfig     `yaml:"startup,omitempty"`
+	Theme               ThemeConfig       `yaml:"theme,omitempty"`
 }
 
 // Duration wraps time.Duration for YAML marshal/unmarshal as string (e.g., "5s", "30s")
@@ -330,4 +371,8 @@ func (c *FileConfig) GetStartup() ([]string, string) {
 		return result{append([]string(nil), c.Startup.Regions...), c.Startup.Profile}
 	})
 	return r.regions, r.profile
+}
+
+func (c *FileConfig) GetTheme() ThemeConfig {
+	return withRLock(&c.mu, func() ThemeConfig { return c.Theme })
 }

@@ -385,7 +385,7 @@ func (r *ResourceBrowser) shouldLoadNextPage() bool {
 		return false
 	}
 	buffer := 10
-	return r.table.Cursor() >= len(r.filtered)-buffer
+	return r.tc.Cursor() >= len(r.filtered)-buffer
 }
 
 func (r *ResourceBrowser) loadNextPage() tea.Msg {

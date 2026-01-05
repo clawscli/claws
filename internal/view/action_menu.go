@@ -37,14 +37,14 @@ func newActionMenuStyles() actionMenuStyles {
 	t := ui.Current()
 	return actionMenuStyles{
 		title:     ui.TitleStyle(),
-		item:      lipgloss.NewStyle().PaddingLeft(2),
+		item:      lipgloss.NewStyle().Foreground(t.Text),
 		selected:  ui.SelectedStyle().PaddingLeft(2),
 		shortcut:  ui.SecondaryStyle(),
 		box:       ui.BoxStyle().MarginTop(1),
 		dangerBox: ui.BoxStyle().BorderForeground(t.Danger).MarginTop(1),
 		yes:       ui.BoldSuccessStyle(),
 		no:        ui.BoldDangerStyle(),
-		bold:      lipgloss.NewStyle().Bold(true),
+		bold:      lipgloss.NewStyle().Bold(true).Foreground(t.Text),
 		input:     ui.InputStyle(),
 	}
 }
@@ -299,13 +299,12 @@ func (m *ActionMenu) ViewString() string {
 	}
 
 	for i, act := range m.actions {
-		style := s.item
+		shortcutText := fmt.Sprintf("[%s]", act.Shortcut)
 		if i == m.cursor {
-			style = s.selected
+			out += s.selected.Render(fmt.Sprintf("%s %s", shortcutText, act.Name)) + "\n"
+		} else {
+			out += fmt.Sprintf("  %s %s", s.shortcut.Render(shortcutText), s.item.Render(act.Name)) + "\n"
 		}
-
-		shortcut := s.shortcut.Render(fmt.Sprintf("[%s]", act.Shortcut))
-		out += style.Render(fmt.Sprintf("%s %s", shortcut, act.Name)) + "\n"
 	}
 
 	if m.dangerous.active && m.confirmIdx < len(m.actions) {

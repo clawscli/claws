@@ -14,6 +14,7 @@ import (
 	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/log"
 	"github.com/clawscli/claws/internal/registry"
+	"github.com/clawscli/claws/internal/ui"
 )
 
 // version is set by ldflags during build
@@ -52,6 +53,8 @@ func main() {
 	}
 
 	applyStartupConfig(opts, fileCfg, cfg)
+
+	ui.ApplyConfig(fileCfg.GetTheme())
 
 	// Validate and resolve startup service/resource
 	var startupPath *app.StartupPath

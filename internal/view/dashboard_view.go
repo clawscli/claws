@@ -21,6 +21,7 @@ type hitArea struct {
 }
 
 type dashboardStyles struct {
+	text      lipgloss.Style
 	warning   lipgloss.Style
 	danger    lipgloss.Style
 	success   lipgloss.Style
@@ -30,6 +31,7 @@ type dashboardStyles struct {
 
 func newDashboardStyles() dashboardStyles {
 	return dashboardStyles{
+		text:      ui.TextStyle(),
 		warning:   ui.WarningStyle(),
 		danger:    ui.DangerStyle(),
 		success:   ui.SuccessStyle(),

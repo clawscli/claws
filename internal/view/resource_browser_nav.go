@@ -16,7 +16,7 @@ func (r *ResourceBrowser) handleNavigation(key string) (tea.Model, tea.Cmd) {
 		return nil, nil
 	}
 
-	ctx, resource := r.contextForResource(r.filtered[r.table.Cursor()])
+	ctx, resource := r.contextForResource(r.filtered[r.tc.Cursor()])
 
 	helper := &NavigationHelper{
 		Ctx:      ctx,
@@ -168,6 +168,6 @@ func (r *ResourceBrowser) getNavigationShortcuts() string {
 	}
 
 	helper := &NavigationHelper{Renderer: r.renderer}
-	resource := dao.UnwrapResource(r.filtered[r.table.Cursor()])
+	resource := dao.UnwrapResource(r.filtered[r.tc.Cursor()])
 	return helper.FormatShortcuts(resource)
 }
