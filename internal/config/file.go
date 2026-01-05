@@ -64,10 +64,11 @@ type StartupConfig struct {
 	Profiles []string `yaml:"profiles,omitempty"` // New format: multiple profile IDs
 }
 
-// GetProfiles returns profile IDs (new format preferred, fallback to old)
+// GetProfiles returns profile IDs (new format preferred, fallback to old).
+// Returns a copy to prevent race conditions with concurrent writes.
 func (s StartupConfig) GetProfiles() []string {
 	if len(s.Profiles) > 0 {
-		return s.Profiles
+		return append([]string(nil), s.Profiles...)
 	}
 	if s.Profile != "" {
 		return []string{s.Profile}
