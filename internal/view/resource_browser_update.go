@@ -129,8 +129,8 @@ func (r *ResourceBrowser) handleDiffMsg(msg DiffMsg) (tea.Model, tea.Cmd) {
 	}
 
 	if msg.LeftName == "" {
-		if len(r.filtered) > 0 && r.table.Cursor() < len(r.filtered) {
-			leftRes = r.filtered[r.table.Cursor()]
+		if len(r.filtered) > 0 && r.tc.Cursor() < len(r.filtered) {
+			leftRes = r.filtered[r.tc.Cursor()]
 		}
 	} else {
 		for _, res := range r.filtered {

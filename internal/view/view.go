@@ -64,6 +64,13 @@ type DataLoadedMsg struct {
 // RefreshMsg tells the view to reload its data
 type RefreshMsg struct{}
 
+// ThemeChangedMsg tells views to reload their cached styles
+type ThemeChangedMsg struct{}
+
+type ThemeChangeMsg struct {
+	Name string
+}
+
 // SortMsg tells the current view to sort by the specified column
 type SortMsg struct {
 	Column    string // Column name to sort by (empty to clear sort)

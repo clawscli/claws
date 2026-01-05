@@ -47,10 +47,8 @@ func renderPanel(title, content string, width, height int, t *ui.Theme, hovered 
 		borderColor = t.Primary
 	}
 
-	borderStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
+	borderStyle := ui.BoxStyle().
 		BorderForeground(borderColor).
-		Padding(0, 1).
 		Width(width).
 		Height(boxHeight)
 
@@ -78,11 +76,11 @@ func (d *DashboardView) renderCostContent(contentWidth, contentHeight int, t *ui
 	var lines []string
 
 	if d.costLoading {
-		lines = append(lines, d.spinner.View()+" loading...")
+		lines = append(lines, s.text.Render(d.spinner.View()+" loading..."))
 	} else if d.costErr != nil {
 		lines = append(lines, s.dim.Render("Cost: N/A"))
 	} else {
-		lines = append(lines, "MTD: "+appaws.FormatMoney(d.costMTD, ""))
+		lines = append(lines, s.text.Render("MTD: "+appaws.FormatMoney(d.costMTD, "")))
 
 		if len(d.costTop) > 0 {
 			maxCost := d.costTop[0].cost
@@ -101,19 +99,21 @@ func (d *DashboardView) renderCostContent(contentWidth, contentHeight int, t *ui
 				line := fmt.Sprintf("%-*s %s %8.0f", nameWidth, name, bar, c.cost)
 				if i == focusRow {
 					line = s.highlight.Render(line)
+				} else {
+					line = s.text.Render(line)
 				}
 				lines = append(lines, line)
 			}
 		}
 
 		if d.anomalyLoading {
-			lines = append(lines, "Anomalies: "+d.spinner.View())
+			lines = append(lines, s.text.Render("Anomalies: "+d.spinner.View()))
 		} else if d.anomalyErr != nil {
-			lines = append(lines, "Anomalies: "+s.dim.Render("N/A"))
+			lines = append(lines, s.text.Render("Anomalies: ")+s.dim.Render("N/A"))
 		} else if d.anomalyCount > 0 {
-			lines = append(lines, "Anomalies: "+s.warning.Render(fmt.Sprintf("%d", d.anomalyCount)))
+			lines = append(lines, s.text.Render("Anomalies: ")+s.warning.Render(fmt.Sprintf("%d", d.anomalyCount)))
 		} else {
-			lines = append(lines, "Anomalies: "+s.success.Render("0"))
+			lines = append(lines, s.text.Render("Anomalies: ")+s.success.Render("0"))
 		}
 	}
 
@@ -126,25 +126,25 @@ func (d *DashboardView) renderOpsContent(contentWidth, contentHeight int, focusR
 	alarmCount := len(d.alarms)
 
 	if d.alarmLoading {
-		lines = append(lines, "Alarms: "+d.spinner.View())
+		lines = append(lines, s.text.Render("Alarms: "+d.spinner.View()))
 	} else if d.alarmErr != nil {
 		lines = append(lines, s.dim.Render("Alarms: N/A"))
 	} else if alarmCount > 0 {
 		lines = append(lines, s.danger.Render(fmt.Sprintf("Alarms: %d in ALARM", alarmCount)))
 		maxShow := min(alarmCount, contentHeight-3)
 		for i := range maxShow {
-			line := "  " + s.danger.Render("• ") + TruncateString(d.alarms[i].name, contentWidth-bulletIndentWidth)
+			line := "  " + s.danger.Render("• ") + s.text.Render(TruncateString(d.alarms[i].name, contentWidth-bulletIndentWidth))
 			if i == focusRow {
 				line = s.highlight.Render(line)
 			}
 			lines = append(lines, line)
 		}
 	} else {
-		lines = append(lines, "Alarms: "+s.success.Render("0 ✓"))
+		lines = append(lines, s.text.Render("Alarms: ")+s.success.Render("0 ✓"))
 	}
 
 	if d.healthLoading {
-		lines = append(lines, "Health: "+d.spinner.View())
+		lines = append(lines, s.text.Render("Health: "+d.spinner.View()))
 	} else if d.healthErr != nil {
 		lines = append(lines, s.dim.Render("Health: N/A"))
 	} else if len(d.healthItems) > 0 {
@@ -153,14 +153,14 @@ func (d *DashboardView) renderOpsContent(contentWidth, contentHeight int, focusR
 		maxShow := min(len(d.healthItems), remaining)
 		for i := range maxShow {
 			h := d.healthItems[i]
-			line := "  " + s.warning.Render("• ") + TruncateString(h.service+": "+h.eventType, contentWidth-bulletIndentWidth)
+			line := "  " + s.warning.Render("• ") + s.text.Render(TruncateString(h.service+": "+h.eventType, contentWidth-bulletIndentWidth))
 			if alarmCount+i == focusRow {
 				line = s.highlight.Render(line)
 			}
 			lines = append(lines, line)
 		}
 	} else {
-		lines = append(lines, "Health: "+s.success.Render("0 open ✓"))
+		lines = append(lines, s.text.Render("Health: ")+s.success.Render("0 open ✓"))
 	}
 
 	return strings.Join(lines, "\n")
@@ -171,7 +171,7 @@ func (d *DashboardView) renderSecurityContent(contentWidth, contentHeight int, f
 	var lines []string
 
 	if d.secLoading {
-		lines = append(lines, d.spinner.View()+" loading...")
+		lines = append(lines, s.text.Render(d.spinner.View()+" loading..."))
 	} else if d.secErr != nil {
 		lines = append(lines, s.dim.Render("Security: N/A"))
 	} else if len(d.secItems) > 0 {
@@ -196,7 +196,7 @@ func (d *DashboardView) renderSecurityContent(contentWidth, contentHeight int, f
 			if item.severity == "CRITICAL" {
 				style = s.danger
 			}
-			line := "  " + style.Render("• ") + TruncateString(item.title, contentWidth-bulletIndentWidth)
+			line := "  " + style.Render("• ") + s.text.Render(TruncateString(item.title, contentWidth-bulletIndentWidth))
 			if i == focusRow {
 				line = s.highlight.Render(line)
 			}
@@ -214,7 +214,7 @@ func (d *DashboardView) renderOptimizationContent(contentWidth, contentHeight in
 	var lines []string
 
 	if d.taLoading {
-		lines = append(lines, d.spinner.View()+" loading...")
+		lines = append(lines, s.text.Render(d.spinner.View()+" loading..."))
 	} else if d.taErr != nil {
 		lines = append(lines, s.dim.Render("Optimization: N/A"))
 	} else {
@@ -243,7 +243,7 @@ func (d *DashboardView) renderOptimizationContent(contentWidth, contentHeight in
 				if item.status == "error" {
 					style = s.danger
 				}
-				line := "  " + style.Render("• ") + TruncateString(item.name, contentWidth-bulletIndentWidth)
+				line := "  " + style.Render("• ") + s.text.Render(TruncateString(item.name, contentWidth-bulletIndentWidth))
 				if i == focusRow {
 					line = s.highlight.Render(line)
 				}

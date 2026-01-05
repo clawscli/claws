@@ -158,13 +158,13 @@ func TestResourceBrowserMouseHover(t *testing.T) {
 	browser.applyFilter()
 	browser.buildTable()
 
-	initialCursor := browser.table.Cursor()
+	initialCursor := browser.Cursor()
 
 	// Simulate mouse motion
 	motionMsg := tea.MouseMotionMsg{X: 30, Y: 10}
 	browser.Update(motionMsg)
 
-	t.Logf("Cursor after hover: %d (was %d)", browser.table.Cursor(), initialCursor)
+	t.Logf("Cursor after hover: %d (was %d)", browser.Cursor(), initialCursor)
 }
 
 func TestResourceBrowserMouseClick(t *testing.T) {
@@ -210,7 +210,7 @@ func TestResourceBrowserMarkUnmark(t *testing.T) {
 	}
 
 	// Mark first resource
-	browser.table.SetCursor(0)
+	browser.SetCursor(0)
 	mMsg := tea.KeyPressMsg{Code: 'm'}
 	browser.Update(mMsg)
 
@@ -229,9 +229,9 @@ func TestResourceBrowserMarkUnmark(t *testing.T) {
 	}
 
 	// Mark first, then mark second (should replace)
-	browser.table.SetCursor(0)
+	browser.SetCursor(0)
 	browser.Update(mMsg)
-	browser.table.SetCursor(1)
+	browser.SetCursor(1)
 	browser.Update(mMsg)
 
 	if browser.markedResource == nil {
@@ -259,7 +259,7 @@ func TestResourceBrowserMarkClearedOnResourceTypeSwitch(t *testing.T) {
 	browser.applyFilter()
 	browser.buildTable()
 
-	browser.table.SetCursor(0)
+	browser.SetCursor(0)
 	mMsg := tea.KeyPressMsg{Code: 'm'}
 	browser.Update(mMsg)
 
@@ -281,7 +281,7 @@ func TestResourceBrowserMarkClearedOnResourceTypeSwitch(t *testing.T) {
 	}
 	browser.applyFilter()
 	browser.buildTable()
-	browser.table.SetCursor(0)
+	browser.SetCursor(0)
 	browser.Update(mMsg)
 
 	if browser.markedResource == nil {
@@ -314,7 +314,7 @@ func TestResourceBrowserMarkClearedOnFilter(t *testing.T) {
 	browser.buildTable()
 
 	// Mark the first resource
-	browser.table.SetCursor(0)
+	browser.SetCursor(0)
 	mMsg := tea.KeyPressMsg{Code: 'm'}
 	browser.Update(mMsg)
 
@@ -358,7 +358,7 @@ func TestResourceBrowserDiffHintVisibility(t *testing.T) {
 	}
 
 	// Mark a resource: should show "d:diff"
-	browser.table.SetCursor(0)
+	browser.SetCursor(0)
 	mMsg := tea.KeyPressMsg{Code: 'm'}
 	browser.Update(mMsg)
 
@@ -389,7 +389,7 @@ func TestResourceBrowserMarkColumnRendering(t *testing.T) {
 		t.Error("Expected non-empty view")
 	}
 
-	browser.table.SetCursor(0)
+	browser.SetCursor(0)
 	mMsg := tea.KeyPressMsg{Code: 'm'}
 	browser.Update(mMsg)
 
@@ -414,7 +414,7 @@ func TestResourceBrowserEscClearsMark(t *testing.T) {
 	browser.buildTable()
 
 	// Mark a resource
-	browser.table.SetCursor(0)
+	browser.SetCursor(0)
 	mMsg := tea.KeyPressMsg{Code: 'm'}
 	browser.Update(mMsg)
 
@@ -450,14 +450,14 @@ func TestResourceBrowserDiffNavigation(t *testing.T) {
 	browser.applyFilter()
 	browser.buildTable()
 
-	browser.table.SetCursor(0)
+	browser.SetCursor(0)
 	browser.Update(tea.KeyPressMsg{Code: 'm'})
 
 	if browser.markedResource == nil {
 		t.Fatal("Expected resource to be marked")
 	}
 
-	browser.table.SetCursor(1)
+	browser.SetCursor(1)
 	_, cmd := browser.Update(tea.KeyPressMsg{Code: 'd'})
 
 	if cmd == nil {
@@ -619,7 +619,7 @@ func TestResourceBrowserCopyID(t *testing.T) {
 	}
 	browser.applyFilter()
 	browser.buildTable()
-	browser.table.SetCursor(0)
+	browser.SetCursor(0)
 
 	_, cmd := browser.Update(tea.KeyPressMsg{Code: 'y'})
 	if cmd == nil {
@@ -645,7 +645,7 @@ func TestResourceBrowserCopyARN(t *testing.T) {
 	}
 	browser.applyFilter()
 	browser.buildTable()
-	browser.table.SetCursor(0)
+	browser.SetCursor(0)
 
 	_, cmd := browser.Update(tea.KeyPressMsg{Code: 'Y'})
 	if cmd == nil {
@@ -666,7 +666,7 @@ func TestResourceBrowserCopyARNNoARN(t *testing.T) {
 	}
 	browser.applyFilter()
 	browser.buildTable()
-	browser.table.SetCursor(0)
+	browser.SetCursor(0)
 
 	_, cmd := browser.Update(tea.KeyPressMsg{Code: 'Y'})
 	if cmd == nil {

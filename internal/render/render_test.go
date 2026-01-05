@@ -283,7 +283,7 @@ func TestStyleHelpers(t *testing.T) {
 	_ = ui.WarningStyle().Render("test")
 	_ = ui.DangerStyle().Render("test")
 	_ = ui.DimStyle().Render("test")
-	_ = DefaultStyle().Render("test")
+	_ = ui.NoStyle().Render("test")
 }
 
 func TestEmptyValueConstants(t *testing.T) {

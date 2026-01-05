@@ -43,12 +43,8 @@ type modalStyles struct {
 }
 
 func newModalStyles() modalStyles {
-	t := ui.Current()
 	return modalStyles{
-		box: lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(t.Border).
-			Padding(1, 2),
+		box: ui.BoxStyle().Padding(1, 2),
 	}
 }
 
@@ -60,6 +56,10 @@ func NewModalRenderer() *ModalRenderer {
 	return &ModalRenderer{
 		styles: newModalStyles(),
 	}
+}
+
+func (r *ModalRenderer) ReloadStyles() {
+	r.styles = newModalStyles()
 }
 
 func (r *ModalRenderer) Render(modal *Modal, bg string, width, height int) string {
@@ -83,11 +83,11 @@ func (r *ModalRenderer) Render(modal *Modal, bg string, width, height int) strin
 }
 
 func dimBackground(bg string, width, height int) string {
-	dimStyle := lipgloss.NewStyle().Faint(true)
+	faintStyle := ui.FaintStyle()
 	lines := strings.Split(bg, "\n")
 
 	for i, line := range lines {
-		lines[i] = dimStyle.Render(line)
+		lines[i] = faintStyle.Render(line)
 	}
 
 	for len(lines) < height {

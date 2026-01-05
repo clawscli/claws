@@ -26,7 +26,7 @@ type selectorStyles struct {
 func newSelectorStyles() selectorStyles {
 	return selectorStyles{
 		title:        ui.TableHeaderStyle().Padding(0, 1),
-		item:         lipgloss.NewStyle().PaddingLeft(2),
+		item:         ui.TextStyle().PaddingLeft(2),
 		itemSelected: ui.SelectedStyle().PaddingLeft(2),
 		itemChecked:  ui.SuccessStyle().PaddingLeft(2),
 		filter:       ui.AccentStyle(),
@@ -80,6 +80,11 @@ func (m *MultiSelector[T]) SetItems(items []T) {
 			break
 		}
 	}
+	m.updateViewport()
+}
+
+func (m *MultiSelector[T]) ReloadStyles() {
+	m.styles = newSelectorStyles()
 	m.updateViewport()
 }
 

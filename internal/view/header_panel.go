@@ -33,9 +33,8 @@ type headerPanelStyles struct {
 }
 
 func newHeaderPanelStyles() headerPanelStyles {
-	t := ui.Current()
 	return headerPanelStyles{
-		panel:     lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder()).BorderForeground(t.Border).Padding(0, 1),
+		panel:     ui.BoxStyle(),
 		label:     ui.DimStyle(),
 		value:     ui.TextStyle(),
 		accent:    ui.HighlightStyle(),
@@ -126,6 +125,10 @@ func formatMultiAccounts(selections []config.ProfileSelection, accountIDs map[st
 // SetWidth sets the panel width
 func (h *HeaderPanel) SetWidth(width int) {
 	h.width = width
+}
+
+func (h *HeaderPanel) ReloadStyles() {
+	h.styles = newHeaderPanelStyles()
 }
 
 // Height returns the number of lines the rendered header will take

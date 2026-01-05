@@ -43,6 +43,14 @@ func (h *HelpView) Init() tea.Cmd {
 }
 
 func (h *HelpView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg.(type) {
+	case ThemeChangedMsg:
+		h.styles = newHelpViewStyles()
+		if h.vp.Ready {
+			h.vp.Model.SetContent(h.renderContent())
+		}
+		return h, nil
+	}
 	var cmd tea.Cmd
 	h.vp.Model, cmd = h.vp.Model.Update(msg)
 	return h, cmd

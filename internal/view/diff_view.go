@@ -64,6 +64,12 @@ func (d *DiffView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if IsEscKey(msg) {
 			return d, nil
 		}
+	case ThemeChangedMsg:
+		d.styles = newDiffViewStyles()
+		if d.vp.Ready {
+			d.vp.Model.SetContent(d.renderSideBySide())
+		}
+		return d, nil
 	}
 
 	var cmd tea.Cmd
