@@ -237,6 +237,21 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return a, func() tea.Msg { return view.ThemeChangedMsg{} }
 
+	case view.PersistenceChangeMsg:
+		if err := config.File().SavePersistence(msg.Enabled); err != nil {
+			a.err = fmt.Errorf("failed to save autosave setting: %w", err)
+			return a, nil
+		}
+		if msg.Enabled {
+			a.clipboardFlash = "Autosave enabled"
+		} else {
+			a.clipboardFlash = "Autosave disabled"
+		}
+		a.clipboardWarning = false
+		return a, tea.Tick(flashDuration, func(t time.Time) tea.Msg {
+			return clearFlashMsg{}
+		})
+
 	case tea.MouseClickMsg:
 		if msg.Button == tea.MouseBackward {
 			if cmd := a.navigateBack(); cmd != nil {

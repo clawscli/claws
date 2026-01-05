@@ -119,11 +119,12 @@ func (t *ThemeConfig) UnmarshalYAML(node *yaml.Node) error {
 
 type FileConfig struct {
 	mu                  sync.RWMutex      `yaml:"-"`
-	persistenceOverride *bool             `yaml:"-"` // CLI flag override (not persisted)
+	persistenceOverride *bool             `yaml:"-"`
 	Timeouts            TimeoutConfig     `yaml:"timeouts,omitempty"`
 	Concurrency         ConcurrencyConfig `yaml:"concurrency,omitempty"`
 	CloudWatch          CloudWatchConfig  `yaml:"cloudwatch,omitempty"`
-	Persistence         PersistenceConfig `yaml:"persistence"`
+	Persistence         PersistenceConfig `yaml:"persistence,omitempty"`
+	Autosave            PersistenceConfig `yaml:"autosave,omitempty"`
 	Startup             StartupConfig     `yaml:"startup,omitempty"`
 	Theme               ThemeConfig       `yaml:"theme,omitempty"`
 }
@@ -308,6 +309,9 @@ func (c *FileConfig) PersistenceEnabled() bool {
 		if c.persistenceOverride != nil {
 			return *c.persistenceOverride
 		}
+		if c.Autosave.Enabled {
+			return true
+		}
 		return c.Persistence.Enabled
 	})
 }
@@ -371,6 +375,21 @@ func (c *FileConfig) SaveTheme(name string) error {
 
 	return c.patchConfig(func(mapping *yaml.Node) {
 		setScalarValue(mapping, "theme", name)
+	})
+}
+
+func (c *FileConfig) SavePersistence(enabled bool) error {
+	doWithLock(&c.mu, func() {
+		c.Autosave.Enabled = enabled
+		c.Persistence.Enabled = false
+		c.persistenceOverride = nil
+	})
+
+	return c.patchConfig(func(mapping *yaml.Node) {
+		removeKey(mapping, "persistence")
+		autosaveNode := findOrCreateMappingKey(mapping, "autosave")
+		ensureMappingNode(autosaveNode)
+		setBoolValue(autosaveNode, "enabled", enabled)
 	})
 }
 
@@ -487,6 +506,27 @@ func setScalarValue(mapping *yaml.Node, key string, value string) {
 
 	keyNode := &yaml.Node{Kind: yaml.ScalarNode, Value: key}
 	valueNode := &yaml.Node{Kind: yaml.ScalarNode, Value: value}
+	mapping.Content = append(mapping.Content, keyNode, valueNode)
+}
+
+func setBoolValue(mapping *yaml.Node, key string, value bool) {
+	strVal := "false"
+	if value {
+		strVal = "true"
+	}
+
+	for i := 0; i < len(mapping.Content)-1; i += 2 {
+		if mapping.Content[i].Value == key {
+			mapping.Content[i+1].Kind = yaml.ScalarNode
+			mapping.Content[i+1].Tag = "!!bool"
+			mapping.Content[i+1].Value = strVal
+			mapping.Content[i+1].Content = nil
+			return
+		}
+	}
+
+	keyNode := &yaml.Node{Kind: yaml.ScalarNode, Value: key}
+	valueNode := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!bool", Value: strVal}
 	mapping.Content = append(mapping.Content, keyNode, valueNode)
 }
 

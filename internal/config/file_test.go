@@ -536,6 +536,119 @@ startup:
 	}
 }
 
+func TestSavePersistence(t *testing.T) {
+	tmpDir := t.TempDir()
+	origHome := os.Getenv("HOME")
+	defer os.Setenv("HOME", origHome)
+	os.Setenv("HOME", tmpDir)
+
+	configDir := filepath.Join(tmpDir, ".config", "claws")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		t.Fatalf("MkdirAll failed: %v", err)
+	}
+
+	existing := `theme: nord
+startup:
+  regions:
+    - us-east-1
+`
+	configPath := filepath.Join(configDir, "config.yaml")
+	if err := os.WriteFile(configPath, []byte(existing), 0644); err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+
+	cfg := &FileConfig{}
+	if err := cfg.SavePersistence(true); err != nil {
+		t.Fatalf("SavePersistence(true) failed: %v", err)
+	}
+
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("ReadFile failed: %v", err)
+	}
+	content := string(data)
+
+	if !contains(content, "autosave:") {
+		t.Error("autosave: key was not created")
+	}
+	if !contains(content, "enabled: true") {
+		t.Error("autosave.enabled: true was not saved")
+	}
+	if !contains(content, "theme: nord") {
+		t.Error("theme was not preserved")
+	}
+
+	if !cfg.PersistenceEnabled() {
+		t.Error("PersistenceEnabled() should be true")
+	}
+
+	if err := cfg.SavePersistence(false); err != nil {
+		t.Fatalf("SavePersistence(false) failed: %v", err)
+	}
+
+	data, err = os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("ReadFile failed: %v", err)
+	}
+	content = string(data)
+
+	if !contains(content, "enabled: false") {
+		t.Error("autosave.enabled: false was not saved")
+	}
+	if cfg.PersistenceEnabled() {
+		t.Error("PersistenceEnabled() should be false")
+	}
+}
+
+func TestSavePersistence_MigratesFromPersistence(t *testing.T) {
+	tmpDir := t.TempDir()
+	origHome := os.Getenv("HOME")
+	defer os.Setenv("HOME", origHome)
+	os.Setenv("HOME", tmpDir)
+
+	configDir := filepath.Join(tmpDir, ".config", "claws")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		t.Fatalf("MkdirAll failed: %v", err)
+	}
+
+	existing := `theme: nord
+persistence:
+  enabled: true
+`
+	configPath := filepath.Join(configDir, "config.yaml")
+	if err := os.WriteFile(configPath, []byte(existing), 0644); err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+	if !cfg.PersistenceEnabled() {
+		t.Error("PersistenceEnabled() should be true from legacy persistence key")
+	}
+
+	if err := cfg.SavePersistence(true); err != nil {
+		t.Fatalf("SavePersistence failed: %v", err)
+	}
+
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("ReadFile failed: %v", err)
+	}
+	content := string(data)
+
+	if contains(content, "persistence:") {
+		t.Error("persistence: key should have been removed")
+	}
+	if !contains(content, "autosave:") {
+		t.Error("autosave: key should have been created")
+	}
+	if !contains(content, "theme: nord") {
+		t.Error("theme was not preserved")
+	}
+}
+
 func TestStartupConfig_GetProfiles(t *testing.T) {
 	tests := []struct {
 		name   string

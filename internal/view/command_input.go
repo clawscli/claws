@@ -302,6 +302,19 @@ func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 		}
 	}
 
+	if suffix, ok := strings.CutPrefix(input, "autosave "); ok {
+		switch strings.TrimSpace(suffix) {
+		case "on":
+			return func() tea.Msg {
+				return PersistenceChangeMsg{Enabled: true}
+			}, nil
+		case "off":
+			return func() tea.Msg {
+				return PersistenceChangeMsg{Enabled: false}
+			}, nil
+		}
+	}
+
 	// Parse command: service or service/resource
 	parts := strings.SplitN(input, "/", 2)
 	service := parts[0]
@@ -406,6 +419,10 @@ func (c *CommandInput) GetSuggestions() []string {
 		return c.getThemeSuggestions(suffix)
 	}
 
+	if suffix, ok := strings.CutPrefix(input, "autosave "); ok {
+		return c.getAutosaveSuggestions(suffix)
+	}
+
 	if strings.Contains(input, "/") {
 		// Suggest resources
 		parts := strings.SplitN(input, "/", 2)
@@ -460,6 +477,10 @@ func (c *CommandInput) GetSuggestions() []string {
 			suggestions = append(suggestions, "theme")
 		}
 
+		if strings.HasPrefix("autosave", input) {
+			suggestions = append(suggestions, "autosave")
+		}
+
 		for _, svc := range c.registry.ListServices() {
 			if strings.HasPrefix(svc, input) {
 				suggestions = append(suggestions, svc)
@@ -486,6 +507,19 @@ func (c *CommandInput) getThemeSuggestions(prefix string) []string {
 	for _, t := range themes {
 		if prefix == "" || strings.HasPrefix(t, prefix) {
 			suggestions = append(suggestions, "theme "+t)
+		}
+	}
+	return suggestions
+}
+
+func (c *CommandInput) getAutosaveSuggestions(prefix string) []string {
+	prefix = strings.ToLower(strings.TrimSpace(prefix))
+	options := []string{"on", "off"}
+
+	var suggestions []string
+	for _, opt := range options {
+		if prefix == "" || strings.HasPrefix(opt, prefix) {
+			suggestions = append(suggestions, "autosave "+opt)
 		}
 	}
 	return suggestions

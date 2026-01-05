@@ -28,9 +28,8 @@ func main() {
 	fileCfg := config.File()
 	cfg := config.Global()
 
-	// CLI persistence flags override config file
-	if opts.persist != nil {
-		fileCfg.SetPersistenceEnabled(*opts.persist)
+	if opts.autosave != nil {
+		fileCfg.SetPersistenceEnabled(*opts.autosave)
 	}
 
 	// Check environment variables (CLI flags take precedence)
@@ -104,7 +103,7 @@ type cliOptions struct {
 	region     string
 	readOnly   bool
 	envCreds   bool
-	persist    *bool
+	autosave   *bool
 	logFile    string
 	service    string
 	resourceID string
@@ -134,12 +133,12 @@ func parseFlags() cliOptions {
 			opts.readOnly = true
 		case "-e", "--env":
 			opts.envCreds = true
-		case "--persist":
+		case "--autosave", "--persist":
 			t := true
-			opts.persist = &t
-		case "--no-persist":
+			opts.autosave = &t
+		case "--no-autosave", "--no-persist":
 			f := false
-			opts.persist = &f
+			opts.autosave = &f
 		case "-l", "--log-file":
 			if i+1 < len(args) {
 				i++
@@ -200,10 +199,10 @@ func printUsage() {
 	fmt.Println("        Useful for instance profiles, ECS task roles, Lambda, etc.")
 	fmt.Println("  -ro, --read-only")
 	fmt.Println("        Run in read-only mode (disable dangerous actions)")
-	fmt.Println("  --persist")
-	fmt.Println("        Enable saving region/profile selection to config file")
-	fmt.Println("  --no-persist")
-	fmt.Println("        Disable saving region/profile selection to config file")
+	fmt.Println("  --autosave, --persist")
+	fmt.Println("        Enable saving region/profile/theme to config file")
+	fmt.Println("  --no-autosave, --no-persist")
+	fmt.Println("        Disable saving region/profile/theme to config file")
 	fmt.Println("  -l, --log-file <path>")
 	fmt.Println("        Enable debug logging to specified file")
 	fmt.Println("  -t, --theme <name>")

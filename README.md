@@ -237,6 +237,7 @@ Selected profiles are queried in parallel; resources display with Profile and Ac
 | `:diff <name>` | Compare current row with named resource |
 | `:diff <n1> <n2>` | Compare two named resources |
 | `:theme <name>` | Change color theme (saved if persistence enabled) |
+| `:autosave on/off` | Enable/disable config autosave (always saved) |
 
 **Login Details:**
 - `:login` runs `aws login --remote` using `claws-login` profile
@@ -414,8 +415,8 @@ concurrency:
 cloudwatch:
   window: 15m             # Metrics data window period (default: 15m)
 
-persistence:
-  enabled: true           # Save region/profile on change (default: false)
+autosave:
+  enabled: true           # Save region/profile/theme on change (default: false)
 
 startup:                  # Applied on launch if present
   profiles:               # Multiple profiles supported
@@ -446,7 +447,7 @@ theme: nord               # Preset: dark, light, nord, dracula, gruvbox, catppuc
 
 The config file is **not created automatically**. Create it manually if needed.
 
-CLI flags (`-p`, `-r`, `-t`, `--persist`, `--no-persist`) override config file settings.
+CLI flags (`-p`, `-r`, `-t`, `--autosave`, `--no-autosave`) override config file settings.
 
 For required IAM permissions, see [docs/iam-permissions.md](docs/iam-permissions.md).
 
