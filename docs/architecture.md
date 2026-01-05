@@ -348,7 +348,12 @@ Some views (Help, Region Selector, Profile Selector, Action Menu) display as mod
 Application configuration is stored in `~/.config/claws/config.yaml`:
 
 ```yaml
-profile: my-aws-profile
+startup:
+  profiles:
+    - my-aws-profile
+  regions:
+    - us-east-1
+theme: nord
 ```
 
 AWS credentials and config are read from standard locations:
