@@ -372,6 +372,11 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.region != "" {
 			config.Global().AddRegion(msg.region)
 		}
+		if config.File().PersistenceEnabled() {
+			if err := config.File().SaveRegions(config.Global().Regions()); err != nil {
+				log.Warn("failed to persist regions", "error", err)
+			}
+		}
 		if len(msg.accountIDs) > 0 {
 			for profileID, accountID := range msg.accountIDs {
 				config.Global().SetAccountIDForProfile(profileID, accountID)
@@ -681,9 +686,6 @@ func (a *App) handleProfilesChanged(msg navmsg.ProfilesChangedMsg) (tea.Model, t
 		}
 		if err := config.File().SaveProfiles(profileIDs); err != nil {
 			log.Warn("failed to persist profiles", "error", err)
-		}
-		if err := config.File().SaveRegions(config.Global().Regions()); err != nil {
-			log.Warn("failed to persist regions", "error", err)
 		}
 	}
 	a.profileRefreshID++
