@@ -91,7 +91,9 @@ func (r *RegionSelector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		r.selector.SetItems(r.regions)
 		return r, nil
-
+	case ThemeChangedMsg:
+		r.selector.ReloadStyles()
+		return r, nil
 	}
 
 	cmd, result := r.selector.HandleUpdate(msg)

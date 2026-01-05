@@ -2,6 +2,7 @@ package view
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"charm.land/bubbles/v2/textinput"
@@ -88,14 +89,8 @@ func newServiceBrowserStyles() serviceBrowserStyles {
 			Bold(true).
 			MarginTop(1).
 			MarginBottom(0),
-		cell: lipgloss.NewStyle().
-			Width(cellWidth).
-			Height(cellHeight).
-			Padding(0, 1),
-		cellSelected: ui.SelectedStyle().
-			Width(cellWidth).
-			Height(cellHeight).
-			Padding(0, 1),
+		cell:          ui.CellStyle(cellWidth, cellHeight),
+		cellSelected:  ui.SelectedStyle().Width(cellWidth).Height(cellHeight).Padding(0, 1),
 		serviceName:   ui.TextStyle().Bold(true),
 		serviceNameSe: ui.TitleStyle(),
 		aliases:       ui.DimStyle(),
@@ -177,6 +172,10 @@ func (s *ServiceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case RefreshMsg:
 		return s, s.loadServices
+	case ThemeChangedMsg:
+		s.styles = newServiceBrowserStyles()
+		s.headerPanel.ReloadStyles()
+		return s, nil
 
 	case tea.KeyPressMsg:
 		if s.filterActive {
@@ -606,12 +605,12 @@ func (s *ServiceBrowser) SetSize(width, height int) tea.Cmd {
 // StatusLine implements View
 func (s *ServiceBrowser) StatusLine() string {
 	if s.filterActive {
-		return "type to filter • enter:confirm • esc:cancel"
+		return fmt.Sprintf("/%s • %d services • Esc:done Enter:apply", s.filterInput.Value(), len(s.flatItems))
 	}
 	if s.filterText != "" {
-		return "~:home • c:clear • enter:select • ?:help"
+		return fmt.Sprintf("/%s • %d services • ~:home c:clear enter:select ?:help", s.filterText, len(s.flatItems))
 	}
-	return "~:home • /:filter • enter:select • ?:help"
+	return "~:home /:filter enter:select ?:help"
 }
 
 // HasActiveInput implements InputCapture

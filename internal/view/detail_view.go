@@ -121,6 +121,13 @@ func (d *DetailView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return d, cmd
 		}
 		return d, nil
+	case ThemeChangedMsg:
+		d.styles = newDetailViewStyles()
+		d.headerPanel.ReloadStyles()
+		if d.vp.Ready {
+			d.vp.Model.SetContent(d.renderContent())
+		}
+		return d, nil
 
 	case tea.KeyPressMsg:
 		// Let app handle back navigation (esc/backspace/q handled by app.go)

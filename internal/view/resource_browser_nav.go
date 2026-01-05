@@ -16,7 +16,7 @@ func (r *ResourceBrowser) handleNavigation(key string) (tea.Model, tea.Cmd) {
 		return nil, nil
 	}
 
-	ctx, resource := r.contextForResource(r.filtered[r.table.Cursor()])
+	ctx, resource := r.contextForResource(r.filtered[r.tc.Cursor()])
 
 	helper := &NavigationHelper{
 		Ctx:      ctx,
@@ -54,6 +54,10 @@ func (r *ResourceBrowser) cycleResourceType(delta int) {
 
 // StatusLine implements View interface
 func (r *ResourceBrowser) StatusLine() string {
+	if r.filterActive {
+		return fmt.Sprintf("/%s • %d/%d items • Esc:done Enter:apply", r.filterInput.Value(), len(r.filtered), len(r.resources))
+	}
+
 	total := len(r.resources)
 	shown := len(r.filtered)
 	hasActions := len(action.Global.Get(r.service, r.resourceType)) > 0
@@ -168,6 +172,6 @@ func (r *ResourceBrowser) getNavigationShortcuts() string {
 	}
 
 	helper := &NavigationHelper{Renderer: r.renderer}
-	resource := dao.UnwrapResource(r.filtered[r.table.Cursor()])
+	resource := dao.UnwrapResource(r.filtered[r.tc.Cursor()])
 	return helper.FormatShortcuts(resource)
 }

@@ -9,26 +9,28 @@ import (
 	appconfig "github.com/clawscli/claws/internal/config"
 )
 
-// InitContext initializes AWS context by loading config and fetching account ID.
-// Updates the global config with region (if not already set) and account ID.
 func InitContext(ctx context.Context) error {
-	sel := appconfig.Global().Selection()
+	selections := appconfig.Global().Selections()
 
-	cfg, err := config.LoadDefaultConfig(ctx, SelectionLoadOptions(sel)...)
-	if err != nil {
-		return err
+	if len(selections) == 1 {
+		cfg, err := config.LoadDefaultConfig(ctx, SelectionLoadOptions(selections[0])...)
+		if err != nil {
+			return err
+		}
+		if appconfig.Global().Region() == "" {
+			appconfig.Global().SetRegion(cfg.Region)
+		}
+		accountID := FetchAccountID(ctx, cfg)
+		appconfig.Global().SetAccountID(accountID)
+		return nil
 	}
 
-	// Set region if not already set
-	if appconfig.Global().Region() == "" {
-		appconfig.Global().SetRegion(cfg.Region)
+	region, accountIDs, err := RefreshContextData(ctx)
+	if region != "" && appconfig.Global().Region() == "" {
+		appconfig.Global().SetRegion(region)
 	}
-
-	// Fetch and set account ID
-	accountID := FetchAccountID(ctx, cfg)
-	appconfig.Global().SetAccountID(accountID)
-
-	return nil
+	appconfig.Global().SetAccountIDs(accountIDs)
+	return err
 }
 
 // RefreshContextData re-fetches region and account ID for the current profile selection(s).

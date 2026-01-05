@@ -333,6 +333,12 @@ func (v *LogView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			v.spinner, cmd = v.spinner.Update(msg)
 			return v, cmd
 		}
+	case ThemeChangedMsg:
+		v.styles = newLogViewStyles()
+		if v.vp.Ready {
+			v.updateViewportContent()
+		}
+		return v, nil
 	}
 
 	if v.vp.Ready {

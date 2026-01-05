@@ -21,6 +21,7 @@ type hitArea struct {
 }
 
 type dashboardStyles struct {
+	text      lipgloss.Style
 	warning   lipgloss.Style
 	danger    lipgloss.Style
 	success   lipgloss.Style
@@ -30,6 +31,7 @@ type dashboardStyles struct {
 
 func newDashboardStyles() dashboardStyles {
 	return dashboardStyles{
+		text:      ui.TextStyle(),
 		warning:   ui.WarningStyle(),
 		danger:    ui.DangerStyle(),
 		success:   ui.SuccessStyle(),
@@ -186,6 +188,10 @@ func (d *DashboardView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case RefreshMsg:
 		return d.handleRefresh()
+	case ThemeChangedMsg:
+		d.styles = newDashboardStyles()
+		d.headerPanel.ReloadStyles()
+		return d, nil
 
 	case tea.MouseClickMsg:
 		return d.handleMouseClick(msg)

@@ -140,7 +140,7 @@ func StateColorer() Colorer {
 		case "pending", "starting", "creating":
 			return ui.PendingStyle()
 		default:
-			return lipgloss.NewStyle()
+			return ui.NoStyle()
 		}
 	}
 }
@@ -201,11 +201,6 @@ func FormatDuration(d time.Duration) string {
 
 // Style is an alias for lipgloss.Style for convenience
 type Style = lipgloss.Style
-
-// DefaultStyle returns a default unstyled style
-func DefaultStyle() lipgloss.Style {
-	return lipgloss.NewStyle()
-}
 
 // FormatTags formats tags for table display
 // It shows the most important tags first (Name is excluded since it's usually shown separately)

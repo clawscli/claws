@@ -14,6 +14,7 @@ import (
 	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/log"
 	"github.com/clawscli/claws/internal/registry"
+	"github.com/clawscli/claws/internal/ui"
 )
 
 // version is set by ldflags during build
@@ -27,9 +28,8 @@ func main() {
 	fileCfg := config.File()
 	cfg := config.Global()
 
-	// CLI persistence flags override config file
-	if opts.persist != nil {
-		fileCfg.SetPersistenceEnabled(*opts.persist)
+	if opts.autosave != nil {
+		fileCfg.SetPersistenceEnabled(*opts.autosave)
 	}
 
 	// Check environment variables (CLI flags take precedence)
@@ -52,6 +52,8 @@ func main() {
 	}
 
 	applyStartupConfig(opts, fileCfg, cfg)
+
+	ui.ApplyConfigWithOverride(fileCfg.GetTheme(), opts.theme)
 
 	// Validate and resolve startup service/resource
 	var startupPath *app.StartupPath
@@ -101,10 +103,11 @@ type cliOptions struct {
 	region     string
 	readOnly   bool
 	envCreds   bool
-	persist    *bool // nil = use config, true = enable, false = disable
+	autosave   *bool
 	logFile    string
-	service    string // startup service (e.g., "ec2", "rds/snapshots", "cfn")
-	resourceID string // startup resource ID for direct DetailView navigation
+	service    string
+	resourceID string
+	theme      string
 }
 
 // parseFlags parses command line flags and returns options
@@ -130,12 +133,12 @@ func parseFlags() cliOptions {
 			opts.readOnly = true
 		case "-e", "--env":
 			opts.envCreds = true
-		case "--persist":
+		case "--autosave":
 			t := true
-			opts.persist = &t
-		case "--no-persist":
+			opts.autosave = &t
+		case "--no-autosave":
 			f := false
-			opts.persist = &f
+			opts.autosave = &f
 		case "-l", "--log-file":
 			if i+1 < len(args) {
 				i++
@@ -150,6 +153,11 @@ func parseFlags() cliOptions {
 			if i+1 < len(args) {
 				i++
 				opts.resourceID = args[i]
+			}
+		case "-t", "--theme":
+			if i+1 < len(args) {
+				i++
+				opts.theme = args[i]
 			}
 		case "-h", "--help":
 			showHelp = true
@@ -191,12 +199,14 @@ func printUsage() {
 	fmt.Println("        Useful for instance profiles, ECS task roles, Lambda, etc.")
 	fmt.Println("  -ro, --read-only")
 	fmt.Println("        Run in read-only mode (disable dangerous actions)")
-	fmt.Println("  --persist")
-	fmt.Println("        Enable saving region/profile selection to config file")
-	fmt.Println("  --no-persist")
-	fmt.Println("        Disable saving region/profile selection to config file")
+	fmt.Println("  --autosave")
+	fmt.Println("        Enable saving region/profile/theme to config file")
+	fmt.Println("  --no-autosave")
+	fmt.Println("        Disable saving region/profile/theme to config file")
 	fmt.Println("  -l, --log-file <path>")
 	fmt.Println("        Enable debug logging to specified file")
+	fmt.Println("  -t, --theme <name>")
+	fmt.Println("        Color theme: dark, light, nord, dracula, gruvbox, catppuccin")
 	fmt.Println("  -v, --version")
 	fmt.Println("        Show version")
 	fmt.Println("  -h, --help")
@@ -213,23 +223,21 @@ func printUsage() {
 	fmt.Println("  ALL_PROXY                Propagated to HTTP_PROXY/HTTPS_PROXY if not set")
 }
 
-// applyStartupConfig applies profile/region config with precedence:
-// 1. CLI flags (-p, -r, -e) - highest priority
-// 2. Config file startup section
-// 3. AWS SDK defaults
 func applyStartupConfig(opts cliOptions, fileCfg *config.FileConfig, cfg *config.Config) {
-	startupRegions, startupProfile := fileCfg.GetStartup()
+	startupRegions, startupProfiles := fileCfg.GetStartup()
 
-	// Apply profile: CLI > startup config
 	if opts.envCreds {
 		cfg.UseEnvOnly()
 	} else if opts.profile != "" {
 		cfg.UseProfile(opts.profile)
-	} else if startupProfile != "" {
-		cfg.UseProfile(startupProfile)
+	} else if len(startupProfiles) > 0 {
+		sels := make([]config.ProfileSelection, len(startupProfiles))
+		for i, id := range startupProfiles {
+			sels[i] = config.ProfileSelectionFromID(id)
+		}
+		cfg.SetSelections(sels)
 	}
 
-	// Apply region: CLI > startup config
 	if opts.region != "" {
 		cfg.SetRegion(opts.region)
 	} else if len(startupRegions) > 0 {
