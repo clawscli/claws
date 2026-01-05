@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -210,6 +211,54 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return a, nil
 
+	case view.ThemeChangedMsg:
+		a.styles = newAppStyles(a.width)
+		a.modalRenderer.ReloadStyles()
+		a.commandInput.ReloadStyles()
+		if a.currentView != nil {
+			a.currentView.Update(msg)
+		}
+		for _, v := range a.viewStack {
+			v.Update(msg)
+		}
+		return a, nil
+
+	case view.ThemeChangeMsg:
+		theme := ui.GetPreset(msg.Name)
+		if theme == nil {
+			a.err = fmt.Errorf("unknown theme: %s (available: %v)", msg.Name, ui.AvailableThemes())
+			return a, nil
+		}
+		ui.SetTheme(theme)
+		a.clipboardFlash = "Theme: " + msg.Name
+		a.clipboardWarning = false
+		if config.File().PersistenceEnabled() {
+			if err := config.File().SaveTheme(msg.Name); err != nil {
+				log.Warn("failed to persist theme", "error", err)
+				a.clipboardFlash = "Theme: " + msg.Name + " (save failed)"
+				a.clipboardWarning = true
+			}
+		}
+		return a, tea.Batch(
+			func() tea.Msg { return view.ThemeChangedMsg{} },
+			tea.Tick(flashDuration, func(t time.Time) tea.Msg { return clearFlashMsg{} }),
+		)
+
+	case view.PersistenceChangeMsg:
+		if err := config.File().SavePersistence(msg.Enabled); err != nil {
+			a.err = fmt.Errorf("failed to save autosave setting: %w", err)
+			return a, nil
+		}
+		if msg.Enabled {
+			a.clipboardFlash = "Autosave enabled"
+		} else {
+			a.clipboardFlash = "Autosave disabled"
+		}
+		a.clipboardWarning = false
+		return a, tea.Tick(flashDuration, func(t time.Time) tea.Msg {
+			return clearFlashMsg{}
+		})
+
 	case tea.MouseClickMsg:
 		if msg.Button == tea.MouseBackward {
 			if cmd := a.navigateBack(); cmd != nil {
@@ -345,6 +394,11 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.region != "" {
 			config.Global().AddRegion(msg.region)
 		}
+		if config.File().PersistenceEnabled() {
+			if err := config.File().SaveRegions(config.Global().Regions()); err != nil {
+				log.Warn("failed to persist regions", "error", err)
+			}
+		}
 		if len(msg.accountIDs) > 0 {
 			for profileID, accountID := range msg.accountIDs {
 				config.Global().SetAccountIDForProfile(profileID, accountID)
@@ -430,41 +484,47 @@ func (a *App) View() tea.View {
 		content = a.currentView.ViewString()
 	}
 
-	if a.commandMode {
-		cmdView := a.commandInput.View()
-		return newAltScreenView(content + "\n" + cmdView)
-	}
-
 	var statusContent string
-	if a.err != nil {
-		statusContent = ui.DangerStyle().Render("Error: " + a.err.Error())
-	} else if a.clipboardFlash != "" {
-		if a.clipboardWarning {
-			statusContent = ui.WarningStyle().Render("⚠ " + a.clipboardFlash)
-		} else {
-			statusContent = ui.SuccessStyle().Render("✓ " + a.clipboardFlash)
+	if a.commandMode {
+		statusContent = a.commandInput.View() + " • Esc:cancel Enter:run Tab:complete"
+	} else {
+		if a.err != nil {
+			statusContent = ui.DangerStyle().Render("Error: " + a.err.Error())
+		} else if a.clipboardFlash != "" {
+			if a.clipboardWarning {
+				statusContent = ui.WarningStyle().Render("⚠ " + a.clipboardFlash)
+			} else {
+				statusContent = ui.SuccessStyle().Render("✓ " + a.clipboardFlash)
+			}
+		} else if a.currentView != nil {
+			statusContent = a.currentView.StatusLine()
 		}
-	} else if a.currentView != nil {
-		statusContent = a.currentView.StatusLine()
-	}
 
-	if config.Global().ReadOnly() {
-		roIndicator := a.styles.readOnly.Render("READ-ONLY")
-		statusContent = roIndicator + " " + statusContent
-	}
+		if config.Global().ReadOnly() {
+			roIndicator := a.styles.readOnly.Render("READ-ONLY")
+			statusContent = roIndicator + " " + statusContent
+		}
 
-	if a.awsInitializing {
-		statusContent = ui.DimStyle().Render("AWS initializing...") + " • " + statusContent
-	}
+		if a.awsInitializing {
+			statusContent = ui.DimStyle().Render("AWS initializing...") + " • " + statusContent
+		}
 
-	if a.profileRefreshError != nil {
-		statusContent = ui.WarningStyle().Render("⚠ Profile error") + " • " + statusContent
-	} else if a.profileRefreshing {
-		statusContent = ui.DimStyle().Render("Refreshing profile...") + " • " + statusContent
+		if a.profileRefreshError != nil {
+			statusContent = ui.WarningStyle().Render("⚠ Profile error") + " • " + statusContent
+		} else if a.profileRefreshing {
+			statusContent = ui.DimStyle().Render("Refreshing profile...") + " • " + statusContent
+		}
 	}
 
 	status := a.styles.status.Render(statusContent)
-	mainView := content + "\n" + status
+
+	// Fix content height to keep status line at bottom regardless of content size.
+	contentHeight := a.height - 1
+	if contentHeight < 1 {
+		contentHeight = 1
+	}
+	paddedContent := lipgloss.NewStyle().Height(contentHeight).Render(content)
+	mainView := paddedContent + "\n" + status
 
 	if a.modal != nil {
 		return newAltScreenView(a.modalRenderer.Render(a.modal, mainView, a.width, a.height))
@@ -632,10 +692,8 @@ func (a *App) fetchStartupResource() tea.Msg {
 func (a *App) handleRegionChanged(msg navmsg.RegionChangedMsg) (tea.Model, tea.Cmd) {
 	log.Info("regions changed", "regions", msg.Regions)
 	if config.File().PersistenceEnabled() {
-		_, existingProfile := config.File().GetStartup()
-		config.File().SetStartup(msg.Regions, existingProfile)
-		if err := config.File().Save(); err != nil {
-			log.Warn("failed to persist config", "error", err)
+		if err := config.File().SaveRegions(msg.Regions); err != nil {
+			log.Warn("failed to persist regions", "error", err)
 		}
 	}
 	return a.refreshCurrentView()
@@ -644,14 +702,12 @@ func (a *App) handleRegionChanged(msg navmsg.RegionChangedMsg) (tea.Model, tea.C
 func (a *App) handleProfilesChanged(msg navmsg.ProfilesChangedMsg) (tea.Model, tea.Cmd) {
 	log.Info("profiles changed", "count", len(msg.Selections))
 	if config.File().PersistenceEnabled() {
-		profile := ""
-		if len(msg.Selections) > 0 && msg.Selections[0].IsNamedProfile() {
-			profile = msg.Selections[0].ProfileName
+		profileIDs := make([]string, len(msg.Selections))
+		for i, sel := range msg.Selections {
+			profileIDs[i] = sel.ID()
 		}
-		existingRegions := config.Global().Regions()
-		config.File().SetStartup(existingRegions, profile)
-		if err := config.File().Save(); err != nil {
-			log.Warn("failed to persist config", "error", err)
+		if err := config.File().SaveProfiles(profileIDs); err != nil {
+			log.Warn("failed to persist profiles", "error", err)
 		}
 	}
 	a.profileRefreshID++

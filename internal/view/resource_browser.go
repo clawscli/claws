@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"charm.land/bubbles/v2/spinner"
-	"charm.land/bubbles/v2/table"
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -63,15 +62,18 @@ type ResourceBrowser struct {
 
 	// Tab positions for mouse click detection
 	tabPositions []tabPosition
-	table        table.Model
-	dao          dao.DAO
-	renderer     render.Renderer
-	resources    []dao.Resource
-	filtered     []dao.Resource
-	loading      bool
-	err          error
-	width        int
-	height       int
+
+	tc           TableCursor
+	tableContent string
+
+	dao       dao.DAO
+	renderer  render.Renderer
+	resources []dao.Resource
+	filtered  []dao.Resource
+	loading   bool
+	err       error
+	width     int
+	height    int
 
 	// Header panel
 	headerPanel *HeaderPanel
@@ -213,6 +215,11 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return r.handleAutoReloadTick()
 	case RefreshMsg:
 		return r.handleRefreshMsg()
+	case ThemeChangedMsg:
+		r.styles = newResourceBrowserStyles()
+		r.headerPanel.ReloadStyles()
+		r.buildTable()
+		return r, nil
 	case SortMsg:
 		return r.handleSortMsg(msg)
 	case TagFilterMsg:
@@ -247,16 +254,13 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	var cmd tea.Cmd
-	r.table, cmd = r.table.Update(msg)
-
 	// Check if we should load more pages (infinite scroll)
 	if r.shouldLoadNextPage() {
 		r.isLoadingMore = true
-		return r, tea.Batch(cmd, r.loadNextPage)
+		return r, r.loadNextPage
 	}
 
-	return r, cmd
+	return r, nil
 }
 
 // ViewString returns the view content as a string
@@ -271,10 +275,9 @@ func (r *ResourceBrowser) ViewString() string {
 		return header + "\n" + ui.DangerStyle().Render(fmt.Sprintf("Error: %v", r.err))
 	}
 
-	// Get selected resource summary fields
 	var summaryFields []render.SummaryField
-	if len(r.filtered) > 0 && r.table.Cursor() < len(r.filtered) && r.renderer != nil {
-		selectedResource := dao.UnwrapResource(r.filtered[r.table.Cursor()])
+	if len(r.filtered) > 0 && r.tc.Cursor() < len(r.filtered) && r.renderer != nil {
+		selectedResource := dao.UnwrapResource(r.filtered[r.tc.Cursor()])
 		summaryFields = r.renderer.RenderSummary(selectedResource)
 	}
 
@@ -314,7 +317,7 @@ func (r *ResourceBrowser) ViewString() string {
 			ui.DimStyle().Render("No resources found")
 	}
 
-	return headerPanel + "\n" + tabsView + "\n" + filterView + r.table.View()
+	return headerPanel + "\n" + tabsView + "\n" + filterView + r.tableContent
 }
 
 // View implements tea.Model

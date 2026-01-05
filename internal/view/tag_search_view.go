@@ -9,10 +9,10 @@ import (
 	"sync"
 
 	"charm.land/bubbles/v2/spinner"
-	"charm.land/bubbles/v2/table"
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"charm.land/lipgloss/v2/table"
 	"github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi"
 	tagtypes "github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi/types"
 
@@ -55,7 +55,9 @@ type TagSearchView struct {
 	tagFilter string
 	styles    tagSearchViewStyles
 
-	table     table.Model
+	tc           TableCursor
+	tableContent string
+
 	resources []taggedARN
 	filtered  []taggedARN
 	loading   bool
@@ -293,22 +295,35 @@ func (v *TagSearchView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return v, cmd
 		}
 		return v, nil
+	case ThemeChangedMsg:
+		v.styles = newTagSearchViewStyles()
+		v.buildTable()
+		return v, nil
 
 	case tea.MouseWheelMsg:
-		var cmd tea.Cmd
-		v.table, cmd = v.table.Update(msg)
-		return v, cmd
+		delta := 0
+		switch msg.Button {
+		case tea.MouseWheelUp:
+			delta = -3
+		case tea.MouseWheelDown:
+			delta = 3
+		}
+		v.tc.AdjustScrollOffset(delta, len(v.filtered))
+		v.buildTable()
+		return v, nil
 
 	case tea.MouseMotionMsg:
-		if idx := v.getRowAtPosition(msg.Y); idx >= 0 && idx != v.table.Cursor() {
-			v.table.SetCursor(idx)
+		if idx := v.getRowAtPosition(msg.Y); idx >= 0 && idx != v.tc.Cursor() {
+			v.tc.SetCursor(idx, len(v.filtered))
+			v.buildTable()
 		}
 		return v, nil
 
 	case tea.MouseClickMsg:
 		if msg.Button == tea.MouseLeft && len(v.filtered) > 0 {
 			if idx := v.getRowAtPosition(msg.Y); idx >= 0 {
-				v.table.SetCursor(idx)
+				v.tc.SetCursor(idx, len(v.filtered))
+				v.buildTable()
 				return v.navigateToResource()
 			}
 		}
@@ -365,23 +380,49 @@ func (v *TagSearchView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "enter", "d":
-			if len(v.filtered) > 0 && v.table.Cursor() < len(v.filtered) {
+			if len(v.filtered) > 0 && v.tc.Cursor() < len(v.filtered) {
 				return v.navigateToResource()
 			}
 
 		case "j", "down":
-			v.table.MoveDown(1)
+			v.tc.SetCursor(v.tc.Cursor()+1, len(v.filtered))
+			v.tc.UpdateScrollOffset(len(v.filtered))
+			v.buildTable()
 			return v, nil
 
 		case "k", "up":
-			v.table.MoveUp(1)
+			v.tc.SetCursor(v.tc.Cursor()-1, len(v.filtered))
+			v.tc.UpdateScrollOffset(len(v.filtered))
+			v.buildTable()
+			return v, nil
+
+		case "ctrl+d", "pgdown":
+			v.tc.SetCursor(v.tc.Cursor()+v.tc.TableHeight()/2, len(v.filtered))
+			v.tc.UpdateScrollOffset(len(v.filtered))
+			v.buildTable()
+			return v, nil
+
+		case "ctrl+u", "pgup":
+			v.tc.SetCursor(v.tc.Cursor()-v.tc.TableHeight()/2, len(v.filtered))
+			v.tc.UpdateScrollOffset(len(v.filtered))
+			v.buildTable()
+			return v, nil
+
+		case "g", "home":
+			v.tc.SetCursor(0, len(v.filtered))
+			v.tc.UpdateScrollOffset(len(v.filtered))
+			v.buildTable()
+			return v, nil
+
+		case "G", "end":
+			v.tc.SetCursor(len(v.filtered)-1, len(v.filtered))
+			v.tc.UpdateScrollOffset(len(v.filtered))
+			v.buildTable()
 			return v, nil
 		}
 	}
 
-	var cmd tea.Cmd
-	v.table, cmd = v.table.Update(msg)
-	return v, cmd
+	return v, nil
 }
 
 func (v *TagSearchView) loadNextPage() tea.Msg {
@@ -399,11 +440,12 @@ func (v *TagSearchView) loadNextPage() tea.Msg {
 }
 
 func (v *TagSearchView) navigateToResource() (tea.Model, tea.Cmd) {
-	if len(v.filtered) == 0 || v.table.Cursor() >= len(v.filtered) {
+	cursor := v.tc.Cursor()
+	if len(v.filtered) == 0 || cursor >= len(v.filtered) {
 		return v, nil
 	}
 
-	res := v.filtered[v.table.Cursor()]
+	res := v.filtered[cursor]
 	if res.ARN == nil || !res.ARN.CanNavigate() {
 		return v, nil
 	}
@@ -454,9 +496,6 @@ func (v *TagSearchView) getResourceIDForGet(arn *aws.ARN) string {
 	case "states":
 		return arn.Raw
 	case "bedrock-agentcore":
-		// ARN: arn:aws:bedrock-agentcore:region:account:runtime/RUNTIME_ID/runtime-endpoint/DEFAULT
-		// Extract just the runtime ID (first segment) for GetAgentRuntime API
-		// idx > 0 (not >= 0): if "/" is at position 0, the prefix would be empty string which is invalid
 		if idx := strings.Index(arn.ResourceID, "/"); idx > 0 {
 			return arn.ResourceID[:idx]
 		}
@@ -503,21 +542,64 @@ func (v *TagSearchView) applyFilter() {
 	}
 }
 
+func (v *TagSearchView) Cursor() int {
+	return v.tc.Cursor()
+}
+
+func (v *TagSearchView) SetCursor(n int) {
+	v.tc.SetCursor(n, len(v.filtered))
+}
+
 func (v *TagSearchView) buildTable() {
+	v.tc.SetCursor(v.tc.Cursor(), len(v.filtered))
+
 	isMultiRegion := config.Global().IsMultiRegion()
 
-	columns := []table.Column{
-		{Title: "Service", Width: 12},
-		{Title: "Type", Width: 15},
-		{Title: "ID", Width: 30},
-	}
+	headers := []string{"Service", "Type", "ID"}
 	if isMultiRegion {
-		columns = append(columns, table.Column{Title: "Region", Width: 14})
+		headers = append(headers, "Region")
 	}
-	columns = append(columns, table.Column{Title: "Tags", Width: 50})
+	headers = append(headers, "Tags")
 
-	rows := make([]table.Row, len(v.filtered))
-	for i, res := range v.filtered {
+	tableHeight := v.height - 1
+	if tableHeight < 1 {
+		tableHeight = 1
+	}
+	v.tc.SetTableHeight(tableHeight)
+
+	tableWidth := v.width
+	if tableWidth < 80 {
+		tableWidth = 120
+	}
+
+	cursor := v.tc.Cursor()
+
+	numCols := len(headers)
+	widths := make([]int, numCols)
+	baseWidth := tableWidth / numCols
+	remainder := tableWidth % numCols
+	for i := range widths {
+		widths[i] = baseWidth
+		if i < remainder {
+			widths[i]++
+		}
+	}
+
+	t := table.New().
+		Headers(headers...).
+		Width(tableWidth).
+		Height(tableHeight).
+		Wrap(false).
+		BorderTop(false).
+		BorderBottom(false).
+		BorderLeft(false).
+		BorderRight(false).
+		BorderColumn(false).
+		BorderHeader(true).
+		BorderStyle(TableBorderStyle()).
+		StyleFunc(NewTableStyleFunc(widths, cursor))
+
+	for _, res := range v.filtered {
 		service := ""
 		resType := ""
 		resID := ""
@@ -532,45 +614,19 @@ func (v *TagSearchView) buildTable() {
 
 		tagStr := formatTags(res.Tags, 50)
 
-		row := table.Row{service, resType, resID}
+		row := []string{service, resType, resID}
 		if isMultiRegion {
 			row = append(row, res.Region)
 		}
 		row = append(row, tagStr)
-		rows[i] = row
+		t = t.Row(row...)
 	}
 
-	tableHeight := v.height - 4
-	if tableHeight < 10 {
-		tableHeight = 20
-	}
-	tableWidth := v.width
-	if tableWidth < 80 {
-		tableWidth = 120
+	if v.tc.ScrollOffset() > 0 {
+		t = t.YOffset(v.tc.ScrollOffset())
 	}
 
-	tbl := table.New(
-		table.WithColumns(columns),
-		table.WithRows(rows),
-		table.WithFocused(true),
-		table.WithHeight(tableHeight),
-		table.WithWidth(tableWidth),
-	)
-
-	s := table.DefaultStyles()
-	theme := ui.Current()
-	s.Header = s.Header.
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(theme.TableBorder).
-		BorderBottom(true).
-		Bold(false)
-	s.Selected = s.Selected.
-		Foreground(theme.SelectionText).
-		Background(theme.Selection).
-		Bold(false)
-
-	tbl.SetStyles(s)
-	v.table = tbl
+	v.tableContent = t.String()
 }
 
 func (v *TagSearchView) ViewString() string {
@@ -627,7 +683,7 @@ func (v *TagSearchView) ViewString() string {
 		return header + "\n" + status + "\n" + ui.DimStyle().Render(msg)
 	}
 
-	return header + "\n" + status + "\n" + filterView + v.table.View()
+	return header + "\n" + status + "\n" + filterView + v.tableContent
 }
 
 func (v *TagSearchView) View() tea.View {
@@ -645,6 +701,10 @@ func (v *TagSearchView) SetSize(width, height int) tea.Cmd {
 }
 
 func (v *TagSearchView) StatusLine() string {
+	if v.filterActive {
+		return fmt.Sprintf("/%s • %d/%d items • Esc:done Enter:apply", v.filterInput.Value(), len(v.filtered), len(v.resources))
+	}
+
 	count := len(v.filtered)
 	regions := config.Global().Regions()
 	regionInfo := ""
@@ -674,9 +734,10 @@ func (v *TagSearchView) getRowAtPosition(y int) int {
 		headerHeight++
 	}
 
-	row := y - headerHeight
-	if row >= 0 && row < len(v.filtered) {
-		return row
+	visualRow := y - headerHeight
+	dataIdx := visualRow + v.tc.ScrollOffset()
+	if visualRow >= 0 && dataIdx >= 0 && dataIdx < len(v.filtered) {
+		return dataIdx
 	}
 	return -1
 }

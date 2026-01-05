@@ -29,12 +29,14 @@ type mockRenderer struct {
 	detail string
 }
 
-func (m *mockRenderer) ServiceName() string                                     { return "test" }
-func (m *mockRenderer) ResourceType() string                                    { return "items" }
-func (m *mockRenderer) Columns() []render.Column                                { return nil }
-func (m *mockRenderer) RenderRow(r dao.Resource, cols []render.Column) []string { return nil }
-func (m *mockRenderer) RenderDetail(r dao.Resource) string                      { return m.detail }
-func (m *mockRenderer) RenderSummary(r dao.Resource) []render.SummaryField      { return nil }
+func (m *mockRenderer) ServiceName() string      { return "test" }
+func (m *mockRenderer) ResourceType() string     { return "items" }
+func (m *mockRenderer) Columns() []render.Column { return []render.Column{{Name: "NAME", Width: 20}} }
+func (m *mockRenderer) RenderRow(r dao.Resource, cols []render.Column) []string {
+	return []string{r.GetName()}
+}
+func (m *mockRenderer) RenderDetail(r dao.Resource) string                 { return m.detail }
+func (m *mockRenderer) RenderSummary(r dao.Resource) []render.SummaryField { return nil }
 
 // IsEscKey tests
 

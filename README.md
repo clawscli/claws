@@ -236,6 +236,8 @@ Selected profiles are queried in parallel; resources display with Profile and Ac
 | `:tag <filter>` | Filter by tag |
 | `:diff <name>` | Compare current row with named resource |
 | `:diff <n1> <n2>` | Compare two named resources |
+| `:theme <name>` | Change color theme (saved if persistence enabled) |
+| `:autosave on/off` | Enable/disable config autosave (always saved) |
 
 **Login Details:**
 - `:login` runs `aws login --remote` using `claws-login` profile
@@ -413,19 +415,39 @@ concurrency:
 cloudwatch:
   window: 15m             # Metrics data window period (default: 15m)
 
-persistence:
-  enabled: true           # Save region/profile on change (default: false)
+autosave:
+  enabled: true           # Save region/profile/theme on change (default: false)
 
 startup:                  # Applied on launch if present
-  profile: production
+  profiles:               # Multiple profiles supported
+    - production
   regions:
     - us-east-1
     - us-west-2
+
+theme: nord               # Preset: dark, light, nord, dracula, gruvbox, catppuccin
+
+# Or use preset with custom overrides:
+# theme:
+#   preset: dracula
+#   primary: "#ff79c6"
+#   danger: "#ff5555"
 ```
+
+**Available Theme Presets:**
+
+| Preset | Description |
+|--------|-------------|
+| `dark` | Default dark theme (pink/magenta accents) |
+| `light` | For light-background terminals |
+| `nord` | Nordic, calm blue palette |
+| `dracula` | Popular dark theme (purple/pink) |
+| `gruvbox` | Retro, warm earth tones |
+| `catppuccin` | Modern pastel (Mocha variant) |
 
 The config file is **not created automatically**. Create it manually if needed.
 
-CLI flags (`-p`, `-r`, `--persist`, `--no-persist`) override config file settings.
+CLI flags (`-p`, `-r`, `-t`, `--autosave`, `--no-autosave`) override config file settings.
 
 For required IAM permissions, see [docs/iam-permissions.md](docs/iam-permissions.md).
 

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -58,18 +59,73 @@ type PersistenceConfig struct {
 }
 
 type StartupConfig struct {
-	Regions []string `yaml:"regions,omitempty"`
-	Profile string   `yaml:"profile,omitempty"`
+	Regions  []string `yaml:"regions,omitempty"`
+	Profile  string   `yaml:"profile,omitempty"`  // Deprecated: for backward compat (read-only)
+	Profiles []string `yaml:"profiles,omitempty"` // New format: multiple profile IDs
+}
+
+// GetProfiles returns profile IDs (new format preferred, fallback to old).
+// Returns a copy to prevent race conditions with concurrent writes.
+func (s StartupConfig) GetProfiles() []string {
+	if len(s.Profiles) > 0 {
+		return append([]string(nil), s.Profiles...)
+	}
+	if s.Profile != "" {
+		return []string{s.Profile}
+	}
+	return nil
+}
+
+// ThemeConfig holds theme configuration.
+// Can be specified as:
+//   - A preset name string: "dark", "light", "nord", "dracula", "gruvbox", "catppuccin"
+//   - An object with optional preset and color overrides
+type ThemeConfig struct {
+	Preset          string `yaml:"preset,omitempty"`
+	Primary         string `yaml:"primary,omitempty"`
+	Secondary       string `yaml:"secondary,omitempty"`
+	Accent          string `yaml:"accent,omitempty"`
+	Text            string `yaml:"text,omitempty"`
+	TextBright      string `yaml:"text_bright,omitempty"`
+	TextDim         string `yaml:"text_dim,omitempty"`
+	TextMuted       string `yaml:"text_muted,omitempty"`
+	Success         string `yaml:"success,omitempty"`
+	Warning         string `yaml:"warning,omitempty"`
+	Danger          string `yaml:"danger,omitempty"`
+	Info            string `yaml:"info,omitempty"`
+	Pending         string `yaml:"pending,omitempty"`
+	Border          string `yaml:"border,omitempty"`
+	BorderHighlight string `yaml:"border_highlight,omitempty"`
+	Background      string `yaml:"background,omitempty"`
+	BackgroundAlt   string `yaml:"background_alt,omitempty"`
+	Selection       string `yaml:"selection,omitempty"`
+	SelectionText   string `yaml:"selection_text,omitempty"`
+	TableHeader     string `yaml:"table_header,omitempty"`
+	TableHeaderText string `yaml:"table_header_text,omitempty"`
+	TableBorder     string `yaml:"table_border,omitempty"`
+	BadgeForeground string `yaml:"badge_foreground,omitempty"`
+	BadgeBackground string `yaml:"badge_background,omitempty"`
+}
+
+func (t *ThemeConfig) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind == yaml.ScalarNode {
+		t.Preset = node.Value
+		return nil
+	}
+
+	type rawThemeConfig ThemeConfig
+	return node.Decode((*rawThemeConfig)(t))
 }
 
 type FileConfig struct {
 	mu                  sync.RWMutex      `yaml:"-"`
-	persistenceOverride *bool             `yaml:"-"` // CLI flag override (not persisted)
+	persistenceOverride *bool             `yaml:"-"`
 	Timeouts            TimeoutConfig     `yaml:"timeouts,omitempty"`
 	Concurrency         ConcurrencyConfig `yaml:"concurrency,omitempty"`
 	CloudWatch          CloudWatchConfig  `yaml:"cloudwatch,omitempty"`
-	Persistence         PersistenceConfig `yaml:"persistence"`
+	Autosave            PersistenceConfig `yaml:"autosave,omitempty"`
 	Startup             StartupConfig     `yaml:"startup,omitempty"`
+	Theme               ThemeConfig       `yaml:"theme,omitempty"`
 }
 
 // Duration wraps time.Duration for YAML marshal/unmarshal as string (e.g., "5s", "30s")
@@ -115,9 +171,6 @@ func DefaultFileConfig() *FileConfig {
 		CloudWatch: CloudWatchConfig{
 			Window: Duration(DefaultMetricsWindow),
 		},
-		Persistence: PersistenceConfig{
-			Enabled: false,
-		},
 	}
 }
 
@@ -158,60 +211,6 @@ func Load() (*FileConfig, error) {
 
 	cfg.applyDefaults()
 	return cfg, nil
-}
-
-func (c *FileConfig) Save() error {
-	path, err := ConfigPath()
-	if err != nil {
-		return err
-	}
-
-	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("create config dir: %w", err)
-	}
-
-	snapshot := withRLock(&c.mu, func() FileConfig {
-		return FileConfig{
-			Timeouts:    c.Timeouts,
-			Concurrency: c.Concurrency,
-			CloudWatch:  c.CloudWatch,
-			Persistence: c.Persistence,
-			Startup: StartupConfig{
-				Regions: append([]string(nil), c.Startup.Regions...),
-				Profile: c.Startup.Profile,
-			},
-		}
-	})
-
-	data, err := yaml.Marshal(&snapshot)
-	if err != nil {
-		return fmt.Errorf("marshal config: %w", err)
-	}
-
-	// Atomic write: write to temp file, then rename
-	tmpFile, err := os.CreateTemp(dir, ".config.yaml.tmp.*")
-	if err != nil {
-		return fmt.Errorf("create temp file: %w", err)
-	}
-	tmpPath := tmpFile.Name()
-
-	if _, err := tmpFile.Write(data); err != nil {
-		_ = tmpFile.Close()
-		_ = os.Remove(tmpPath)
-		return fmt.Errorf("write temp file: %w", err)
-	}
-	if err := tmpFile.Close(); err != nil {
-		_ = os.Remove(tmpPath)
-		return fmt.Errorf("close temp file: %w", err)
-	}
-
-	if err := os.Rename(tmpPath, path); err != nil {
-		_ = os.Remove(tmpPath)
-		return fmt.Errorf("rename config file: %w", err)
-	}
-
-	return nil
 }
 
 func (c *FileConfig) applyDefaults() {
@@ -306,7 +305,7 @@ func (c *FileConfig) PersistenceEnabled() bool {
 		if c.persistenceOverride != nil {
 			return *c.persistenceOverride
 		}
-		return c.Persistence.Enabled
+		return c.Autosave.Enabled
 	})
 }
 
@@ -314,20 +313,248 @@ func (c *FileConfig) SetPersistenceEnabled(enabled bool) {
 	doWithLock(&c.mu, func() { c.persistenceOverride = &enabled })
 }
 
-func (c *FileConfig) SetStartup(regions []string, profile string) {
-	doWithLock(&c.mu, func() {
-		c.Startup.Regions = regions
-		c.Startup.Profile = profile
+func (c *FileConfig) GetStartup() ([]string, []string) {
+	type result struct {
+		regions  []string
+		profiles []string
+	}
+	r := withRLock(&c.mu, func() result {
+		return result{
+			append([]string(nil), c.Startup.Regions...),
+			c.Startup.GetProfiles(),
+		}
+	})
+	return r.regions, r.profiles
+}
+
+func (c *FileConfig) GetTheme() ThemeConfig {
+	return withRLock(&c.mu, func() ThemeConfig { return c.Theme })
+}
+
+func (c *FileConfig) SaveRegions(regions []string) error {
+	if len(regions) == 0 {
+		return nil
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.Startup.Regions = append([]string(nil), regions...)
+
+	return c.patchConfigLocked(func(mapping *yaml.Node) {
+		startupNode := findOrCreateMappingKey(mapping, "startup")
+		ensureMappingNode(startupNode)
+		setSequenceValue(startupNode, "regions", regions)
 	})
 }
 
-func (c *FileConfig) GetStartup() ([]string, string) {
-	type result struct {
-		regions []string
-		profile string
-	}
-	r := withRLock(&c.mu, func() result {
-		return result{append([]string(nil), c.Startup.Regions...), c.Startup.Profile}
+func (c *FileConfig) SaveProfiles(profiles []string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.Startup.Profiles = append([]string(nil), profiles...)
+	c.Startup.Profile = ""
+
+	return c.patchConfigLocked(func(mapping *yaml.Node) {
+		startupNode := findOrCreateMappingKey(mapping, "startup")
+		ensureMappingNode(startupNode)
+		setSequenceValue(startupNode, "profiles", profiles)
+		removeKey(startupNode, "profile")
 	})
-	return r.regions, r.profile
+}
+
+func (c *FileConfig) SaveTheme(name string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.Theme.Preset = name
+
+	return c.patchConfigLocked(func(mapping *yaml.Node) {
+		setScalarValue(mapping, "theme", name)
+	})
+}
+
+func (c *FileConfig) SavePersistence(enabled bool) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.Autosave.Enabled = enabled
+	c.persistenceOverride = nil
+
+	return c.patchConfigLocked(func(mapping *yaml.Node) {
+		autosaveNode := findOrCreateMappingKey(mapping, "autosave")
+		ensureMappingNode(autosaveNode)
+		setBoolValue(autosaveNode, "enabled", enabled)
+	})
+}
+
+func (c *FileConfig) patchConfigLocked(patchFn func(mapping *yaml.Node)) error {
+	path, err := ConfigPath()
+	if err != nil {
+		return err
+	}
+
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("create config dir: %w", err)
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			data = []byte("{}")
+		} else {
+			return fmt.Errorf("read config: %w", err)
+		}
+	}
+
+	var root yaml.Node
+	if err := yaml.Unmarshal(data, &root); err != nil {
+		return fmt.Errorf("parse config: %w", err)
+	}
+
+	if root.Kind != yaml.DocumentNode || len(root.Content) == 0 {
+		root = yaml.Node{Kind: yaml.DocumentNode, Content: []*yaml.Node{{Kind: yaml.MappingNode}}}
+	}
+	mapping := root.Content[0]
+	if mapping.Kind != yaml.MappingNode {
+		mapping = &yaml.Node{Kind: yaml.MappingNode}
+		root.Content[0] = mapping
+	}
+
+	patchFn(mapping)
+
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(2)
+	if err := enc.Encode(&root); err != nil {
+		return fmt.Errorf("encode config: %w", err)
+	}
+	if err := enc.Close(); err != nil {
+		return fmt.Errorf("close encoder: %w", err)
+	}
+
+	return atomicWrite(path, buf.Bytes())
+}
+
+func ensureMappingNode(node *yaml.Node) {
+	if node.Kind != yaml.MappingNode {
+		node.Kind = yaml.MappingNode
+		node.Content = nil
+	}
+}
+
+func findOrCreateMappingKey(mapping *yaml.Node, key string) *yaml.Node {
+	for i := 0; i < len(mapping.Content)-1; i += 2 {
+		if mapping.Content[i].Value == key {
+			return mapping.Content[i+1]
+		}
+	}
+
+	keyNode := &yaml.Node{Kind: yaml.ScalarNode, Value: key}
+	valueNode := &yaml.Node{Kind: yaml.MappingNode}
+	mapping.Content = append(mapping.Content, keyNode, valueNode)
+	return valueNode
+}
+
+func setSequenceValue(mapping *yaml.Node, key string, values []string) {
+	var seqNode *yaml.Node
+	for i := 0; i < len(mapping.Content)-1; i += 2 {
+		if mapping.Content[i].Value == key {
+			seqNode = mapping.Content[i+1]
+			break
+		}
+	}
+
+	if len(values) == 0 {
+		removeKey(mapping, key)
+		return
+	}
+
+	if seqNode == nil {
+		keyNode := &yaml.Node{Kind: yaml.ScalarNode, Value: key}
+		seqNode = &yaml.Node{Kind: yaml.SequenceNode}
+		mapping.Content = append(mapping.Content, keyNode, seqNode)
+	}
+
+	seqNode.Kind = yaml.SequenceNode
+	seqNode.Content = make([]*yaml.Node, len(values))
+	for i, v := range values {
+		seqNode.Content[i] = &yaml.Node{Kind: yaml.ScalarNode, Value: v}
+	}
+}
+
+func setScalarValue(mapping *yaml.Node, key string, value string) {
+	if value == "" {
+		removeKey(mapping, key)
+		return
+	}
+
+	for i := 0; i < len(mapping.Content)-1; i += 2 {
+		if mapping.Content[i].Value == key {
+			mapping.Content[i+1].Kind = yaml.ScalarNode
+			mapping.Content[i+1].Value = value
+			mapping.Content[i+1].Content = nil
+			return
+		}
+	}
+
+	keyNode := &yaml.Node{Kind: yaml.ScalarNode, Value: key}
+	valueNode := &yaml.Node{Kind: yaml.ScalarNode, Value: value}
+	mapping.Content = append(mapping.Content, keyNode, valueNode)
+}
+
+func setBoolValue(mapping *yaml.Node, key string, value bool) {
+	strVal := "false"
+	if value {
+		strVal = "true"
+	}
+
+	for i := 0; i < len(mapping.Content)-1; i += 2 {
+		if mapping.Content[i].Value == key {
+			mapping.Content[i+1].Kind = yaml.ScalarNode
+			mapping.Content[i+1].Tag = "!!bool"
+			mapping.Content[i+1].Value = strVal
+			mapping.Content[i+1].Content = nil
+			return
+		}
+	}
+
+	keyNode := &yaml.Node{Kind: yaml.ScalarNode, Value: key}
+	valueNode := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!bool", Value: strVal}
+	mapping.Content = append(mapping.Content, keyNode, valueNode)
+}
+
+func removeKey(mapping *yaml.Node, key string) {
+	for i := 0; i < len(mapping.Content)-1; i += 2 {
+		if mapping.Content[i].Value == key {
+			mapping.Content = append(mapping.Content[:i], mapping.Content[i+2:]...)
+			return
+		}
+	}
+}
+
+func atomicWrite(path string, data []byte) error {
+	dir := filepath.Dir(path)
+	tmpFile, err := os.CreateTemp(dir, ".config.yaml.tmp.*")
+	if err != nil {
+		return fmt.Errorf("create temp file: %w", err)
+	}
+	tmpPath := tmpFile.Name()
+
+	if _, err := tmpFile.Write(data); err != nil {
+		_ = tmpFile.Close()
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("write temp file: %w", err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("close temp file: %w", err)
+	}
+
+	if err := os.Rename(tmpPath, path); err != nil {
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("rename config file: %w", err)
+	}
+	return nil
 }

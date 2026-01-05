@@ -157,7 +157,7 @@ func cfnResourceStatusColorer(status string) render.Style {
 	case strings.Contains(status, "DELETE_COMPLETE") || strings.Contains(status, "SKIPPED"):
 		return ui.DimStyle()
 	default:
-		return render.DefaultStyle()
+		return ui.NoStyle()
 	}
 }
 
@@ -171,7 +171,7 @@ func driftColorer(status string) render.Style {
 	case "NOT_CHECKED":
 		return ui.DimStyle()
 	default:
-		return render.DefaultStyle()
+		return ui.NoStyle()
 	}
 }
 

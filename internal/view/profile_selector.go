@@ -113,6 +113,9 @@ func (p *ProfileSelector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		p.profileInfo = msg.infoMap
 		p.selector.SetItems(p.profiles)
 		return p, nil
+	case ThemeChangedMsg:
+		p.selector.ReloadStyles()
+		return p, nil
 
 	case loginResultMsg:
 		p.loginResult = &msg
