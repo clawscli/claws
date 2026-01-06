@@ -48,6 +48,7 @@ theme: nord               # Preset: dark, light, nord, dracula, gruvbox, catppuc
 The config file is **not created automatically**. Create it manually if needed.
 
 CLI flags (`-p`, `-r`, `-t`, `--autosave`, `--no-autosave`) override config file settings.
+Multiple values supported: `-p dev,prod` or `-p dev -p prod`.
 
 ## Themes
 

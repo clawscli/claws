@@ -72,6 +72,9 @@ claws -r us-west-2
 claws -s ec2              # EC2 instances
 claws -s rds/snapshots    # RDS snapshots
 
+# Multiple profiles/regions (comma-separated or repeated)
+claws -p dev,prod -r us-east-1,ap-northeast-1
+
 # Read-only mode (disables destructive actions)
 claws --read-only
 ```
