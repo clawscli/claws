@@ -165,10 +165,10 @@ create_vpc_b() {
     aws_cmd ec2 attach-internet-gateway --vpc-id "$VPC_B" --internet-gateway-id "$IGW_B"
     
     SUBNET_B1=$(aws_cmd ec2 create-subnet --vpc-id "$VPC_B" --cidr-block 10.1.1.0/24 --availability-zone us-west-2a --query 'Subnet.SubnetId' --output text)
-    aws_cmd ec2 create-tags --resources "$SUBNET_B1" --tags Key=Name,Value=dev-subnet-2a Key=Env,Value=dev ${DEMO_TAG} ${DEMO_TAG2}
+    aws_cmd ec2 create-tags --resources "$SUBNET_B1" --tags Key=Name,Value=dev-web-west-2a Key=Env,Value=dev ${DEMO_TAG} ${DEMO_TAG2}
     
     SUBNET_B2=$(aws_cmd ec2 create-subnet --vpc-id "$VPC_B" --cidr-block 10.1.2.0/24 --availability-zone us-west-2b --query 'Subnet.SubnetId' --output text)
-    aws_cmd ec2 create-tags --resources "$SUBNET_B2" --tags Key=Name,Value=dev-subnet-2b Key=Env,Value=dev ${DEMO_TAG} ${DEMO_TAG2}
+    aws_cmd ec2 create-tags --resources "$SUBNET_B2" --tags Key=Name,Value=dev-db-west-2b Key=Env,Value=dev ${DEMO_TAG} ${DEMO_TAG2}
     
     RTB_B=$(aws_cmd ec2 create-route-table --vpc-id "$VPC_B" --query 'RouteTable.RouteTableId' --output text)
     aws_cmd ec2 create-tags --resources "$RTB_B" --tags Key=Name,Value=dev-rt-west Key=Env,Value=dev ${DEMO_TAG} ${DEMO_TAG2}
@@ -206,7 +206,7 @@ create_vpc_c() {
     aws_cmd ec2 attach-internet-gateway --vpc-id "$VPC_C" --internet-gateway-id "$IGW_C"
     
     SUBNET_C1=$(aws_cmd ec2 create-subnet --vpc-id "$VPC_C" --cidr-block 10.2.1.0/24 --availability-zone ap-northeast-1a --query 'Subnet.SubnetId' --output text)
-    aws_cmd ec2 create-tags --resources "$SUBNET_C1" --tags Key=Name,Value=prod-tokyo-1a Key=Env,Value=prod ${DEMO_TAG} ${DEMO_TAG2}
+    aws_cmd ec2 create-tags --resources "$SUBNET_C1" --tags Key=Name,Value=prod-web-tokyo-1a Key=Env,Value=prod ${DEMO_TAG} ${DEMO_TAG2}
     
     SG_TOKYO=$(aws_cmd ec2 create-security-group --group-name prod-sg-tokyo --description "Tokyo prod" --vpc-id "$VPC_C" --query 'GroupId' --output text)
     aws_cmd ec2 create-tags --resources "$SG_TOKYO" --tags Key=Name,Value=prod-sg-tokyo Key=Env,Value=prod ${DEMO_TAG} ${DEMO_TAG2}

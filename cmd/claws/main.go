@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -40,15 +41,19 @@ func main() {
 	}
 	cfg.SetReadOnly(opts.readOnly)
 
-	if opts.profile != "" && !config.IsValidProfileName(opts.profile) {
-		fmt.Fprintf(os.Stderr, "Error: invalid profile name: %s\n", opts.profile)
-		fmt.Fprintln(os.Stderr, "Valid characters: alphanumeric, hyphen, underscore, period")
-		os.Exit(1)
+	for _, p := range opts.profiles {
+		if !config.IsValidProfileName(p) {
+			fmt.Fprintf(os.Stderr, "Error: invalid profile name: %s\n", p)
+			fmt.Fprintln(os.Stderr, "Valid characters: alphanumeric, hyphen, underscore, period")
+			os.Exit(1)
+		}
 	}
-	if opts.region != "" && !config.IsValidRegion(opts.region) {
-		fmt.Fprintf(os.Stderr, "Error: invalid region format: %s\n", opts.region)
-		fmt.Fprintln(os.Stderr, "Expected: xx-xxxx-N (e.g., us-east-1, ap-northeast-1)")
-		os.Exit(1)
+	for _, r := range opts.regions {
+		if !config.IsValidRegion(r) {
+			fmt.Fprintf(os.Stderr, "Error: invalid region format: %s\n", r)
+			fmt.Fprintln(os.Stderr, "Expected: xx-xxxx-N (e.g., us-east-1, ap-northeast-1)")
+			os.Exit(1)
+		}
 	}
 
 	applyStartupConfig(opts, fileCfg, cfg)
@@ -79,7 +84,7 @@ func main() {
 		if err := log.EnableFile(opts.logFile); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: could not open log file %s: %v\n", opts.logFile, err)
 		} else {
-			log.Info("claws started", "profile", opts.profile, "region", opts.region, "readOnly", opts.readOnly)
+			log.Info("claws started", "profiles", opts.profiles, "regions", opts.regions, "readOnly", opts.readOnly)
 		}
 	}
 
@@ -99,8 +104,8 @@ func main() {
 }
 
 type cliOptions struct {
-	profile    string
-	region     string
+	profiles   []string
+	regions    []string
 	readOnly   bool
 	envCreds   bool
 	autosave   *bool
@@ -112,22 +117,34 @@ type cliOptions struct {
 
 // parseFlags parses command line flags and returns options
 func parseFlags() cliOptions {
+	return parseFlagsFromArgs(os.Args[1:])
+}
+
+// parseFlagsFromArgs parses the given args and returns options (testable)
+func parseFlagsFromArgs(args []string) cliOptions {
 	opts := cliOptions{}
 	showHelp := false
 	showVersion := false
 
-	args := os.Args[1:]
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "-p", "--profile":
 			if i+1 < len(args) {
 				i++
-				opts.profile = args[i]
+				for _, p := range strings.Split(args[i], ",") {
+					if p = strings.TrimSpace(p); p != "" && !slices.Contains(opts.profiles, p) {
+						opts.profiles = append(opts.profiles, p)
+					}
+				}
 			}
 		case "-r", "--region":
 			if i+1 < len(args) {
 				i++
-				opts.region = args[i]
+				for _, r := range strings.Split(args[i], ",") {
+					if r = strings.TrimSpace(r); r != "" && !slices.Contains(opts.regions, r) {
+						opts.regions = append(opts.regions, r)
+					}
+				}
 			}
 		case "-ro", "--read-only":
 			opts.readOnly = true
@@ -185,10 +202,10 @@ func printUsage() {
 	fmt.Println("Usage: claws [options]")
 	fmt.Println()
 	fmt.Println("Options:")
-	fmt.Println("  -p, --profile <name>")
-	fmt.Println("        AWS profile to use")
-	fmt.Println("  -r, --region <region>")
-	fmt.Println("        AWS region to use")
+	fmt.Println("  -p, --profile <name>[,name2,...]")
+	fmt.Println("        AWS profile(s) to use (comma-separated or repeated)")
+	fmt.Println("  -r, --region <region>[,region2,...]")
+	fmt.Println("        AWS region(s) to use (comma-separated or repeated)")
 	fmt.Println("  -s, --service <service>[/<resource>]")
 	fmt.Println("        Start directly on a service/resource (e.g., ec2, rds/snapshots, cfn)")
 	fmt.Println("        Supports aliases: cfn, sg, logs, ddb, etc.")
@@ -213,10 +230,12 @@ func printUsage() {
 	fmt.Println("        Show this help message")
 	fmt.Println()
 	fmt.Println("Examples:")
-	fmt.Println("  claws -s ec2              Open EC2 instances browser")
-	fmt.Println("  claws -s rds/snapshots    Open RDS snapshots browser")
-	fmt.Println("  claws -s cfn              Open CloudFormation stacks (alias)")
-	fmt.Println("  claws -s ec2 -i i-12345   Open detail view for instance i-12345")
+	fmt.Println("  claws -s ec2                      Open EC2 instances browser")
+	fmt.Println("  claws -s rds/snapshots            Open RDS snapshots browser")
+	fmt.Println("  claws -s cfn                      Open CloudFormation stacks (alias)")
+	fmt.Println("  claws -s ec2 -i i-12345           Open detail view for instance i-12345")
+	fmt.Println("  claws -p dev,prod                 Query multiple profiles")
+	fmt.Println("  claws -r us-east-1,ap-northeast-1 Query multiple regions")
 	fmt.Println()
 	fmt.Println("Environment Variables:")
 	fmt.Println("  CLAWS_READ_ONLY=1|true   Enable read-only mode")
@@ -228,8 +247,12 @@ func applyStartupConfig(opts cliOptions, fileCfg *config.FileConfig, cfg *config
 
 	if opts.envCreds {
 		cfg.UseEnvOnly()
-	} else if opts.profile != "" {
-		cfg.UseProfile(opts.profile)
+	} else if len(opts.profiles) > 0 {
+		sels := make([]config.ProfileSelection, len(opts.profiles))
+		for i, p := range opts.profiles {
+			sels[i] = config.ProfileSelectionFromID(p)
+		}
+		cfg.SetSelections(sels)
 	} else if len(startupProfiles) > 0 {
 		sels := make([]config.ProfileSelection, len(startupProfiles))
 		for i, id := range startupProfiles {
@@ -238,8 +261,8 @@ func applyStartupConfig(opts cliOptions, fileCfg *config.FileConfig, cfg *config
 		cfg.SetSelections(sels)
 	}
 
-	if opts.region != "" {
-		cfg.SetRegion(opts.region)
+	if len(opts.regions) > 0 {
+		cfg.SetRegions(opts.regions)
 	} else if len(startupRegions) > 0 {
 		cfg.SetRegions(startupRegions)
 	}
