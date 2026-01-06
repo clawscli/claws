@@ -117,11 +117,15 @@ type cliOptions struct {
 
 // parseFlags parses command line flags and returns options
 func parseFlags() cliOptions {
+	return parseFlagsFromArgs(os.Args[1:])
+}
+
+// parseFlagsFromArgs parses the given args and returns options (testable)
+func parseFlagsFromArgs(args []string) cliOptions {
 	opts := cliOptions{}
 	showHelp := false
 	showVersion := false
 
-	args := os.Args[1:]
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "-p", "--profile":

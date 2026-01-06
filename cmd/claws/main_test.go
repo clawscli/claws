@@ -1,7 +1,6 @@
 package main
 
 import (
-	"os"
 	"slices"
 	"testing"
 )
@@ -56,8 +55,7 @@ func TestParseFlags_Profiles(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			os.Args = append([]string{"claws"}, tt.args...)
-			opts := parseFlags()
+			opts := parseFlagsFromArgs(tt.args)
 
 			if !slices.Equal(opts.profiles, tt.expected) {
 				t.Errorf("profiles = %v, want %v", opts.profiles, tt.expected)
@@ -101,8 +99,7 @@ func TestParseFlags_Regions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			os.Args = append([]string{"claws"}, tt.args...)
-			opts := parseFlags()
+			opts := parseFlagsFromArgs(tt.args)
 
 			if !slices.Equal(opts.regions, tt.expected) {
 				t.Errorf("regions = %v, want %v", opts.regions, tt.expected)
@@ -112,8 +109,7 @@ func TestParseFlags_Regions(t *testing.T) {
 }
 
 func TestParseFlags_Combined(t *testing.T) {
-	os.Args = []string{"claws", "-p", "dev,prod", "-r", "us-east-1,ap-northeast-1", "-ro"}
-	opts := parseFlags()
+	opts := parseFlagsFromArgs([]string{"-p", "dev,prod", "-r", "us-east-1,ap-northeast-1", "-ro"})
 
 	expectedProfiles := []string{"dev", "prod"}
 	expectedRegions := []string{"us-east-1", "ap-northeast-1"}
