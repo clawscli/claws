@@ -50,6 +50,31 @@ The config file is **not created automatically**. Create it manually if needed.
 CLI flags (`-p`, `-r`, `-t`, `--autosave`, `--no-autosave`) override config file settings.
 Multiple values supported: `-p dev,prod` or `-p dev -p prod`.
 
+### Special Profile IDs
+
+| ID | Description | Equivalent |
+|----|-------------|------------|
+| `__sdk_default__` | Use AWS SDK default credential chain | (no `-p` flag) |
+| `__env_only__` | Ignore ~/.aws, use env/IMDS/ECS/Lambda creds only | `-e` flag |
+
+```bash
+# Use env-only mode via -p flag
+claws -p __env_only__
+
+# Mix named profiles with special modes (query both)
+claws -p production,__env_only__
+```
+
+These IDs can also be used in `startup.profiles`:
+
+```yaml
+startup:
+  profiles:
+    - __sdk_default__
+    - production
+```
+
+
 ## Themes
 
 claws includes 6 built-in color themes:
