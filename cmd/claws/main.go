@@ -250,7 +250,7 @@ func applyStartupConfig(opts cliOptions, fileCfg *config.FileConfig, cfg *config
 	} else if len(opts.profiles) > 0 {
 		sels := make([]config.ProfileSelection, len(opts.profiles))
 		for i, p := range opts.profiles {
-			sels[i] = config.NamedProfile(p)
+			sels[i] = config.ProfileSelectionFromID(p)
 		}
 		cfg.SetSelections(sels)
 	} else if len(startupProfiles) > 0 {
