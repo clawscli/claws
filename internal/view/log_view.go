@@ -599,3 +599,7 @@ func (v *LogView) StatusLine() string {
 	}
 	return "▶ STREAMING • " + status
 }
+
+func (v *LogView) HasActiveInput() bool {
+	return v.filterActive
+}
