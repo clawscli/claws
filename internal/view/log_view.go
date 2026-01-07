@@ -379,17 +379,21 @@ func (v *LogView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return v, nil
 }
 
+func (v *LogView) matchesFilter(entry logEntry) bool {
+	if v.filterText == "" {
+		return true
+	}
+	filter := strings.ToLower(v.filterText)
+	msg := strings.ToLower(entry.message)
+	return strings.Contains(msg, filter)
+}
+
 func (v *LogView) updateViewportContent() {
 	var sb strings.Builder
-	filter := strings.ToLower(v.filterText)
 
 	for _, entry := range v.logs {
-		// Client-side filter (case-insensitive substring match)
-		if v.filterText != "" {
-			msg := strings.ToLower(entry.message)
-			if !strings.Contains(msg, filter) {
-				continue
-			}
+		if !v.matchesFilter(entry) {
+			continue
 		}
 
 		ts := v.styles.timestamp.Render(entry.timestamp.Format("15:04:05.000"))
@@ -487,9 +491,8 @@ func (v *LogView) getDisplayedCount() int {
 		return len(v.logs)
 	}
 	count := 0
-	filter := strings.ToLower(v.filterText)
 	for _, entry := range v.logs {
-		if strings.Contains(strings.ToLower(entry.message), filter) {
+		if v.matchesFilter(entry) {
 			count++
 		}
 	}
