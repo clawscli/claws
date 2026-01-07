@@ -134,18 +134,11 @@ func (a *App) Init() tea.Cmd {
 
 	if a.startupPath != nil {
 		// CLI `-s` option takes precedence
-		switch a.startupPath.Service {
-		case "dashboard":
-			a.currentView = view.NewDashboardView(a.ctx, a.registry)
-		case "services":
-			a.currentView = view.NewServiceBrowser(a.ctx, a.registry)
-		default:
-			// Regular AWS resource browser
-			a.currentView = view.NewResourceBrowserWithType(
-				a.ctx, a.registry,
-				a.startupPath.Service, a.startupPath.ResourceType,
-			)
+		viewName := a.startupPath.Service
+		if a.startupPath.ResourceType != "" {
+			viewName = fmt.Sprintf("%s/%s", a.startupPath.Service, a.startupPath.ResourceType)
 		}
+		a.currentView = a.resolveStartupView(viewName)
 	} else {
 		// Check config startup.view
 		startupView := config.File().GetStartupView()
