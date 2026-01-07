@@ -74,7 +74,7 @@ func (h *HelpView) renderContent() string {
 	out += "\n" + s.section.Render("Service Browser") + "\n"
 	out += s.key.Render("←/h, →/l") + s.desc.Render("Move within category") + "\n"
 	out += s.key.Render("↑/k, ↓/j") + s.desc.Render("Move between categories") + "\n"
-	out += s.key.Render("~") + s.desc.Render("Go to dashboard (home)") + "\n"
+	out += s.key.Render("~") + s.desc.Render("Toggle Dashboard ↔ Services") + "\n"
 	out += s.key.Render("/") + s.desc.Render("Filter services") + "\n"
 
 	// Resource Browser
@@ -96,9 +96,12 @@ func (h *HelpView) renderContent() string {
 	// Command Mode
 	out += "\n" + s.section.Render("Command Mode") + "\n"
 	out += s.key.Render(":") + s.desc.Render("Enter command mode") + "\n"
-	out += s.key.Render(": + Enter") + s.desc.Render("Go to dashboard (home)") + "\n"
-	out += s.key.Render(":home") + s.desc.Render("Go to dashboard") + "\n"
-	out += s.key.Render(":services") + s.desc.Render("Browse services") + "\n"
+	out += s.key.Render(": + Enter") + s.desc.Render("Go to services") + "\n"
+	out += s.key.Render(":home") + s.desc.Render("Go to services") + "\n"
+	out += s.key.Render(":pulse") + s.desc.Render("Go to dashboard") + "\n"
+	out += s.key.Render(":dashboard") + s.desc.Render("Go to dashboard") + "\n"
+	out += s.key.Render(":services") + s.desc.Render("Go to services") + "\n"
+	out += s.key.Render(":clear-history") + s.desc.Render("Clear navigation history") + "\n"
 	out += s.key.Render("Tab") + s.desc.Render("Cycle through suggestions") + "\n"
 	out += s.key.Render("Shift+Tab") + s.desc.Render("Cycle backward") + "\n"
 	out += s.key.Render("Enter") + s.desc.Render("Execute command") + "\n"

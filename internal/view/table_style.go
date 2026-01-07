@@ -20,7 +20,7 @@ func NewTableStyleFunc(widths []int, cursor int) func(row, col int) lipgloss.Sty
 	normalStyles := make([]lipgloss.Style, numCols)
 
 	for col, w := range widths {
-		base := lipgloss.NewStyle().Width(w)
+		base := ui.NoStyle().Width(w)
 		if col == 0 {
 			base = base.PaddingLeft(1)
 		}
@@ -46,5 +46,5 @@ func NewTableStyleFunc(widths []int, cursor int) func(row, col int) lipgloss.Sty
 
 // TableBorderStyle returns a style for table borders using the current theme.
 func TableBorderStyle() lipgloss.Style {
-	return lipgloss.NewStyle().Foreground(ui.Current().TableBorder)
+	return ui.BorderStyle()
 }

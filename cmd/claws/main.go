@@ -208,6 +208,7 @@ func printUsage() {
 	fmt.Println("        AWS region(s) to use (comma-separated or repeated)")
 	fmt.Println("  -s, --service <service>[/<resource>]")
 	fmt.Println("        Start directly on a service/resource (e.g., ec2, rds/snapshots, cfn)")
+	fmt.Println("        Special views: dashboard, services")
 	fmt.Println("        Supports aliases: cfn, sg, logs, ddb, etc.")
 	fmt.Println("  -i, --resource-id <id>")
 	fmt.Println("        Open detail view for a specific resource (requires --service)")
@@ -230,6 +231,9 @@ func printUsage() {
 	fmt.Println("        Show this help message")
 	fmt.Println()
 	fmt.Println("Examples:")
+	fmt.Println("  claws                             Start with service browser (default)")
+	fmt.Println("  claws -s dashboard                Start with dashboard")
+	fmt.Println("  claws -s services                 Start with service browser")
 	fmt.Println("  claws -s ec2                      Open EC2 instances browser")
 	fmt.Println("  claws -s rds/snapshots            Open RDS snapshots browser")
 	fmt.Println("  claws -s cfn                      Open CloudFormation stacks (alias)")
@@ -270,36 +274,14 @@ func applyStartupConfig(opts cliOptions, fileCfg *config.FileConfig, cfg *config
 
 // resolveStartupService validates and resolves a service string (e.g., "ec2", "rds/snapshots", "cfn")
 // to a valid service/resourceType pair. Supports aliases and service/resource syntax.
+// Special views "dashboard" and "services" are returned as-is.
 func resolveStartupService(input string) (service, resourceType string, err error) {
-	parts := strings.SplitN(input, "/", 2)
-	service = parts[0]
-	if len(parts) > 1 {
-		resourceType = parts[1]
+	// Special views: dashboard and services
+	if input == "dashboard" || input == "services" {
+		return input, "", nil
 	}
 
-	if strings.Contains(resourceType, "/") {
-		return "", "", fmt.Errorf("invalid resource type: %s", resourceType)
-	}
-
-	if resolved, resolvedRes, ok := registry.Global.ResolveAlias(service); ok {
-		service = resolved
-		if resolvedRes != "" && resourceType == "" {
-			resourceType = resolvedRes
-		}
-	}
-
-	if resourceType == "" {
-		resourceType = registry.Global.DefaultResource(service)
-		if resourceType == "" {
-			return "", "", fmt.Errorf("unknown service: %s", input)
-		}
-	}
-
-	if _, ok := registry.Global.Get(service, resourceType); !ok {
-		return "", "", fmt.Errorf("unknown resource: %s/%s", service, resourceType)
-	}
-
-	return service, resourceType, nil
+	return registry.Global.ParseServiceResource(input)
 }
 
 // propagateAllProxy copies ALL_PROXY to HTTP_PROXY/HTTPS_PROXY if not set.

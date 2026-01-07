@@ -267,12 +267,22 @@ func (s *ServiceBrowser) handleFilterInput(msg tea.KeyPressMsg) (tea.Model, tea.
 }
 
 func (s *ServiceBrowser) handleNavigation(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	if len(s.flatItems) == 0 {
-		if msg.String() == "/" {
-			s.filterActive = true
-			s.filterInput.Focus()
-			return s, textinput.Blink
+	// Handle special keys that work regardless of flatItems state
+	switch msg.String() {
+	case "~":
+		// Toggle to Dashboard
+		dashboard := NewDashboardView(s.ctx, s.registry)
+		return s, func() tea.Msg {
+			return NavigateMsg{View: dashboard, ClearStack: false}
 		}
+	case "/":
+		s.filterActive = true
+		s.filterInput.Focus()
+		return s, textinput.Blink
+	}
+
+	// Navigation requires loaded services
+	if len(s.flatItems) == 0 {
 		return s, nil
 	}
 
@@ -306,23 +316,12 @@ func (s *ServiceBrowser) handleNavigation(msg tea.KeyPressMsg) (tea.Model, tea.C
 	case "enter":
 		return s.selectCurrentService()
 
-	case "/":
-		s.filterActive = true
-		s.filterInput.Focus()
-		return s, textinput.Blink
-
 	case "c":
 		if s.filterText != "" {
 			s.filterText = ""
 			s.filterInput.SetValue("")
 			s.rebuildFlatItems()
 			s.cursor = 0
-		}
-
-	case "~":
-		dashboard := NewDashboardView(s.ctx, s.registry)
-		return s, func() tea.Msg {
-			return NavigateMsg{View: dashboard, ClearStack: true}
 		}
 	}
 

@@ -6,6 +6,12 @@ import (
 
 func (d *DashboardView) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
+	case "~":
+		// Toggle to ServiceBrowser
+		browser := NewServiceBrowser(d.ctx, d.registry)
+		return d, func() tea.Msg {
+			return NavigateMsg{View: browser, ClearStack: false}
+		}
 	case "s":
 		browser := NewServiceBrowser(d.ctx, d.registry)
 		return d, func() tea.Msg {

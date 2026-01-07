@@ -30,11 +30,15 @@ autosave:
   enabled: true           # Save region/profile/theme on change (default: false)
 
 startup:                  # Applied on launch if present
+  view: services          # Startup view: "dashboard", "services", or "service/resource" (e.g., "ec2", "rds/snapshots")
   profiles:               # Multiple profiles supported
     - production
   regions:
     - us-east-1
     - us-west-2
+
+navigation:
+  max_stack_size: 100     # Max navigation history depth (default: 100)
 
 theme: nord               # Preset: dark, light, nord, dracula, gruvbox, catppuccin
 
