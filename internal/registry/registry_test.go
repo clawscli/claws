@@ -540,3 +540,98 @@ func TestRegistry_ListServicesByCategory(t *testing.T) {
 		t.Error("ListServicesByCategory() should include Compute category")
 	}
 }
+
+func TestRegistry_ParseServiceResource(t *testing.T) {
+	reg := New()
+
+	// Register test services
+	reg.RegisterCustom("ec2", "instances", Entry{})
+	reg.RegisterCustom("ec2", "volumes", Entry{})
+	reg.RegisterCustom("rds", "instances", Entry{})
+	reg.RegisterCustom("rds", "snapshots", Entry{})
+	reg.RegisterCustom("s3", "buckets", Entry{})
+	reg.RegisterCustom("cloudformation", "stacks", Entry{})
+
+	tests := []struct {
+		name         string
+		input        string
+		wantService  string
+		wantResource string
+		wantErr      bool
+	}{
+		{
+			name:         "service only - use default resource",
+			input:        "ec2",
+			wantService:  "ec2",
+			wantResource: "instances",
+			wantErr:      false,
+		},
+		{
+			name:         "service/resource explicit",
+			input:        "rds/snapshots",
+			wantService:  "rds",
+			wantResource: "snapshots",
+			wantErr:      false,
+		},
+		{
+			name:         "alias to service - use default",
+			input:        "cfn",
+			wantService:  "cloudformation",
+			wantResource: "stacks",
+			wantErr:      false,
+		},
+		{
+			name:         "alias to service/resource",
+			input:        "sg",
+			wantService:  "ec2",
+			wantResource: "security-groups",
+			wantErr:      true, // security-groups not registered in this test
+		},
+		{
+			name:         "unknown service",
+			input:        "unknown-service",
+			wantService:  "",
+			wantResource: "",
+			wantErr:      true,
+		},
+		{
+			name:         "invalid resource type with multiple slashes",
+			input:        "ec2/instances/extra",
+			wantService:  "",
+			wantResource: "",
+			wantErr:      true,
+		},
+		{
+			name:         "unknown resource for valid service",
+			input:        "ec2/invalid-resource",
+			wantService:  "",
+			wantResource: "",
+			wantErr:      true,
+		},
+		{
+			name:         "s3 service - default to buckets",
+			input:        "s3",
+			wantService:  "s3",
+			wantResource: "buckets",
+			wantErr:      false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			service, resource, err := reg.ParseServiceResource(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseServiceResource(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+				return
+			}
+			if err == nil {
+				if service != tt.wantService {
+					t.Errorf("ParseServiceResource(%q) service = %q, want %q", tt.input, service, tt.wantService)
+				}
+				if resource != tt.wantResource {
+					t.Errorf("ParseServiceResource(%q) resource = %q, want %q", tt.input, resource, tt.wantResource)
+				}
+			}
+		})
+	}
+}

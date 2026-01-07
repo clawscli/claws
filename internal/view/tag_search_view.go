@@ -44,7 +44,7 @@ func newTagSearchViewStyles() tagSearchViewStyles {
 	return tagSearchViewStyles{
 		header:       ui.TableHeaderStyle().Padding(0, 1),
 		status:       ui.DimStyle().Padding(0, 1),
-		filterWrap:   lipgloss.NewStyle().Padding(0, 1),
+		filterWrap:   ui.NoStyle().Padding(0, 1),
 		filterActive: ui.AccentStyle().Italic(true),
 	}
 }

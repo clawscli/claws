@@ -17,8 +17,9 @@ Complete reference for all keyboard shortcuts in claws.
 | Key | Action |
 |-----|--------|
 | `:` | Command mode (e.g., `:ec2/instances`) |
-| `:` + `Enter` | Go to dashboard (home) |
-| `~` | Go to dashboard (from service browser) |
+| `:` + `Enter` | Go to services |
+| `~` | Toggle Dashboard ↔ Services |
+| `:pulse` | Go to dashboard |
 | `:services` | Go to service browser |
 | `/` | Filter mode (fuzzy search) |
 | `?` | Show help |
@@ -61,6 +62,7 @@ Complete reference for all keyboard shortcuts in claws.
 | `:diff <n1> <n2>` | Compare two named resources |
 | `:theme <name>` | Change color theme |
 | `:autosave on/off` | Enable/disable config autosave |
+| `:clear-history` | Clear navigation history (stack) |
 
 ## Mouse Support
 

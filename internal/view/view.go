@@ -93,6 +93,9 @@ type DiffMsg struct {
 	RightName string // Name of right resource
 }
 
+// ClearHistoryMsg tells the app to clear the navigation stack
+type ClearHistoryMsg struct{}
+
 // Refreshable is an interface for views that can refresh their data
 // Views like ResourceBrowser implement this, while DetailView does not
 type Refreshable interface {

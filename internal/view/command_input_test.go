@@ -172,8 +172,8 @@ func TestCommandInput_Update_Enter_Empty(t *testing.T) {
 	if nav == nil {
 		t.Error("Expected NavigateMsg for empty enter")
 	}
-	if nav != nil && !nav.ClearStack {
-		t.Error("Expected ClearStack=true for home navigation")
+	if nav != nil && nav.ClearStack {
+		t.Error("Expected ClearStack=false (preserves navigation stack)")
 	}
 }
 
@@ -369,6 +369,90 @@ func TestCommandInput_getDiffSuggestions(t *testing.T) {
 				if got[i] != want {
 					t.Errorf("getDiffSuggestions(%q)[%d] = %q, want %q", tt.args, i, got[i], want)
 				}
+			}
+		})
+	}
+}
+
+func TestCommandInput_ClearHistoryCommand(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	ci := NewCommandInput(ctx, reg)
+	ci.Activate()
+	ci.textInput.SetValue("clear-history")
+
+	cmd, nav := ci.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+
+	// Should return a command (not quit)
+	if cmd == nil {
+		t.Error("Expected command for clear-history")
+	}
+
+	// Should not return NavigateMsg
+	if nav != nil {
+		t.Error("Expected nil NavigateMsg for clear-history")
+	}
+
+	// Execute the command to verify it returns ClearHistoryMsg
+	if cmd != nil {
+		msg := cmd()
+		if _, ok := msg.(ClearHistoryMsg); !ok {
+			t.Errorf("Expected ClearHistoryMsg, got %T", msg)
+		}
+	}
+}
+
+func TestCommandInput_DashboardCommand(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	tests := []struct {
+		input          string
+		wantNavigate   bool
+		wantClearStack bool
+	}{
+		{"pulse", true, false},
+		{"dashboard", true, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			ci := NewCommandInput(ctx, reg)
+			ci.Activate()
+			ci.textInput.SetValue(tt.input)
+
+			_, nav := ci.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+
+			if tt.wantNavigate && nav == nil {
+				t.Errorf("Expected NavigateMsg for %q", tt.input)
+			}
+			if nav != nil && nav.ClearStack != tt.wantClearStack {
+				t.Errorf("%q: ClearStack = %v, want %v", tt.input, nav.ClearStack, tt.wantClearStack)
+			}
+		})
+	}
+}
+
+func TestCommandInput_ServicesCommand(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	tests := []string{"services", "browse", "home", ""}
+
+	for _, input := range tests {
+		t.Run("input="+input, func(t *testing.T) {
+			ci := NewCommandInput(ctx, reg)
+			ci.Activate()
+			ci.textInput.SetValue(input)
+
+			_, nav := ci.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+
+			if nav == nil {
+				t.Errorf("Expected NavigateMsg for %q", input)
+			}
+			if nav != nil && nav.ClearStack {
+				t.Errorf("%q: ClearStack = true, want false (preserves stack)", input)
 			}
 		})
 	}

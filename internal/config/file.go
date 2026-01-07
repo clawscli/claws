@@ -20,6 +20,7 @@ const (
 	DefaultLogFetchTimeout         = 10 * time.Second
 	DefaultMetricsWindow           = 15 * time.Minute
 	DefaultMaxConcurrentFetches    = 50
+	DefaultMaxStackSize            = 100
 )
 
 func ConfigDir() (string, error) {
@@ -59,6 +60,7 @@ type PersistenceConfig struct {
 }
 
 type StartupConfig struct {
+	View     string   `yaml:"view,omitempty"` // "dashboard", "services", or "service/resource" (e.g., "ec2", "rds/snapshots")
 	Regions  []string `yaml:"regions,omitempty"`
 	Profile  string   `yaml:"profile,omitempty"`  // Deprecated: for backward compat (read-only)
 	Profiles []string `yaml:"profiles,omitempty"` // New format: multiple profile IDs
@@ -74,6 +76,11 @@ func (s StartupConfig) GetProfiles() []string {
 		return []string{s.Profile}
 	}
 	return nil
+}
+
+// NavigationConfig controls navigation behavior.
+type NavigationConfig struct {
+	MaxStackSize int `yaml:"max_stack_size,omitempty"`
 }
 
 // ThemeConfig holds theme configuration.
@@ -126,6 +133,7 @@ type FileConfig struct {
 	Autosave            PersistenceConfig `yaml:"autosave,omitempty"`
 	Startup             StartupConfig     `yaml:"startup,omitempty"`
 	Theme               ThemeConfig       `yaml:"theme,omitempty"`
+	Navigation          NavigationConfig  `yaml:"navigation,omitempty"`
 }
 
 // Duration wraps time.Duration for YAML marshal/unmarshal as string (e.g., "5s", "30s")
@@ -170,6 +178,9 @@ func DefaultFileConfig() *FileConfig {
 		},
 		CloudWatch: CloudWatchConfig{
 			Window: Duration(DefaultMetricsWindow),
+		},
+		Navigation: NavigationConfig{
+			MaxStackSize: DefaultMaxStackSize,
 		},
 	}
 }
@@ -234,6 +245,9 @@ func (c *FileConfig) applyDefaults() {
 	}
 	if c.Concurrency.MaxFetches <= 0 {
 		c.Concurrency.MaxFetches = DefaultMaxConcurrentFetches
+	}
+	if c.Navigation.MaxStackSize <= 0 {
+		c.Navigation.MaxStackSize = DefaultMaxStackSize
 	}
 }
 
@@ -300,6 +314,16 @@ func (c *FileConfig) MetricsWindow() time.Duration {
 	})
 }
 
+// MaxStackSize returns the maximum navigation stack size.
+func (c *FileConfig) MaxStackSize() int {
+	return withRLock(&c.mu, func() int {
+		if c.Navigation.MaxStackSize <= 0 {
+			return DefaultMaxStackSize
+		}
+		return c.Navigation.MaxStackSize
+	})
+}
+
 func (c *FileConfig) PersistenceEnabled() bool {
 	return withRLock(&c.mu, func() bool {
 		if c.persistenceOverride != nil {
@@ -325,6 +349,13 @@ func (c *FileConfig) GetStartup() ([]string, []string) {
 		}
 	})
 	return r.regions, r.profiles
+}
+
+// GetStartupView returns the configured startup view ("dashboard", "services", or service/resource).
+func (c *FileConfig) GetStartupView() string {
+	return withRLock(&c.mu, func() string {
+		return c.Startup.View
+	})
 }
 
 func (c *FileConfig) GetTheme() ThemeConfig {

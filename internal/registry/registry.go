@@ -295,6 +295,44 @@ func (r *Registry) ResolveAlias(input string) (string, string, bool) {
 	return input, "", false
 }
 
+// ParseServiceResource parses a service/resource string (e.g., "ec2", "rds/snapshots", "cfn")
+// and resolves it to a valid service/resourceType pair.
+// Returns (service, resourceType, error)
+func (r *Registry) ParseServiceResource(input string) (service, resourceType string, err error) {
+	parts := strings.SplitN(input, "/", 2)
+	service = parts[0]
+	if len(parts) > 1 {
+		resourceType = parts[1]
+	}
+
+	if strings.Contains(resourceType, "/") {
+		return "", "", fmt.Errorf("invalid resource type: %s", resourceType)
+	}
+
+	// Try alias resolution
+	if resolved, resolvedRes, ok := r.ResolveAlias(service); ok {
+		service = resolved
+		if resolvedRes != "" && resourceType == "" {
+			resourceType = resolvedRes
+		}
+	}
+
+	// Get default resource if not specified
+	if resourceType == "" {
+		resourceType = r.DefaultResource(service)
+		if resourceType == "" {
+			return "", "", fmt.Errorf("unknown service: %s", input)
+		}
+	}
+
+	// Validate service/resource exists
+	if _, ok := r.Get(service, resourceType); !ok {
+		return "", "", fmt.Errorf("unknown resource: %s/%s", service, resourceType)
+	}
+
+	return service, resourceType, nil
+}
+
 // GetAliasesForService returns all aliases for a given service.
 func (r *Registry) GetAliasesForService(service string) []string {
 	r.serviceAliasesOnce.Do(func() {

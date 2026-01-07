@@ -213,10 +213,16 @@ func (c *CommandInput) SetDiffProvider(provider DiffCompletionProvider) {
 func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 	input := strings.TrimSpace(c.textInput.Value())
 
-	// Empty input or home/pulse - go to dashboard
-	if input == "" || input == "home" || input == "pulse" {
+	// Empty input or home - go to service browser (new default home)
+	if input == "" || input == "home" {
+		browser := NewServiceBrowser(c.ctx, c.registry)
+		return nil, &NavigateMsg{View: browser, ClearStack: false}
+	}
+
+	// Handle pulse command - go to dashboard
+	if input == "pulse" {
 		dashboard := NewDashboardView(c.ctx, c.registry)
-		return nil, &NavigateMsg{View: dashboard, ClearStack: true}
+		return nil, &NavigateMsg{View: dashboard, ClearStack: false}
 	}
 
 	// Handle quit command
@@ -224,10 +230,23 @@ func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 		return tea.Quit, nil
 	}
 
+	// Handle clear-history command - clear navigation stack
+	if input == "clear-history" {
+		return func() tea.Msg {
+			return ClearHistoryMsg{}
+		}, nil
+	}
+
+	// Handle dashboard command - explicitly open dashboard
+	if input == "dashboard" {
+		dashboard := NewDashboardView(c.ctx, c.registry)
+		return nil, &NavigateMsg{View: dashboard, ClearStack: false}
+	}
+
 	// Handle services/browse command - go to service browser
 	if input == "services" || input == "browse" {
 		browser := NewServiceBrowser(c.ctx, c.registry)
-		return nil, &NavigateMsg{View: browser, ClearStack: true}
+		return nil, &NavigateMsg{View: browser, ClearStack: false}
 	}
 
 	// Handle sort command: :sort (clear) or :sort <column> (sort by column)
@@ -315,43 +334,37 @@ func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 		}
 	}
 
-	// Parse command: service or service/resource
-	parts := strings.SplitN(input, "/", 2)
-	service := parts[0]
-	resourceType := ""
+	// Try ParseServiceResource first (handles aliases, defaults, validation)
+	service, resourceType, err := c.registry.ParseServiceResource(input)
+	if err == nil {
+		browser := NewResourceBrowserWithType(c.ctx, c.registry, service, resourceType)
+		return nil, &NavigateMsg{View: browser}
+	}
 
+	// Fallback: prefix matching for partial input
+	parts := strings.SplitN(input, "/", 2)
+	service = parts[0]
+	resourceType = ""
 	if len(parts) > 1 {
 		resourceType = parts[1]
 	}
 
-	// Try to resolve alias first (e.g., "cfn" -> "cloudformation")
-	if resolvedService, resolvedResource, ok := c.registry.ResolveAlias(service); ok {
-		service = resolvedService
-		if resolvedResource != "" && resourceType == "" {
-			resourceType = resolvedResource
-		}
-	}
-
-	if resourceType == "" {
-		resourceType = c.registry.DefaultResource(service)
-	}
-
-	if _, ok := c.registry.Get(service, resourceType); !ok {
-		for _, svc := range c.registry.ListServices() {
-			if strings.HasPrefix(svc, service) {
-				service = svc
-				if resourceType == "" {
-					resourceType = c.registry.DefaultResource(svc)
-				} else {
-					for _, res := range c.registry.ListResources(svc) {
-						if strings.HasPrefix(res, resourceType) {
-							resourceType = res
-							break
-						}
+	// Try prefix match on service
+	for _, svc := range c.registry.ListServices() {
+		if strings.HasPrefix(svc, service) {
+			service = svc
+			if resourceType == "" {
+				resourceType = c.registry.DefaultResource(svc)
+			} else {
+				// Prefix match on resource
+				for _, res := range c.registry.ListResources(svc) {
+					if strings.HasPrefix(res, resourceType) {
+						resourceType = res
+						break
 					}
 				}
-				break
 			}
+			break
 		}
 	}
 
@@ -449,8 +462,14 @@ func (c *CommandInput) GetSuggestions() []string {
 		if strings.HasPrefix("services", input) {
 			suggestions = append(suggestions, "services")
 		}
+		if strings.HasPrefix("dashboard", input) {
+			suggestions = append(suggestions, "dashboard")
+		}
 		if strings.HasPrefix("login", input) {
 			suggestions = append(suggestions, "login")
+		}
+		if strings.HasPrefix("clear-history", input) {
+			suggestions = append(suggestions, "clear-history")
 		}
 
 		// Add "tag" command (current view filter)

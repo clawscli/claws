@@ -133,12 +133,16 @@ func (a *App) Init() tea.Cmd {
 	a.awsInitializing = true
 
 	if a.startupPath != nil {
-		a.currentView = view.NewResourceBrowserWithType(
-			a.ctx, a.registry,
-			a.startupPath.Service, a.startupPath.ResourceType,
-		)
+		// CLI `-s` option takes precedence
+		viewName := a.startupPath.Service
+		if a.startupPath.ResourceType != "" {
+			viewName = fmt.Sprintf("%s/%s", a.startupPath.Service, a.startupPath.ResourceType)
+		}
+		a.currentView = a.resolveStartupView(viewName)
 	} else {
-		a.currentView = view.NewDashboardView(a.ctx, a.registry)
+		// Check config startup.view
+		startupView := config.File().GetStartupView()
+		a.currentView = a.resolveStartupView(startupView)
 	}
 
 	initAWSCmd := func() tea.Msg {
@@ -335,6 +339,11 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case view.NavigateMsg:
 		return a.handleNavigate(msg)
 
+	case view.ClearHistoryMsg:
+		log.Debug("clearing navigation history", "stackDepth", len(a.viewStack))
+		a.viewStack = nil
+		return a, nil
+
 	case view.ErrorMsg:
 		log.Error("application error", "error", msg.Err)
 		a.err = msg.Err
@@ -523,7 +532,7 @@ func (a *App) View() tea.View {
 	if contentHeight < 1 {
 		contentHeight = 1
 	}
-	paddedContent := lipgloss.NewStyle().Height(contentHeight).Render(content)
+	paddedContent := ui.NoStyle().Height(contentHeight).Render(content)
 	mainView := paddedContent + "\n" + status
 
 	if a.modal != nil {
@@ -667,11 +676,19 @@ func (a *App) navigateBack() tea.Cmd {
 
 // pushOrClearStack either clears the view stack (for home navigation) or
 // pushes the current view onto the stack (for drill-down navigation).
+// Enforces max stack size from config.
 func (a *App) pushOrClearStack(clearStack bool) {
 	if clearStack {
 		a.viewStack = nil
 	} else if a.currentView != nil {
 		a.viewStack = append(a.viewStack, a.currentView)
+
+		// Enforce max stack size
+		maxSize := config.File().MaxStackSize()
+		if len(a.viewStack) > maxSize {
+			// Remove oldest entries
+			a.viewStack = a.viewStack[len(a.viewStack)-maxSize:]
+		}
 	}
 }
 
@@ -815,5 +832,25 @@ func (k keyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Up, k.Down, k.Enter, k.Back},
 		{k.Filter, k.Command, k.Help, k.Quit},
+	}
+}
+
+// resolveStartupView resolves the startup view from config.
+// Returns ServiceBrowser by default if config is empty or invalid.
+func (a *App) resolveStartupView(viewName string) view.View {
+	switch viewName {
+	case "dashboard":
+		return view.NewDashboardView(a.ctx, a.registry)
+	case "services", "":
+		// Default to ServiceBrowser
+		return view.NewServiceBrowser(a.ctx, a.registry)
+	default:
+		// Try to parse as AWS service/resource (e.g., "ec2", "rds/snapshots")
+		service, resourceType, err := a.registry.ParseServiceResource(viewName)
+		if err != nil {
+			// Fallback to ServiceBrowser on error
+			return view.NewServiceBrowser(a.ctx, a.registry)
+		}
+		return view.NewResourceBrowserWithType(a.ctx, a.registry, service, resourceType)
 	}
 }
