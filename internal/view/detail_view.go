@@ -225,7 +225,6 @@ func (d *DetailView) SetSize(width, height int) tea.Cmd {
 	return nil
 }
 
-// StatusLine implements View
 func (d *DetailView) StatusLine() string {
 	parts := []string{d.resource.GetID()}
 
@@ -249,6 +248,18 @@ func (d *DetailView) StatusLine() string {
 
 	parts = append(parts, "q/esc:back")
 	return strings.Join(parts, " • ")
+}
+
+func (d *DetailView) Resource() dao.Resource {
+	return d.resource
+}
+
+func (d *DetailView) Service() string {
+	return d.service
+}
+
+func (d *DetailView) ResourceType() string {
+	return d.resType
 }
 
 // getNavigationShortcuts returns a string of navigation shortcuts for the current resource

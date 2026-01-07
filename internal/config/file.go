@@ -78,9 +78,13 @@ func (s StartupConfig) GetProfiles() []string {
 	return nil
 }
 
-// NavigationConfig controls navigation behavior.
 type NavigationConfig struct {
 	MaxStackSize int `yaml:"max_stack_size,omitempty"`
+}
+
+type AIConfig struct {
+	Model       string `yaml:"model,omitempty"`
+	MaxSessions int    `yaml:"max_sessions,omitempty"`
 }
 
 // ThemeConfig holds theme configuration.
@@ -134,6 +138,7 @@ type FileConfig struct {
 	Startup             StartupConfig     `yaml:"startup,omitempty"`
 	Theme               ThemeConfig       `yaml:"theme,omitempty"`
 	Navigation          NavigationConfig  `yaml:"navigation,omitempty"`
+	AI                  AIConfig          `yaml:"ai,omitempty"`
 }
 
 // Duration wraps time.Duration for YAML marshal/unmarshal as string (e.g., "5s", "30s")
@@ -360,6 +365,27 @@ func (c *FileConfig) GetStartupView() string {
 
 func (c *FileConfig) GetTheme() ThemeConfig {
 	return withRLock(&c.mu, func() ThemeConfig { return c.Theme })
+}
+
+const DefaultAIModel = "global.anthropic.claude-haiku-4-5-20251001-v1:0"
+const DefaultAIMaxSessions = 10
+
+func (c *FileConfig) GetAIModel() string {
+	return withRLock(&c.mu, func() string {
+		if c.AI.Model == "" {
+			return DefaultAIModel
+		}
+		return c.AI.Model
+	})
+}
+
+func (c *FileConfig) GetAIMaxSessions() int {
+	return withRLock(&c.mu, func() int {
+		if c.AI.MaxSessions <= 0 {
+			return DefaultAIMaxSessions
+		}
+		return c.AI.MaxSessions
+	})
 }
 
 func (c *FileConfig) SaveRegions(regions []string) error {

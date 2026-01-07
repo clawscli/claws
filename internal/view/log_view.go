@@ -566,3 +566,7 @@ func (v *LogView) StatusLine() string {
 func (v *LogView) HasActiveInput() bool {
 	return v.filterActive
 }
+
+func (v *LogView) LogGroupName() string {
+	return v.logGroupName
+}

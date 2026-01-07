@@ -11,6 +11,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/clawscli/claws/internal/ai"
 	"github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/clipboard"
 	"github.com/clawscli/claws/internal/config"
@@ -329,6 +330,15 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.modal = &view.Modal{Content: profileSelector, Width: view.ModalWidthProfile}
 			return a, tea.Batch(
 				profileSelector.Init(),
+				a.modal.SetSize(a.width, a.height),
+			)
+
+		case key.Matches(msg, a.keys.AI):
+			aiCtx := a.buildAIContext()
+			chatOverlay := view.NewChatOverlay(a.ctx, a.registry, aiCtx)
+			a.modal = &view.Modal{Content: chatOverlay, Width: 80}
+			return a, tea.Batch(
+				chatOverlay.Init(),
 				a.modal.SetSize(a.width, a.height),
 			)
 		}
@@ -773,6 +783,7 @@ type keyMap struct {
 	Command key.Binding
 	Region  key.Binding
 	Profile key.Binding
+	AI      key.Binding
 	Help    key.Binding
 	Quit    key.Binding
 }
@@ -810,6 +821,10 @@ func defaultKeyMap() keyMap {
 		Profile: key.NewBinding(
 			key.WithKeys("P"),
 			key.WithHelp("P", "profile"),
+		),
+		AI: key.NewBinding(
+			key.WithKeys("A"),
+			key.WithHelp("A", "ai chat"),
 		),
 		Help: key.NewBinding(
 			key.WithKeys("?"),
@@ -853,4 +868,34 @@ func (a *App) resolveStartupView(viewName string) view.View {
 		}
 		return view.NewResourceBrowserWithType(a.ctx, a.registry, service, resourceType)
 	}
+}
+
+func (a *App) buildAIContext() *ai.Context {
+	switch v := a.currentView.(type) {
+	case *view.ResourceBrowser:
+		ctx := &ai.Context{
+			Service:      v.Service(),
+			ResourceType: v.ResourceType(),
+		}
+		if r := v.SelectedResource(); r != nil {
+			ctx.ResourceID = r.GetID()
+			ctx.ResourceName = r.GetName()
+		}
+		return ctx
+	case *view.DetailView:
+		r := v.Resource()
+		if r != nil {
+			return &ai.Context{
+				Service:      v.Service(),
+				ResourceType: v.ResourceType(),
+				ResourceID:   r.GetID(),
+				ResourceName: r.GetName(),
+			}
+		}
+	case *view.LogView:
+		return &ai.Context{
+			LogGroup: v.LogGroupName(),
+		}
+	}
+	return nil
 }

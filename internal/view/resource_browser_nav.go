@@ -160,9 +160,23 @@ func (r *ResourceBrowser) CanRefresh() bool {
 	return true
 }
 
-// Service returns the service name for this browser
 func (r *ResourceBrowser) Service() string {
 	return r.service
+}
+
+func (r *ResourceBrowser) ResourceType() string {
+	return r.resourceType
+}
+
+func (r *ResourceBrowser) SelectedResource() dao.Resource {
+	if len(r.filtered) == 0 {
+		return nil
+	}
+	cursor := r.tc.Cursor()
+	if cursor < 0 || cursor >= len(r.filtered) {
+		return nil
+	}
+	return r.filtered[cursor]
 }
 
 // getNavigationShortcuts returns a string of navigation shortcuts for the current resource
