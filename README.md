@@ -67,7 +67,9 @@ claws -p myprofile
 # With specific region
 claws -r us-west-2
 
-# Start directly on a service
+# Start directly on a service or view
+claws -s dashboard        # Start with dashboard
+claws -s services         # Start with service browser (default)
 claws -s ec2              # EC2 instances
 claws -s rds/snapshots    # RDS snapshots
 
