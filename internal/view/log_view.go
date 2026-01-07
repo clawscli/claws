@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
@@ -47,6 +48,13 @@ type LogView struct {
 	lastEventTime   int64
 	oldestEventTime int64
 	pollInterval    time.Duration
+
+	// Filter state
+	filterInput   textinput.Model
+	filterActive  bool
+	filterPattern string // AWS filterPattern (server-side)
+	filterMode    string // "aws" or "client"
+	clientFilter  string // Client-side substring filter
 }
 
 type logEntry struct {
@@ -75,6 +83,11 @@ func newLogViewStyles() logViewStyles {
 }
 
 func NewLogView(ctx context.Context, logGroupName string) *LogView {
+	ti := textinput.New()
+	ti.Placeholder = "Filter pattern (AWS syntax or text)"
+	ti.Prompt = "/"
+	ti.CharLimit = 200
+
 	return &LogView{
 		ctx:          ctx,
 		logGroupName: logGroupName,
@@ -83,6 +96,8 @@ func NewLogView(ctx context.Context, logGroupName string) *LogView {
 		logs:         make([]logEntry, 0, initialLogBufferSize),
 		loading:      true,
 		pollInterval: defaultLogPollInterval,
+		filterInput:  ti,
+		filterMode:   "aws", // Default to AWS mode
 	}
 }
 
@@ -162,6 +177,11 @@ func (v *LogView) doFetchLogs(startTime, endTime int64, older bool) tea.Msg {
 
 	if v.logStreamName != "" {
 		input.LogStreamNames = []string{v.logStreamName}
+	}
+
+	// Add filter pattern if set (AWS mode)
+	if v.filterPattern != "" {
+		input.FilterPattern = appaws.StringPtr(v.filterPattern)
 	}
 
 	if older {
@@ -295,7 +315,16 @@ func (v *LogView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return v, v.fetchLogsCmd()
 
 	case tea.KeyPressMsg:
+		// Handle filter input if active
+		if v.filterActive {
+			return v.handleFilterInput(msg)
+		}
+
 		switch msg.String() {
+		case "/":
+			v.filterActive = true
+			v.filterInput.Focus()
+			return v, textinput.Blink
 		case "space":
 			v.paused = !v.paused
 			if !v.paused {
@@ -313,6 +342,11 @@ func (v *LogView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return v, nil
 		case "c":
+			// Clear filter if active, otherwise clear buffer
+			if v.filterPattern != "" || v.clientFilter != "" {
+				v.clearFilter()
+				return v, v.fetchLogsCmd()
+			}
 			v.logs = v.logs[:0]
 			v.oldestEventTime = 0
 			if v.vp.Ready {
@@ -324,6 +358,9 @@ func (v *LogView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				v.loading = true
 				return v, v.fetchOlderLogsCmd()
 			}
+			return v, nil
+		case "ctrl+f":
+			v.toggleFilterMode()
 			return v, nil
 		}
 
@@ -351,12 +388,92 @@ func (v *LogView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (v *LogView) updateViewportContent() {
 	var sb strings.Builder
+	filter := strings.ToLower(v.clientFilter)
+
 	for _, entry := range v.logs {
+		// Client-side filter (case-insensitive substring match)
+		if v.clientFilter != "" {
+			msg := strings.ToLower(entry.message)
+			if !strings.Contains(msg, filter) {
+				continue
+			}
+		}
+
 		ts := v.styles.timestamp.Render(entry.timestamp.Format("15:04:05.000"))
 		msg := v.styles.message.Render(entry.message)
 		sb.WriteString(fmt.Sprintf("%s %s\n", ts, msg))
 	}
 	v.vp.Model.SetContent(sb.String())
+}
+
+func (v *LogView) handleFilterInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		v.filterActive = false
+		v.filterInput.Blur()
+		return v, nil
+	case "enter":
+		v.filterActive = false
+		v.filterInput.Blur()
+		v.applyFilter(v.filterInput.Value())
+		if v.filterMode == "aws" {
+			// AWS mode: re-fetch with new pattern
+			return v, v.fetchLogsCmd()
+		}
+		// Client mode: already applied during typing
+		return v, nil
+	case "ctrl+f":
+		v.toggleFilterMode()
+		return v, nil
+	default:
+		var cmd tea.Cmd
+		v.filterInput, cmd = v.filterInput.Update(msg)
+
+		// Client mode: apply filter in real-time as user types
+		if v.filterMode == "client" {
+			v.clientFilter = v.filterInput.Value()
+			if v.vp.Ready {
+				v.updateViewportContent()
+			}
+		}
+
+		return v, cmd
+	}
+}
+
+func (v *LogView) applyFilter(pattern string) {
+	if v.filterMode == "aws" {
+		// AWS mode: set filterPattern and reset for fresh fetch
+		v.filterPattern = pattern
+		v.clientFilter = ""
+		v.logs = v.logs[:0]
+		v.lastEventTime = 0
+		v.oldestEventTime = 0
+	} else {
+		// Client mode: set clientFilter (already applied during typing)
+		v.clientFilter = pattern
+		v.filterPattern = ""
+		if v.vp.Ready {
+			v.updateViewportContent()
+		}
+	}
+}
+
+func (v *LogView) clearFilter() {
+	v.filterPattern = ""
+	v.clientFilter = ""
+	v.filterInput.SetValue("")
+	v.logs = v.logs[:0]
+	v.lastEventTime = 0
+	v.oldestEventTime = 0
+}
+
+func (v *LogView) toggleFilterMode() {
+	if v.filterMode == "aws" {
+		v.filterMode = "client"
+	} else {
+		v.filterMode = "aws"
+	}
 }
 
 func (v *LogView) ViewString() string {
@@ -373,11 +490,36 @@ func (v *LogView) ViewString() string {
 	sb.WriteString(v.styles.header.Render("📜 " + title))
 	sb.WriteString("\n")
 
+	// Filter UI
+	if v.filterActive {
+		sb.WriteString(ui.InputFieldStyle().Render(v.filterInput.View()))
+		sb.WriteString("\n")
+	} else if v.filterPattern != "" || v.clientFilter != "" {
+		activeFilter := v.filterPattern
+		if v.clientFilter != "" {
+			activeFilter = v.clientFilter
+		}
+		modeLabel := "AWS"
+		if v.filterMode == "client" {
+			modeLabel = "Client"
+		}
+		sb.WriteString(ui.AccentStyle().Render(fmt.Sprintf("🔍 filter: %s [%s]", activeFilter, modeLabel)))
+		sb.WriteString("\n")
+	}
+
 	if v.paused {
 		sb.WriteString(v.styles.paused.Render("⏸ PAUSED"))
 		sb.WriteString(" ")
 	}
-	sb.WriteString(v.styles.dim.Render(fmt.Sprintf("(%d lines)", len(v.logs))))
+
+	// Show filtered/total count
+	totalCount := len(v.logs)
+	displayedCount := v.getDisplayedCount()
+	if v.clientFilter != "" && displayedCount < totalCount {
+		sb.WriteString(v.styles.dim.Render(fmt.Sprintf("(%d/%d lines)", displayedCount, totalCount)))
+	} else {
+		sb.WriteString(v.styles.dim.Render(fmt.Sprintf("(%d lines)", totalCount)))
+	}
 	sb.WriteString("\n\n")
 
 	if v.loading {
@@ -400,19 +542,55 @@ func (v *LogView) ViewString() string {
 	return sb.String()
 }
 
+func (v *LogView) getDisplayedCount() int {
+	if v.clientFilter == "" {
+		return len(v.logs)
+	}
+	count := 0
+	filter := strings.ToLower(v.clientFilter)
+	for _, entry := range v.logs {
+		if strings.Contains(strings.ToLower(entry.message), filter) {
+			count++
+		}
+	}
+	return count
+}
+
 func (v *LogView) View() tea.View {
 	return tea.NewView(v.ViewString())
 }
 
 func (v *LogView) SetSize(width, height int) tea.Cmd {
-	viewportHeight := height - viewportHeaderOffset
+	headerOffset := viewportHeaderOffset
+	if v.filterActive || v.filterPattern != "" || v.clientFilter != "" {
+		headerOffset++ // Extra line for filter UI
+	}
+	viewportHeight := height - headerOffset
 	v.vp.SetSize(width, viewportHeight)
+	v.filterInput.SetWidth(width - 4)
 	v.updateViewportContent()
 	return nil
 }
 
 func (v *LogView) StatusLine() string {
-	status := "Space:pause/resume p:older g/G:top/bottom c:clear Esc:back"
+	if v.filterActive {
+		modeHint := "AWS"
+		if v.filterMode == "client" {
+			modeHint = "Client"
+		}
+		return fmt.Sprintf("Mode:%s (Ctrl+F) • Esc:cancel Enter:apply", modeHint)
+	}
+
+	status := "Space:pause/resume p:older g/G:top/bottom c:clear /:filter Esc:back"
+
+	if v.filterPattern != "" || v.clientFilter != "" {
+		activeFilter := v.filterPattern
+		if v.clientFilter != "" {
+			activeFilter = v.clientFilter
+		}
+		status = fmt.Sprintf("🔍 %s • ", activeFilter) + status
+	}
+
 	if v.paused {
 		return "⏸ PAUSED • " + status
 	}
