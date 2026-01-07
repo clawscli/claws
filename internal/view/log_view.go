@@ -49,6 +49,10 @@ type LogView struct {
 	oldestEventTime int64
 	pollInterval    time.Duration
 
+	// Size tracking
+	width  int
+	height int
+
 	// Filter state
 	filterInput  textinput.Model
 	filterActive bool
@@ -340,6 +344,7 @@ func (v *LogView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				v.filterInput.SetValue("")
 				if v.vp.Ready {
 					v.updateViewportContent()
+					v.SetSize(v.width, v.height) // Recalculate viewport height
 				}
 				return v, nil
 			}
@@ -413,6 +418,9 @@ func (v *LogView) handleFilterInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		v.filterActive = false
 		v.filterInput.Blur()
 		v.filterText = v.filterInput.Value()
+		if v.vp.Ready {
+			v.updateViewportContent()
+		}
 		return v, nil
 	default:
 		var cmd tea.Cmd
@@ -504,13 +512,23 @@ func (v *LogView) View() tea.View {
 }
 
 func (v *LogView) SetSize(width, height int) tea.Cmd {
+	v.width = width
+	v.height = height
+
 	headerOffset := viewportHeaderOffset
 	if v.filterActive || v.filterText != "" {
 		headerOffset++ // Extra line for filter UI
 	}
 	viewportHeight := height - headerOffset
 	v.vp.SetSize(width, viewportHeight)
-	v.filterInput.SetWidth(width - 4)
+
+	// Set filter input width with minimum check
+	filterWidth := width - 4
+	if filterWidth < 10 {
+		filterWidth = 10
+	}
+	v.filterInput.SetWidth(filterWidth)
+
 	v.updateViewportContent()
 	return nil
 }
@@ -523,7 +541,11 @@ func (v *LogView) StatusLine() string {
 	status := "Space:pause/resume p:older g/G:top/bottom c:clear /:filter Esc:back"
 
 	if v.filterText != "" {
-		status = fmt.Sprintf("🔍 %s • ", v.filterText) + status
+		filterDisplay := v.filterText
+		if len(filterDisplay) > 20 {
+			filterDisplay = filterDisplay[:17] + "..."
+		}
+		status = fmt.Sprintf("🔍 %s • ", filterDisplay) + status
 	}
 
 	if v.paused {
