@@ -11,6 +11,7 @@ import (
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
 	apperrors "github.com/clawscli/claws/internal/errors"
+	"github.com/clawscli/claws/internal/log"
 )
 
 type TaskDefinitionDAO struct {
@@ -61,6 +62,7 @@ func (d *TaskDefinitionDAO) List(ctx context.Context) ([]dao.Resource, error) {
 			TaskDefinition: &arn,
 		})
 		if err != nil {
+			log.Warn("failed to describe task definition", "arn", arn, "error", err)
 			continue
 		}
 		if output.TaskDefinition != nil {

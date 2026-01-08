@@ -591,10 +591,10 @@ func (e *ToolExecutor) searchDocs(ctx context.Context, query string) string {
 		return fmt.Sprintf("Error creating request: %v", err)
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	reqCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, "POST", "https://proxy.search.docs.aws.amazon.com/search", bytes.NewBuffer(jsonBody))
+	req, err := http.NewRequestWithContext(reqCtx, "POST", "https://proxy.search.docs.aws.amazon.com/search", bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return fmt.Sprintf("Error creating request: %v", err)
 	}

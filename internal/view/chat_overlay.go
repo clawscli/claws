@@ -456,7 +456,9 @@ func (c *ChatOverlay) handleToolExecute(msg chatToolExecuteMsg) (tea.Model, tea.
 	// 3. User message with tool results
 
 	// Add assistant message with the accumulated blocks
-	messages := append(msg.messages, ai.Message{
+	messages := make([]ai.Message, len(msg.messages), len(msg.messages)+2)
+	copy(messages, msg.messages)
+	messages = append(messages, ai.Message{
 		Role:    ai.RoleAssistant,
 		Content: msg.assistantBlocks,
 	})

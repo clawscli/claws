@@ -118,10 +118,7 @@ func TestSessionManagerWithPersistence(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	// Save original config dir and restore after test
-	origHome := os.Getenv("HOME")
-	os.Setenv("HOME", tmpDir)
-	defer os.Setenv("HOME", origHome)
+	t.Setenv("HOME", tmpDir)
 
 	sm := NewSessionManager(10, true) // save enabled
 
@@ -246,9 +243,7 @@ func TestSessionListEmpty(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	origHome := os.Getenv("HOME")
-	os.Setenv("HOME", tmpDir)
-	defer os.Setenv("HOME", origHome)
+	t.Setenv("HOME", tmpDir)
 
 	sm := NewSessionManager(10, true)
 
@@ -268,9 +263,7 @@ func TestSessionPruning(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	origHome := os.Getenv("HOME")
-	os.Setenv("HOME", tmpDir)
-	defer os.Setenv("HOME", origHome)
+	t.Setenv("HOME", tmpDir)
 
 	sm := NewSessionManager(3, true) // Max 3 sessions
 

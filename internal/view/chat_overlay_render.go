@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/clawscli/claws/internal/ai"
+	"github.com/mattn/go-runewidth"
 )
 
 func (c *ChatOverlay) updateViewport() {
@@ -220,18 +221,5 @@ func wrapLine(line string, width int) []string {
 }
 
 func runeWidth(r rune) int {
-	if r >= 0x1100 &&
-		(r <= 0x115F || r == 0x2329 || r == 0x232A ||
-			(r >= 0x2E80 && r <= 0xA4CF && r != 0x303F) ||
-			(r >= 0xAC00 && r <= 0xD7A3) ||
-			(r >= 0xF900 && r <= 0xFAFF) ||
-			(r >= 0xFE10 && r <= 0xFE1F) ||
-			(r >= 0xFE30 && r <= 0xFE6F) ||
-			(r >= 0xFF00 && r <= 0xFF60) ||
-			(r >= 0xFFE0 && r <= 0xFFE6) ||
-			(r >= 0x20000 && r <= 0x2FFFD) ||
-			(r >= 0x30000 && r <= 0x3FFFD)) {
-		return 2
-	}
-	return 1
+	return runewidth.RuneWidth(r)
 }
