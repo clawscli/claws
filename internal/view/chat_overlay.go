@@ -12,6 +12,7 @@ import (
 
 	"github.com/clawscli/claws/internal/ai"
 	"github.com/clawscli/claws/internal/config"
+	apperrors "github.com/clawscli/claws/internal/errors"
 	"github.com/clawscli/claws/internal/registry"
 	"github.com/clawscli/claws/internal/ui"
 )
@@ -25,19 +26,27 @@ type chatStyles struct {
 	toolError    lipgloss.Style
 	thinking     lipgloss.Style
 	input        lipgloss.Style
+	errorMsg     lipgloss.Style
+	mdBold       lipgloss.Style
+	mdCode       lipgloss.Style
+	mdItalic     lipgloss.Style
 }
 
 func newChatStyles() chatStyles {
 	t := ui.Current()
 	return chatStyles{
-		title:        lipgloss.NewStyle().Bold(true).Foreground(t.Primary),
+		title:        ui.TitleStyle(),
 		context:      lipgloss.NewStyle().Foreground(t.TextDim).Italic(true),
-		userMsg:      lipgloss.NewStyle().Foreground(t.Text),
-		assistantMsg: lipgloss.NewStyle().Foreground(t.Secondary),
-		toolCall:     lipgloss.NewStyle().Foreground(t.TextDim),
-		toolError:    lipgloss.NewStyle().Foreground(t.Danger),
+		userMsg:      ui.TextStyle(),
+		assistantMsg: ui.SecondaryStyle(),
+		toolCall:     ui.DimStyle(),
+		toolError:    ui.DangerStyle(),
 		thinking:     lipgloss.NewStyle().Foreground(t.TextDim).Italic(true),
 		input:        lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder()).BorderForeground(t.Border).Padding(0, 1),
+		errorMsg:     ui.DangerStyle(),
+		mdBold:       ui.TitleStyle(),
+		mdCode:       ui.SuccessStyle(),
+		mdItalic:     lipgloss.NewStyle().Italic(true),
 	}
 }
 
@@ -117,7 +126,7 @@ func (c *ChatOverlay) Init() tea.Cmd {
 func (c *ChatOverlay) initClient() tea.Msg {
 	executor, err := ai.NewToolExecutor(c.ctx, c.registry)
 	if err != nil {
-		return chatInitMsg{err: fmt.Errorf("init tool executor: %w", err)}
+		return chatInitMsg{err: apperrors.Wrap(err, "init tool executor")}
 	}
 
 	client, err := ai.NewClient(
@@ -126,12 +135,12 @@ func (c *ChatOverlay) initClient() tea.Msg {
 		ai.WithTools(executor.Tools()),
 	)
 	if err != nil {
-		return chatInitMsg{err: fmt.Errorf("init ai client: %w", err)}
+		return chatInitMsg{err: apperrors.Wrap(err, "init ai client")}
 	}
 
 	session, err := c.sessMgr.NewSession(c.aiCtx)
 	if err != nil {
-		return chatInitMsg{err: fmt.Errorf("create session: %w", err)}
+		return chatInitMsg{err: apperrors.Wrap(err, "create session")}
 	}
 
 	return chatInitMsg{client: client, executor: executor, session: session}
@@ -218,13 +227,14 @@ func (c *ChatOverlay) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 func (c *ChatOverlay) sendMessage() tea.Cmd {
 	return func() tea.Msg {
-		if c.client == nil {
+		if c.client == nil || c.executor == nil {
 			return chatDoneMsg{err: fmt.Errorf("client not initialized")}
 		}
 
 		var messages []ai.Message
 		for _, m := range c.messages {
-			if m.role == ai.RoleUser || m.role == ai.RoleAssistant {
+			// Only send user/assistant messages to API (skip tool call display messages)
+			if m.toolCall == nil {
 				messages = append(messages, ai.Message{Role: m.role, Content: m.content})
 			}
 		}
@@ -244,7 +254,6 @@ func (c *ChatOverlay) sendMessage() tea.Cmd {
 				tr := c.executor.Execute(c.ctx, tc)
 				toolResults = append(toolResults, tr)
 				toolCallMsgs = append(toolCallMsgs, chatMessage{
-					role:      "tool",
 					content:   tr.Content,
 					toolCall:  &tcCopy,
 					toolError: tr.IsError,
@@ -363,24 +372,28 @@ func (c *ChatOverlay) renderMessages() string {
 	w := c.wrapWidth()
 
 	for _, msg := range c.messages {
+		// Tool call messages (identified by toolCall != nil)
+		if msg.toolCall != nil {
+			toolInfo := fmt.Sprintf("🔧 %s(%s)", msg.toolCall.Name, formatToolInput(msg.toolCall.Input))
+			style := c.styles.toolCall
+			if msg.toolError {
+				style = c.styles.toolError
+			}
+			for _, line := range strings.Split(wrapText(toolInfo, w), "\n") {
+				sb.WriteString(style.Render(line))
+				sb.WriteString("\n")
+			}
+			sb.WriteString("\n")
+			continue
+		}
+
+		// User/Assistant messages
 		switch msg.role {
 		case ai.RoleUser:
 			sb.WriteString(c.styles.userMsg.Render(wrapText("You: "+msg.content, w)))
 		case ai.RoleAssistant:
-			rendered := renderMarkdown(msg.content, w, c.styles)
+			rendered := c.renderMarkdown(msg.content, w)
 			sb.WriteString(c.styles.assistantMsg.Render("AI: ") + "\n" + rendered)
-		case "tool":
-			if msg.toolCall != nil {
-				toolInfo := fmt.Sprintf("🔧 %s(%v)", msg.toolCall.Name, formatToolInput(msg.toolCall.Input))
-				style := c.styles.toolCall
-				if msg.toolError {
-					style = c.styles.toolError
-				}
-				for _, line := range strings.Split(wrapText(toolInfo, w), "\n") {
-					sb.WriteString(style.Render(line))
-					sb.WriteString("\n")
-				}
-			}
 		}
 		sb.WriteString("\n\n")
 	}
@@ -396,7 +409,7 @@ func (c *ChatOverlay) renderMessages() string {
 	}
 
 	if c.err != nil {
-		sb.WriteString(lipgloss.NewStyle().Foreground(ui.Current().Danger).Render(wrapText("Error: "+c.err.Error(), w)))
+		sb.WriteString(c.styles.errorMsg.Render(wrapText("Error: "+c.err.Error(), w)))
 		sb.WriteString("\n")
 	}
 
@@ -456,7 +469,7 @@ func wrapLine(line string, width int) []string {
 
 func formatToolInput(input map[string]any) string {
 	if len(input) == 0 {
-		return "{}"
+		return ""
 	}
 	var parts []string
 	for k, v := range input {
@@ -488,25 +501,20 @@ var (
 	mdCode   = regexp.MustCompile("`([^`]+)`")
 )
 
-func renderMarkdown(text string, width int, _ chatStyles) string {
+func (c *ChatOverlay) renderMarkdown(text string, width int) string {
 	wrapped := wrapText(text, width)
-
-	t := ui.Current()
-	boldStyle := lipgloss.NewStyle().Bold(true).Foreground(t.Primary)
-	codeStyle := lipgloss.NewStyle().Foreground(t.Success)
-	italicStyle := lipgloss.NewStyle().Italic(true)
 
 	wrapped = mdBold.ReplaceAllStringFunc(wrapped, func(m string) string {
 		inner := mdBold.FindStringSubmatch(m)[1]
-		return boldStyle.Render(inner)
+		return c.styles.mdBold.Render(inner)
 	})
 	wrapped = mdCode.ReplaceAllStringFunc(wrapped, func(m string) string {
 		inner := mdCode.FindStringSubmatch(m)[1]
-		return codeStyle.Render(inner)
+		return c.styles.mdCode.Render(inner)
 	})
 	wrapped = mdItalic.ReplaceAllStringFunc(wrapped, func(m string) string {
 		inner := mdItalic.FindStringSubmatch(m)[1]
-		return italicStyle.Render(inner)
+		return c.styles.mdItalic.Render(inner)
 	})
 
 	return wrapped

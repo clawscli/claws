@@ -22,6 +22,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/bedrock v1.53.0
 	github.com/aws/aws-sdk-go-v2/service/bedrockagent v1.52.2
 	github.com/aws/aws-sdk-go-v2/service/bedrockagentcorecontrol v1.15.1
+	github.com/aws/aws-sdk-go-v2/service/bedrockruntime v1.47.1
 	github.com/aws/aws-sdk-go-v2/service/budgets v1.42.3
 	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.71.4
 	github.com/aws/aws-sdk-go-v2/service/cloudfront v1.58.3
@@ -97,7 +98,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.16 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.4 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.16 // indirect
-	github.com/aws/aws-sdk-go-v2/service/bedrockruntime v1.47.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.7 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.11.16 // indirect

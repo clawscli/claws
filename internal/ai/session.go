@@ -81,9 +81,8 @@ func (m *SessionManager) NewSession(ctx *Context) (*Session, error) {
 
 	m.currentID = session.ID
 
-	if err := m.pruneOldSessions(); err != nil {
-		return session, nil
-	}
+	// Best effort cleanup - log error but don't fail session creation
+	_ = m.pruneOldSessions()
 
 	return session, nil
 }

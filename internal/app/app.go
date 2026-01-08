@@ -336,7 +336,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, a.keys.AI):
 			aiCtx := a.buildAIContext()
 			chatOverlay := view.NewChatOverlay(a.ctx, a.registry, aiCtx)
-			a.modal = &view.Modal{Content: chatOverlay, Width: 80}
+			a.modal = &view.Modal{Content: chatOverlay, Width: view.ModalWidthChat}
 			return a, tea.Batch(
 				chatOverlay.Init(),
 				a.modal.SetSize(a.width, a.height),

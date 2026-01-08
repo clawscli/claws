@@ -23,6 +23,7 @@ const (
 	ModalWidthProfile       = 55
 	ModalWidthProfileDetail = 65
 	ModalWidthActionMenu    = 60
+	ModalWidthChat          = 80
 )
 
 type Modal struct {

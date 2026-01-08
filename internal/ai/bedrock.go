@@ -111,7 +111,7 @@ func (c *Client) ConverseStream(ctx context.Context, messages []Message, systemP
 	}
 
 	events := make(chan StreamEvent, 10)
-	go c.processStream(output, events)
+	go c.processStream(ctx, output, events)
 
 	return events, nil
 }
@@ -220,9 +220,14 @@ func (c *Client) parseConverseOutput(output *bedrockruntime.ConverseOutput) (*Co
 			if b.Value.Input != nil {
 				if err := b.Value.Input.UnmarshalSmithyDocument(&inputMap); err != nil {
 					log.Debug("UnmarshalSmithyDocument failed, trying json.Marshal", "error", err)
-					inputBytes, _ := json.Marshal(b.Value.Input)
-					log.Debug("json.Marshal result", "bytes", string(inputBytes))
-					_ = json.Unmarshal(inputBytes, &inputMap)
+					inputBytes, err := json.Marshal(b.Value.Input)
+					if err != nil {
+						log.Debug("json.Marshal failed", "error", err)
+					} else {
+						if err := json.Unmarshal(inputBytes, &inputMap); err != nil {
+							log.Debug("json.Unmarshal failed", "error", err)
+						}
+					}
 				}
 			}
 			log.Debug("tool called", "name", aws.ToString(b.Value.Name), "input", inputMap)
@@ -238,16 +243,27 @@ func (c *Client) parseConverseOutput(output *bedrockruntime.ConverseOutput) (*Co
 	return result, nil
 }
 
-func (c *Client) processStream(output *bedrockruntime.ConverseStreamOutput, events chan<- StreamEvent) {
+func (c *Client) processStream(ctx context.Context, output *bedrockruntime.ConverseStreamOutput, events chan<- StreamEvent) {
 	defer close(events)
 
 	stream := output.GetStream()
-	defer func() { _ = stream.Close() }()
+	defer func() {
+		if err := stream.Close(); err != nil {
+			log.Debug("stream close error", "error", err)
+		}
+	}()
 
 	var currentToolCall *ToolCall
 	var toolInputJSON string
 
 	for event := range stream.Events() {
+		select {
+		case <-ctx.Done():
+			events <- StreamEvent{Type: "error", Error: ctx.Err()}
+			return
+		default:
+		}
+
 		switch e := event.(type) {
 		case *types.ConverseStreamOutputMemberContentBlockStart:
 			if toolUse, ok := e.Value.Start.(*types.ContentBlockStartMemberToolUse); ok {
@@ -271,7 +287,9 @@ func (c *Client) processStream(output *bedrockruntime.ConverseStreamOutput, even
 		case *types.ConverseStreamOutputMemberContentBlockStop:
 			if currentToolCall != nil {
 				var inputMap map[string]any
-				_ = json.Unmarshal([]byte(toolInputJSON), &inputMap)
+				if err := json.Unmarshal([]byte(toolInputJSON), &inputMap); err != nil {
+					log.Debug("failed to parse tool input JSON", "error", err)
+				}
 				currentToolCall.Input = inputMap
 
 				events <- StreamEvent{
