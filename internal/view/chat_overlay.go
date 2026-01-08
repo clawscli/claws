@@ -70,7 +70,9 @@ type ChatOverlay struct {
 	streamingMsg       string
 	streamingThinking  string
 	collapsedThinking  map[int]bool
+	collapsedToolCalls map[int]bool
 	thinkingLineRanges map[int][2]int
+	toolCallLineRanges map[int][2]int
 	isStreaming        bool
 	err                error
 
@@ -125,14 +127,15 @@ func NewChatOverlay(ctx context.Context, reg *registry.Registry, aiCtx *ai.Conte
 	ti.CharLimit = 500
 
 	return &ChatOverlay{
-		ctx:               ctx,
-		registry:          reg,
-		aiCtx:             aiCtx,
-		styles:            newChatStyles(),
-		input:             ti,
-		sessMgr:           ai.NewSessionManager(maxSessions),
-		messages:          []chatMessage{},
-		collapsedThinking: make(map[int]bool),
+		ctx:                ctx,
+		registry:           reg,
+		aiCtx:              aiCtx,
+		styles:             newChatStyles(),
+		input:              ti,
+		sessMgr:            ai.NewSessionManager(maxSessions),
+		messages:           []chatMessage{},
+		collapsedThinking:  make(map[int]bool),
+		collapsedToolCalls: make(map[int]bool),
 	}
 }
 
@@ -263,10 +266,20 @@ func (c *ChatOverlay) handleMouseClick(msg tea.MouseClickMsg) (tea.Model, tea.Cm
 		if contentLine >= lineRange[0] && contentLine < lineRange[1] {
 			wasCollapsed := c.collapsedThinking[msgIdx]
 			c.collapsedThinking[msgIdx] = !wasCollapsed
-			c.scrollToThinking(msgIdx, wasCollapsed)
+			c.scrollToCollapsible(lineRange[0], wasCollapsed)
 			return c, nil
 		}
 	}
+
+	for msgIdx, lineRange := range c.toolCallLineRanges {
+		if contentLine >= lineRange[0] && contentLine < lineRange[1] {
+			wasCollapsed := c.collapsedToolCalls[msgIdx]
+			c.collapsedToolCalls[msgIdx] = !wasCollapsed
+			c.scrollToCollapsible(lineRange[0], wasCollapsed)
+			return c, nil
+		}
+	}
+
 	return c, nil
 }
 
@@ -427,13 +440,13 @@ func (c *ChatOverlay) handleToolExecute(msg chatToolExecuteMsg) (tea.Model, tea.
 		result := c.executor.Execute(c.ctx, tu)
 		toolResults = append(toolResults, result)
 
-		// Add to UI messages for display
 		c.messages = append(c.messages, chatMessage{
 			content:    result.Content,
 			toolUse:    tu,
 			toolResult: &result,
 			toolError:  result.IsError,
 		})
+		c.collapsedToolCalls[len(c.messages)-1] = true
 	}
 	c.updateViewport()
 
@@ -539,15 +552,13 @@ func (c *ChatOverlay) HasActiveInput() bool {
 	return true
 }
 
-func (c *ChatOverlay) scrollToThinking(msgIdx int, wasCollapsed bool) {
+func (c *ChatOverlay) scrollToCollapsible(startLine int, wasCollapsed bool) {
 	if !c.vp.Ready {
 		return
 	}
 	content := c.renderMessages()
 	c.vp.Model.SetContent(content)
 	if wasCollapsed {
-		if lineRange, ok := c.thinkingLineRanges[msgIdx]; ok {
-			c.vp.Model.SetYOffset(lineRange[0])
-		}
+		c.vp.Model.SetYOffset(startLine)
 	}
 }

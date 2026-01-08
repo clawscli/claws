@@ -23,19 +23,15 @@ func (c *ChatOverlay) renderMessages() string {
 	w := c.wrapWidth()
 	lineNum := 0
 	c.thinkingLineRanges = make(map[int][2]int)
+	c.toolCallLineRanges = make(map[int][2]int)
 
 	for i, msg := range c.messages {
 		if msg.toolUse != nil {
-			toolInfo := fmt.Sprintf("🔧 %s(%s)", msg.toolUse.Name, formatToolInput(msg.toolUse.Input))
-			style := c.styles.toolCall
-			if msg.toolError {
-				style = c.styles.toolError
-			}
-			for _, line := range strings.Split(wrapText(toolInfo, w), "\n") {
-				sb.WriteString(style.Render(line))
-				sb.WriteString("\n")
-				lineNum++
-			}
+			startLine := lineNum
+			toolStr := c.renderToolCall(i, msg.toolUse, msg.toolError, w)
+			sb.WriteString(toolStr)
+			lineNum += strings.Count(toolStr, "\n")
+			c.toolCallLineRanges[i] = [2]int{startLine, lineNum}
 		} else {
 			switch msg.role {
 			case ai.RoleUser:
@@ -106,6 +102,41 @@ func (c *ChatOverlay) renderThinking(idx int, content string, width int) string 
 		wrapped := wrapText(content, width-2)
 		for _, line := range strings.Split(wrapped, "\n") {
 			sb.WriteString(c.styles.thinking.Render("  " + line))
+			sb.WriteString("\n")
+		}
+	}
+	return sb.String()
+}
+
+func (c *ChatOverlay) renderToolCall(idx int, tu *ai.ToolUseContent, isError bool, width int) string {
+	collapsed := c.collapsedToolCalls[idx]
+	style := c.styles.toolCall
+	if isError {
+		style = c.styles.toolError
+	}
+
+	var sb strings.Builder
+	paramCount := len(tu.Input)
+
+	if collapsed {
+		summary := fmt.Sprintf("🔧 %s ▶ [%d params]", tu.Name, paramCount)
+		sb.WriteString(style.Render(wrapText(summary, width)))
+		sb.WriteString("\n")
+	} else {
+		header := fmt.Sprintf("🔧 %s ▼", tu.Name)
+		sb.WriteString(style.Render(header))
+		sb.WriteString("\n")
+
+		keys := make([]string, 0, len(tu.Input))
+		for k := range tu.Input {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+
+		for _, k := range keys {
+			v := tu.Input[k]
+			line := fmt.Sprintf("  %s: %v", k, v)
+			sb.WriteString(style.Render(wrapText(line, width)))
 			sb.WriteString("\n")
 		}
 	}
@@ -186,22 +217,6 @@ func wrapLine(line string, width int) []string {
 		lines = append(lines, string(current))
 	}
 	return lines
-}
-
-func formatToolInput(input map[string]any) string {
-	if len(input) == 0 {
-		return ""
-	}
-	keys := make([]string, 0, len(input))
-	for k := range input {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	var parts []string
-	for _, k := range keys {
-		parts = append(parts, fmt.Sprintf("%s=%v", k, input[k]))
-	}
-	return strings.Join(parts, ", ")
 }
 
 func runeWidth(r rune) int {
