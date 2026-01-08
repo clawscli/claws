@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	DefaultMaxSessions = 10
+	DefaultMaxSessions = 100
 	sessionDir         = "chat/sessions"
 	currentSessionFile = "chat/current.json"
 )
@@ -63,15 +63,17 @@ type Context struct {
 
 type SessionManager struct {
 	maxSessions int
+	saveEnabled bool
 	currentID   string
 }
 
-func NewSessionManager(maxSessions int) *SessionManager {
+func NewSessionManager(maxSessions int, saveEnabled bool) *SessionManager {
 	if maxSessions <= 0 {
 		maxSessions = DefaultMaxSessions
 	}
 	return &SessionManager{
 		maxSessions: maxSessions,
+		saveEnabled: saveEnabled,
 	}
 }
 
@@ -209,6 +211,10 @@ func (m *SessionManager) ListSessions() ([]Session, error) {
 }
 
 func (m *SessionManager) saveSession(session *Session) error {
+	if !m.saveEnabled {
+		return nil
+	}
+
 	dir, err := m.sessionsDir()
 	if err != nil {
 		return err

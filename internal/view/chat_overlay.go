@@ -119,7 +119,7 @@ type chatInitMsg struct {
 }
 
 func NewChatOverlay(ctx context.Context, reg *registry.Registry, aiCtx *ai.Context) *ChatOverlay {
-	maxSessions := config.File().GetAIMaxSessions()
+	cfg := config.File()
 
 	ti := textinput.New()
 	ti.Placeholder = "Ask about AWS resources..."
@@ -132,7 +132,7 @@ func NewChatOverlay(ctx context.Context, reg *registry.Registry, aiCtx *ai.Conte
 		aiCtx:              aiCtx,
 		styles:             newChatStyles(),
 		input:              ti,
-		sessMgr:            ai.NewSessionManager(maxSessions),
+		sessMgr:            ai.NewSessionManager(cfg.GetAIMaxSessions(), cfg.GetAISaveSessions()),
 		messages:           []chatMessage{},
 		collapsedThinking:  make(map[int]bool),
 		collapsedToolCalls: make(map[int]bool),

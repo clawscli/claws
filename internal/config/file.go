@@ -87,6 +87,7 @@ type AIConfig struct {
 	MaxSessions    int    `yaml:"max_sessions,omitempty"`
 	MaxTokens      int    `yaml:"max_tokens,omitempty"`
 	ThinkingBudget *int   `yaml:"thinking_budget,omitempty"`
+	SaveSessions   *bool  `yaml:"save_sessions,omitempty"`
 }
 
 // ThemeConfig holds theme configuration.
@@ -370,7 +371,7 @@ func (c *FileConfig) GetTheme() ThemeConfig {
 }
 
 const DefaultAIModel = "global.anthropic.claude-haiku-4-5-20251001-v1:0"
-const DefaultAIMaxSessions = 10
+const DefaultAIMaxSessions = 100
 const DefaultAIMaxTokens = 16000
 const DefaultAIThinkingBudget = 8000
 
@@ -407,6 +408,15 @@ func (c *FileConfig) GetAIThinkingBudget() int {
 			return DefaultAIThinkingBudget
 		}
 		return *c.AI.ThinkingBudget
+	})
+}
+
+func (c *FileConfig) GetAISaveSessions() bool {
+	return withRLock(&c.mu, func() bool {
+		if c.AI.SaveSessions == nil {
+			return false
+		}
+		return *c.AI.SaveSessions
 	})
 }
 

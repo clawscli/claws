@@ -40,6 +40,13 @@ startup:                  # Applied on launch if present
 navigation:
   max_stack_size: 100     # Max navigation history depth (default: 100)
 
+ai:
+  model: "global.anthropic.claude-haiku-4-5-20251001-v1:0"  # Bedrock model ID
+  max_sessions: 100       # Max stored sessions (default: 100)
+  max_tokens: 16000       # Max response tokens (default: 16000)
+  thinking_budget: 8000   # Extended thinking token budget (default: 8000)
+  save_sessions: false    # Persist chat sessions to disk (default: false)
+
 theme: nord               # Preset: dark, light, nord, dracula, gruvbox, catppuccin
 
 # Or use preset with custom overrides:
