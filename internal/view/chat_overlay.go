@@ -49,6 +49,9 @@ func newChatStyles() chatStyles {
 	}
 }
 
+// MaxToolRounds is the maximum number of tool execution rounds per user message.
+const MaxToolRounds = 10
+
 type ChatOverlay struct {
 	ctx      context.Context
 	registry *registry.Registry
@@ -71,20 +74,25 @@ type ChatOverlay struct {
 	isStreaming        bool
 	err                error
 
-	// Streaming state
-	pendingToolCalls []ai.ToolCall
-	streamMessages   []ai.Message
-	toolRound        int
+	// Streaming state - accumulates ContentBlocks for the current assistant turn
+	pendingToolUses    []*ai.ToolUseContent
+	currentReasoning   string
+	reasoningSignature string
+	streamMessages     []ai.Message
+	toolRound          int
 
 	width  int
 	height int
 }
 
+// chatMessage is a UI-level message for display purposes.
+// It stores extracted text/thinking for rendering.
 type chatMessage struct {
 	role            ai.Role
 	content         string
 	thinkingContent string
-	toolCall        *ai.ToolCall
+	toolUse         *ai.ToolUseContent
+	toolResult      *ai.ToolResultContent
 	toolError       bool
 }
 
@@ -94,9 +102,11 @@ type chatStreamMsg struct {
 }
 
 type chatToolExecuteMsg struct {
-	toolCalls []ai.ToolCall
-	messages  []ai.Message
-	toolRound int
+	// The assistant message with ToolUse blocks that triggered this execution
+	assistantBlocks []ai.ContentBlock
+	toolUses        []*ai.ToolUseContent
+	messages        []ai.Message
+	toolRound       int
 }
 
 type chatInitMsg struct {
@@ -186,14 +196,14 @@ func (c *ChatOverlay) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	if c.vp.Ready {
-		var cmd tea.Cmd
-		c.vp.Model, cmd = c.vp.Model.Update(msg)
-		cmds = append(cmds, cmd)
+		var vpCmd tea.Cmd
+		c.vp.Model, vpCmd = c.vp.Model.Update(msg)
+		cmds = append(cmds, vpCmd)
 	}
 
-	var cmd tea.Cmd
-	c.input, cmd = c.input.Update(msg)
-	cmds = append(cmds, cmd)
+	var inputCmd tea.Cmd
+	c.input, inputCmd = c.input.Update(msg)
+	cmds = append(cmds, inputCmd)
 
 	return c, tea.Batch(cmds...)
 }
@@ -220,17 +230,21 @@ func (c *ChatOverlay) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		c.messages = append(c.messages, chatMessage{role: ai.RoleUser, content: text})
 		c.isStreaming = true
 		c.streamingMsg = ""
-		c.pendingToolCalls = nil
+		c.streamingThinking = ""
+		c.pendingToolUses = nil
+		c.currentReasoning = ""
+		c.reasoningSignature = ""
 		c.toolRound = 0
 		c.err = nil
 		c.updateViewport()
 
-		return c, c.startStream(c.buildAPIMessages())
+		c.streamMessages = append(c.streamMessages, ai.NewUserMessage(text))
+		return c, c.startStream(c.streamMessages)
 	}
 
-	var cmd tea.Cmd
-	c.input, cmd = c.input.Update(msg)
-	return c, cmd
+	var kpCmd tea.Cmd
+	c.input, kpCmd = c.input.Update(msg)
+	return c, kpCmd
 }
 
 func (c *ChatOverlay) handleMouseClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
@@ -254,16 +268,6 @@ func (c *ChatOverlay) handleMouseClick(msg tea.MouseClickMsg) (tea.Model, tea.Cm
 		}
 	}
 	return c, nil
-}
-
-func (c *ChatOverlay) buildAPIMessages() []ai.Message {
-	var messages []ai.Message
-	for _, m := range c.messages {
-		if m.toolCall == nil {
-			messages = append(messages, ai.Message{Role: m.role, Content: m.content})
-		}
-	}
-	return messages
 }
 
 func (c *ChatOverlay) startStream(messages []ai.Message) tea.Cmd {
@@ -308,47 +312,28 @@ func (c *ChatOverlay) handleStreamEvent(msg chatStreamMsg) (tea.Model, tea.Cmd) 
 		return c, c.waitForStream(msg.eventCh)
 
 	case "thinking":
-		c.streamingThinking += event.Thinking
+		if event.Thinking != nil {
+			c.streamingThinking += event.Thinking.Text
+		}
 		c.updateViewport()
+		return c, c.waitForStream(msg.eventCh)
+
+	case "thinking_complete":
+		// Capture the complete thinking with signature for API replay
+		if event.Thinking != nil {
+			c.currentReasoning = event.Thinking.Text
+			c.reasoningSignature = event.Thinking.Signature
+		}
 		return c, c.waitForStream(msg.eventCh)
 
 	case "tool_use":
-		c.pendingToolCalls = append(c.pendingToolCalls, event.ToolCalls...)
+		if event.ToolUse != nil {
+			c.pendingToolUses = append(c.pendingToolUses, event.ToolUse)
+		}
 		return c, c.waitForStream(msg.eventCh)
 
 	case "done":
-		if len(c.pendingToolCalls) > 0 && c.toolRound < 5 {
-			if c.streamingMsg != "" || c.streamingThinking != "" {
-				c.messages = append(c.messages, chatMessage{
-					role:            ai.RoleAssistant,
-					content:         c.streamingMsg,
-					thinkingContent: c.streamingThinking,
-				})
-				if c.streamingThinking != "" {
-					c.collapsedThinking[len(c.messages)-1] = true
-				}
-				c.streamingMsg = ""
-				c.streamingThinking = ""
-			}
-			c.updateViewport()
-			return c, c.executeTools()
-		}
-
-		if c.streamingMsg != "" || c.streamingThinking != "" {
-			c.messages = append(c.messages, chatMessage{
-				role:            ai.RoleAssistant,
-				content:         c.streamingMsg,
-				thinkingContent: c.streamingThinking,
-			})
-			if c.streamingThinking != "" {
-				c.collapsedThinking[len(c.messages)-1] = true
-			}
-		}
-		c.streamingMsg = ""
-		c.streamingThinking = ""
-		c.isStreaming = false
-		c.updateViewport()
-		return c, nil
+		return c.handleStreamDone(msg.eventCh)
 
 	case "error":
 		c.err = event.Error
@@ -360,35 +345,119 @@ func (c *ChatOverlay) handleStreamEvent(msg chatStreamMsg) (tea.Model, tea.Cmd) 
 	return c, c.waitForStream(msg.eventCh)
 }
 
-func (c *ChatOverlay) executeTools() tea.Cmd {
-	toolCalls := c.pendingToolCalls
-	c.pendingToolCalls = nil
-	c.toolRound++
+func (c *ChatOverlay) handleStreamDone(_ <-chan ai.StreamEvent) (tea.Model, tea.Cmd) {
+	// Build the assistant's ContentBlocks from accumulated state
+	var assistantBlocks []ai.ContentBlock
 
-	return func() tea.Msg {
-		return chatToolExecuteMsg{
-			toolCalls: toolCalls,
-			messages:  c.streamMessages,
-			toolRound: c.toolRound,
+	// Add reasoning block if present
+	if c.currentReasoning != "" {
+		assistantBlocks = append(assistantBlocks, ai.ContentBlock{
+			Reasoning:          c.currentReasoning,
+			ReasoningSignature: c.reasoningSignature,
+		})
+	}
+
+	// Add text block if present
+	if c.streamingMsg != "" {
+		assistantBlocks = append(assistantBlocks, ai.ContentBlock{Text: c.streamingMsg})
+	}
+
+	// Add tool use blocks
+	for _, tu := range c.pendingToolUses {
+		assistantBlocks = append(assistantBlocks, ai.ContentBlock{ToolUse: tu})
+	}
+
+	// Save to UI messages for display
+	if c.streamingMsg != "" || c.streamingThinking != "" {
+		c.messages = append(c.messages, chatMessage{
+			role:            ai.RoleAssistant,
+			content:         c.streamingMsg,
+			thinkingContent: c.streamingThinking,
+		})
+		if c.streamingThinking != "" {
+			c.collapsedThinking[len(c.messages)-1] = true
 		}
 	}
+
+	// If there are tool uses, execute them
+	if len(c.pendingToolUses) > 0 && c.toolRound < MaxToolRounds {
+		c.updateViewport()
+
+		// Clear streaming state before tool execution
+		toolUses := c.pendingToolUses
+		c.pendingToolUses = nil
+		c.streamingMsg = ""
+		c.streamingThinking = ""
+		c.currentReasoning = ""
+		c.reasoningSignature = ""
+		c.toolRound++
+
+		return c, func() tea.Msg {
+			return chatToolExecuteMsg{
+				assistantBlocks: assistantBlocks,
+				toolUses:        toolUses,
+				messages:        c.streamMessages,
+				toolRound:       c.toolRound,
+			}
+		}
+	}
+
+	// No tool uses or max rounds reached - done
+	if len(assistantBlocks) > 0 {
+		c.streamMessages = append(c.streamMessages, ai.Message{
+			Role:    ai.RoleAssistant,
+			Content: assistantBlocks,
+		})
+	}
+
+	c.streamingMsg = ""
+	c.streamingThinking = ""
+	c.currentReasoning = ""
+	c.reasoningSignature = ""
+	c.pendingToolUses = nil
+	c.isStreaming = false
+	c.updateViewport()
+	return c, nil
 }
 
 func (c *ChatOverlay) handleToolExecute(msg chatToolExecuteMsg) (tea.Model, tea.Cmd) {
-	var toolResults []ai.ToolResult
-	for _, tc := range msg.toolCalls {
-		tcCopy := tc
-		tr := c.executor.Execute(c.ctx, tc)
-		toolResults = append(toolResults, tr)
+	// Execute each tool and collect results
+	var toolResults []ai.ToolResultContent
+	for _, tu := range msg.toolUses {
+		result := c.executor.Execute(c.ctx, tu)
+		toolResults = append(toolResults, result)
+
+		// Add to UI messages for display
 		c.messages = append(c.messages, chatMessage{
-			content:   tr.Content,
-			toolCall:  &tcCopy,
-			toolError: tr.IsError,
+			content:    result.Content,
+			toolUse:    tu,
+			toolResult: &result,
+			toolError:  result.IsError,
 		})
 	}
 	c.updateViewport()
 
-	messages := c.client.AddToolResultMessages(msg.messages, msg.toolCalls, toolResults)
+	// Build the new messages to send to API:
+	// 1. Previous messages
+	// 2. Assistant message with tool uses (from this turn)
+	// 3. User message with tool results
+
+	// Add assistant message with the accumulated blocks
+	messages := append(msg.messages, ai.Message{
+		Role:    ai.RoleAssistant,
+		Content: msg.assistantBlocks,
+	})
+
+	// Add user message with tool results
+	var resultBlocks []ai.ContentBlock
+	for _, tr := range toolResults {
+		resultBlocks = append(resultBlocks, ai.ContentBlock{ToolResult: &tr})
+	}
+	messages = append(messages, ai.Message{
+		Role:    ai.RoleUser,
+		Content: resultBlocks,
+	})
+
 	c.streamMessages = messages
 	c.isStreaming = true
 

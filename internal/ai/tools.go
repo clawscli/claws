@@ -165,7 +165,7 @@ func (e *ToolExecutor) Tools() []Tool {
 	}
 }
 
-func (e *ToolExecutor) Execute(ctx context.Context, call ToolCall) ToolResult {
+func (e *ToolExecutor) Execute(ctx context.Context, call *ToolUseContent) ToolResultContent {
 	var content string
 	var isError bool
 
@@ -203,10 +203,10 @@ func (e *ToolExecutor) Execute(ctx context.Context, call ToolCall) ToolResult {
 		isError = true
 	}
 
-	return ToolResult{
-		ID:      call.ID,
-		Content: content,
-		IsError: isError,
+	return ToolResultContent{
+		ToolUseID: call.ID,
+		Content:   content,
+		IsError:   isError,
 	}
 }
 

@@ -25,8 +25,8 @@ func (c *ChatOverlay) renderMessages() string {
 	c.thinkingLineRanges = make(map[int][2]int)
 
 	for i, msg := range c.messages {
-		if msg.toolCall != nil {
-			toolInfo := fmt.Sprintf("🔧 %s(%s)", msg.toolCall.Name, formatToolInput(msg.toolCall.Input))
+		if msg.toolUse != nil {
+			toolInfo := fmt.Sprintf("🔧 %s(%s)", msg.toolUse.Name, formatToolInput(msg.toolUse.Input))
 			style := c.styles.toolCall
 			if msg.toolError {
 				style = c.styles.toolError
