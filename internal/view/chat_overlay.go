@@ -289,7 +289,6 @@ func (c *ChatOverlay) startStream(messages []ai.Message) tea.Cmd {
 			return chatStreamMsg{event: ai.StreamEvent{Type: "error", Error: errors.New("client not initialized")}}
 		}
 
-		c.streamMessages = messages
 		systemPrompt := c.buildSystemPrompt()
 
 		eventCh, err := c.client.ConverseStream(c.ctx, messages, systemPrompt)
