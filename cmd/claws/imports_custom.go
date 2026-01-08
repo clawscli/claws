@@ -150,6 +150,7 @@ import (
 	// ECS
 	_ "github.com/clawscli/claws/custom/ecs/clusters"
 	_ "github.com/clawscli/claws/custom/ecs/services"
+	_ "github.com/clawscli/claws/custom/ecs/task-definitions"
 	_ "github.com/clawscli/claws/custom/ecs/tasks"
 
 	// ElastiCache

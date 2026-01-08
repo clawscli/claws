@@ -363,7 +363,7 @@ func (r *ServiceRenderer) Navigations(resource dao.Resource) []render.Navigation
 	// Extract cluster name from ARN for filtering
 	clusterName := appaws.ExtractResourceName(svc.ClusterArn())
 
-	return []render.Navigation{
+	navs := []render.Navigation{
 		{
 			Key:         "t",
 			Label:       "Tasks",
@@ -389,4 +389,17 @@ func (r *ServiceRenderer) Navigations(resource dao.Resource) []render.Navigation
 			FilterValue: "/ecs/" + svc.GetName(),
 		},
 	}
+
+	if td := svc.TaskDefinition(); td != "" {
+		navs = append(navs, render.Navigation{
+			Key:         "d",
+			Label:       "Task Definition",
+			Service:     "ecs",
+			Resource:    "task-definitions",
+			FilterField: "TaskDefinition",
+			FilterValue: appaws.ExtractResourceName(td),
+		})
+	}
+
+	return navs
 }

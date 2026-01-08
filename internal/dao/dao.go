@@ -158,6 +158,10 @@ type profiledResource interface {
 	GetAccountID() string
 }
 
+type clusterAwareResource interface {
+	ClusterArn() string
+}
+
 func GetResourceRegion(res Resource) string {
 	if rr, ok := res.(regionalResource); ok {
 		return rr.GetRegion()
@@ -175,6 +179,14 @@ func GetResourceProfile(res Resource) string {
 func GetResourceAccountID(res Resource) string {
 	if pr, ok := res.(profiledResource); ok {
 		return pr.GetAccountID()
+	}
+	return ""
+}
+
+func GetResourceClusterArn(res Resource) string {
+	unwrapped := UnwrapResource(res)
+	if cr, ok := unwrapped.(clusterAwareResource); ok {
+		return cr.ClusterArn()
 	}
 	return ""
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime/types"
 
 	appaws "github.com/clawscli/claws/internal/aws"
+	"github.com/clawscli/claws/internal/log"
 )
 
 const DefaultModel = "global.anthropic.claude-haiku-4-5-20251001-v1:0"
@@ -215,9 +216,16 @@ func (c *Client) parseConverseOutput(output *bedrockruntime.ConverseOutput) (*Co
 		case *types.ContentBlockMemberText:
 			result.Message += b.Value
 		case *types.ContentBlockMemberToolUse:
-			inputBytes, _ := json.Marshal(b.Value.Input)
 			var inputMap map[string]any
-			_ = json.Unmarshal(inputBytes, &inputMap)
+			if b.Value.Input != nil {
+				if err := b.Value.Input.UnmarshalSmithyDocument(&inputMap); err != nil {
+					log.Debug("UnmarshalSmithyDocument failed, trying json.Marshal", "error", err)
+					inputBytes, _ := json.Marshal(b.Value.Input)
+					log.Debug("json.Marshal result", "bytes", string(inputBytes))
+					_ = json.Unmarshal(inputBytes, &inputMap)
+				}
+			}
+			log.Debug("tool called", "name", aws.ToString(b.Value.Name), "input", inputMap)
 
 			result.ToolCalls = append(result.ToolCalls, ToolCall{
 				ID:    aws.ToString(b.Value.ToolUseId),

@@ -871,31 +871,49 @@ func (a *App) resolveStartupView(viewName string) view.View {
 }
 
 func (a *App) buildAIContext() *ai.Context {
+	regions := config.Global().Regions()
 	switch v := a.currentView.(type) {
 	case *view.ResourceBrowser:
 		ctx := &ai.Context{
 			Service:      v.Service(),
 			ResourceType: v.ResourceType(),
+			Regions:      regions,
 		}
 		if r := v.SelectedResource(); r != nil {
-			ctx.ResourceID = r.GetID()
-			ctx.ResourceName = r.GetName()
+			unwrapped := dao.UnwrapResource(r)
+			ctx.ResourceID = unwrapped.GetID()
+			ctx.ResourceName = unwrapped.GetName()
+			ctx.ResourceRegion = dao.GetResourceRegion(r)
+			if clusterArn := dao.GetResourceClusterArn(r); clusterArn != "" {
+				ctx.Cluster = aws.ExtractResourceName(clusterArn)
+			}
 		}
 		return ctx
 	case *view.DetailView:
 		r := v.Resource()
 		if r != nil {
-			return &ai.Context{
-				Service:      v.Service(),
-				ResourceType: v.ResourceType(),
-				ResourceID:   r.GetID(),
-				ResourceName: r.GetName(),
+			unwrapped := dao.UnwrapResource(r)
+			ctx := &ai.Context{
+				Service:        v.Service(),
+				ResourceType:   v.ResourceType(),
+				ResourceID:     unwrapped.GetID(),
+				ResourceName:   unwrapped.GetName(),
+				ResourceRegion: dao.GetResourceRegion(r),
+				Regions:        regions,
 			}
+			if v.Service() == "lambda" && v.ResourceType() == "functions" {
+				ctx.LogGroup = "/aws/lambda/" + unwrapped.GetName()
+			}
+			if clusterArn := dao.GetResourceClusterArn(r); clusterArn != "" {
+				ctx.Cluster = aws.ExtractResourceName(clusterArn)
+			}
+			return ctx
 		}
 	case *view.LogView:
 		return &ai.Context{
 			LogGroup: v.LogGroupName(),
+			Regions:  regions,
 		}
 	}
-	return nil
+	return &ai.Context{Regions: regions}
 }

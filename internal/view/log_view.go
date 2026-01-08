@@ -351,7 +351,7 @@ func (v *LogView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					v.updateViewportContent()
 					v.SetSize(v.width, v.height) // Recalculate viewport height
 				}
-				return v, nil
+				return v, tea.ClearScreen
 			}
 			v.logs = v.logs[:0]
 			v.oldestEventTime = 0
@@ -437,7 +437,7 @@ func (v *LogView) handleFilterInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			v.updateViewportContent()
 		}
 
-		return v, cmd
+		return v, tea.Batch(cmd, tea.ClearScreen)
 	}
 }
 

@@ -216,7 +216,7 @@ func (s *ServiceBrowser) rebuildFlatItems() {
 	for catIdx, cat := range s.categories {
 		idxInGroup := 0
 		for _, svc := range cat.services {
-			if filter == "" || strings.Contains(svc.filterValue(), filter) {
+			if filter == "" || fuzzyMatch(svc.filterValue(), filter) {
 				s.flatItems = append(s.flatItems, flatItem{
 					service:      svc,
 					categoryIdx:  catIdx,
@@ -263,14 +263,13 @@ func (s *ServiceBrowser) handleFilterInput(msg tea.KeyPressMsg) (tea.Model, tea.
 	s.rebuildFlatItems()
 	s.cursor = 0
 	s.updateViewport()
-	return s, cmd
+	return s, tea.Batch(cmd, tea.ClearScreen)
 }
 
 func (s *ServiceBrowser) handleNavigation(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	// Handle special keys that work regardless of flatItems state
 	switch msg.String() {
 	case "~":
-		// Toggle to Dashboard
 		dashboard := NewDashboardView(s.ctx, s.registry)
 		return s, func() tea.Msg {
 			return NavigateMsg{View: dashboard, ClearStack: false}
@@ -279,6 +278,24 @@ func (s *ServiceBrowser) handleNavigation(msg tea.KeyPressMsg) (tea.Model, tea.C
 		s.filterActive = true
 		s.filterInput.Focus()
 		return s, textinput.Blink
+	case "c":
+		if s.filterText != "" {
+			s.filterText = ""
+			s.filterInput.SetValue("")
+			s.rebuildFlatItems()
+			s.cursor = 0
+			s.updateViewport()
+			return s, tea.ClearScreen
+		}
+	}
+
+	if IsEscKey(msg) && s.filterText != "" {
+		s.filterText = ""
+		s.filterInput.SetValue("")
+		s.rebuildFlatItems()
+		s.cursor = 0
+		s.updateViewport()
+		return s, tea.ClearScreen
 	}
 
 	// Navigation requires loaded services
@@ -315,25 +332,8 @@ func (s *ServiceBrowser) handleNavigation(msg tea.KeyPressMsg) (tea.Model, tea.C
 
 	case "enter":
 		return s.selectCurrentService()
-
-	case "c":
-		if s.filterText != "" {
-			s.filterText = ""
-			s.filterInput.SetValue("")
-			s.rebuildFlatItems()
-			s.cursor = 0
-		}
 	}
 
-	// Also allow esc to clear filter (handles various escape sequences)
-	if IsEscKey(msg) && s.filterText != "" {
-		s.filterText = ""
-		s.filterInput.SetValue("")
-		s.rebuildFlatItems()
-		s.cursor = 0
-	}
-
-	// Update viewport content and scroll to cursor
 	s.updateViewport()
 
 	return s, nil
@@ -344,28 +344,17 @@ func (s *ServiceBrowser) updateViewport() {
 		return
 	}
 	content := s.renderContent()
-	s.vp.Model.SetContent(content)
+	vpWidth := s.vp.Model.Width()
+	vpHeight := s.vp.Model.Height()
 
 	lines := strings.Split(content, "\n")
-	totalLines := len(lines)
-
-	if len(s.flatItems) == 0 {
-		return
+	emptyLine := strings.Repeat(" ", vpWidth)
+	for len(lines) < vpHeight {
+		lines = append(lines, emptyLine)
 	}
 
-	cursorRatio := float64(s.cursor) / float64(len(s.flatItems))
-	targetLine := int(cursorRatio * float64(totalLines))
-
-	vpHeight := s.vp.Model.Height()
-	currentTop := s.vp.Model.YOffset()
-
-	if targetLine < currentTop {
-		s.vp.Model.SetYOffset(max(0, targetLine-2))
-	} else if targetLine > currentTop+vpHeight-cellHeight {
-		newOffset := targetLine - vpHeight + cellHeight + 2
-		newOffset = max(0, min(newOffset, totalLines-vpHeight))
-		s.vp.Model.SetYOffset(newOffset)
-	}
+	s.vp.Model.SetContent(strings.Join(lines, "\n"))
+	s.vp.Model.GotoTop()
 }
 
 func (s *ServiceBrowser) moveToNextCategory() {

@@ -329,13 +329,21 @@ func (r *TaskRenderer) Navigations(resource dao.Resource) []render.Navigation {
 		})
 	}
 
-	// Add logs navigation - use task definition family as log group prefix
 	if taskDef := task.TaskDefinitionArn(); taskDef != "" {
-		// Task definition ARN: arn:aws:ecs:region:account:task-definition/family:revision
 		taskDefName := appaws.ExtractResourceName(taskDef)
-		// Remove revision number (e.g., "my-task:5" -> "my-task")
-		if idx := strings.LastIndex(taskDefName, ":"); idx > 0 {
-			taskDefName = taskDefName[:idx]
+
+		navs = append(navs, render.Navigation{
+			Key:         "d",
+			Label:       "Task Definition",
+			Service:     "ecs",
+			Resource:    "task-definitions",
+			FilterField: "TaskDefinition",
+			FilterValue: taskDefName,
+		})
+
+		family := taskDefName
+		if idx := strings.LastIndex(family, ":"); idx > 0 {
+			family = family[:idx]
 		}
 		navs = append(navs, render.Navigation{
 			Key:         "l",
@@ -343,7 +351,7 @@ func (r *TaskRenderer) Navigations(resource dao.Resource) []render.Navigation {
 			Service:     "cloudwatch",
 			Resource:    "log-groups",
 			FilterField: "LogGroupPrefix",
-			FilterValue: "/ecs/" + taskDefName,
+			FilterValue: "/ecs/" + family,
 		})
 	}
 

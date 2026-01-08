@@ -22,6 +22,7 @@ Complete reference for all keyboard shortcuts in claws.
 | `:pulse` | Go to dashboard |
 | `:services` | Go to service browser |
 | `/` | Filter mode (fuzzy search) |
+| `A` | AI Chat (Bedrock) |
 | `?` | Show help |
 
 ## Resource Browser

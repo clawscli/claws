@@ -26,11 +26,14 @@ type Session struct {
 }
 
 type Context struct {
-	Service      string `json:"service,omitempty"`
-	ResourceType string `json:"resource_type,omitempty"`
-	ResourceID   string `json:"resource_id,omitempty"`
-	ResourceName string `json:"resource_name,omitempty"`
-	LogGroup     string `json:"log_group,omitempty"`
+	Service        string   `json:"service,omitempty"`
+	ResourceType   string   `json:"resource_type,omitempty"`
+	ResourceID     string   `json:"resource_id,omitempty"`
+	ResourceName   string   `json:"resource_name,omitempty"`
+	ResourceRegion string   `json:"resource_region,omitempty"`
+	Cluster        string   `json:"cluster,omitempty"` // ECS cluster name (for tasks/services)
+	LogGroup       string   `json:"log_group,omitempty"`
+	Regions        []string `json:"regions,omitempty"`
 }
 
 type SessionManager struct {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -11,36 +12,32 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	"github.com/clawscli/claws/internal/log"
 	"github.com/clawscli/claws/internal/registry"
+
+	apigatewayStages "github.com/clawscli/claws/custom/apigateway/stages"
+	apigatewayStagesV2 "github.com/clawscli/claws/custom/apigateway/stages-v2"
+	cloudtrailtrails "github.com/clawscli/claws/custom/cloudtrail/trails"
+	codebuildbuilds "github.com/clawscli/claws/custom/codebuild/builds"
+	codebuildprojects "github.com/clawscli/claws/custom/codebuild/projects"
+	ecsservices "github.com/clawscli/claws/custom/ecs/services"
+	taskdefinitions "github.com/clawscli/claws/custom/ecs/task-definitions"
+	ecstasks "github.com/clawscli/claws/custom/ecs/tasks"
+	sfnStateMachines "github.com/clawscli/claws/custom/stepfunctions/state-machines"
 )
 
 type ToolExecutor struct {
 	registry *registry.Registry
-	cwClient *cloudwatchlogs.Client
 }
 
-func NewToolExecutor(ctx context.Context, reg *registry.Registry) (*ToolExecutor, error) {
-	cfg, err := appaws.NewConfig(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("load aws config: %w", err)
-	}
-
+func NewToolExecutor(_ context.Context, reg *registry.Registry) (*ToolExecutor, error) {
 	return &ToolExecutor{
 		registry: reg,
-		cwClient: cloudwatchlogs.NewFromConfig(cfg),
 	}, nil
 }
 
 func (e *ToolExecutor) Tools() []Tool {
 	return []Tool{
-		{
-			Name:        "list_services",
-			Description: "List all available AWS services",
-			InputSchema: map[string]any{
-				"type":       "object",
-				"properties": map[string]any{},
-			},
-		},
 		{
 			Name:        "list_resources",
 			Description: "List resource types available for a specific AWS service",
@@ -57,25 +54,29 @@ func (e *ToolExecutor) Tools() []Tool {
 		},
 		{
 			Name:        "query_resources",
-			Description: "List AWS resources of a specific type",
+			Description: "List AWS resources. You MUST provide service, resource_type, and region parameters.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
 					"service": map[string]any{
 						"type":        "string",
-						"description": "AWS service name (e.g., ec2, lambda)",
+						"description": "AWS service name. Examples: ec2, lambda, s3, rds, ecs, dynamodb",
 					},
 					"resource_type": map[string]any{
 						"type":        "string",
-						"description": "Resource type (e.g., instances, functions)",
+						"description": "Resource type. Examples: instances (for ec2), functions (for lambda), buckets (for s3), tables (for dynamodb)",
+					},
+					"region": map[string]any{
+						"type":        "string",
+						"description": "AWS region. Examples: us-east-1, us-west-2, ap-northeast-1",
 					},
 				},
-				"required": []string{"service", "resource_type"},
+				"required": []string{"service", "resource_type", "region"},
 			},
 		},
 		{
 			Name:        "get_resource_detail",
-			Description: "Get detailed information about a specific AWS resource",
+			Description: "Get detailed information about a specific AWS resource. NOTE: For ecs/services and ecs/tasks, cluster parameter is required.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -87,23 +88,47 @@ func (e *ToolExecutor) Tools() []Tool {
 						"type":        "string",
 						"description": "Resource type",
 					},
+					"region": map[string]any{
+						"type":        "string",
+						"description": "AWS region (e.g., us-east-1, us-west-2)",
+					},
 					"id": map[string]any{
 						"type":        "string",
 						"description": "Resource ID",
 					},
+					"cluster": map[string]any{
+						"type":        "string",
+						"description": "ECS cluster name (required for ecs/services and ecs/tasks)",
+					},
 				},
-				"required": []string{"service", "resource_type", "id"},
+				"required": []string{"service", "resource_type", "region", "id"},
 			},
 		},
 		{
 			Name:        "tail_logs",
-			Description: "Fetch recent CloudWatch logs from a log group",
+			Description: "Fetch recent CloudWatch logs for an AWS resource. Automatically extracts log group from resource configuration. Supported: lambda/functions, ecs/services, ecs/tasks, ecs/task-definitions, codebuild/projects, codebuild/builds, cloudtrail/trails, apigateway/stages, apigateway/stages-v2, stepfunctions/state-machines. NOTE: For ecs/services and ecs/tasks, cluster parameter is required.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
-					"log_group": map[string]any{
+					"service": map[string]any{
 						"type":        "string",
-						"description": "CloudWatch log group name (e.g., /aws/lambda/my-function)",
+						"description": "AWS service name (e.g., lambda, ecs, codebuild)",
+					},
+					"resource_type": map[string]any{
+						"type":        "string",
+						"description": "Resource type (e.g., functions, services, tasks, task-definitions)",
+					},
+					"region": map[string]any{
+						"type":        "string",
+						"description": "AWS region (e.g., us-east-1, ap-northeast-1)",
+					},
+					"id": map[string]any{
+						"type":        "string",
+						"description": "Resource ID",
+					},
+					"cluster": map[string]any{
+						"type":        "string",
+						"description": "ECS cluster name (required for ecs/services and ecs/tasks)",
 					},
 					"filter": map[string]any{
 						"type":        "string",
@@ -118,7 +143,7 @@ func (e *ToolExecutor) Tools() []Tool {
 						"description": "Maximum number of log events. Default: 100",
 					},
 				},
-				"required": []string{"log_group"},
+				"required": []string{"service", "resource_type", "region", "id"},
 			},
 		},
 		{
@@ -143,26 +168,31 @@ func (e *ToolExecutor) Execute(ctx context.Context, call ToolCall) ToolResult {
 	var isError bool
 
 	switch call.Name {
-	case "list_services":
-		content = e.listServices()
 	case "list_resources":
 		service, _ := call.Input["service"].(string)
 		content = e.listResources(service)
 	case "query_resources":
 		service, _ := call.Input["service"].(string)
 		resourceType, _ := call.Input["resource_type"].(string)
-		content, isError = e.queryResources(ctx, service, resourceType)
+		region, _ := call.Input["region"].(string)
+		content, isError = e.queryResources(ctx, service, resourceType, region)
 	case "get_resource_detail":
 		service, _ := call.Input["service"].(string)
 		resourceType, _ := call.Input["resource_type"].(string)
+		region, _ := call.Input["region"].(string)
 		id, _ := call.Input["id"].(string)
-		content, isError = e.getResourceDetail(ctx, service, resourceType, id)
+		cluster, _ := call.Input["cluster"].(string)
+		content, isError = e.getResourceDetail(ctx, service, resourceType, region, id, cluster)
 	case "tail_logs":
-		logGroup, _ := call.Input["log_group"].(string)
+		service, _ := call.Input["service"].(string)
+		resourceType, _ := call.Input["resource_type"].(string)
+		region, _ := call.Input["region"].(string)
+		id, _ := call.Input["id"].(string)
+		cluster, _ := call.Input["cluster"].(string)
 		filter, _ := call.Input["filter"].(string)
 		since, _ := call.Input["since"].(string)
 		limit, _ := call.Input["limit"].(float64)
-		content, isError = e.tailLogs(ctx, logGroup, filter, since, int(limit))
+		content, isError = e.tailLogs(ctx, service, resourceType, region, id, cluster, filter, since, int(limit))
 	case "search_aws_docs":
 		query, _ := call.Input["query"].(string)
 		content = e.searchDocs(query)
@@ -176,22 +206,6 @@ func (e *ToolExecutor) Execute(ctx context.Context, call ToolCall) ToolResult {
 		Content: content,
 		IsError: isError,
 	}
-}
-
-func (e *ToolExecutor) listServices() string {
-	categories := e.registry.ListServicesByCategory()
-	var result string
-
-	for _, cat := range categories {
-		result += fmt.Sprintf("\n## %s\n", cat.Name)
-		for _, svc := range cat.Services {
-			displayName := e.registry.GetDisplayName(svc)
-			resources := e.registry.ListResources(svc)
-			result += fmt.Sprintf("- %s (%s): %d resource types\n", displayName, svc, len(resources))
-		}
-	}
-
-	return result
 }
 
 func (e *ToolExecutor) listResources(service string) string {
@@ -208,22 +222,33 @@ func (e *ToolExecutor) listResources(service string) string {
 	return result
 }
 
-func (e *ToolExecutor) queryResources(ctx context.Context, service, resourceType string) (string, bool) {
-	d, err := e.registry.GetDAO(ctx, service, resourceType)
-	if err != nil {
-		return fmt.Sprintf("Error getting DAO: %v", err), true
+func (e *ToolExecutor) queryResources(ctx context.Context, service, resourceType, region string) (string, bool) {
+	if service == "" {
+		return "Error: service parameter is required", true
+	}
+	if resourceType == "" {
+		return "Error: resource_type parameter is required", true
+	}
+	if region == "" {
+		return "Error: region parameter is required", true
 	}
 
-	resources, err := d.List(ctx)
+	regionCtx := appaws.WithRegionOverride(ctx, region)
+	d, err := e.registry.GetDAO(regionCtx, service, resourceType)
 	if err != nil {
-		return fmt.Sprintf("Error listing resources: %v", err), true
+		return fmt.Sprintf("Error: %s/%s not found. Use list_resources(service=\"%s\") to see available types.", service, resourceType, service), true
+	}
+
+	resources, err := d.List(regionCtx)
+	if err != nil {
+		return fmt.Sprintf("Error listing %s/%s: %v", service, resourceType, err), true
 	}
 
 	if len(resources) == 0 {
-		return fmt.Sprintf("No %s/%s resources found", service, resourceType), false
+		return fmt.Sprintf("No %s/%s resources found in %s", service, resourceType, region), false
 	}
 
-	result := fmt.Sprintf("Found %d %s/%s resources:\n\n", len(resources), service, resourceType)
+	result := fmt.Sprintf("Found %d %s/%s resources in %s:\n\n", len(resources), service, resourceType, region)
 	for i, r := range resources {
 		if i >= 50 {
 			result += fmt.Sprintf("\n... and %d more\n", len(resources)-50)
@@ -235,27 +260,61 @@ func (e *ToolExecutor) queryResources(ctx context.Context, service, resourceType
 	return result, false
 }
 
-func (e *ToolExecutor) getResourceDetail(ctx context.Context, service, resourceType, id string) (string, bool) {
-	d, err := e.registry.GetDAO(ctx, service, resourceType)
+func (e *ToolExecutor) getResourceDetail(ctx context.Context, service, resourceType, region, id, cluster string) (string, bool) {
+	if region == "" {
+		return "Error: region parameter is required", true
+	}
+
+	regionCtx := appaws.WithRegionOverride(ctx, region)
+
+	if service == "ecs" && (resourceType == "services" || resourceType == "tasks") {
+		if cluster == "" {
+			err := "Error: cluster parameter is required for ecs/services and ecs/tasks"
+			log.Warn("getResourceDetail failed", "error", err)
+			return err, true
+		}
+		regionCtx = dao.WithFilter(regionCtx, "ClusterName", cluster)
+	}
+
+	d, err := e.registry.GetDAO(regionCtx, service, resourceType)
 	if err != nil {
+		log.Warn("getResourceDetail GetDAO failed", "error", err)
 		return fmt.Sprintf("Error getting DAO: %v", err), true
 	}
 
-	resource, err := d.Get(ctx, id)
+	resource, err := d.Get(regionCtx, id)
 	if err != nil {
+		log.Warn("getResourceDetail Get failed", "service", service, "resourceType", resourceType, "id", id, "error", err)
 		return fmt.Sprintf("Error getting resource: %v", err), true
 	}
 
 	return formatResourceDetail(resource), false
 }
 
-func (e *ToolExecutor) tailLogs(ctx context.Context, logGroup, filter, since string, limit int) (string, bool) {
+func (e *ToolExecutor) tailLogs(ctx context.Context, service, resourceType, region, id, cluster, filter, since string, limit int) (string, bool) {
+	if region == "" {
+		return "Error: region parameter is required", true
+	}
 	if limit <= 0 {
 		limit = 100
 	}
 	if limit > 500 {
 		limit = 500
 	}
+
+	regionCtx := appaws.WithRegionOverride(ctx, region)
+
+	logGroup, err := e.extractLogGroup(regionCtx, service, resourceType, id, cluster)
+	if err != nil {
+		log.Warn("tailLogs extractLogGroup failed", "service", service, "resourceType", resourceType, "id", id, "error", err)
+		return fmt.Sprintf("Error extracting log group for %s/%s/%s: %v", service, resourceType, id, err), true
+	}
+
+	cfg, err := appaws.NewConfigWithRegion(ctx, region)
+	if err != nil {
+		return fmt.Sprintf("Error creating config for region %s: %v", region, err), true
+	}
+	cwClient := cloudwatchlogs.NewFromConfig(cfg)
 
 	startTime := time.Now().Add(-15 * time.Minute)
 	if since != "" {
@@ -274,13 +333,17 @@ func (e *ToolExecutor) tailLogs(ctx context.Context, logGroup, filter, since str
 		input.FilterPattern = aws.String(filter)
 	}
 
-	output, err := e.cwClient.FilterLogEvents(ctx, input)
+	output, err := cwClient.FilterLogEvents(ctx, input)
 	if err != nil {
-		return fmt.Sprintf("Error fetching logs: %v", err), true
+		return fmt.Sprintf("Error fetching logs from %s: %v", logGroup, err), true
 	}
 
 	if len(output.Events) == 0 {
-		return fmt.Sprintf("No logs found in %s (since %s)", logGroup, since), false
+		sinceStr := "15m"
+		if since != "" {
+			sinceStr = since
+		}
+		return fmt.Sprintf("No logs found in %s (since %s)", logGroup, sinceStr), false
 	}
 
 	result := fmt.Sprintf("Logs from %s (%d events):\n\n", logGroup, len(output.Events))
@@ -290,6 +353,235 @@ func (e *ToolExecutor) tailLogs(ctx context.Context, logGroup, filter, since str
 	}
 
 	return result, false
+}
+
+func (e *ToolExecutor) extractLogGroup(ctx context.Context, service, resourceType, id, cluster string) (string, error) {
+	key := service + "/" + resourceType
+
+	switch key {
+	case "lambda/functions":
+		return "/aws/lambda/" + id, nil
+
+	case "ecs/task-definitions":
+		d, err := e.registry.GetDAO(ctx, service, resourceType)
+		if err != nil {
+			return "", err
+		}
+		resource, err := d.Get(ctx, id)
+		if err != nil {
+			return "", err
+		}
+		td, ok := dao.UnwrapResource(resource).(*taskdefinitions.TaskDefinitionResource)
+		if !ok {
+			return "", fmt.Errorf("unexpected resource type for task-definitions")
+		}
+		if logGroup := td.GetCloudWatchLogGroup(""); logGroup != "" {
+			return logGroup, nil
+		}
+		return "", fmt.Errorf("no CloudWatch logs configured for task definition %s", id)
+
+	case "ecs/services":
+		if cluster == "" {
+			return "", fmt.Errorf("cluster parameter is required for ecs/services")
+		}
+		ctxWithCluster := dao.WithFilter(ctx, "ClusterName", cluster)
+		d, err := e.registry.GetDAO(ctxWithCluster, service, resourceType)
+		if err != nil {
+			return "", err
+		}
+		resource, err := d.Get(ctxWithCluster, id)
+		if err != nil {
+			return "", err
+		}
+		svc, ok := dao.UnwrapResource(resource).(*ecsservices.ServiceResource)
+		if !ok {
+			return "", fmt.Errorf("unexpected resource type for ecs services")
+		}
+		taskDefArn := svc.TaskDefinition()
+		if taskDefArn == "" {
+			return "", fmt.Errorf("no task definition found for service %s", id)
+		}
+		return e.extractLogGroupFromTaskDef(ctx, taskDefArn)
+
+	case "ecs/tasks":
+		if cluster == "" {
+			return "", fmt.Errorf("cluster parameter is required for ecs/tasks")
+		}
+		ctxWithCluster := dao.WithFilter(ctx, "ClusterName", cluster)
+		d, err := e.registry.GetDAO(ctxWithCluster, service, resourceType)
+		if err != nil {
+			return "", err
+		}
+		resource, err := d.Get(ctxWithCluster, id)
+		if err != nil {
+			return "", err
+		}
+		task, ok := dao.UnwrapResource(resource).(*ecstasks.TaskResource)
+		if !ok {
+			return "", fmt.Errorf("unexpected resource type for ecs tasks")
+		}
+		taskDefArn := task.TaskDefinitionArn()
+		if taskDefArn == "" {
+			return "", fmt.Errorf("no task definition found for task %s", id)
+		}
+		return e.extractLogGroupFromTaskDef(ctx, taskDefArn)
+
+	case "codebuild/projects":
+		d, err := e.registry.GetDAO(ctx, service, resourceType)
+		if err != nil {
+			return "", err
+		}
+		resource, err := d.Get(ctx, id)
+		if err != nil {
+			return "", err
+		}
+		proj, ok := dao.UnwrapResource(resource).(*codebuildprojects.ProjectResource)
+		if !ok {
+			return "", fmt.Errorf("unexpected resource type for codebuild projects")
+		}
+		if proj.Project.LogsConfig != nil &&
+			proj.Project.LogsConfig.CloudWatchLogs != nil &&
+			proj.Project.LogsConfig.CloudWatchLogs.GroupName != nil {
+			return *proj.Project.LogsConfig.CloudWatchLogs.GroupName, nil
+		}
+		return "/aws/codebuild/" + id, nil
+
+	case "codebuild/builds":
+		d, err := e.registry.GetDAO(ctx, service, resourceType)
+		if err != nil {
+			return "", err
+		}
+		resource, err := d.Get(ctx, id)
+		if err != nil {
+			return "", err
+		}
+		build, ok := dao.UnwrapResource(resource).(*codebuildbuilds.BuildResource)
+		if !ok {
+			return "", fmt.Errorf("unexpected resource type for codebuild builds")
+		}
+		if build.LogsGroupName() != "" {
+			return build.LogsGroupName(), nil
+		}
+		return "", fmt.Errorf("no CloudWatch logs configured for build %s", id)
+
+	case "cloudtrail/trails":
+		d, err := e.registry.GetDAO(ctx, service, resourceType)
+		if err != nil {
+			return "", err
+		}
+		resource, err := d.Get(ctx, id)
+		if err != nil {
+			return "", err
+		}
+		trail, ok := dao.UnwrapResource(resource).(*cloudtrailtrails.TrailResource)
+		if !ok {
+			return "", fmt.Errorf("unexpected resource type for cloudtrail trails")
+		}
+		logGroupArn := trail.CloudWatchLogsLogGroupArn()
+		if logGroupArn == "" {
+			return "", fmt.Errorf("no CloudWatch logs configured for trail %s", id)
+		}
+		return extractLogGroupNameFromArn(logGroupArn), nil
+
+	case "apigateway/stages":
+		d, err := e.registry.GetDAO(ctx, service, resourceType)
+		if err != nil {
+			return "", err
+		}
+		resource, err := d.Get(ctx, id)
+		if err != nil {
+			return "", err
+		}
+		stage, ok := dao.UnwrapResource(resource).(*apigatewayStages.StageResource)
+		if !ok {
+			return "", fmt.Errorf("unexpected resource type for apigateway stages")
+		}
+		destArn := stage.AccessLogDestination()
+		if destArn == "" {
+			return "", fmt.Errorf("no access logs configured for stage %s", id)
+		}
+		return extractLogGroupNameFromArn(destArn), nil
+
+	case "apigateway/stages-v2":
+		d, err := e.registry.GetDAO(ctx, service, resourceType)
+		if err != nil {
+			return "", err
+		}
+		resource, err := d.Get(ctx, id)
+		if err != nil {
+			return "", err
+		}
+		stage, ok := dao.UnwrapResource(resource).(*apigatewayStagesV2.StageV2Resource)
+		if !ok {
+			return "", fmt.Errorf("unexpected resource type for apigateway stages-v2")
+		}
+		destArn := stage.AccessLogDestination()
+		if destArn == "" {
+			return "", fmt.Errorf("no access logs configured for stage %s", id)
+		}
+		return extractLogGroupNameFromArn(destArn), nil
+
+	case "stepfunctions/state-machines":
+		d, err := e.registry.GetDAO(ctx, service, resourceType)
+		if err != nil {
+			return "", err
+		}
+		resource, err := d.Get(ctx, id)
+		if err != nil {
+			return "", err
+		}
+		sm, ok := dao.UnwrapResource(resource).(*sfnStateMachines.StateMachineResource)
+		if !ok {
+			return "", fmt.Errorf("unexpected resource type for stepfunctions state-machines")
+		}
+		if sm.Detail != nil && sm.Detail.LoggingConfiguration != nil {
+			for _, dest := range sm.Detail.LoggingConfiguration.Destinations {
+				if dest.CloudWatchLogsLogGroup != nil && dest.CloudWatchLogsLogGroup.LogGroupArn != nil {
+					return extractLogGroupNameFromArn(*dest.CloudWatchLogsLogGroup.LogGroupArn), nil
+				}
+			}
+		}
+		return "", fmt.Errorf("no CloudWatch logs configured for state machine %s", id)
+
+	default:
+		return "", fmt.Errorf("log extraction not supported for %s/%s. Supported: lambda/functions, ecs/services, ecs/tasks, ecs/task-definitions, codebuild/projects, codebuild/builds, cloudtrail/trails, apigateway/stages, apigateway/stages-v2, stepfunctions/state-machines", service, resourceType)
+	}
+}
+
+func (e *ToolExecutor) extractLogGroupFromTaskDef(ctx context.Context, taskDefArn string) (string, error) {
+	d, err := e.registry.GetDAO(ctx, "ecs", "task-definitions")
+	if err != nil {
+		return "", err
+	}
+
+	taskDefID := appaws.ExtractResourceName(taskDefArn)
+	resource, err := d.Get(ctx, taskDefID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get task definition %s: %w", taskDefArn, err)
+	}
+
+	td, ok := dao.UnwrapResource(resource).(*taskdefinitions.TaskDefinitionResource)
+	if !ok {
+		return "", fmt.Errorf("unexpected resource type")
+	}
+
+	if logGroup := td.GetCloudWatchLogGroup(""); logGroup != "" {
+		return logGroup, nil
+	}
+
+	return "", fmt.Errorf("no CloudWatch logs configured in task definition %s", taskDefArn)
+}
+
+func extractLogGroupNameFromArn(arn string) string {
+	parts := strings.Split(arn, ":")
+	if len(parts) >= 7 {
+		logGroupPart := parts[6]
+		if strings.HasPrefix(logGroupPart, "log-group:") {
+			return strings.TrimPrefix(logGroupPart, "log-group:")
+		}
+		return logGroupPart
+	}
+	return arn
 }
 
 func (e *ToolExecutor) searchDocs(query string) string {

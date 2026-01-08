@@ -3,6 +3,7 @@ package view
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"charm.land/bubbles/v2/textinput"
@@ -20,6 +21,8 @@ type chatStyles struct {
 	context      lipgloss.Style
 	userMsg      lipgloss.Style
 	assistantMsg lipgloss.Style
+	toolCall     lipgloss.Style
+	toolError    lipgloss.Style
 	thinking     lipgloss.Style
 	input        lipgloss.Style
 }
@@ -31,6 +34,8 @@ func newChatStyles() chatStyles {
 		context:      lipgloss.NewStyle().Foreground(t.TextDim).Italic(true),
 		userMsg:      lipgloss.NewStyle().Foreground(t.Text),
 		assistantMsg: lipgloss.NewStyle().Foreground(t.Secondary),
+		toolCall:     lipgloss.NewStyle().Foreground(t.TextDim),
+		toolError:    lipgloss.NewStyle().Foreground(t.Danger),
 		thinking:     lipgloss.NewStyle().Foreground(t.TextDim).Italic(true),
 		input:        lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder()).BorderForeground(t.Border).Padding(0, 1),
 	}
@@ -60,8 +65,10 @@ type ChatOverlay struct {
 }
 
 type chatMessage struct {
-	role    ai.Role
-	content string
+	role      ai.Role
+	content   string
+	toolCall  *ai.ToolCall
+	toolError bool
 }
 
 type chatStreamMsg struct {
@@ -69,7 +76,9 @@ type chatStreamMsg struct {
 }
 
 type chatDoneMsg struct {
-	err error
+	response  string
+	toolCalls []chatMessage
+	err       error
 }
 
 type chatInitMsg struct {
@@ -147,10 +156,15 @@ func (c *ChatOverlay) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return c.handleStreamEvent(msg.event)
 
 	case chatDoneMsg:
+		c.isThinking = false
 		if msg.err != nil {
 			c.err = msg.err
-			c.isThinking = false
 		}
+		c.messages = append(c.messages, msg.toolCalls...)
+		if msg.response != "" {
+			c.messages = append(c.messages, chatMessage{role: ai.RoleAssistant, content: msg.response})
+		}
+		c.updateViewport()
 		return c, nil
 	}
 
@@ -175,6 +189,8 @@ func (c *ChatOverlay) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg.String() {
+	case "ctrl+c":
+		return c, func() tea.Msg { return HideModalMsg{} }
 	case "enter":
 		if c.isThinking {
 			return c, nil
@@ -206,33 +222,44 @@ func (c *ChatOverlay) sendMessage() tea.Cmd {
 			return chatDoneMsg{err: fmt.Errorf("client not initialized")}
 		}
 
-		messages := make([]ai.Message, len(c.messages))
-		for i, m := range c.messages {
-			messages[i] = ai.Message{Role: m.role, Content: m.content}
+		var messages []ai.Message
+		for _, m := range c.messages {
+			if m.role == ai.RoleUser || m.role == ai.RoleAssistant {
+				messages = append(messages, ai.Message{Role: m.role, Content: m.content})
+			}
 		}
 
+		var toolCallMsgs []chatMessage
 		systemPrompt := c.buildSystemPrompt()
 		result, err := c.client.Converse(c.ctx, messages, systemPrompt)
 		if err != nil {
 			return chatDoneMsg{err: err}
 		}
 
-		for len(result.ToolCalls) > 0 {
+		const maxToolRounds = 5
+		for round := 0; len(result.ToolCalls) > 0 && round < maxToolRounds; round++ {
 			var toolResults []ai.ToolResult
 			for _, tc := range result.ToolCalls {
+				tcCopy := tc
 				tr := c.executor.Execute(c.ctx, tc)
 				toolResults = append(toolResults, tr)
+				toolCallMsgs = append(toolCallMsgs, chatMessage{
+					role:      "tool",
+					content:   tr.Content,
+					toolCall:  &tcCopy,
+					toolError: tr.IsError,
+				})
 			}
 
 			messages = c.client.AddToolResultMessages(messages, result.ToolCalls, toolResults)
 
 			result, err = c.client.Converse(c.ctx, messages, systemPrompt)
 			if err != nil {
-				return chatDoneMsg{err: err}
+				return chatDoneMsg{err: err, toolCalls: toolCallMsgs}
 			}
 		}
 
-		return chatStreamMsg{event: ai.StreamEvent{Type: "done", Text: result.Message}}
+		return chatDoneMsg{response: result.Message, toolCalls: toolCallMsgs}
 	}
 }
 
@@ -261,20 +288,61 @@ func (c *ChatOverlay) handleStreamEvent(event ai.StreamEvent) (tea.Model, tea.Cm
 }
 
 func (c *ChatOverlay) buildSystemPrompt() string {
-	prompt := `You are an AI assistant helping users explore and understand their AWS resources.
-You have access to tools that can list services, query resources, get resource details, and tail CloudWatch logs.
-Be concise but helpful. When showing resources, summarize key information.
-If the user asks about logs for a resource like Lambda, infer the log group name (e.g., /aws/lambda/{function-name}).`
+	services := c.registry.ListServices()
+	serviceList := strings.Join(services, ", ")
+
+	prompt := fmt.Sprintf(`You are an AWS resource assistant in claws TUI.
+
+<available_services>
+%s
+</available_services>
+
+<tool_usage>
+When a user asks about AWS resources, you MUST call the appropriate tool. Do not just describe what you would do - actually call the tool.
+Use ONLY the service names listed in available_services above. Do not guess or use similar names.
+All resource tools require a region parameter.
+
+Available tools:
+- list_resources(service): Lists resource types for a service
+- query_resources(service, resource_type, region): Lists actual resources
+- get_resource_detail(service, resource_type, region, id): Gets resource details
+- tail_logs(service, resource_type, region, id, cluster?): Fetches CloudWatch logs for a resource
+  - Supported: lambda/functions, ecs/services, ecs/tasks, ecs/task-definitions, codebuild/projects, codebuild/builds, cloudtrail/trails, apigateway/stages, apigateway/stages-v2, stepfunctions/state-machines
+  - cluster parameter required for ecs/services and ecs/tasks
+</tool_usage>
+
+<examples>
+query_resources(service="ec2", resource_type="instances", region="us-east-1")
+query_resources(service="lambda", resource_type="functions", region="us-west-2")
+get_resource_detail(service="lambda", resource_type="functions", region="us-west-2", id="my-function")
+tail_logs(service="lambda", resource_type="functions", region="us-east-1", id="my-func")
+tail_logs(service="ecs", resource_type="tasks", region="us-east-1", id="my-task", cluster="my-cluster")
+</examples>
+
+<response_format>
+Be concise. Use markdown for formatting.
+</response_format>`, serviceList)
 
 	if c.aiCtx != nil {
+		if len(c.aiCtx.Regions) > 0 {
+			prompt += fmt.Sprintf("\n\n<current_regions>%s</current_regions>", strings.Join(c.aiCtx.Regions, ", "))
+		}
 		if c.aiCtx.Service != "" {
-			prompt += fmt.Sprintf("\n\nCurrent context: Service=%s", c.aiCtx.Service)
+			prompt += fmt.Sprintf("\n<current_context>service=%s", c.aiCtx.Service)
 			if c.aiCtx.ResourceType != "" {
-				prompt += fmt.Sprintf(", ResourceType=%s", c.aiCtx.ResourceType)
+				prompt += ", resource_type=" + c.aiCtx.ResourceType
+			}
+			if c.aiCtx.ResourceRegion != "" {
+				prompt += ", region=" + c.aiCtx.ResourceRegion
 			}
 			if c.aiCtx.ResourceID != "" {
-				prompt += fmt.Sprintf(", ResourceID=%s", c.aiCtx.ResourceID)
+				prompt += ", id=" + c.aiCtx.ResourceID
 			}
+			if c.aiCtx.Cluster != "" {
+				prompt += ", cluster=" + c.aiCtx.Cluster
+			}
+			prompt += "</current_context>"
+			prompt += "\nUse these values when querying this resource."
 		}
 	}
 
@@ -292,19 +360,33 @@ func (c *ChatOverlay) updateViewport() {
 
 func (c *ChatOverlay) renderMessages() string {
 	var sb strings.Builder
+	w := c.wrapWidth()
 
 	for _, msg := range c.messages {
 		switch msg.role {
 		case ai.RoleUser:
-			sb.WriteString(c.styles.userMsg.Render("You: " + msg.content))
+			sb.WriteString(c.styles.userMsg.Render(wrapText("You: "+msg.content, w)))
 		case ai.RoleAssistant:
-			sb.WriteString(c.styles.assistantMsg.Render("AI: " + msg.content))
+			rendered := renderMarkdown(msg.content, w, c.styles)
+			sb.WriteString(c.styles.assistantMsg.Render("AI: ") + "\n" + rendered)
+		case "tool":
+			if msg.toolCall != nil {
+				toolInfo := fmt.Sprintf("🔧 %s(%v)", msg.toolCall.Name, formatToolInput(msg.toolCall.Input))
+				style := c.styles.toolCall
+				if msg.toolError {
+					style = c.styles.toolError
+				}
+				for _, line := range strings.Split(wrapText(toolInfo, w), "\n") {
+					sb.WriteString(style.Render(line))
+					sb.WriteString("\n")
+				}
+			}
 		}
 		sb.WriteString("\n\n")
 	}
 
 	if c.streamingMsg != "" {
-		sb.WriteString(c.styles.assistantMsg.Render("AI: " + c.streamingMsg))
+		sb.WriteString(c.styles.assistantMsg.Render(wrapText("AI: "+c.streamingMsg, w)))
 		sb.WriteString("\n")
 	}
 
@@ -314,11 +396,120 @@ func (c *ChatOverlay) renderMessages() string {
 	}
 
 	if c.err != nil {
-		sb.WriteString(lipgloss.NewStyle().Foreground(ui.Current().Danger).Render("Error: " + c.err.Error()))
+		sb.WriteString(lipgloss.NewStyle().Foreground(ui.Current().Danger).Render(wrapText("Error: "+c.err.Error(), w)))
 		sb.WriteString("\n")
 	}
 
 	return sb.String()
+}
+
+func (c *ChatOverlay) wrapWidth() int {
+	if c.width > 4 {
+		return c.width - 4
+	}
+	return 76
+}
+
+func wrapText(text string, width int) string {
+	if width <= 0 {
+		width = 76
+	}
+	var lines []string
+	for _, line := range strings.Split(text, "\n") {
+		lines = append(lines, wrapLine(line, width)...)
+	}
+	return strings.Join(lines, "\n")
+}
+
+func wrapLine(line string, width int) []string {
+	if len(line) == 0 {
+		return []string{""}
+	}
+	runes := []rune(line)
+	lineWidth := 0
+	for _, r := range runes {
+		lineWidth += runeWidth(r)
+	}
+	if lineWidth <= width {
+		return []string{line}
+	}
+
+	var lines []string
+	var current []rune
+	currentWidth := 0
+
+	for _, r := range runes {
+		rw := runeWidth(r)
+		if currentWidth+rw > width && len(current) > 0 {
+			lines = append(lines, string(current))
+			current = nil
+			currentWidth = 0
+		}
+		current = append(current, r)
+		currentWidth += rw
+	}
+	if len(current) > 0 {
+		lines = append(lines, string(current))
+	}
+	return lines
+}
+
+func formatToolInput(input map[string]any) string {
+	if len(input) == 0 {
+		return "{}"
+	}
+	var parts []string
+	for k, v := range input {
+		parts = append(parts, fmt.Sprintf("%s=%v", k, v))
+	}
+	return strings.Join(parts, ", ")
+}
+
+func runeWidth(r rune) int {
+	if r >= 0x1100 &&
+		(r <= 0x115F || r == 0x2329 || r == 0x232A ||
+			(r >= 0x2E80 && r <= 0xA4CF && r != 0x303F) ||
+			(r >= 0xAC00 && r <= 0xD7A3) ||
+			(r >= 0xF900 && r <= 0xFAFF) ||
+			(r >= 0xFE10 && r <= 0xFE1F) ||
+			(r >= 0xFE30 && r <= 0xFE6F) ||
+			(r >= 0xFF00 && r <= 0xFF60) ||
+			(r >= 0xFFE0 && r <= 0xFFE6) ||
+			(r >= 0x20000 && r <= 0x2FFFD) ||
+			(r >= 0x30000 && r <= 0x3FFFD)) {
+		return 2
+	}
+	return 1
+}
+
+var (
+	mdBold   = regexp.MustCompile(`\*\*([^*]+)\*\*`)
+	mdItalic = regexp.MustCompile(`\*([^*]+)\*`)
+	mdCode   = regexp.MustCompile("`([^`]+)`")
+)
+
+func renderMarkdown(text string, width int, _ chatStyles) string {
+	wrapped := wrapText(text, width)
+
+	t := ui.Current()
+	boldStyle := lipgloss.NewStyle().Bold(true).Foreground(t.Primary)
+	codeStyle := lipgloss.NewStyle().Foreground(t.Success)
+	italicStyle := lipgloss.NewStyle().Italic(true)
+
+	wrapped = mdBold.ReplaceAllStringFunc(wrapped, func(m string) string {
+		inner := mdBold.FindStringSubmatch(m)[1]
+		return boldStyle.Render(inner)
+	})
+	wrapped = mdCode.ReplaceAllStringFunc(wrapped, func(m string) string {
+		inner := mdCode.FindStringSubmatch(m)[1]
+		return codeStyle.Render(inner)
+	})
+	wrapped = mdItalic.ReplaceAllStringFunc(wrapped, func(m string) string {
+		inner := mdItalic.FindStringSubmatch(m)[1]
+		return italicStyle.Render(inner)
+	})
+
+	return wrapped
 }
 
 func (c *ChatOverlay) View() tea.View {
