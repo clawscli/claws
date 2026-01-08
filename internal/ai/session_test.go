@@ -267,11 +267,15 @@ func TestSessionPruning(t *testing.T) {
 
 	sm := NewSessionManager(3, true) // Max 3 sessions
 
-	// Create 5 sessions
+	// Create 5 sessions with messages (files only saved on AddMessage)
 	for i := 0; i < 5; i++ {
-		_, err := sm.NewSession(nil)
+		sess, err := sm.NewSession(nil)
 		if err != nil {
 			t.Fatalf("failed to create session %d: %v", i, err)
+		}
+		// AddMessage triggers file save and pruning (on first message)
+		if err := sm.AddMessage(sess, NewUserMessage("test")); err != nil {
+			t.Fatalf("failed to add message to session %d: %v", i, err)
 		}
 		time.Sleep(time.Millisecond) // Ensure different timestamps
 	}
