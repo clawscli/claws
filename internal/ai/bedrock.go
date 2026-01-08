@@ -15,8 +15,6 @@ import (
 	"github.com/clawscli/claws/internal/log"
 )
 
-const DefaultModel = "global.anthropic.claude-haiku-4-5-20251001-v1:0"
-
 // Role represents the role of a message participant.
 type Role string
 
@@ -137,8 +135,7 @@ func NewClient(ctx context.Context, opts ...ClientOption) (*Client, error) {
 	}
 
 	c := &Client{
-		client:  bedrockruntime.NewFromConfig(cfg),
-		modelID: DefaultModel,
+		client: bedrockruntime.NewFromConfig(cfg),
 	}
 
 	for _, opt := range opts {

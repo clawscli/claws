@@ -213,7 +213,7 @@ func (e *ToolExecutor) Execute(ctx context.Context, call *ToolUseContent) ToolRe
 		content, isError = e.tailLogs(ctx, service, resourceType, region, id, cluster, profile, filter, since, int(limit))
 	case "search_aws_docs":
 		query, _ := call.Input["query"].(string)
-		content = e.searchDocs(query)
+		content = e.searchDocs(ctx, query)
 	default:
 		content = fmt.Sprintf("Unknown tool: %s", call.Name)
 		isError = true
@@ -570,7 +570,7 @@ func extractLogGroupNameFromArn(arn string) string {
 	return arn
 }
 
-func (e *ToolExecutor) searchDocs(query string) string {
+func (e *ToolExecutor) searchDocs(ctx context.Context, query string) string {
 	if query == "" {
 		return "Error: query parameter is required"
 	}
@@ -591,7 +591,7 @@ func (e *ToolExecutor) searchDocs(query string) string {
 		return fmt.Sprintf("Error creating request: %v", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, "POST", "https://proxy.search.docs.aws.amazon.com/search", bytes.NewBuffer(jsonBody))

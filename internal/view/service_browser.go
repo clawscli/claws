@@ -216,7 +216,7 @@ func (s *ServiceBrowser) rebuildFlatItems() {
 	for catIdx, cat := range s.categories {
 		idxInGroup := 0
 		for _, svc := range cat.services {
-			if filter == "" || fuzzyMatch(svc.filterValue(), filter) {
+			if filter == "" || strings.Contains(svc.filterValue(), filter) {
 				s.flatItems = append(s.flatItems, flatItem{
 					service:      svc,
 					categoryIdx:  catIdx,
