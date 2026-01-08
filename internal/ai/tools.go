@@ -363,15 +363,11 @@ func (e *ToolExecutor) extractLogGroup(ctx context.Context, service, resourceTyp
 		return "/aws/lambda/" + id, nil
 
 	case "ecs/task-definitions":
-		d, err := e.registry.GetDAO(ctx, service, resourceType)
+		resource, err := e.getResource(ctx, service, resourceType, id)
 		if err != nil {
 			return "", err
 		}
-		resource, err := d.Get(ctx, id)
-		if err != nil {
-			return "", err
-		}
-		td, ok := dao.UnwrapResource(resource).(*taskdefinitions.TaskDefinitionResource)
+		td, ok := resource.(*taskdefinitions.TaskDefinitionResource)
 		if !ok {
 			return "", fmt.Errorf("unexpected resource type for task-definitions")
 		}
@@ -385,15 +381,11 @@ func (e *ToolExecutor) extractLogGroup(ctx context.Context, service, resourceTyp
 			return "", fmt.Errorf("cluster parameter is required for ecs/services")
 		}
 		ctxWithCluster := dao.WithFilter(ctx, "ClusterName", cluster)
-		d, err := e.registry.GetDAO(ctxWithCluster, service, resourceType)
+		resource, err := e.getResource(ctxWithCluster, service, resourceType, id)
 		if err != nil {
 			return "", err
 		}
-		resource, err := d.Get(ctxWithCluster, id)
-		if err != nil {
-			return "", err
-		}
-		svc, ok := dao.UnwrapResource(resource).(*ecsservices.ServiceResource)
+		svc, ok := resource.(*ecsservices.ServiceResource)
 		if !ok {
 			return "", fmt.Errorf("unexpected resource type for ecs services")
 		}
@@ -408,15 +400,11 @@ func (e *ToolExecutor) extractLogGroup(ctx context.Context, service, resourceTyp
 			return "", fmt.Errorf("cluster parameter is required for ecs/tasks")
 		}
 		ctxWithCluster := dao.WithFilter(ctx, "ClusterName", cluster)
-		d, err := e.registry.GetDAO(ctxWithCluster, service, resourceType)
+		resource, err := e.getResource(ctxWithCluster, service, resourceType, id)
 		if err != nil {
 			return "", err
 		}
-		resource, err := d.Get(ctxWithCluster, id)
-		if err != nil {
-			return "", err
-		}
-		task, ok := dao.UnwrapResource(resource).(*ecstasks.TaskResource)
+		task, ok := resource.(*ecstasks.TaskResource)
 		if !ok {
 			return "", fmt.Errorf("unexpected resource type for ecs tasks")
 		}
@@ -427,15 +415,11 @@ func (e *ToolExecutor) extractLogGroup(ctx context.Context, service, resourceTyp
 		return e.extractLogGroupFromTaskDef(ctx, taskDefArn)
 
 	case "codebuild/projects":
-		d, err := e.registry.GetDAO(ctx, service, resourceType)
+		resource, err := e.getResource(ctx, service, resourceType, id)
 		if err != nil {
 			return "", err
 		}
-		resource, err := d.Get(ctx, id)
-		if err != nil {
-			return "", err
-		}
-		proj, ok := dao.UnwrapResource(resource).(*codebuildprojects.ProjectResource)
+		proj, ok := resource.(*codebuildprojects.ProjectResource)
 		if !ok {
 			return "", fmt.Errorf("unexpected resource type for codebuild projects")
 		}
@@ -447,15 +431,11 @@ func (e *ToolExecutor) extractLogGroup(ctx context.Context, service, resourceTyp
 		return "/aws/codebuild/" + id, nil
 
 	case "codebuild/builds":
-		d, err := e.registry.GetDAO(ctx, service, resourceType)
+		resource, err := e.getResource(ctx, service, resourceType, id)
 		if err != nil {
 			return "", err
 		}
-		resource, err := d.Get(ctx, id)
-		if err != nil {
-			return "", err
-		}
-		build, ok := dao.UnwrapResource(resource).(*codebuildbuilds.BuildResource)
+		build, ok := resource.(*codebuildbuilds.BuildResource)
 		if !ok {
 			return "", fmt.Errorf("unexpected resource type for codebuild builds")
 		}
@@ -465,15 +445,11 @@ func (e *ToolExecutor) extractLogGroup(ctx context.Context, service, resourceTyp
 		return "", fmt.Errorf("no CloudWatch logs configured for build %s", id)
 
 	case "cloudtrail/trails":
-		d, err := e.registry.GetDAO(ctx, service, resourceType)
+		resource, err := e.getResource(ctx, service, resourceType, id)
 		if err != nil {
 			return "", err
 		}
-		resource, err := d.Get(ctx, id)
-		if err != nil {
-			return "", err
-		}
-		trail, ok := dao.UnwrapResource(resource).(*cloudtrailtrails.TrailResource)
+		trail, ok := resource.(*cloudtrailtrails.TrailResource)
 		if !ok {
 			return "", fmt.Errorf("unexpected resource type for cloudtrail trails")
 		}
@@ -484,15 +460,11 @@ func (e *ToolExecutor) extractLogGroup(ctx context.Context, service, resourceTyp
 		return extractLogGroupNameFromArn(logGroupArn), nil
 
 	case "apigateway/stages":
-		d, err := e.registry.GetDAO(ctx, service, resourceType)
+		resource, err := e.getResource(ctx, service, resourceType, id)
 		if err != nil {
 			return "", err
 		}
-		resource, err := d.Get(ctx, id)
-		if err != nil {
-			return "", err
-		}
-		stage, ok := dao.UnwrapResource(resource).(*apigatewayStages.StageResource)
+		stage, ok := resource.(*apigatewayStages.StageResource)
 		if !ok {
 			return "", fmt.Errorf("unexpected resource type for apigateway stages")
 		}
@@ -503,15 +475,11 @@ func (e *ToolExecutor) extractLogGroup(ctx context.Context, service, resourceTyp
 		return extractLogGroupNameFromArn(destArn), nil
 
 	case "apigateway/stages-v2":
-		d, err := e.registry.GetDAO(ctx, service, resourceType)
+		resource, err := e.getResource(ctx, service, resourceType, id)
 		if err != nil {
 			return "", err
 		}
-		resource, err := d.Get(ctx, id)
-		if err != nil {
-			return "", err
-		}
-		stage, ok := dao.UnwrapResource(resource).(*apigatewayStagesV2.StageV2Resource)
+		stage, ok := resource.(*apigatewayStagesV2.StageV2Resource)
 		if !ok {
 			return "", fmt.Errorf("unexpected resource type for apigateway stages-v2")
 		}
@@ -522,15 +490,11 @@ func (e *ToolExecutor) extractLogGroup(ctx context.Context, service, resourceTyp
 		return extractLogGroupNameFromArn(destArn), nil
 
 	case "stepfunctions/state-machines":
-		d, err := e.registry.GetDAO(ctx, service, resourceType)
+		resource, err := e.getResource(ctx, service, resourceType, id)
 		if err != nil {
 			return "", err
 		}
-		resource, err := d.Get(ctx, id)
-		if err != nil {
-			return "", err
-		}
-		sm, ok := dao.UnwrapResource(resource).(*sfnStateMachines.StateMachineResource)
+		sm, ok := resource.(*sfnStateMachines.StateMachineResource)
 		if !ok {
 			return "", fmt.Errorf("unexpected resource type for stepfunctions state-machines")
 		}
@@ -549,18 +513,13 @@ func (e *ToolExecutor) extractLogGroup(ctx context.Context, service, resourceTyp
 }
 
 func (e *ToolExecutor) extractLogGroupFromTaskDef(ctx context.Context, taskDefArn string) (string, error) {
-	d, err := e.registry.GetDAO(ctx, "ecs", "task-definitions")
-	if err != nil {
-		return "", err
-	}
-
 	taskDefID := appaws.ExtractResourceName(taskDefArn)
-	resource, err := d.Get(ctx, taskDefID)
+	resource, err := e.getResource(ctx, "ecs", "task-definitions", taskDefID)
 	if err != nil {
 		return "", fmt.Errorf("failed to get task definition %s: %w", taskDefArn, err)
 	}
 
-	td, ok := dao.UnwrapResource(resource).(*taskdefinitions.TaskDefinitionResource)
+	td, ok := resource.(*taskdefinitions.TaskDefinitionResource)
 	if !ok {
 		return "", fmt.Errorf("unexpected resource type")
 	}
@@ -586,6 +545,18 @@ func extractLogGroupNameFromArn(arn string) string {
 
 func (e *ToolExecutor) searchDocs(query string) string {
 	return fmt.Sprintf("Documentation search for '%s' is not yet implemented. Please check AWS documentation directly.", query)
+}
+
+func (e *ToolExecutor) getResource(ctx context.Context, service, resourceType, id string) (dao.Resource, error) {
+	d, err := e.registry.GetDAO(ctx, service, resourceType)
+	if err != nil {
+		return nil, err
+	}
+	resource, err := d.Get(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return dao.UnwrapResource(resource), nil
 }
 
 func formatResourceSummary(r dao.Resource) string {
