@@ -3,6 +3,7 @@ package view
 import (
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/clawscli/claws/internal/ai"
@@ -20,8 +21,10 @@ func (c *ChatOverlay) updateViewport() {
 func (c *ChatOverlay) renderMessages() string {
 	var sb strings.Builder
 	w := c.wrapWidth()
+	lineNum := 0
+	c.thinkingLineRanges = make(map[int][2]int)
 
-	for _, msg := range c.messages {
+	for i, msg := range c.messages {
 		if msg.toolCall != nil {
 			toolInfo := fmt.Sprintf("🔧 %s(%s)", msg.toolCall.Name, formatToolInput(msg.toolCall.Input))
 			style := c.styles.toolCall
@@ -31,28 +34,54 @@ func (c *ChatOverlay) renderMessages() string {
 			for _, line := range strings.Split(wrapText(toolInfo, w), "\n") {
 				sb.WriteString(style.Render(line))
 				sb.WriteString("\n")
+				lineNum++
 			}
-			sb.WriteString("\n")
-			continue
+		} else {
+			switch msg.role {
+			case ai.RoleUser:
+				userText := c.styles.userMsg.Render(wrapText("You: "+msg.content, w))
+				sb.WriteString(userText)
+				sb.WriteString("\n")
+				lineNum += strings.Count(userText, "\n") + 1
+			case ai.RoleAssistant:
+				if msg.thinkingContent != "" {
+					startLine := lineNum
+					thinkingStr := c.renderThinking(i, msg.thinkingContent, w)
+					sb.WriteString(thinkingStr)
+					lineNum += strings.Count(thinkingStr, "\n")
+					c.thinkingLineRanges[i] = [2]int{startLine, lineNum}
+					if msg.content != "" {
+						sb.WriteString("\n")
+						lineNum++
+					}
+				}
+				if msg.content != "" {
+					rendered := c.renderMarkdown(msg.content, w)
+					contentStr := c.styles.assistantMsg.Render("AI: ") + "\n" + rendered
+					sb.WriteString(contentStr)
+					sb.WriteString("\n")
+					lineNum += strings.Count(contentStr, "\n") + 1
+				}
+			}
 		}
-
-		switch msg.role {
-		case ai.RoleUser:
-			sb.WriteString(c.styles.userMsg.Render(wrapText("You: "+msg.content, w)))
-		case ai.RoleAssistant:
-			rendered := c.renderMarkdown(msg.content, w)
-			sb.WriteString(c.styles.assistantMsg.Render("AI: ") + "\n" + rendered)
-		}
-		sb.WriteString("\n\n")
-	}
-
-	if c.streamingMsg != "" {
-		sb.WriteString(c.styles.assistantMsg.Render(wrapText("AI: "+c.streamingMsg, w)))
 		sb.WriteString("\n")
+		lineNum++
 	}
 
-	if c.isThinking && c.streamingMsg == "" {
-		sb.WriteString(c.styles.thinking.Render("Thinking..."))
+	if c.streamingThinking != "" {
+		sb.WriteString(c.styles.thinking.Render("💭 ▶ Thinking..."))
+		sb.WriteString("\n")
+		if c.streamingMsg != "" {
+			sb.WriteString("\n")
+		}
+	}
+	if c.streamingMsg != "" {
+		sb.WriteString(c.styles.assistantMsg.Render("AI: "))
+		sb.WriteString("\n")
+		sb.WriteString(wrapText(c.streamingMsg, w))
+		sb.WriteString("\n")
+	} else if c.isStreaming && c.streamingThinking == "" {
+		sb.WriteString(c.styles.thinking.Render("⏳ Waiting..."))
 		sb.WriteString("\n")
 	}
 
@@ -61,6 +90,25 @@ func (c *ChatOverlay) renderMessages() string {
 		sb.WriteString("\n")
 	}
 
+	return sb.String()
+}
+
+func (c *ChatOverlay) renderThinking(idx int, content string, width int) string {
+	collapsed := c.collapsedThinking[idx]
+	var sb strings.Builder
+
+	if collapsed {
+		sb.WriteString(c.styles.thinking.Render("💭 ▶ [click to expand]"))
+		sb.WriteString("\n")
+	} else {
+		sb.WriteString(c.styles.thinking.Render("💭 ▼ Thinking:"))
+		sb.WriteString("\n")
+		wrapped := wrapText(content, width-2)
+		for _, line := range strings.Split(wrapped, "\n") {
+			sb.WriteString(c.styles.thinking.Render("  " + line))
+			sb.WriteString("\n")
+		}
+	}
 	return sb.String()
 }
 
@@ -144,9 +192,14 @@ func formatToolInput(input map[string]any) string {
 	if len(input) == 0 {
 		return ""
 	}
+	keys := make([]string, 0, len(input))
+	for k := range input {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
 	var parts []string
-	for k, v := range input {
-		parts = append(parts, fmt.Sprintf("%s=%v", k, v))
+	for _, k := range keys {
+		parts = append(parts, fmt.Sprintf("%s=%v", k, input[k]))
 	}
 	return strings.Join(parts, ", ")
 }

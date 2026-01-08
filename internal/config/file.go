@@ -83,8 +83,10 @@ type NavigationConfig struct {
 }
 
 type AIConfig struct {
-	Model       string `yaml:"model,omitempty"`
-	MaxSessions int    `yaml:"max_sessions,omitempty"`
+	Model          string `yaml:"model,omitempty"`
+	MaxSessions    int    `yaml:"max_sessions,omitempty"`
+	MaxTokens      int    `yaml:"max_tokens,omitempty"`
+	ThinkingBudget *int   `yaml:"thinking_budget,omitempty"`
 }
 
 // ThemeConfig holds theme configuration.
@@ -369,6 +371,8 @@ func (c *FileConfig) GetTheme() ThemeConfig {
 
 const DefaultAIModel = "global.anthropic.claude-haiku-4-5-20251001-v1:0"
 const DefaultAIMaxSessions = 10
+const DefaultAIMaxTokens = 16000
+const DefaultAIThinkingBudget = 8000
 
 func (c *FileConfig) GetAIModel() string {
 	return withRLock(&c.mu, func() string {
@@ -385,6 +389,24 @@ func (c *FileConfig) GetAIMaxSessions() int {
 			return DefaultAIMaxSessions
 		}
 		return c.AI.MaxSessions
+	})
+}
+
+func (c *FileConfig) GetAIMaxTokens() int {
+	return withRLock(&c.mu, func() int {
+		if c.AI.MaxTokens <= 0 {
+			return DefaultAIMaxTokens
+		}
+		return c.AI.MaxTokens
+	})
+}
+
+func (c *FileConfig) GetAIThinkingBudget() int {
+	return withRLock(&c.mu, func() int {
+		if c.AI.ThinkingBudget == nil {
+			return DefaultAIThinkingBudget
+		}
+		return *c.AI.ThinkingBudget
 	})
 }
 

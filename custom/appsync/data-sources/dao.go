@@ -103,8 +103,9 @@ type DataSourceResource struct {
 func NewDataSourceResource(ds types.DataSource, apiId string) *DataSourceResource {
 	return &DataSourceResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(ds.Name),
-			ARN: appaws.Str(ds.DataSourceArn),
+			ID:   appaws.Str(ds.Name),
+			ARN:  appaws.Str(ds.DataSourceArn),
+			Data: ds,
 		},
 		DataSource: &ds,
 		apiId:      apiId,

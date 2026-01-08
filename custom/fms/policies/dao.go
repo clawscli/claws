@@ -84,8 +84,9 @@ type PolicyResource struct {
 func NewPolicyResource(policy types.PolicySummary) *PolicyResource {
 	return &PolicyResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(policy.PolicyId),
-			ARN: appaws.Str(policy.PolicyArn),
+			ID:   appaws.Str(policy.PolicyId),
+			ARN:  appaws.Str(policy.PolicyArn),
+			Data: policy,
 		},
 		Summary: &policy,
 	}
@@ -95,8 +96,9 @@ func NewPolicyResource(policy types.PolicySummary) *PolicyResource {
 func NewPolicyResourceFromDetail(policy types.Policy, arn *string) *PolicyResource {
 	return &PolicyResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(policy.PolicyId),
-			ARN: appaws.Str(arn),
+			ID:   appaws.Str(policy.PolicyId),
+			ARN:  appaws.Str(arn),
+			Data: policy,
 		},
 		Detail: &policy,
 	}

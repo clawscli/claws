@@ -107,8 +107,9 @@ type FindingResource struct {
 func NewFindingResource(finding types.AwsSecurityFinding) *FindingResource {
 	return &FindingResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(finding.Id),
-			ARN: appaws.Str(finding.Id),
+			ID:   appaws.Str(finding.Id),
+			ARN:  appaws.Str(finding.Id),
+			Data: finding,
 		},
 		Item: finding,
 	}

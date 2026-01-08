@@ -88,8 +88,9 @@ type TransitGatewayResource struct {
 func NewTransitGatewayResource(tgw types.TransitGateway) *TransitGatewayResource {
 	return &TransitGatewayResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(tgw.TransitGatewayId),
-			ARN: appaws.Str(tgw.TransitGatewayArn),
+			ID:   appaws.Str(tgw.TransitGatewayId),
+			ARN:  appaws.Str(tgw.TransitGatewayArn),
+			Data: tgw,
 		},
 		Item: tgw,
 	}

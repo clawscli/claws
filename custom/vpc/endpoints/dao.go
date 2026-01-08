@@ -88,8 +88,9 @@ type VpcEndpointResource struct {
 func NewVpcEndpointResource(endpoint types.VpcEndpoint) *VpcEndpointResource {
 	return &VpcEndpointResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(endpoint.VpcEndpointId),
-			ARN: "",
+			ID:   appaws.Str(endpoint.VpcEndpointId),
+			ARN:  "",
+			Data: endpoint,
 		},
 		Item: endpoint,
 	}

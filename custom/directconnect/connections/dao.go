@@ -79,8 +79,9 @@ type ConnectionResource struct {
 func NewConnectionResource(conn types.Connection) *ConnectionResource {
 	return &ConnectionResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(conn.ConnectionId),
-			ARN: "",
+			ID:   appaws.Str(conn.ConnectionId),
+			ARN:  "",
+			Data: conn,
 		},
 		Item: conn,
 	}

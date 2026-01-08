@@ -85,8 +85,9 @@ type ServiceResource struct {
 func NewServiceResource(svc types.ServiceSummary) *ServiceResource {
 	return &ServiceResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(svc.ServiceName),
-			ARN: appaws.Str(svc.ServiceArn),
+			ID:   appaws.Str(svc.ServiceName),
+			ARN:  appaws.Str(svc.ServiceArn),
+			Data: svc,
 		},
 		Summary: &svc,
 	}
@@ -96,8 +97,9 @@ func NewServiceResource(svc types.ServiceSummary) *ServiceResource {
 func NewServiceResourceFromDetail(svc types.Service) *ServiceResource {
 	return &ServiceResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(svc.ServiceName),
-			ARN: appaws.Str(svc.ServiceArn),
+			ID:   appaws.Str(svc.ServiceName),
+			ARN:  appaws.Str(svc.ServiceArn),
+			Data: svc,
 		},
 		Detail: &svc,
 	}

@@ -90,8 +90,9 @@ func (d *TaskDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 
 	return &TaskResource{
 		BaseResource: dao.BaseResource{
-			ID:  extractTaskID(appaws.Str(output.TaskArn)),
-			ARN: appaws.Str(output.TaskArn),
+			ID:   extractTaskID(appaws.Str(output.TaskArn)),
+			ARN:  appaws.Str(output.TaskArn),
+			Data: output,
 		},
 		Task: &types.TaskListEntry{
 			TaskArn: output.TaskArn,
@@ -150,8 +151,9 @@ func NewTaskResource(task types.TaskListEntry) *TaskResource {
 	arn := appaws.Str(task.TaskArn)
 	return &TaskResource{
 		BaseResource: dao.BaseResource{
-			ID:  extractTaskID(arn),
-			ARN: arn,
+			ID:   extractTaskID(arn),
+			ARN:  arn,
+			Data: task,
 		},
 		Task: &task,
 	}

@@ -1,9 +1,11 @@
 package ai
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
@@ -544,7 +546,89 @@ func extractLogGroupNameFromArn(arn string) string {
 }
 
 func (e *ToolExecutor) searchDocs(query string) string {
-	return fmt.Sprintf("Documentation search for '%s' is not yet implemented. Please check AWS documentation directly.", query)
+	if query == "" {
+		return "Error: query parameter is required"
+	}
+
+	reqBody := map[string]any{
+		"textQuery": map[string]string{
+			"input": query,
+		},
+		"contextAttributes": []map[string]string{
+			{"key": "domain", "value": "docs.aws.amazon.com"},
+		},
+		"acceptSuggestionBody": "RawText",
+		"locales":              []string{"en_us"},
+	}
+
+	jsonBody, err := json.Marshal(reqBody)
+	if err != nil {
+		return fmt.Sprintf("Error creating request: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://proxy.search.docs.aws.amazon.com/search", bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return fmt.Sprintf("Error creating request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Sprintf("Error searching documentation: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode >= 400 {
+		return fmt.Sprintf("Error: received status %d from AWS documentation search", resp.StatusCode)
+	}
+
+	var result struct {
+		Suggestions []struct {
+			TextExcerptSuggestion struct {
+				Link     string `json:"link"`
+				Title    string `json:"title"`
+				Metadata struct {
+					SeoAbstract string `json:"seo_abstract"`
+					Abstract    string `json:"abstract"`
+				} `json:"metadata"`
+				Summary string `json:"summary"`
+			} `json:"textExcerptSuggestion"`
+		} `json:"suggestions"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return fmt.Sprintf("Error parsing response: %v", err)
+	}
+
+	if len(result.Suggestions) == 0 {
+		return fmt.Sprintf("No documentation found for: %s", query)
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("AWS Documentation results for '%s':\n\n", query))
+	for i, s := range result.Suggestions {
+		if i >= 5 {
+			break
+		}
+		suggestion := s.TextExcerptSuggestion
+		sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, suggestion.Title))
+		sb.WriteString(fmt.Sprintf("   URL: %s\n", suggestion.Link))
+		context := suggestion.Metadata.SeoAbstract
+		if context == "" {
+			context = suggestion.Metadata.Abstract
+		}
+		if context == "" {
+			context = suggestion.Summary
+		}
+		if context != "" {
+			sb.WriteString(fmt.Sprintf("   %s\n", context))
+		}
+		sb.WriteString("\n")
+	}
+	return sb.String()
 }
 
 func (e *ToolExecutor) getResource(ctx context.Context, service, resourceType, id string) (dao.Resource, error) {

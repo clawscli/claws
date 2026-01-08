@@ -95,8 +95,9 @@ func (d *JobDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 
 	return &JobResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(job.JobId),
-			ARN: appaws.Str(job.JobArn),
+			ID:   appaws.Str(job.JobId),
+			ARN:  appaws.Str(job.JobArn),
+			Data: job,
 		},
 		Job: &types.JobSummary{
 			JobId:     job.JobId,
@@ -154,8 +155,9 @@ type JobResource struct {
 func NewJobResource(job types.JobSummary) *JobResource {
 	return &JobResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(job.JobId),
-			ARN: appaws.Str(job.JobArn),
+			ID:   appaws.Str(job.JobId),
+			ARN:  appaws.Str(job.JobArn),
+			Data: job,
 		},
 		Job: &job,
 	}

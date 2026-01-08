@@ -81,8 +81,9 @@ type RootResource struct {
 func NewRootResource(root types.Root) *RootResource {
 	return &RootResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(root.Id),
-			ARN: appaws.Str(root.Arn),
+			ID:   appaws.Str(root.Id),
+			ARN:  appaws.Str(root.Arn),
+			Data: root,
 		},
 		Root: &root,
 	}

@@ -78,6 +78,7 @@ func (d *BucketDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		BaseResource: dao.BaseResource{
 			ID:   id,
 			Name: id,
+			Data: id,
 		},
 		BucketName: id,
 		Region:     region,
@@ -273,6 +274,7 @@ func NewBucketResource(bucket types.Bucket) *BucketResource {
 		BaseResource: dao.BaseResource{
 			ID:   name,
 			Name: name,
+			Data: name,
 		},
 		BucketName:   name,
 		CreationDate: appaws.Time(bucket.CreationDate),

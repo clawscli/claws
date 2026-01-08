@@ -84,8 +84,9 @@ type DatabaseResource struct {
 func NewDatabaseResource(db types.Database) *DatabaseResource {
 	return &DatabaseResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(db.Name),
-			ARN: appaws.Str(db.CatalogId),
+			ID:   appaws.Str(db.Name),
+			ARN:  appaws.Str(db.CatalogId),
+			Data: db,
 		},
 		Item: db,
 	}

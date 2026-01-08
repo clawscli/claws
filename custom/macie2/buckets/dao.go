@@ -81,8 +81,9 @@ type BucketResource struct {
 func NewBucketResource(bucket types.BucketMetadata) *BucketResource {
 	return &BucketResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(bucket.BucketName),
-			ARN: appaws.Str(bucket.BucketArn),
+			ID:   appaws.Str(bucket.BucketName),
+			ARN:  appaws.Str(bucket.BucketArn),
+			Data: bucket,
 		},
 		Bucket: &bucket,
 	}

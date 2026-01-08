@@ -62,8 +62,9 @@ func (d *ConfigurationDAO) Get(ctx context.Context, arn string) (dao.Resource, e
 
 	return &ConfigurationResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(output.Name),
-			ARN: appaws.Str(output.LicenseConfigurationArn),
+			ID:   appaws.Str(output.Name),
+			ARN:  appaws.Str(output.LicenseConfigurationArn),
+			Data: output,
 		},
 		Config: &types.LicenseConfiguration{
 			LicenseConfigurationArn: output.LicenseConfigurationArn,
@@ -98,8 +99,9 @@ type ConfigurationResource struct {
 func NewConfigurationResource(config types.LicenseConfiguration) *ConfigurationResource {
 	return &ConfigurationResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(config.Name),
-			ARN: appaws.Str(config.LicenseConfigurationArn),
+			ID:   appaws.Str(config.Name),
+			ARN:  appaws.Str(config.LicenseConfigurationArn),
+			Data: config,
 		},
 		Config: &config,
 	}

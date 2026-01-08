@@ -85,8 +85,9 @@ type JobResource struct {
 func NewJobResource(job types.TranscriptionJobSummary) *JobResource {
 	return &JobResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(job.TranscriptionJobName),
-			ARN: "",
+			ID:   appaws.Str(job.TranscriptionJobName),
+			ARN:  "",
+			Data: job,
 		},
 		Summary: &job,
 	}
@@ -96,8 +97,9 @@ func NewJobResource(job types.TranscriptionJobSummary) *JobResource {
 func NewJobResourceFromDetail(job types.TranscriptionJob) *JobResource {
 	return &JobResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(job.TranscriptionJobName),
-			ARN: "",
+			ID:   appaws.Str(job.TranscriptionJobName),
+			ARN:  "",
+			Data: job,
 		},
 		Detail: &job,
 	}

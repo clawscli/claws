@@ -116,8 +116,9 @@ type TGWAttachmentResource struct {
 func NewTGWAttachmentResource(att types.TransitGatewayAttachment) *TGWAttachmentResource {
 	return &TGWAttachmentResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(att.TransitGatewayAttachmentId),
-			ARN: "",
+			ID:   appaws.Str(att.TransitGatewayAttachmentId),
+			ARN:  "",
+			Data: att,
 		},
 		Item: att,
 	}

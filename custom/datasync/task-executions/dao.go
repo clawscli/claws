@@ -126,8 +126,9 @@ func NewTaskExecutionResource(exec types.TaskExecutionListEntry) *TaskExecutionR
 	arn := appaws.Str(exec.TaskExecutionArn)
 	return &TaskExecutionResource{
 		BaseResource: dao.BaseResource{
-			ID:  extractExecutionID(arn),
-			ARN: arn,
+			ID:   extractExecutionID(arn),
+			ARN:  arn,
+			Data: exec,
 		},
 		Execution: &exec,
 	}

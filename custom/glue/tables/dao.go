@@ -105,8 +105,9 @@ type TableResource struct {
 func NewTableResource(table types.Table, databaseName string) *TableResource {
 	return &TableResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(table.Name),
-			ARN: "",
+			ID:   appaws.Str(table.Name),
+			ARN:  "",
+			Data: table,
 		},
 		Item:         table,
 		DatabaseName: databaseName,

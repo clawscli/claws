@@ -2,6 +2,7 @@ package view
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -32,20 +33,19 @@ type chatStyles struct {
 }
 
 func newChatStyles() chatStyles {
-	t := ui.Current()
 	return chatStyles{
 		title:        ui.TitleStyle(),
-		context:      lipgloss.NewStyle().Foreground(t.TextDim).Italic(true),
+		context:      ui.DimItalicStyle(),
 		userMsg:      ui.TextStyle(),
 		assistantMsg: ui.SecondaryStyle(),
 		toolCall:     ui.DimStyle(),
 		toolError:    ui.DangerStyle(),
-		thinking:     lipgloss.NewStyle().Foreground(t.TextDim).Italic(true),
-		input:        lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder()).BorderForeground(t.Border).Padding(0, 1),
+		thinking:     ui.DimItalicStyle(),
+		input:        ui.ChatInputStyle(),
 		errorMsg:     ui.DangerStyle(),
 		mdBold:       ui.TitleStyle(),
 		mdCode:       ui.SuccessStyle(),
-		mdItalic:     lipgloss.NewStyle().Italic(true),
+		mdItalic:     ui.ItalicStyle(),
 	}
 }
 
@@ -63,10 +63,13 @@ type ChatOverlay struct {
 	input textinput.Model
 	vp    ViewportState
 
-	messages     []chatMessage
-	streamingMsg string
-	isThinking   bool
-	err          error
+	messages           []chatMessage
+	streamingMsg       string
+	streamingThinking  string
+	collapsedThinking  map[int]bool
+	thinkingLineRanges map[int][2]int
+	isStreaming        bool
+	err                error
 
 	// Streaming state
 	pendingToolCalls []ai.ToolCall
@@ -78,10 +81,11 @@ type ChatOverlay struct {
 }
 
 type chatMessage struct {
-	role      ai.Role
-	content   string
-	toolCall  *ai.ToolCall
-	toolError bool
+	role            ai.Role
+	content         string
+	thinkingContent string
+	toolCall        *ai.ToolCall
+	toolError       bool
 }
 
 type chatStreamMsg struct {
@@ -111,13 +115,14 @@ func NewChatOverlay(ctx context.Context, reg *registry.Registry, aiCtx *ai.Conte
 	ti.CharLimit = 500
 
 	return &ChatOverlay{
-		ctx:      ctx,
-		registry: reg,
-		aiCtx:    aiCtx,
-		styles:   newChatStyles(),
-		input:    ti,
-		sessMgr:  ai.NewSessionManager(maxSessions),
-		messages: []chatMessage{},
+		ctx:               ctx,
+		registry:          reg,
+		aiCtx:             aiCtx,
+		styles:            newChatStyles(),
+		input:             ti,
+		sessMgr:           ai.NewSessionManager(maxSessions),
+		messages:          []chatMessage{},
+		collapsedThinking: make(map[int]bool),
 	}
 }
 
@@ -138,6 +143,8 @@ func (c *ChatOverlay) initClient() tea.Msg {
 		c.ctx,
 		ai.WithModel(config.File().GetAIModel()),
 		ai.WithTools(executor.Tools()),
+		ai.WithMaxTokens(config.File().GetAIMaxTokens()),
+		ai.WithThinkingBudget(config.File().GetAIThinkingBudget()),
 	)
 	if err != nil {
 		return chatInitMsg{err: apperrors.Wrap(err, "init ai client")}
@@ -171,6 +178,9 @@ func (c *ChatOverlay) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case chatToolExecuteMsg:
 		return c.handleToolExecute(msg)
+
+	case tea.MouseClickMsg:
+		return c.handleMouseClick(msg)
 	}
 
 	var cmds []tea.Cmd
@@ -197,7 +207,7 @@ func (c *ChatOverlay) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "ctrl+c":
 		return c, func() tea.Msg { return HideModalMsg{} }
 	case "enter":
-		if c.isThinking {
+		if c.isStreaming {
 			return c, nil
 		}
 
@@ -208,7 +218,7 @@ func (c *ChatOverlay) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 		c.input.SetValue("")
 		c.messages = append(c.messages, chatMessage{role: ai.RoleUser, content: text})
-		c.isThinking = true
+		c.isStreaming = true
 		c.streamingMsg = ""
 		c.pendingToolCalls = nil
 		c.toolRound = 0
@@ -221,6 +231,29 @@ func (c *ChatOverlay) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	c.input, cmd = c.input.Update(msg)
 	return c, cmd
+}
+
+func (c *ChatOverlay) handleMouseClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
+	if !c.vp.Ready {
+		return c, nil
+	}
+
+	headerHeight := c.headerHeight()
+
+	contentLine := msg.Y - headerHeight + c.vp.Model.YOffset()
+	if contentLine < 0 {
+		return c, nil
+	}
+
+	for msgIdx, lineRange := range c.thinkingLineRanges {
+		if contentLine >= lineRange[0] && contentLine < lineRange[1] {
+			wasCollapsed := c.collapsedThinking[msgIdx]
+			c.collapsedThinking[msgIdx] = !wasCollapsed
+			c.scrollToThinking(msgIdx, wasCollapsed)
+			return c, nil
+		}
+	}
+	return c, nil
 }
 
 func (c *ChatOverlay) buildAPIMessages() []ai.Message {
@@ -236,7 +269,7 @@ func (c *ChatOverlay) buildAPIMessages() []ai.Message {
 func (c *ChatOverlay) startStream(messages []ai.Message) tea.Cmd {
 	return func() tea.Msg {
 		if c.client == nil || c.executor == nil {
-			return chatStreamMsg{event: ai.StreamEvent{Type: "error", Error: fmt.Errorf("client not initialized")}}
+			return chatStreamMsg{event: ai.StreamEvent{Type: "error", Error: errors.New("client not initialized")}}
 		}
 
 		c.streamMessages = messages
@@ -274,31 +307,52 @@ func (c *ChatOverlay) handleStreamEvent(msg chatStreamMsg) (tea.Model, tea.Cmd) 
 		c.updateViewport()
 		return c, c.waitForStream(msg.eventCh)
 
+	case "thinking":
+		c.streamingThinking += event.Thinking
+		c.updateViewport()
+		return c, c.waitForStream(msg.eventCh)
+
 	case "tool_use":
 		c.pendingToolCalls = append(c.pendingToolCalls, event.ToolCalls...)
 		return c, c.waitForStream(msg.eventCh)
 
 	case "done":
 		if len(c.pendingToolCalls) > 0 && c.toolRound < 5 {
-			if c.streamingMsg != "" {
-				c.messages = append(c.messages, chatMessage{role: ai.RoleAssistant, content: c.streamingMsg})
+			if c.streamingMsg != "" || c.streamingThinking != "" {
+				c.messages = append(c.messages, chatMessage{
+					role:            ai.RoleAssistant,
+					content:         c.streamingMsg,
+					thinkingContent: c.streamingThinking,
+				})
+				if c.streamingThinking != "" {
+					c.collapsedThinking[len(c.messages)-1] = true
+				}
 				c.streamingMsg = ""
+				c.streamingThinking = ""
 			}
 			c.updateViewport()
 			return c, c.executeTools()
 		}
 
-		if c.streamingMsg != "" {
-			c.messages = append(c.messages, chatMessage{role: ai.RoleAssistant, content: c.streamingMsg})
+		if c.streamingMsg != "" || c.streamingThinking != "" {
+			c.messages = append(c.messages, chatMessage{
+				role:            ai.RoleAssistant,
+				content:         c.streamingMsg,
+				thinkingContent: c.streamingThinking,
+			})
+			if c.streamingThinking != "" {
+				c.collapsedThinking[len(c.messages)-1] = true
+			}
 		}
 		c.streamingMsg = ""
-		c.isThinking = false
+		c.streamingThinking = ""
+		c.isStreaming = false
 		c.updateViewport()
 		return c, nil
 
 	case "error":
 		c.err = event.Error
-		c.isThinking = false
+		c.isStreaming = false
 		c.updateViewport()
 		return c, nil
 	}
@@ -336,6 +390,7 @@ func (c *ChatOverlay) handleToolExecute(msg chatToolExecuteMsg) (tea.Model, tea.
 
 	messages := c.client.AddToolResultMessages(msg.messages, msg.toolCalls, toolResults)
 	c.streamMessages = messages
+	c.isStreaming = true
 
 	return c, c.startStream(messages)
 }
@@ -395,6 +450,35 @@ func (c *ChatOverlay) StatusLine() string {
 	return "AI Chat | Enter: send | Esc: close"
 }
 
+func (c *ChatOverlay) headerHeight() int {
+	lines := 2
+	if c.aiCtx != nil && c.aiCtx.Service != "" {
+		ctx := fmt.Sprintf("Context: %s", c.aiCtx.Service)
+		if c.aiCtx.ResourceType != "" {
+			ctx += "/" + c.aiCtx.ResourceType
+		}
+		if c.aiCtx.ResourceName != "" {
+			ctx += " - " + c.aiCtx.ResourceName
+		}
+		rendered := c.styles.context.Render(ctx)
+		lines += strings.Count(rendered, "\n") + 1
+	}
+	return lines
+}
+
 func (c *ChatOverlay) HasActiveInput() bool {
 	return true
+}
+
+func (c *ChatOverlay) scrollToThinking(msgIdx int, wasCollapsed bool) {
+	if !c.vp.Ready {
+		return
+	}
+	content := c.renderMessages()
+	c.vp.Model.SetContent(content)
+	if wasCollapsed {
+		if lineRange, ok := c.thinkingLineRanges[msgIdx]; ok {
+			c.vp.Model.SetYOffset(lineRange[0])
+		}
+	}
 }

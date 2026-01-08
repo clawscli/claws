@@ -124,8 +124,9 @@ type NotebookResource struct {
 func NewNotebookResource(notebook types.NotebookInstanceSummary) *NotebookResource {
 	return &NotebookResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(notebook.NotebookInstanceName),
-			ARN: appaws.Str(notebook.NotebookInstanceArn),
+			ID:   appaws.Str(notebook.NotebookInstanceName),
+			ARN:  appaws.Str(notebook.NotebookInstanceArn),
+			Data: notebook,
 		},
 		Notebook: notebook,
 	}

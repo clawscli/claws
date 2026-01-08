@@ -76,8 +76,9 @@ func (d *StepDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 	step := output.Step
 	return &StepResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(step.Id),
-			ARN: "",
+			ID:   appaws.Str(step.Id),
+			ARN:  "",
+			Data: step,
 		},
 		Step: &types.StepSummary{
 			Id:     step.Id,
@@ -118,8 +119,9 @@ type StepResource struct {
 func NewStepResource(step types.StepSummary, clusterId string) *StepResource {
 	return &StepResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(step.Id),
-			ARN: "",
+			ID:   appaws.Str(step.Id),
+			ARN:  "",
+			Data: step,
 		},
 		Step:      &step,
 		clusterId: clusterId,

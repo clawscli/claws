@@ -96,8 +96,9 @@ func NewJobDefinitionResource(def types.JobDefinition) *JobDefinitionResource {
 	}
 	return &JobDefinitionResource{
 		BaseResource: dao.BaseResource{
-			ID:  name,
-			ARN: appaws.Str(def.JobDefinitionArn),
+			ID:   name,
+			ARN:  appaws.Str(def.JobDefinitionArn),
+			Data: def,
 		},
 		Def: &def,
 	}

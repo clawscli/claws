@@ -109,8 +109,9 @@ type ModelResource struct {
 func NewModelResource(model types.ModelSummary) *ModelResource {
 	return &ModelResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(model.ModelName),
-			ARN: appaws.Str(model.ModelArn),
+			ID:   appaws.Str(model.ModelName),
+			ARN:  appaws.Str(model.ModelArn),
+			Data: model,
 		},
 		Model: model,
 	}

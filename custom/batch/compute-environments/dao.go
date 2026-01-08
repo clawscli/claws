@@ -97,8 +97,9 @@ type ComputeEnvironmentResource struct {
 func NewComputeEnvironmentResource(env types.ComputeEnvironmentDetail) *ComputeEnvironmentResource {
 	return &ComputeEnvironmentResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(env.ComputeEnvironmentName),
-			ARN: appaws.Str(env.ComputeEnvironmentArn),
+			ID:   appaws.Str(env.ComputeEnvironmentName),
+			ARN:  appaws.Str(env.ComputeEnvironmentArn),
+			Data: env,
 		},
 		Env: &env,
 	}

@@ -83,8 +83,9 @@ type GraphQLApiResource struct {
 func NewGraphQLApiResource(api types.GraphqlApi) *GraphQLApiResource {
 	return &GraphQLApiResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(api.ApiId),
-			ARN: appaws.Str(api.Arn),
+			ID:   appaws.Str(api.ApiId),
+			ARN:  appaws.Str(api.Arn),
+			Data: api,
 		},
 		Api: &api,
 	}

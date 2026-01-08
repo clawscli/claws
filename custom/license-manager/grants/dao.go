@@ -115,8 +115,9 @@ func NewGrantResource(grant types.Grant) *GrantResource {
 	}
 	return &GrantResource{
 		BaseResource: dao.BaseResource{
-			ID:  id,
-			ARN: arn,
+			ID:   id,
+			ARN:  arn,
+			Data: grant,
 		},
 		Grant: &grant,
 	}

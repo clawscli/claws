@@ -85,8 +85,9 @@ type RuleGroupResource struct {
 func NewRuleGroupResource(rg types.RuleGroupMetadata) *RuleGroupResource {
 	return &RuleGroupResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(rg.Name),
-			ARN: appaws.Str(rg.Arn),
+			ID:   appaws.Str(rg.Name),
+			ARN:  appaws.Str(rg.Arn),
+			Data: rg,
 		},
 		Metadata: &rg,
 	}
@@ -96,8 +97,9 @@ func NewRuleGroupResource(rg types.RuleGroupMetadata) *RuleGroupResource {
 func NewRuleGroupResourceFromDetail(resp *types.RuleGroupResponse, rg *types.RuleGroup) *RuleGroupResource {
 	return &RuleGroupResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(resp.RuleGroupName),
-			ARN: appaws.Str(resp.RuleGroupArn),
+			ID:   appaws.Str(resp.RuleGroupName),
+			ARN:  appaws.Str(resp.RuleGroupArn),
+			Data: resp,
 		},
 		Response: resp,
 		Detail:   rg,

@@ -109,8 +109,9 @@ type JobRunResource struct {
 func NewJobRunResource(run types.JobRun) *JobRunResource {
 	return &JobRunResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(run.Id),
-			ARN: "",
+			ID:   appaws.Str(run.Id),
+			ARN:  "",
+			Data: run,
 		},
 		Item: run,
 	}

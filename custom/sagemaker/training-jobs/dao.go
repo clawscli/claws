@@ -159,8 +159,9 @@ type TrainingJobResource struct {
 func NewTrainingJobResource(job types.TrainingJobSummary) *TrainingJobResource {
 	return &TrainingJobResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(job.TrainingJobName),
-			ARN: appaws.Str(job.TrainingJobArn),
+			ID:   appaws.Str(job.TrainingJobName),
+			ARN:  appaws.Str(job.TrainingJobArn),
+			Data: job,
 		},
 		Job: job,
 	}

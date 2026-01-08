@@ -96,8 +96,9 @@ func NewFirewallPolicyResource(p types.FirewallPolicyMetadata) *FirewallPolicyRe
 func NewFirewallPolicyResourceFromDetail(resp *types.FirewallPolicyResponse, p *types.FirewallPolicy) *FirewallPolicyResource {
 	return &FirewallPolicyResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(resp.FirewallPolicyName),
-			ARN: appaws.Str(resp.FirewallPolicyArn),
+			ID:   appaws.Str(resp.FirewallPolicyName),
+			ARN:  appaws.Str(resp.FirewallPolicyArn),
+			Data: p,
 		},
 		Response: resp,
 		Detail:   p,

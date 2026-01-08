@@ -104,8 +104,9 @@ type UserResource struct {
 func NewUserResource(user types.ListedUser, serverId string) *UserResource {
 	return &UserResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(user.UserName),
-			ARN: appaws.Str(user.Arn),
+			ID:   appaws.Str(user.UserName),
+			ARN:  appaws.Str(user.Arn),
+			Data: user,
 		},
 		Summary:  &user,
 		ServerId: serverId,
@@ -116,8 +117,9 @@ func NewUserResource(user types.ListedUser, serverId string) *UserResource {
 func NewUserResourceFromDetail(user types.DescribedUser, serverId string) *UserResource {
 	return &UserResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(user.UserName),
-			ARN: appaws.Str(user.Arn),
+			ID:   appaws.Str(user.UserName),
+			ARN:  appaws.Str(user.Arn),
+			Data: user,
 		},
 		Detail:   &user,
 		ServerId: serverId,

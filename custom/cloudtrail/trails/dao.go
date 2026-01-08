@@ -79,8 +79,9 @@ type TrailResource struct {
 func NewTrailResource(trail types.Trail) *TrailResource {
 	return &TrailResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(trail.Name),
-			ARN: appaws.Str(trail.TrailARN),
+			ID:   appaws.Str(trail.Name),
+			ARN:  appaws.Str(trail.TrailARN),
+			Data: trail,
 		},
 		Item: trail,
 	}

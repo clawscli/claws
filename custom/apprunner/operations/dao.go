@@ -113,8 +113,9 @@ type OperationResource struct {
 func NewOperationResource(op types.OperationSummary) *OperationResource {
 	return &OperationResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(op.Id),
-			ARN: appaws.Str(op.TargetArn),
+			ID:   appaws.Str(op.Id),
+			ARN:  appaws.Str(op.TargetArn),
+			Data: op,
 		},
 		Item: op,
 	}

@@ -89,8 +89,9 @@ func NewGroupResource(group types.GroupSummary) *GroupResource {
 	}
 	return &GroupResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(group.GroupName),
-			ARN: appaws.Str(group.GroupARN),
+			ID:   appaws.Str(group.GroupName),
+			ARN:  appaws.Str(group.GroupARN),
+			Data: group,
 		},
 		Item:            &group,
 		InsightsEnabled: insightsEnabled,

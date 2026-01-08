@@ -99,8 +99,9 @@ func NewLicenseResource(license types.License) *LicenseResource {
 	}
 	return &LicenseResource{
 		BaseResource: dao.BaseResource{
-			ID:  id,
-			ARN: arn,
+			ID:   id,
+			ARN:  arn,
+			Data: license,
 		},
 		License: &license,
 	}

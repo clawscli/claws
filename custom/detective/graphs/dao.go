@@ -101,8 +101,9 @@ func NewGraphResource(graph types.Graph) *GraphResource {
 
 	return &GraphResource{
 		BaseResource: dao.BaseResource{
-			ID:  id,
-			ARN: arn,
+			ID:   id,
+			ARN:  arn,
+			Data: graph,
 		},
 		Graph: &graph,
 	}

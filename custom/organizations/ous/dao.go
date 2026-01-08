@@ -90,8 +90,9 @@ type OUResource struct {
 func NewOUResource(ou types.OrganizationalUnit) *OUResource {
 	return &OUResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(ou.Id),
-			ARN: appaws.Str(ou.Arn),
+			ID:   appaws.Str(ou.Id),
+			ARN:  appaws.Str(ou.Arn),
+			Data: ou,
 		},
 		OU: &ou,
 	}

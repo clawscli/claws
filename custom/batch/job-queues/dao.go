@@ -97,8 +97,9 @@ type JobQueueResource struct {
 func NewJobQueueResource(queue types.JobQueueDetail) *JobQueueResource {
 	return &JobQueueResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(queue.JobQueueName),
-			ARN: appaws.Str(queue.JobQueueArn),
+			ID:   appaws.Str(queue.JobQueueName),
+			ARN:  appaws.Str(queue.JobQueueArn),
+			Data: queue,
 		},
 		Queue: &queue,
 	}

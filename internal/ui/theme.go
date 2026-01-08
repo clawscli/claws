@@ -409,6 +409,24 @@ func FaintStyle() lipgloss.Style {
 	return lipgloss.NewStyle().Faint(true)
 }
 
+// DimItalicStyle returns a dim italic style (for AI context/thinking)
+func DimItalicStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(Current().TextDim).Italic(true)
+}
+
+// ItalicStyle returns an italic style
+func ItalicStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Italic(true)
+}
+
+// ChatInputStyle returns a style for chat input with rounded border
+func ChatInputStyle() lipgloss.Style {
+	return lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(Current().Border).
+		Padding(0, 1)
+}
+
 func BoxStyle() lipgloss.Style {
 	return lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).

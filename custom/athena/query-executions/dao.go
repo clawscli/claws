@@ -122,8 +122,9 @@ type QueryExecutionResource struct {
 func NewQueryExecutionResource(qe types.QueryExecution) *QueryExecutionResource {
 	return &QueryExecutionResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(qe.QueryExecutionId),
-			ARN: "",
+			ID:   appaws.Str(qe.QueryExecutionId),
+			ARN:  "",
+			Data: qe,
 		},
 		Item: qe,
 	}

@@ -84,8 +84,9 @@ type ServerResource struct {
 func NewServerResource(srv types.ListedServer) *ServerResource {
 	return &ServerResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(srv.ServerId),
-			ARN: appaws.Str(srv.Arn),
+			ID:   appaws.Str(srv.ServerId),
+			ARN:  appaws.Str(srv.Arn),
+			Data: srv,
 		},
 		Summary: &srv,
 	}
@@ -95,8 +96,9 @@ func NewServerResource(srv types.ListedServer) *ServerResource {
 func NewServerResourceFromDetail(srv types.DescribedServer) *ServerResource {
 	return &ServerResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(srv.ServerId),
-			ARN: appaws.Str(srv.Arn),
+			ID:   appaws.Str(srv.ServerId),
+			ARN:  appaws.Str(srv.Arn),
+			Data: srv,
 		},
 		Detail: &srv,
 	}

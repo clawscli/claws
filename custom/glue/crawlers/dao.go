@@ -84,8 +84,9 @@ type CrawlerResource struct {
 func NewCrawlerResource(crawler types.Crawler) *CrawlerResource {
 	return &CrawlerResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(crawler.Name),
-			ARN: "",
+			ID:   appaws.Str(crawler.Name),
+			ARN:  "",
+			Data: crawler,
 		},
 		Item: crawler,
 	}

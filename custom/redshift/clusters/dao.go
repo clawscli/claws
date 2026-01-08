@@ -90,8 +90,9 @@ type ClusterResource struct {
 func NewClusterResource(cluster types.Cluster) *ClusterResource {
 	return &ClusterResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(cluster.ClusterIdentifier),
-			ARN: "",
+			ID:   appaws.Str(cluster.ClusterIdentifier),
+			ARN:  "",
+			Data: cluster,
 		},
 		Cluster: &cluster,
 	}

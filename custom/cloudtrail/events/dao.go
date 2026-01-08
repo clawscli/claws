@@ -126,8 +126,9 @@ type EventResource struct {
 func NewEventResource(event types.Event) *EventResource {
 	return &EventResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(event.EventId),
-			ARN: appaws.Str(event.EventId),
+			ID:   appaws.Str(event.EventId),
+			ARN:  appaws.Str(event.EventId),
+			Data: event,
 		},
 		Item: event,
 	}

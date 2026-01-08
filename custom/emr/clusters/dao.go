@@ -78,8 +78,9 @@ func (d *ClusterDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 
 	return &ClusterResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(cluster.Id),
-			ARN: appaws.Str(cluster.ClusterArn),
+			ID:   appaws.Str(cluster.Id),
+			ARN:  appaws.Str(cluster.ClusterArn),
+			Data: cluster,
 		},
 		Cluster: &types.ClusterSummary{
 			Id:   cluster.Id,
@@ -135,8 +136,9 @@ type ClusterResource struct {
 func NewClusterResource(cluster types.ClusterSummary) *ClusterResource {
 	return &ClusterResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(cluster.Id),
-			ARN: appaws.Str(cluster.ClusterArn),
+			ID:   appaws.Str(cluster.Id),
+			ARN:  appaws.Str(cluster.ClusterArn),
+			Data: cluster,
 		},
 		Cluster: &cluster,
 	}

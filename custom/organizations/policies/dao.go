@@ -75,8 +75,9 @@ func (d *PolicyDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 	}
 	return &PolicyResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(output.Policy.PolicySummary.Id),
-			ARN: appaws.Str(output.Policy.PolicySummary.Arn),
+			ID:   appaws.Str(output.Policy.PolicySummary.Id),
+			ARN:  appaws.Str(output.Policy.PolicySummary.Arn),
+			Data: output,
 		},
 		Policy:  output.Policy.PolicySummary,
 		Content: appaws.Str(output.Policy.Content),
@@ -105,8 +106,9 @@ type PolicyResource struct {
 func NewPolicyResource(policy types.PolicySummary) *PolicyResource {
 	return &PolicyResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(policy.Id),
-			ARN: appaws.Str(policy.Arn),
+			ID:   appaws.Str(policy.Id),
+			ARN:  appaws.Str(policy.Arn),
+			Data: policy,
 		},
 		Policy: &policy,
 	}

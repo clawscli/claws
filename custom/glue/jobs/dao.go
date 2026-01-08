@@ -84,8 +84,9 @@ type JobResource struct {
 func NewJobResource(job types.Job) *JobResource {
 	return &JobResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(job.Name),
-			ARN: "", // Glue jobs don't have ARN in the response
+			ID:   appaws.Str(job.Name),
+			ARN:  "", // Glue jobs don't have ARN in the response
+			Data: job,
 		},
 		Item: job,
 	}

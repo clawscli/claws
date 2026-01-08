@@ -101,8 +101,9 @@ type EndpointResource struct {
 func NewEndpointResource(endpoint types.EndpointSummary) *EndpointResource {
 	return &EndpointResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(endpoint.EndpointName),
-			ARN: appaws.Str(endpoint.EndpointArn),
+			ID:   appaws.Str(endpoint.EndpointName),
+			ARN:  appaws.Str(endpoint.EndpointArn),
+			Data: endpoint,
 		},
 		Endpoint: endpoint,
 	}

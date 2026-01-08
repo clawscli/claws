@@ -112,8 +112,9 @@ type BudgetResource struct {
 func NewBudgetResource(budget types.Budget, accountID string) *BudgetResource {
 	return &BudgetResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(budget.BudgetName),
-			ARN: fmt.Sprintf("arn:aws:budgets::%s:budget/%s", accountID, appaws.Str(budget.BudgetName)),
+			ID:   appaws.Str(budget.BudgetName),
+			ARN:  fmt.Sprintf("arn:aws:budgets::%s:budget/%s", accountID, appaws.Str(budget.BudgetName)),
+			Data: budget,
 		},
 		Item:      budget,
 		AccountID: accountID,

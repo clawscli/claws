@@ -85,8 +85,9 @@ type AnalyzerResource struct {
 func NewAnalyzerResource(analyzer types.AnalyzerSummary) *AnalyzerResource {
 	return &AnalyzerResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(analyzer.Name),
-			ARN: appaws.Str(analyzer.Arn),
+			ID:   appaws.Str(analyzer.Name),
+			ARN:  appaws.Str(analyzer.Arn),
+			Data: analyzer,
 		},
 		Summary: &analyzer,
 	}
@@ -96,8 +97,9 @@ func NewAnalyzerResource(analyzer types.AnalyzerSummary) *AnalyzerResource {
 func NewAnalyzerResourceFromDetail(analyzer types.AnalyzerSummary) *AnalyzerResource {
 	return &AnalyzerResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(analyzer.Name),
-			ARN: appaws.Str(analyzer.Arn),
+			ID:   appaws.Str(analyzer.Name),
+			ARN:  appaws.Str(analyzer.Arn),
+			Data: analyzer,
 		},
 		Detail: &analyzer,
 	}

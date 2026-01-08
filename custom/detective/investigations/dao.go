@@ -109,8 +109,9 @@ func NewInvestigationResource(inv types.InvestigationDetail, graphArn string) *I
 	id := appaws.Str(inv.InvestigationId)
 	return &InvestigationResource{
 		BaseResource: dao.BaseResource{
-			ID:  id,
-			ARN: graphArn + "/investigation/" + id,
+			ID:   id,
+			ARN:  graphArn + "/investigation/" + id,
+			Data: inv,
 		},
 		Investigation: &inv,
 		graphArn:      graphArn,

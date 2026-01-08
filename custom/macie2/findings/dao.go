@@ -118,8 +118,9 @@ type FindingResource struct {
 func NewFindingResource(finding types.Finding) *FindingResource {
 	return &FindingResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(finding.Id),
-			ARN: "",
+			ID:   appaws.Str(finding.Id),
+			ARN:  "",
+			Data: finding,
 		},
 		Finding: &finding,
 	}

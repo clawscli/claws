@@ -105,8 +105,9 @@ func NewNotificationResource(notif types.Notification, budgetName string, index 
 	)
 	return &NotificationResource{
 		BaseResource: dao.BaseResource{
-			ID:  id,
-			ARN: "",
+			ID:   id,
+			ARN:  "",
+			Data: notif,
 		},
 		Item:       notif,
 		BudgetName: budgetName,

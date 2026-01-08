@@ -84,8 +84,9 @@ type AccountResource struct {
 func NewAccountResource(account types.Account) *AccountResource {
 	return &AccountResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(account.Id),
-			ARN: appaws.Str(account.Arn),
+			ID:   appaws.Str(account.Id),
+			ARN:  appaws.Str(account.Arn),
+			Data: account,
 		},
 		Account: &account,
 	}

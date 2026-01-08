@@ -98,8 +98,9 @@ type SnapshotResource struct {
 func NewSnapshotResource(snapshot types.Snapshot) *SnapshotResource {
 	return &SnapshotResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(snapshot.SnapshotIdentifier),
-			ARN: "",
+			ID:   appaws.Str(snapshot.SnapshotIdentifier),
+			ARN:  "",
+			Data: snapshot,
 		},
 		Snapshot: &snapshot,
 	}

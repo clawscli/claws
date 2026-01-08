@@ -85,8 +85,9 @@ type WorkgroupResource struct {
 func NewWorkgroupResource(wg types.WorkGroupSummary) *WorkgroupResource {
 	return &WorkgroupResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(wg.Name),
-			ARN: "",
+			ID:   appaws.Str(wg.Name),
+			ARN:  "",
+			Data: wg,
 		},
 		Summary: &wg,
 	}
@@ -96,8 +97,9 @@ func NewWorkgroupResource(wg types.WorkGroupSummary) *WorkgroupResource {
 func NewWorkgroupResourceFromDetail(wg types.WorkGroup) *WorkgroupResource {
 	return &WorkgroupResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(wg.Name),
-			ARN: "",
+			ID:   appaws.Str(wg.Name),
+			ARN:  "",
+			Data: wg,
 		},
 		Detail: &wg,
 	}

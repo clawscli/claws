@@ -100,8 +100,9 @@ type RuleResource struct {
 func NewRuleResource(rule types.ConfigRule) *RuleResource {
 	return &RuleResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(rule.ConfigRuleName),
-			ARN: appaws.Str(rule.ConfigRuleArn),
+			ID:   appaws.Str(rule.ConfigRuleName),
+			ARN:  appaws.Str(rule.ConfigRuleArn),
+			Data: rule,
 		},
 		Item: rule,
 	}

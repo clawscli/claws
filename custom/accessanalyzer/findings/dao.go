@@ -93,7 +93,8 @@ type FindingResource struct {
 func NewFindingResource(finding types.FindingSummary, analyzerArn string) *FindingResource {
 	return &FindingResource{
 		BaseResource: dao.BaseResource{
-			ID: appaws.Str(finding.Id),
+			ID:   appaws.Str(finding.Id),
+			Data: finding,
 		},
 		Summary:     &finding,
 		AnalyzerArn: analyzerArn,
@@ -104,7 +105,8 @@ func NewFindingResource(finding types.FindingSummary, analyzerArn string) *Findi
 func NewFindingResourceFromDetail(finding types.Finding, analyzerArn string) *FindingResource {
 	return &FindingResource{
 		BaseResource: dao.BaseResource{
-			ID: appaws.Str(finding.Id),
+			ID:   appaws.Str(finding.Id),
+			Data: finding,
 		},
 		Detail:      &finding,
 		AnalyzerArn: analyzerArn,

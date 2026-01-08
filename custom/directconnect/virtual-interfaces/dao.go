@@ -86,8 +86,9 @@ type VirtualInterfaceResource struct {
 func NewVirtualInterfaceResource(vi types.VirtualInterface) *VirtualInterfaceResource {
 	return &VirtualInterfaceResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(vi.VirtualInterfaceId),
-			ARN: "",
+			ID:   appaws.Str(vi.VirtualInterfaceId),
+			ARN:  "",
+			Data: vi,
 		},
 		Item: vi,
 	}

@@ -163,7 +163,8 @@ func NewCostResource(group types.Group, start, end string) *CostResource {
 			ID: serviceName,
 			// Pseudo-ARN: Cost Explorer aggregates don't have real ARNs.
 			// Format "ce::<service>" enables internal resource identification.
-			ARN: fmt.Sprintf("ce::%s", serviceName),
+			ARN:  fmt.Sprintf("ce::%s", serviceName),
+			Data: serviceName,
 		},
 		ServiceName:   serviceName,
 		Cost:          cost,

@@ -96,8 +96,9 @@ func NewLocationResource(loc types.LocationListEntry) *LocationResource {
 	arn := appaws.Str(loc.LocationArn)
 	return &LocationResource{
 		BaseResource: dao.BaseResource{
-			ID:  extractLocationID(arn),
-			ARN: arn,
+			ID:   extractLocationID(arn),
+			ARN:  arn,
+			Data: loc,
 		},
 		Location: &loc,
 	}

@@ -96,8 +96,9 @@ func NewFirewallResource(fw types.FirewallMetadata) *FirewallResource {
 func NewFirewallResourceFromDetail(fw types.Firewall, status *types.FirewallStatus) *FirewallResource {
 	return &FirewallResource{
 		BaseResource: dao.BaseResource{
-			ID:  appaws.Str(fw.FirewallName),
-			ARN: appaws.Str(fw.FirewallArn),
+			ID:   appaws.Str(fw.FirewallName),
+			ARN:  appaws.Str(fw.FirewallArn),
+			Data: fw,
 		},
 		Detail: &fw,
 		Status: status,

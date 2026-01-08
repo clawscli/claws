@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
@@ -11,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime/types"
 
 	appaws "github.com/clawscli/claws/internal/aws"
+	apperrors "github.com/clawscli/claws/internal/errors"
 	"github.com/clawscli/claws/internal/log"
 )
 
@@ -43,6 +45,7 @@ type ToolResult struct {
 type StreamEvent struct {
 	Type      string
 	Text      string
+	Thinking  string
 	ToolCalls []ToolCall
 	Error     error
 }
@@ -54,9 +57,11 @@ type Tool struct {
 }
 
 type Client struct {
-	client  *bedrockruntime.Client
-	modelID string
-	tools   []Tool
+	client         *bedrockruntime.Client
+	modelID        string
+	tools          []Tool
+	maxTokens      int32
+	thinkingBudget int
 }
 
 type ClientOption func(*Client)
@@ -73,10 +78,22 @@ func WithTools(tools []Tool) ClientOption {
 	}
 }
 
+func WithMaxTokens(maxTokens int) ClientOption {
+	return func(c *Client) {
+		c.maxTokens = int32(maxTokens)
+	}
+}
+
+func WithThinkingBudget(budget int) ClientOption {
+	return func(c *Client) {
+		c.thinkingBudget = budget
+	}
+}
+
 func NewClient(ctx context.Context, opts ...ClientOption) (*Client, error) {
 	cfg, err := appaws.NewConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("load aws config: %w", err)
+		return nil, apperrors.Wrap(err, "load aws config")
 	}
 
 	c := &Client{
@@ -96,7 +113,7 @@ func (c *Client) Converse(ctx context.Context, messages []Message, systemPrompt 
 
 	output, err := c.client.Converse(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("converse: %w", err)
+		return nil, apperrors.Wrap(err, "converse")
 	}
 
 	return c.parseConverseOutput(output)
@@ -107,7 +124,7 @@ func (c *Client) ConverseStream(ctx context.Context, messages []Message, systemP
 
 	output, err := c.client.ConverseStream(ctx, input)
 	if err != nil {
-		return nil, fmt.Errorf("converse stream: %w", err)
+		return nil, apperrors.Wrap(err, "converse stream")
 	}
 
 	events := make(chan StreamEvent, 10)
@@ -138,10 +155,32 @@ func (c *Client) buildConverseInput(messages []Message, systemPrompt string) *be
 		input.ToolConfig = c.buildToolConfig()
 	}
 
+	if c.maxTokens > 0 {
+		input.InferenceConfig = &types.InferenceConfiguration{
+			MaxTokens: aws.Int32(c.maxTokens),
+		}
+	}
+
+	if c.thinkingBudget > 0 && strings.Contains(c.modelID, "anthropic.claude") {
+		thinkingConfig := map[string]any{
+			"thinking": map[string]any{
+				"type":          "enabled",
+				"budget_tokens": c.thinkingBudget,
+			},
+			"anthropic_beta": []string{"interleaved-thinking-2025-05-14"},
+		}
+		input.AdditionalModelRequestFields = document.NewLazyDocument(thinkingConfig)
+		if input.InferenceConfig == nil {
+			input.InferenceConfig = &types.InferenceConfiguration{}
+		}
+		input.InferenceConfig.Temperature = aws.Float32(1.0)
+	}
+
 	return input
 }
 
 func (c *Client) buildConverseStreamInput(messages []Message, systemPrompt string) *bedrockruntime.ConverseStreamInput {
+	log.Debug("buildConverseStreamInput", "modelID", c.modelID, "maxTokens", c.maxTokens, "thinkingBudget", c.thinkingBudget)
 	input := &bedrockruntime.ConverseStreamInput{
 		ModelId:  aws.String(c.modelID),
 		Messages: c.convertMessages(messages),
@@ -155,6 +194,30 @@ func (c *Client) buildConverseStreamInput(messages []Message, systemPrompt strin
 
 	if len(c.tools) > 0 {
 		input.ToolConfig = c.buildToolConfig()
+	}
+
+	if c.maxTokens > 0 {
+		input.InferenceConfig = &types.InferenceConfiguration{
+			MaxTokens: aws.Int32(c.maxTokens),
+		}
+	}
+
+	if c.thinkingBudget > 0 && strings.Contains(c.modelID, "anthropic.claude") {
+		log.Debug("applying thinking config", "budget", c.thinkingBudget)
+		thinkingConfig := map[string]any{
+			"thinking": map[string]any{
+				"type":          "enabled",
+				"budget_tokens": c.thinkingBudget,
+			},
+			"anthropic_beta": []string{"interleaved-thinking-2025-05-14"},
+		}
+		input.AdditionalModelRequestFields = document.NewLazyDocument(thinkingConfig)
+		if input.InferenceConfig == nil {
+			input.InferenceConfig = &types.InferenceConfiguration{}
+		}
+		input.InferenceConfig.Temperature = aws.Float32(1.0)
+	} else {
+		log.Debug("thinking not applied", "budget", c.thinkingBudget, "modelMatch", strings.Contains(c.modelID, "anthropic.claude"))
 	}
 
 	return input
@@ -275,12 +338,24 @@ func (c *Client) processStream(ctx context.Context, output *bedrockruntime.Conve
 			}
 
 		case *types.ConverseStreamOutputMemberContentBlockDelta:
+			log.Debug("content block delta", "deltaType", fmt.Sprintf("%T", e.Value.Delta))
 			switch delta := e.Value.Delta.(type) {
 			case *types.ContentBlockDeltaMemberText:
 				events <- StreamEvent{Type: "text", Text: delta.Value}
 			case *types.ContentBlockDeltaMemberToolUse:
 				if delta.Value.Input != nil {
 					toolInputJSON += *delta.Value.Input
+				}
+			case *types.ContentBlockDeltaMemberReasoningContent:
+				log.Debug("reasoning content", "valueType", fmt.Sprintf("%T", delta.Value))
+				switch reasoningDelta := delta.Value.(type) {
+				case *types.ReasoningContentBlockDeltaMemberText:
+					log.Debug("thinking text", "len", len(reasoningDelta.Value))
+					events <- StreamEvent{Type: "thinking", Thinking: reasoningDelta.Value}
+				case *types.ReasoningContentBlockDeltaMemberSignature:
+					log.Debug("thinking signature received")
+				case *types.ReasoningContentBlockDeltaMemberRedactedContent:
+					log.Debug("thinking redacted")
 				}
 			}
 
