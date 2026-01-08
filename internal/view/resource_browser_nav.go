@@ -179,7 +179,9 @@ func (r *ResourceBrowser) SelectedResource() dao.Resource {
 	return r.filtered[cursor]
 }
 
-// getNavigationShortcuts returns a string of navigation shortcuts for the current resource
+func (r *ResourceBrowser) ResourceCount() int { return len(r.filtered) }
+func (r *ResourceBrowser) FilterText() string { return r.filterText }
+
 func (r *ResourceBrowser) getNavigationShortcuts() string {
 	if r.renderer == nil || len(r.filtered) == 0 {
 		return ""

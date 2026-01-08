@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 
 	appaws "github.com/clawscli/claws/internal/aws"
+	appconfig "github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/log"
 	"github.com/clawscli/claws/internal/registry"
@@ -72,6 +73,10 @@ func (e *ToolExecutor) Tools() []Tool {
 						"type":        "string",
 						"description": "AWS region. Examples: us-east-1, us-west-2, ap-northeast-1",
 					},
+					"profile": map[string]any{
+						"type":        "string",
+						"description": "AWS profile name (optional, uses current profile if not specified)",
+					},
 				},
 				"required": []string{"service", "resource_type", "region"},
 			},
@@ -102,6 +107,10 @@ func (e *ToolExecutor) Tools() []Tool {
 						"type":        "string",
 						"description": "ECS cluster name (required for ecs/services and ecs/tasks)",
 					},
+					"profile": map[string]any{
+						"type":        "string",
+						"description": "AWS profile name (optional, uses current profile if not specified)",
+					},
 				},
 				"required": []string{"service", "resource_type", "region", "id"},
 			},
@@ -131,6 +140,10 @@ func (e *ToolExecutor) Tools() []Tool {
 					"cluster": map[string]any{
 						"type":        "string",
 						"description": "ECS cluster name (required for ecs/services and ecs/tasks)",
+					},
+					"profile": map[string]any{
+						"type":        "string",
+						"description": "AWS profile name (optional, uses current profile if not specified)",
 					},
 					"filter": map[string]any{
 						"type":        "string",
@@ -177,24 +190,27 @@ func (e *ToolExecutor) Execute(ctx context.Context, call *ToolUseContent) ToolRe
 		service, _ := call.Input["service"].(string)
 		resourceType, _ := call.Input["resource_type"].(string)
 		region, _ := call.Input["region"].(string)
-		content, isError = e.queryResources(ctx, service, resourceType, region)
+		profile, _ := call.Input["profile"].(string)
+		content, isError = e.queryResources(ctx, service, resourceType, region, profile)
 	case "get_resource_detail":
 		service, _ := call.Input["service"].(string)
 		resourceType, _ := call.Input["resource_type"].(string)
 		region, _ := call.Input["region"].(string)
 		id, _ := call.Input["id"].(string)
 		cluster, _ := call.Input["cluster"].(string)
-		content, isError = e.getResourceDetail(ctx, service, resourceType, region, id, cluster)
+		profile, _ := call.Input["profile"].(string)
+		content, isError = e.getResourceDetail(ctx, service, resourceType, region, id, cluster, profile)
 	case "tail_logs":
 		service, _ := call.Input["service"].(string)
 		resourceType, _ := call.Input["resource_type"].(string)
 		region, _ := call.Input["region"].(string)
 		id, _ := call.Input["id"].(string)
 		cluster, _ := call.Input["cluster"].(string)
+		profile, _ := call.Input["profile"].(string)
 		filter, _ := call.Input["filter"].(string)
 		since, _ := call.Input["since"].(string)
 		limit, _ := call.Input["limit"].(float64)
-		content, isError = e.tailLogs(ctx, service, resourceType, region, id, cluster, filter, since, int(limit))
+		content, isError = e.tailLogs(ctx, service, resourceType, region, id, cluster, profile, filter, since, int(limit))
 	case "search_aws_docs":
 		query, _ := call.Input["query"].(string)
 		content = e.searchDocs(query)
@@ -224,7 +240,7 @@ func (e *ToolExecutor) listResources(service string) string {
 	return result
 }
 
-func (e *ToolExecutor) queryResources(ctx context.Context, service, resourceType, region string) (string, bool) {
+func (e *ToolExecutor) queryResources(ctx context.Context, service, resourceType, region, profile string) (string, bool) {
 	if service == "" {
 		return "Error: service parameter is required", true
 	}
@@ -235,13 +251,16 @@ func (e *ToolExecutor) queryResources(ctx context.Context, service, resourceType
 		return "Error: region parameter is required", true
 	}
 
-	regionCtx := appaws.WithRegionOverride(ctx, region)
-	d, err := e.registry.GetDAO(regionCtx, service, resourceType)
+	if profile != "" {
+		ctx = appaws.WithSelectionOverride(ctx, appconfig.NamedProfile(profile))
+	}
+	ctx = appaws.WithRegionOverride(ctx, region)
+	d, err := e.registry.GetDAO(ctx, service, resourceType)
 	if err != nil {
 		return fmt.Sprintf("Error: %s/%s not found. Use list_resources(service=\"%s\") to see available types.", service, resourceType, service), true
 	}
 
-	resources, err := d.List(regionCtx)
+	resources, err := d.List(ctx)
 	if err != nil {
 		return fmt.Sprintf("Error listing %s/%s: %v", service, resourceType, err), true
 	}
@@ -262,12 +281,15 @@ func (e *ToolExecutor) queryResources(ctx context.Context, service, resourceType
 	return result, false
 }
 
-func (e *ToolExecutor) getResourceDetail(ctx context.Context, service, resourceType, region, id, cluster string) (string, bool) {
+func (e *ToolExecutor) getResourceDetail(ctx context.Context, service, resourceType, region, id, cluster, profile string) (string, bool) {
 	if region == "" {
 		return "Error: region parameter is required", true
 	}
 
-	regionCtx := appaws.WithRegionOverride(ctx, region)
+	if profile != "" {
+		ctx = appaws.WithSelectionOverride(ctx, appconfig.NamedProfile(profile))
+	}
+	ctx = appaws.WithRegionOverride(ctx, region)
 
 	if service == "ecs" && (resourceType == "services" || resourceType == "tasks") {
 		if cluster == "" {
@@ -275,16 +297,16 @@ func (e *ToolExecutor) getResourceDetail(ctx context.Context, service, resourceT
 			log.Warn("getResourceDetail failed", "error", err)
 			return err, true
 		}
-		regionCtx = dao.WithFilter(regionCtx, "ClusterName", cluster)
+		ctx = dao.WithFilter(ctx, "ClusterName", cluster)
 	}
 
-	d, err := e.registry.GetDAO(regionCtx, service, resourceType)
+	d, err := e.registry.GetDAO(ctx, service, resourceType)
 	if err != nil {
 		log.Warn("getResourceDetail GetDAO failed", "error", err)
 		return fmt.Sprintf("Error getting DAO: %v", err), true
 	}
 
-	resource, err := d.Get(regionCtx, id)
+	resource, err := d.Get(ctx, id)
 	if err != nil {
 		log.Warn("getResourceDetail Get failed", "service", service, "resourceType", resourceType, "id", id, "error", err)
 		return fmt.Sprintf("Error getting resource: %v", err), true
@@ -293,7 +315,7 @@ func (e *ToolExecutor) getResourceDetail(ctx context.Context, service, resourceT
 	return formatResourceDetail(resource), false
 }
 
-func (e *ToolExecutor) tailLogs(ctx context.Context, service, resourceType, region, id, cluster, filter, since string, limit int) (string, bool) {
+func (e *ToolExecutor) tailLogs(ctx context.Context, service, resourceType, region, id, cluster, profile, filter, since string, limit int) (string, bool) {
 	if region == "" {
 		return "Error: region parameter is required", true
 	}
@@ -304,9 +326,12 @@ func (e *ToolExecutor) tailLogs(ctx context.Context, service, resourceType, regi
 		limit = 500
 	}
 
-	regionCtx := appaws.WithRegionOverride(ctx, region)
+	if profile != "" {
+		ctx = appaws.WithSelectionOverride(ctx, appconfig.NamedProfile(profile))
+	}
+	ctx = appaws.WithRegionOverride(ctx, region)
 
-	logGroup, err := e.extractLogGroup(regionCtx, service, resourceType, id, cluster)
+	logGroup, err := e.extractLogGroup(ctx, service, resourceType, id, cluster)
 	if err != nil {
 		log.Warn("tailLogs extractLogGroup failed", "service", service, "resourceType", resourceType, "id", id, "error", err)
 		return fmt.Sprintf("Error extracting log group for %s/%s/%s: %v", service, resourceType, id, err), true

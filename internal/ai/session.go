@@ -25,15 +25,40 @@ type Session struct {
 	Context   *Context  `json:"context,omitempty"`
 }
 
+type ContextMode string
+
+const (
+	ContextModeSingle ContextMode = "single"
+	ContextModeList   ContextMode = "list"
+	ContextModeDiff   ContextMode = "diff"
+)
+
+type ResourceRef struct {
+	ID      string `json:"id"`
+	Name    string `json:"name,omitempty"`
+	Region  string `json:"region,omitempty"`
+	Profile string `json:"profile,omitempty"`
+	Cluster string `json:"cluster,omitempty"`
+}
+
 type Context struct {
-	Service        string   `json:"service,omitempty"`
-	ResourceType   string   `json:"resource_type,omitempty"`
-	ResourceID     string   `json:"resource_id,omitempty"`
-	ResourceName   string   `json:"resource_name,omitempty"`
-	ResourceRegion string   `json:"resource_region,omitempty"`
-	Cluster        string   `json:"cluster,omitempty"` // ECS cluster name (for tasks/services)
-	LogGroup       string   `json:"log_group,omitempty"`
-	Regions        []string `json:"regions,omitempty"`
+	Service      string      `json:"service,omitempty"`
+	ResourceType string      `json:"resource_type,omitempty"`
+	Regions      []string    `json:"regions,omitempty"`
+	Mode         ContextMode `json:"mode,omitempty"`
+
+	ResourceID     string `json:"resource_id,omitempty"`
+	ResourceName   string `json:"resource_name,omitempty"`
+	ResourceRegion string `json:"resource_region,omitempty"`
+	Profile        string `json:"profile,omitempty"`
+	Cluster        string `json:"cluster,omitempty"`
+	LogGroup       string `json:"log_group,omitempty"`
+
+	ResourceCount int    `json:"resource_count,omitempty"`
+	FilterText    string `json:"filter_text,omitempty"`
+
+	DiffLeft  *ResourceRef `json:"diff_left,omitempty"`
+	DiffRight *ResourceRef `json:"diff_right,omitempty"`
 }
 
 type SessionManager struct {

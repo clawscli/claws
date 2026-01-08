@@ -169,3 +169,8 @@ func (d *DiffView) renderSideBySide() string {
 
 	return out.String()
 }
+
+func (d *DiffView) Left() dao.Resource   { return d.left }
+func (d *DiffView) Right() dao.Resource  { return d.right }
+func (d *DiffView) Service() string      { return d.service }
+func (d *DiffView) ResourceType() string { return d.resourceType }

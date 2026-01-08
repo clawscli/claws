@@ -872,33 +872,42 @@ func (a *App) resolveStartupView(viewName string) view.View {
 
 func (a *App) buildAIContext() *ai.Context {
 	regions := config.Global().Regions()
+	currentProfile := config.Global().Selection().ProfileName
+
 	switch v := a.currentView.(type) {
 	case *view.ResourceBrowser:
-		ctx := &ai.Context{
+		return &ai.Context{
+			Mode:          ai.ContextModeList,
+			Service:       v.Service(),
+			ResourceType:  v.ResourceType(),
+			ResourceCount: v.ResourceCount(),
+			FilterText:    v.FilterText(),
+			Profile:       currentProfile,
+			Regions:       regions,
+		}
+
+	case *view.DiffView:
+		return &ai.Context{
+			Mode:         ai.ContextModeDiff,
 			Service:      v.Service(),
 			ResourceType: v.ResourceType(),
+			DiffLeft:     buildResourceRef(v.Left()),
+			DiffRight:    buildResourceRef(v.Right()),
 			Regions:      regions,
 		}
-		if r := v.SelectedResource(); r != nil {
-			unwrapped := dao.UnwrapResource(r)
-			ctx.ResourceID = unwrapped.GetID()
-			ctx.ResourceName = unwrapped.GetName()
-			ctx.ResourceRegion = dao.GetResourceRegion(r)
-			if clusterArn := dao.GetResourceClusterArn(r); clusterArn != "" {
-				ctx.Cluster = aws.ExtractResourceName(clusterArn)
-			}
-		}
-		return ctx
+
 	case *view.DetailView:
 		r := v.Resource()
 		if r != nil {
 			unwrapped := dao.UnwrapResource(r)
 			ctx := &ai.Context{
+				Mode:           ai.ContextModeSingle,
 				Service:        v.Service(),
 				ResourceType:   v.ResourceType(),
 				ResourceID:     unwrapped.GetID(),
 				ResourceName:   unwrapped.GetName(),
 				ResourceRegion: dao.GetResourceRegion(r),
+				Profile:        dao.GetResourceProfile(r),
 				Regions:        regions,
 			}
 			if v.Service() == "lambda" && v.ResourceType() == "functions" {
@@ -909,6 +918,7 @@ func (a *App) buildAIContext() *ai.Context {
 			}
 			return ctx
 		}
+
 	case *view.LogView:
 		return &ai.Context{
 			LogGroup: v.LogGroupName(),
@@ -916,4 +926,18 @@ func (a *App) buildAIContext() *ai.Context {
 		}
 	}
 	return &ai.Context{Regions: regions}
+}
+
+func buildResourceRef(r dao.Resource) *ai.ResourceRef {
+	unwrapped := dao.UnwrapResource(r)
+	ref := &ai.ResourceRef{
+		ID:      unwrapped.GetID(),
+		Name:    unwrapped.GetName(),
+		Region:  dao.GetResourceRegion(r),
+		Profile: dao.GetResourceProfile(r),
+	}
+	if clusterArn := dao.GetResourceClusterArn(r); clusterArn != "" {
+		ref.Cluster = aws.ExtractResourceName(clusterArn)
+	}
+	return ref
 }
