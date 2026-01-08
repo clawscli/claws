@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/clawscli/claws/internal/config"
+	"github.com/clawscli/claws/internal/log"
 )
 
 const (
@@ -102,15 +103,7 @@ func (m *SessionManager) NewSession(ctx *Context) (*Session, error) {
 		Context:   ctx,
 	}
 
-	if err := m.saveSession(session); err != nil {
-		return nil, err
-	}
-
 	m.currentID = session.ID
-
-	// Best effort cleanup - log error but don't fail session creation
-	_ = m.pruneOldSessions()
-
 	return session, nil
 }
 
@@ -172,7 +165,16 @@ func (m *SessionManager) SaveMessages(session *Session) error {
 
 func (m *SessionManager) AddMessage(session *Session, msg Message) error {
 	session.Messages = append(session.Messages, msg)
-	return m.SaveMessages(session)
+	err := m.SaveMessages(session)
+	if err != nil {
+		return err
+	}
+	if len(session.Messages) == 1 {
+		if pruneErr := m.pruneOldSessions(); pruneErr != nil {
+			log.Debug("failed to prune old sessions", "error", pruneErr)
+		}
+	}
+	return nil
 }
 
 func (m *SessionManager) ListSessions() ([]Session, error) {

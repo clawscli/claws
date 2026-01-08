@@ -204,7 +204,7 @@ func (r *ClusterRenderer) Navigations(resource dao.Resource) []render.Navigation
 			FilterValue: clusterName,
 		},
 		{
-			Key:      "d",
+			Key:      "D",
 			Label:    "Task Definitions",
 			Service:  "ecs",
 			Resource: "task-definitions",

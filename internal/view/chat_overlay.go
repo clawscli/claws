@@ -85,6 +85,9 @@ type ChatOverlay struct {
 
 	width  int
 	height int
+
+	showingHistory bool
+	sessionHistory *SessionHistory
 }
 
 // chatMessage is a UI-level message for display purposes.
@@ -172,6 +175,10 @@ func (c *ChatOverlay) initClient() tea.Msg {
 }
 
 func (c *ChatOverlay) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if c.showingHistory {
+		return c.handleHistoryUpdate(msg)
+	}
+
 	switch msg := msg.(type) {
 	case chatInitMsg:
 		if msg.err != nil {
@@ -219,6 +226,8 @@ func (c *ChatOverlay) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "ctrl+c":
 		return c, func() tea.Msg { return HideModalMsg{} }
+	case "ctrl+h":
+		return c.showHistory()
 	case "enter":
 		if c.isStreaming {
 			return c, nil
@@ -241,7 +250,11 @@ func (c *ChatOverlay) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		c.err = nil
 		c.updateViewport()
 
-		c.streamMessages = append(c.streamMessages, ai.NewUserMessage(text))
+		userMsg := ai.NewUserMessage(text)
+		c.streamMessages = append(c.streamMessages, userMsg)
+		if c.session != nil {
+			_ = c.sessMgr.AddMessage(c.session, userMsg)
+		}
 		return c, c.startStream(c.streamMessages)
 	}
 
@@ -416,9 +429,20 @@ func (c *ChatOverlay) handleStreamDone(_ <-chan ai.StreamEvent) (tea.Model, tea.
 
 	// No tool uses or max rounds reached - done
 	if len(assistantBlocks) > 0 {
-		c.streamMessages = append(c.streamMessages, ai.Message{
+		assistantMsg := ai.Message{
 			Role:    ai.RoleAssistant,
 			Content: assistantBlocks,
+		}
+		c.streamMessages = append(c.streamMessages, assistantMsg)
+		if c.session != nil {
+			_ = c.sessMgr.AddMessage(c.session, assistantMsg)
+		}
+	}
+
+	if len(c.pendingToolUses) > 0 && c.toolRound >= MaxToolRounds {
+		c.messages = append(c.messages, chatMessage{
+			role:    ai.RoleAssistant,
+			content: "(tool limit reached)",
 		})
 	}
 
@@ -483,10 +507,21 @@ func (c *ChatOverlay) View() tea.View {
 }
 
 func (c *ChatOverlay) ViewString() string {
+	if c.showingHistory && c.sessionHistory != nil {
+		return c.sessionHistory.ViewString()
+	}
+
 	var sb strings.Builder
 
 	title := c.styles.title.Render("AI Chat")
-	sb.WriteString(title)
+	hint := c.styles.context.Render("Ctrl+h: history")
+	titleWidth := lipgloss.Width(title)
+	hintWidth := lipgloss.Width(hint)
+	padding := c.width - titleWidth - hintWidth
+	if padding < 1 {
+		padding = 1
+	}
+	sb.WriteString(title + strings.Repeat(" ", padding) + hint)
 	sb.WriteString("\n")
 
 	if c.aiCtx != nil && c.aiCtx.Service != "" {
@@ -562,4 +597,87 @@ func (c *ChatOverlay) scrollToCollapsible(startLine int, wasCollapsed bool) {
 	if wasCollapsed {
 		c.vp.Model.SetYOffset(startLine)
 	}
+}
+
+func (c *ChatOverlay) showHistory() (tea.Model, tea.Cmd) {
+	sessions, _ := c.sessMgr.ListSessions()
+	currentID := ""
+	if c.session != nil {
+		currentID = c.session.ID
+	}
+	c.sessionHistory = NewSessionHistory(sessions, currentID)
+	c.sessionHistory.SetSize(c.width, c.height)
+	c.showingHistory = true
+	return c, nil
+}
+
+func (c *ChatOverlay) handleHistoryUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case SessionSelectedMsg:
+		c.showingHistory = false
+		c.sessionHistory = nil
+		if msg.Session != nil {
+			return c.loadSession(msg.Session)
+		}
+		return c, nil
+
+	case NewSessionMsg:
+		c.showingHistory = false
+		c.sessionHistory = nil
+		return c.newSession()
+
+	case CloseHistoryMsg:
+		c.showingHistory = false
+		c.sessionHistory = nil
+		return c, nil
+	}
+
+	if c.sessionHistory != nil {
+		model, cmd := c.sessionHistory.Update(msg)
+		if sh, ok := model.(*SessionHistory); ok {
+			c.sessionHistory = sh
+		}
+		return c, cmd
+	}
+	return c, nil
+}
+
+func (c *ChatOverlay) loadSession(sess *ai.Session) (tea.Model, tea.Cmd) {
+	c.session = sess
+	c.messages = []chatMessage{}
+	c.streamMessages = []ai.Message{}
+	c.collapsedThinking = make(map[int]bool)
+	c.collapsedToolCalls = make(map[int]bool)
+
+	for _, msg := range sess.Messages {
+		cm := chatMessage{role: msg.Role}
+		for _, block := range msg.Content {
+			if block.Text != "" {
+				cm.content = block.Text
+			}
+			if block.Reasoning != "" {
+				cm.thinkingContent = block.Reasoning
+			}
+		}
+		c.messages = append(c.messages, cm)
+		c.streamMessages = append(c.streamMessages, msg)
+	}
+
+	c.updateViewport()
+	return c, nil
+}
+
+func (c *ChatOverlay) newSession() (tea.Model, tea.Cmd) {
+	session, err := c.sessMgr.NewSession(c.aiCtx)
+	if err != nil {
+		c.err = err
+		return c, nil
+	}
+	c.session = session
+	c.messages = []chatMessage{}
+	c.streamMessages = []ai.Message{}
+	c.collapsedThinking = make(map[int]bool)
+	c.collapsedToolCalls = make(map[int]bool)
+	c.updateViewport()
+	return c, nil
 }

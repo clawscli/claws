@@ -333,7 +333,7 @@ func (r *TaskRenderer) Navigations(resource dao.Resource) []render.Navigation {
 		taskDefName := appaws.ExtractResourceName(taskDef)
 
 		navs = append(navs, render.Navigation{
-			Key:         "d",
+			Key:         "D",
 			Label:       "Task Definition",
 			Service:     "ecs",
 			Resource:    "task-definitions",

@@ -392,7 +392,7 @@ func (r *ServiceRenderer) Navigations(resource dao.Resource) []render.Navigation
 
 	if td := svc.TaskDefinition(); td != "" {
 		navs = append(navs, render.Navigation{
-			Key:         "d",
+			Key:         "D",
 			Label:       "Task Definition",
 			Service:     "ecs",
 			Resource:    "task-definitions",

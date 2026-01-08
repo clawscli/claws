@@ -172,7 +172,7 @@ func (r *GraphQLApiRenderer) Navigations(resource dao.Resource) []render.Navigat
 	}
 	return []render.Navigation{
 		{
-			Key:         "d",
+			Key:         "D",
 			Label:       "Data Sources",
 			Service:     "appsync",
 			Resource:    "data-sources",
