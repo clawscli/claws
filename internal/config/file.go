@@ -9,8 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/clawscli/claws/internal/log"
 	"gopkg.in/yaml.v3"
+
+	"github.com/clawscli/claws/internal/log"
 )
 
 const (

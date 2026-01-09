@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"charm.land/bubbles/v2/textinput"
@@ -95,7 +96,8 @@ type ChatOverlay struct {
 	contextExpanded bool
 
 	// Stream cancellation - prevents goroutine leaks when overlay closes mid-stream
-	streamCancel context.CancelFunc
+	streamCancel   context.CancelFunc
+	streamCancelMu sync.Mutex
 }
 
 // chatMessage is a UI-level message for display purposes.
@@ -227,6 +229,8 @@ func (c *ChatOverlay) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (c *ChatOverlay) cancelStream() {
+	c.streamCancelMu.Lock()
+	defer c.streamCancelMu.Unlock()
 	if c.streamCancel != nil {
 		c.streamCancel()
 		c.streamCancel = nil
@@ -505,18 +509,19 @@ func (c *ChatOverlay) handleStreamDone(_ <-chan ai.StreamEvent) (tea.Model, tea.
 }
 
 func (c *ChatOverlay) handleToolExecute(msg chatToolExecuteMsg) (tea.Model, tea.Cmd) {
-	// Check tool call limit before executing tools
 	maxCalls := config.File().GetAIMaxToolCallsPerQuery()
-	if c.toolCallCount >= maxCalls {
-		c.err = fmt.Errorf("Tool call limit reached (%d calls). Start new query to continue.", maxCalls)
-		c.isStreaming = false
-		c.updateViewport()
-		return c, nil
-	}
 
 	// Execute each tool and collect results
 	var toolResults []ai.ToolResultContent
 	for _, tu := range msg.toolUses {
+		// Check tool call limit before executing each tool
+		if c.toolCallCount >= maxCalls {
+			c.err = fmt.Errorf("Tool call limit reached (%d calls). Start new query to continue.", maxCalls)
+			c.isStreaming = false
+			c.updateViewport()
+			return c, nil
+		}
+
 		result := c.executor.Execute(c.ctx, tu)
 		toolResults = append(toolResults, result)
 		c.toolCallCount++

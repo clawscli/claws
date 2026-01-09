@@ -6,8 +6,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/clawscli/claws/internal/ai"
 	"github.com/mattn/go-runewidth"
+
+	"github.com/clawscli/claws/internal/ai"
 )
 
 func (c *ChatOverlay) updateViewport() {

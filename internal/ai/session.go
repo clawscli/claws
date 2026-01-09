@@ -8,9 +8,10 @@ import (
 	"sort"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/log"
-	"github.com/google/uuid"
 )
 
 const (
@@ -257,7 +258,7 @@ func (m *SessionManager) saveSession(session *Session) error {
 		return err
 	}
 
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0700); err != nil {
 		return err
 	}
 
@@ -281,7 +282,7 @@ func (m *SessionManager) saveCurrentID(id string) error {
 	}
 
 	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0700); err != nil {
 		return err
 	}
 
