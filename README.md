@@ -32,6 +32,12 @@ A terminal UI for AWS resource management
 
 ![multi-region](docs/images/multi-account-region.png)
 
+### AI Chat (Bedrock)
+
+![ai-chat](docs/images/ai-chat.png)
+
+Press `A` in list/detail/diff views to open AI chat. The assistant analyzes resources, compares configurations, and identifies risks using AWS Bedrock.
+
 ## Installation
 
 ### Homebrew (macOS/Linux)
@@ -90,7 +96,7 @@ claws --read-only
 | `:` | Command mode (e.g., `:ec2/instances`) |
 | `/` | Filter mode (fuzzy search) |
 | `a` | Open actions menu |
-| `A` | AI Chat |
+| `A` | AI Chat (in list/detail/diff views) |
 | `R` | Select region(s) |
 | `P` | Select profile(s) |
 | `?` | Show help |
@@ -106,6 +112,7 @@ See [docs/keybindings.md](docs/keybindings.md) for complete reference.
 | [Supported Services](docs/services.md) | All 69 services and 163 resources |
 | [Configuration](docs/configuration.md) | Config file, themes, and options |
 | [IAM Permissions](docs/iam-permissions.md) | Required AWS permissions |
+| [AI Chat](docs/ai-chat.md) | AI assistant usage and features |
 | [Architecture](docs/architecture.md) | Internal design and structure |
 | [Adding Resources](docs/adding-resources.md) | Guide for contributors |
 

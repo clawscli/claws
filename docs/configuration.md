@@ -41,6 +41,8 @@ navigation:
   max_stack_size: 100     # Max navigation history depth (default: 100)
 
 ai:
+  profile: ""                  # AWS profile for Bedrock (empty = use current profile)
+  region: ""                   # AWS region for Bedrock (empty = use current region)
   model: "global.anthropic.claude-haiku-4-5-20251001-v1:0"  # Bedrock model ID
   max_sessions: 100            # Max stored sessions (default: 100)
   max_tokens: 16000            # Max response tokens (default: 16000)
