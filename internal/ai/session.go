@@ -307,25 +307,38 @@ func (m *SessionManager) pruneOldSessions() error {
 		return err
 	}
 
-	// Collect .json filenames
-	var names []string
+	// Collect .json files with modification times
+	type sessionFile struct {
+		name    string
+		modTime time.Time
+	}
+	var files []sessionFile
 	for _, entry := range entries {
 		if !entry.IsDir() && filepath.Ext(entry.Name()) == ".json" {
-			names = append(names, entry.Name())
+			info, err := entry.Info()
+			if err != nil {
+				continue
+			}
+			files = append(files, sessionFile{
+				name:    entry.Name(),
+				modTime: info.ModTime(),
+			})
 		}
 	}
 
-	if len(names) <= m.maxSessions {
+	if len(files) <= m.maxSessions {
 		return nil
 	}
 
-	// Sort by filename (which includes timestamp: 20060102-150405-uuid)
-	sort.Strings(names)
+	// Sort by modification time (oldest first)
+	sort.Slice(files, func(i, j int) bool {
+		return files[i].modTime.Before(files[j].modTime)
+	})
 
 	// Delete oldest sessions
-	deleteCount := len(names) - m.maxSessions
+	deleteCount := len(files) - m.maxSessions
 	for i := 0; i < deleteCount; i++ {
-		_ = os.Remove(filepath.Join(dir, names[i]))
+		_ = os.Remove(filepath.Join(dir, files[i].name))
 	}
 
 	return nil

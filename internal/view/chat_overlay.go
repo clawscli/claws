@@ -331,7 +331,10 @@ func (c *ChatOverlay) handleMouseClick(msg tea.MouseClickMsg) (tea.Model, tea.Cm
 func (c *ChatOverlay) startStream(messages []ai.Message) tea.Cmd {
 	c.cancelStream()
 	streamCtx, cancel := context.WithCancel(c.ctx)
+
+	c.streamCancelMu.Lock()
 	c.streamCancel = cancel
+	c.streamCancelMu.Unlock()
 
 	return func() tea.Msg {
 		if c.client == nil || c.executor == nil {
