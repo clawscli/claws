@@ -17,7 +17,7 @@ The AI Chat feature (`A` key) uses Amazon Bedrock. To enable this feature, you n
     {
       "Effect": "Allow",
       "Action": "bedrock:InvokeModelWithResponseStream",
-      "Resource": "arn:aws:bedrock:*::foundation-model/anthropic.claude-*"
+      "Resource": "arn:aws:bedrock:*::foundation-model/*"
     },
     {
       "Effect": "Allow",
@@ -30,6 +30,8 @@ The AI Chat feature (`A` key) uses Amazon Bedrock. To enable this feature, you n
   ]
 }
 ```
+
+**Note**: AWS Marketplace permissions are required for first-time model usage in your account. If the model is already enabled, only the `bedrock:InvokeModelWithResponseStream` permission is needed.
 
 ## Inline Metrics (Optional)
 
@@ -86,7 +88,7 @@ For full read-only access with metrics and AI chat:
     {
       "Effect": "Allow",
       "Action": "bedrock:InvokeModelWithResponseStream",
-      "Resource": "arn:aws:bedrock:*::foundation-model/anthropic.claude-*"
+      "Resource": "arn:aws:bedrock:*::foundation-model/*"
     },
     {
       "Effect": "Allow",

@@ -24,7 +24,7 @@ The AI Chat feature uses Amazon Bedrock. You need the following permission:
 {
   "Effect": "Allow",
   "Action": "bedrock:InvokeModelWithResponseStream",
-  "Resource": "arn:aws:bedrock:*::foundation-model/anthropic.claude-*"
+  "Resource": "arn:aws:bedrock:*::foundation-model/*"
 }
 ```
 
