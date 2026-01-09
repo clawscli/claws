@@ -86,6 +86,8 @@ type NavigationConfig struct {
 }
 
 type AIConfig struct {
+	Profile        string `yaml:"profile,omitempty"`
+	Region         string `yaml:"region,omitempty"`
 	Model          string `yaml:"model,omitempty"`
 	MaxSessions    int    `yaml:"max_sessions,omitempty"`
 	MaxTokens      int    `yaml:"max_tokens,omitempty"`
@@ -392,6 +394,18 @@ const DefaultAIMaxSessions = 100
 const DefaultAIMaxTokens = 16000
 const DefaultAIThinkingBudget = 8000
 const DefaultAIMaxToolRounds = 15
+
+func (c *FileConfig) GetAIProfile() string {
+	return withRLock(&c.mu, func() string {
+		return c.AI.Profile
+	})
+}
+
+func (c *FileConfig) GetAIRegion() string {
+	return withRLock(&c.mu, func() string {
+		return c.AI.Region
+	})
+}
 
 func (c *FileConfig) GetAIModel() string {
 	return withRLock(&c.mu, func() string {

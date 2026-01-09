@@ -46,15 +46,16 @@ type ResourceRef struct {
 type Context struct {
 	Service      string      `json:"service,omitempty"`
 	ResourceType string      `json:"resource_type,omitempty"`
-	Regions      []string    `json:"regions,omitempty"`
+	UserRegions  []string    `json:"user_regions,omitempty"`
+	UserProfiles []string    `json:"user_profiles,omitempty"`
 	Mode         ContextMode `json:"mode,omitempty"`
 
-	ResourceID     string `json:"resource_id,omitempty"`
-	ResourceName   string `json:"resource_name,omitempty"`
-	ResourceRegion string `json:"resource_region,omitempty"`
-	Profile        string `json:"profile,omitempty"`
-	Cluster        string `json:"cluster,omitempty"`
-	LogGroup       string `json:"log_group,omitempty"`
+	ResourceID      string `json:"resource_id,omitempty"`
+	ResourceName    string `json:"resource_name,omitempty"`
+	ResourceRegion  string `json:"resource_region,omitempty"`
+	ResourceProfile string `json:"resource_profile,omitempty"`
+	Cluster         string `json:"cluster,omitempty"`
+	LogGroup        string `json:"log_group,omitempty"`
 
 	ResourceCount int             `json:"resource_count,omitempty"`
 	FilterText    string          `json:"filter_text,omitempty"`

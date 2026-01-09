@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime/types"
 
 	appaws "github.com/clawscli/claws/internal/aws"
+	appconfig "github.com/clawscli/claws/internal/config"
 	apperrors "github.com/clawscli/claws/internal/errors"
 	"github.com/clawscli/claws/internal/log"
 )
@@ -130,13 +131,22 @@ func WithThinkingBudget(budget int) ClientOption {
 }
 
 func NewClient(ctx context.Context, opts ...ClientOption) (*Client, error) {
-	cfg, err := appaws.NewConfig(ctx)
+	// Use AI-specific profile/region if configured
+	fileCfg := appconfig.File()
+	if profile := fileCfg.GetAIProfile(); profile != "" {
+		ctx = appaws.WithSelectionOverride(ctx, appconfig.NamedProfile(profile))
+	}
+	if region := fileCfg.GetAIRegion(); region != "" {
+		ctx = appaws.WithRegionOverride(ctx, region)
+	}
+
+	awsCfg, err := appaws.NewConfig(ctx)
 	if err != nil {
 		return nil, apperrors.Wrap(err, "load aws config")
 	}
 
 	c := &Client{
-		client: bedrockruntime.NewFromConfig(cfg),
+		client: bedrockruntime.NewFromConfig(awsCfg),
 	}
 
 	for _, opt := range opts {

@@ -108,7 +108,7 @@ func (d *DiffView) SetSize(width, height int) tea.Cmd {
 
 // StatusLine implements View
 func (d *DiffView) StatusLine() string {
-	return d.left.GetName() + " vs " + d.right.GetName() + " • ↑/↓:scroll • q/esc:back"
+	return dao.UnwrapResource(d.left).GetName() + " vs " + dao.UnwrapResource(d.right).GetName() + " • ↑/↓:scroll • q/esc:back"
 }
 
 // renderSideBySide generates the side-by-side view
@@ -124,8 +124,8 @@ func (d *DiffView) renderSideBySide() string {
 	leftDetail := ""
 	rightDetail := ""
 	if d.renderer != nil {
-		leftDetail = d.renderer.RenderDetail(d.left)
-		rightDetail = d.renderer.RenderDetail(d.right)
+		leftDetail = d.renderer.RenderDetail(dao.UnwrapResource(d.left))
+		rightDetail = d.renderer.RenderDetail(dao.UnwrapResource(d.right))
 	}
 
 	// Split into lines
@@ -136,8 +136,8 @@ func (d *DiffView) renderSideBySide() string {
 	colWidth := (d.width - 3) / 2
 
 	// Column headers
-	leftHeader := TruncateOrPadString("◀ "+d.left.GetName(), colWidth)
-	rightHeader := TruncateOrPadString(d.right.GetName()+" ▶", colWidth)
+	leftHeader := TruncateOrPadString("◀ "+dao.UnwrapResource(d.left).GetName(), colWidth)
+	rightHeader := TruncateOrPadString(dao.UnwrapResource(d.right).GetName()+" ▶", colWidth)
 	out.WriteString(s.header.Render(leftHeader))
 	out.WriteString(s.separator.Render(" │ "))
 	out.WriteString(s.header.Render(rightHeader))

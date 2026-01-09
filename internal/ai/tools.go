@@ -265,7 +265,7 @@ func (e *ToolExecutor) queryResources(ctx context.Context, service, resourceType
 	}
 
 	if profile != "" {
-		ctx = appaws.WithSelectionOverride(ctx, appconfig.NamedProfile(profile))
+		ctx = appaws.WithSelectionOverride(ctx, appconfig.ProfileSelectionFromID(profile))
 	}
 	ctx = appaws.WithRegionOverride(ctx, region)
 	if includeResolved {
@@ -312,7 +312,7 @@ func (e *ToolExecutor) getResourceDetail(ctx context.Context, service, resourceT
 	}
 
 	if profile != "" {
-		ctx = appaws.WithSelectionOverride(ctx, appconfig.NamedProfile(profile))
+		ctx = appaws.WithSelectionOverride(ctx, appconfig.ProfileSelectionFromID(profile))
 	}
 	ctx = appaws.WithRegionOverride(ctx, region)
 
@@ -352,7 +352,7 @@ func (e *ToolExecutor) tailLogs(ctx context.Context, service, resourceType, regi
 	}
 
 	if profile != "" {
-		ctx = appaws.WithSelectionOverride(ctx, appconfig.NamedProfile(profile))
+		ctx = appaws.WithSelectionOverride(ctx, appconfig.ProfileSelectionFromID(profile))
 	}
 	ctx = appaws.WithRegionOverride(ctx, region)
 

@@ -354,7 +354,7 @@ func (r *ResourceBrowser) contextForResource(res dao.Resource) (context.Context,
 	if region := dao.GetResourceRegion(res); region != "" {
 		ctx = aws.WithRegionOverride(ctx, region)
 	}
-	return ctx, dao.UnwrapResource(res)
+	return ctx, res
 }
 
 func (r *ResourceBrowser) renderTabs() string {
