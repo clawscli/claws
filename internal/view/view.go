@@ -230,3 +230,28 @@ func (h *NavigationHelper) createLogView(resource dao.Resource) tea.Cmd {
 		return NavigateMsg{View: logView}
 	}
 }
+
+// mergeResources merges the refreshed resource with the original to preserve
+// fields that are only available from List() but not from Get().
+func mergeResources(original, refreshed dao.Resource) dao.Resource {
+	if original == nil {
+		return refreshed
+	}
+	if refreshed == nil {
+		return original
+	}
+	// If refreshed resource implements Mergeable, let it copy fields from original
+	if m, ok := refreshed.(dao.Mergeable); ok {
+		m.MergeFrom(original)
+	}
+
+	// Preserve wrapping from original
+	if rr, ok := original.(*dao.RegionalResource); ok {
+		return dao.WrapWithRegion(refreshed, rr.Region)
+	}
+	if pr, ok := original.(*dao.ProfiledResource); ok {
+		return dao.WrapWithProfile(refreshed, pr.Profile, pr.AccountID, pr.Region)
+	}
+
+	return refreshed
+}
