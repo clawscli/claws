@@ -92,6 +92,9 @@ type ChatOverlay struct {
 	statusMsgTime time.Time
 
 	contextExpanded bool
+
+	// Stream cancellation - prevents goroutine leaks when overlay closes mid-stream
+	streamCancel context.CancelFunc
 }
 
 // chatMessage is a UI-level message for display purposes.
@@ -222,13 +225,22 @@ func (c *ChatOverlay) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return c, tea.Batch(cmds...)
 }
 
+func (c *ChatOverlay) cancelStream() {
+	if c.streamCancel != nil {
+		c.streamCancel()
+		c.streamCancel = nil
+	}
+}
+
 func (c *ChatOverlay) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if IsEscKey(msg) {
+		c.cancelStream()
 		return c, func() tea.Msg { return HideModalMsg{} }
 	}
 
 	switch msg.String() {
 	case "ctrl+c":
+		c.cancelStream()
 		return c, func() tea.Msg { return HideModalMsg{} }
 	case "ctrl+h":
 		return c.showHistory()
@@ -258,7 +270,7 @@ func (c *ChatOverlay) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		c.streamMessages = append(c.streamMessages, userMsg)
 		if c.session != nil {
 			if err := c.sessMgr.AddMessage(c.session, userMsg); err != nil {
-				log.Debug("failed to save user message", "error", err)
+				log.Warn("failed to save user message", "error", err)
 				c.statusMsg = "Failed to save message"
 				c.statusMsgTime = time.Now()
 			}
@@ -311,6 +323,10 @@ func (c *ChatOverlay) handleMouseClick(msg tea.MouseClickMsg) (tea.Model, tea.Cm
 }
 
 func (c *ChatOverlay) startStream(messages []ai.Message) tea.Cmd {
+	c.cancelStream()
+	streamCtx, cancel := context.WithCancel(c.ctx)
+	c.streamCancel = cancel
+
 	return func() tea.Msg {
 		if c.client == nil || c.executor == nil {
 			return chatStreamMsg{event: ai.StreamEvent{Type: "error", Error: errors.New("client not initialized")}}
@@ -318,7 +334,7 @@ func (c *ChatOverlay) startStream(messages []ai.Message) tea.Cmd {
 
 		systemPrompt := c.buildSystemPrompt()
 
-		eventCh, err := c.client.ConverseStream(c.ctx, messages, systemPrompt)
+		eventCh, err := c.client.ConverseStream(streamCtx, messages, systemPrompt)
 		if err != nil {
 			return chatStreamMsg{event: ai.StreamEvent{Type: "error", Error: err}}
 		}
@@ -450,7 +466,7 @@ func (c *ChatOverlay) handleStreamDone(_ <-chan ai.StreamEvent) (tea.Model, tea.
 		c.streamMessages = append(c.streamMessages, assistantMsg)
 		if c.session != nil {
 			if err := c.sessMgr.AddMessage(c.session, assistantMsg); err != nil {
-				log.Debug("failed to save assistant message", "error", err)
+				log.Warn("failed to save assistant message", "error", err)
 				c.statusMsg = "Failed to save message"
 				c.statusMsgTime = time.Now()
 			}
@@ -673,7 +689,7 @@ func (c *ChatOverlay) loadSession(sess *ai.Session) (tea.Model, tea.Cmd) {
 		return c, nil
 	}
 
-	// Stop any active stream before loading new session
+	c.cancelStream()
 	if c.isStreaming {
 		c.isStreaming = false
 		c.streamingMsg = ""

@@ -89,6 +89,7 @@ These shortcuts navigate to related resources based on the current context:
 | `l` | View CloudWatch Logs |
 | `o` | View Outputs / Operations |
 | `i` | View Images / Indexes |
+| `D` | View Data Sources (AppSync) / Task Definitions (ECS) |
 
 ## Region Selector (`R` key)
 

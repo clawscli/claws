@@ -235,7 +235,7 @@ func (m *SessionManager) saveSession(session *Session) error {
 		return err
 	}
 
-	if err := os.WriteFile(path, data, 0644); err != nil {
+	if err := os.WriteFile(path, data, 0600); err != nil {
 		return err
 	}
 
@@ -257,7 +257,7 @@ func (m *SessionManager) saveCurrentID(id string) error {
 		ID string `json:"id"`
 	}{ID: id})
 
-	return os.WriteFile(path, data, 0644)
+	return os.WriteFile(path, data, 0600)
 }
 
 func (m *SessionManager) pruneOldSessions() error {
