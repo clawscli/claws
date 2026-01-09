@@ -872,7 +872,13 @@ func (a *App) resolveStartupView(viewName string) view.View {
 
 func (a *App) buildAIContext() *ai.Context {
 	regions := config.Global().Regions()
-	currentProfile := config.Global().Selection().ProfileName
+	selections := config.Global().Selections()
+	var profiles []string
+	for _, sel := range selections {
+		if id := sel.ID(); id != "" {
+			profiles = append(profiles, id)
+		}
+	}
 
 	switch v := a.currentView.(type) {
 	case *view.ResourceBrowser:
@@ -883,8 +889,8 @@ func (a *App) buildAIContext() *ai.Context {
 			ResourceCount: v.ResourceCount(),
 			FilterText:    v.FilterText(),
 			Toggles:       v.ToggleStates(),
-			Profile:       currentProfile,
-			Regions:       regions,
+			UserRegions:   regions,
+			UserProfiles:  profiles,
 		}
 
 	case *view.DiffView:
@@ -894,22 +900,27 @@ func (a *App) buildAIContext() *ai.Context {
 			ResourceType: v.ResourceType(),
 			DiffLeft:     buildResourceRef(v.Left()),
 			DiffRight:    buildResourceRef(v.Right()),
-			Regions:      regions,
+			UserRegions:  regions,
+			UserProfiles: profiles,
 		}
 
 	case *view.DetailView:
 		r := v.Resource()
 		if r != nil {
 			unwrapped := dao.UnwrapResource(r)
+			resourceRegion := dao.GetResourceRegion(r)
+			log.Debug("buildAIContext DetailView", "service", v.Service(), "resourceType", v.ResourceType(),
+				"id", unwrapped.GetID(), "resourceRegion", resourceRegion, "regions", regions)
 			ctx := &ai.Context{
-				Mode:           ai.ContextModeSingle,
-				Service:        v.Service(),
-				ResourceType:   v.ResourceType(),
-				ResourceID:     unwrapped.GetID(),
-				ResourceName:   unwrapped.GetName(),
-				ResourceRegion: dao.GetResourceRegion(r),
-				Profile:        dao.GetResourceProfile(r),
-				Regions:        regions,
+				Mode:            ai.ContextModeSingle,
+				Service:         v.Service(),
+				ResourceType:    v.ResourceType(),
+				ResourceID:      unwrapped.GetID(),
+				ResourceName:    unwrapped.GetName(),
+				ResourceRegion:  resourceRegion,
+				ResourceProfile: dao.GetResourceProfile(r),
+				UserRegions:     regions,
+				UserProfiles:    profiles,
 			}
 			if v.Service() == "lambda" && v.ResourceType() == "functions" {
 				ctx.LogGroup = "/aws/lambda/" + unwrapped.GetName()
@@ -922,11 +933,12 @@ func (a *App) buildAIContext() *ai.Context {
 
 	case *view.LogView:
 		return &ai.Context{
-			LogGroup: v.LogGroupName(),
-			Regions:  regions,
+			LogGroup:     v.LogGroupName(),
+			UserRegions:  regions,
+			UserProfiles: profiles,
 		}
 	}
-	return &ai.Context{Regions: regions}
+	return &ai.Context{UserRegions: regions, UserProfiles: profiles}
 }
 
 func buildResourceRef(r dao.Resource) *ai.ResourceRef {

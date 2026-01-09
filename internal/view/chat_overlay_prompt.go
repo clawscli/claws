@@ -5,7 +5,17 @@ import (
 	"strings"
 
 	"github.com/clawscli/claws/internal/ai"
+	"github.com/clawscli/claws/internal/config"
 )
+
+// formatProfileName converts internal profile ID to display name
+func formatProfileName(profileID string) string {
+	sel := config.ProfileSelectionFromID(profileID)
+	if sel.Mode == config.ModeNamedProfile {
+		return sel.ProfileName
+	}
+	return sel.Mode.String()
+}
 
 func (c *ChatOverlay) buildSystemPrompt() string {
 	services := c.registry.ListServices()
@@ -37,8 +47,22 @@ Be concise. Use markdown for formatting.
 </response_format>`, serviceList)
 
 	if c.aiCtx != nil {
-		if len(c.aiCtx.Regions) > 0 {
-			prompt += fmt.Sprintf("\n\n<current_regions>%s</current_regions>", strings.Join(c.aiCtx.Regions, ", "))
+		if len(c.aiCtx.UserRegions) > 0 {
+			prompt += "\n\n<user_selected_regions>"
+			prompt += strings.Join(c.aiCtx.UserRegions, ", ")
+			prompt += "\nThese are ALL regions the user is currently browsing."
+			prompt += "\nIn list mode, query resources across ALL these regions (call query_resources for each)."
+			prompt += "\nFor specific resources (detail/diff mode), use the region from current_context instead."
+			prompt += "\n</user_selected_regions>"
+		}
+
+		if len(c.aiCtx.UserProfiles) > 0 {
+			prompt += "\n\n<user_selected_profiles>"
+			prompt += strings.Join(c.aiCtx.UserProfiles, ", ")
+			prompt += "\nThese are ALL profile IDs the user is currently browsing."
+			prompt += "\nIn list mode, query resources across ALL these profiles (call query_resources for each)."
+			prompt += "\nFor specific resources (detail/diff mode), use the profile from current_context instead."
+			prompt += "\n</user_selected_profiles>"
 		}
 
 		switch c.aiCtx.Mode {
@@ -65,9 +89,6 @@ func (c *ChatOverlay) buildListContextPrompt() string {
 	if ctx.FilterText != "" {
 		prompt += fmt.Sprintf(", filter=\"%s\"", ctx.FilterText)
 	}
-	if ctx.Profile != "" {
-		prompt += fmt.Sprintf(", profile=%s", ctx.Profile)
-	}
 	if ctx.Service == "securityhub" && ctx.ResourceType == "findings" {
 		if ctx.Toggles["ShowResolved"] {
 			prompt += ", show_resolved=true"
@@ -76,7 +97,7 @@ func (c *ChatOverlay) buildListContextPrompt() string {
 		}
 	}
 	prompt += "\n</current_context>"
-	prompt += "\nUse query_resources to fetch and analyze the resource list. User may ask about patterns, issues, or specific items in the list."
+	prompt += "\nIMPORTANT: When the user asks to list or analyze resources, call query_resources for EACH combination of user_selected_regions and user_selected_profiles to get the complete view across all selected contexts."
 	return prompt
 }
 
@@ -108,7 +129,7 @@ func (c *ChatOverlay) buildDiffContextPrompt() string {
 		prompt += fmt.Sprintf(", cluster=%s", ctx.DiffRight.Cluster)
 	}
 	prompt += "\n</current_context>"
-	prompt += "\nCall get_resource_detail twice (once for left, once for right) to compare these resources."
+	prompt += "\nIMPORTANT: Call get_resource_detail twice (once for left, once for right) using each resource's specific region and profile."
 	return prompt
 }
 
@@ -128,14 +149,14 @@ func (c *ChatOverlay) buildSingleContextPrompt() string {
 	if ctx.ResourceID != "" {
 		prompt += ", id=" + ctx.ResourceID
 	}
-	if ctx.Profile != "" {
-		prompt += ", profile=" + ctx.Profile
+	if ctx.ResourceProfile != "" {
+		prompt += ", profile=" + ctx.ResourceProfile
 	}
 	if ctx.Cluster != "" {
 		prompt += ", cluster=" + ctx.Cluster
 	}
 	prompt += "</current_context>"
-	prompt += "\nUse these values when querying this resource."
+	prompt += "\nIMPORTANT: Use the region and profile from current_context when querying this resource."
 	return prompt
 }
 
@@ -148,8 +169,15 @@ func (c *ChatOverlay) renderContextParams() string {
 	var lines []string
 	lines = append(lines, fmt.Sprintf("  mode: %s", ctx.Mode))
 
-	if len(ctx.Regions) > 0 {
-		lines = append(lines, fmt.Sprintf("  regions: %s", strings.Join(ctx.Regions, ", ")))
+	if len(ctx.UserRegions) > 0 {
+		lines = append(lines, fmt.Sprintf("  regions: %s", strings.Join(ctx.UserRegions, ", ")))
+	}
+	if len(ctx.UserProfiles) > 0 {
+		var profileNames []string
+		for _, pid := range ctx.UserProfiles {
+			profileNames = append(profileNames, formatProfileName(pid))
+		}
+		lines = append(lines, fmt.Sprintf("  profiles: %s", strings.Join(profileNames, ", ")))
 	}
 	if ctx.ResourceCount > 0 {
 		lines = append(lines, fmt.Sprintf("  count: %d", ctx.ResourceCount))
@@ -157,14 +185,38 @@ func (c *ChatOverlay) renderContextParams() string {
 	if ctx.FilterText != "" {
 		lines = append(lines, fmt.Sprintf("  filter: %s", ctx.FilterText))
 	}
-	if ctx.Profile != "" {
-		lines = append(lines, fmt.Sprintf("  profile: %s", ctx.Profile))
-	}
 	if ctx.ResourceID != "" {
 		lines = append(lines, fmt.Sprintf("  id: %s", ctx.ResourceID))
 	}
+	if ctx.ResourceRegion != "" {
+		lines = append(lines, fmt.Sprintf("  region: %s", ctx.ResourceRegion))
+	}
+	if ctx.ResourceProfile != "" {
+		profileName := formatProfileName(ctx.ResourceProfile)
+		lines = append(lines, fmt.Sprintf("  profile: %s", profileName))
+	}
 	if ctx.Cluster != "" {
 		lines = append(lines, fmt.Sprintf("  cluster: %s", ctx.Cluster))
+	}
+	if ctx.DiffLeft != nil && ctx.DiffRight != nil {
+		left := fmt.Sprintf("%s/%s", ctx.DiffLeft.ID, ctx.DiffLeft.Name)
+		if ctx.DiffLeft.Profile != "" {
+			profileName := formatProfileName(ctx.DiffLeft.Profile)
+			left += fmt.Sprintf(" [%s]", profileName)
+		}
+		if ctx.DiffLeft.Region != "" {
+			left += fmt.Sprintf(" (%s)", ctx.DiffLeft.Region)
+		}
+		right := fmt.Sprintf("%s/%s", ctx.DiffRight.ID, ctx.DiffRight.Name)
+		if ctx.DiffRight.Profile != "" {
+			profileName := formatProfileName(ctx.DiffRight.Profile)
+			right += fmt.Sprintf(" [%s]", profileName)
+		}
+		if ctx.DiffRight.Region != "" {
+			right += fmt.Sprintf(" (%s)", ctx.DiffRight.Region)
+		}
+		lines = append(lines, fmt.Sprintf("  left: %s", left))
+		lines = append(lines, fmt.Sprintf("  right: %s", right))
 	}
 	if ctx.Service == "securityhub" && ctx.ResourceType == "findings" {
 		showResolved := "false"
