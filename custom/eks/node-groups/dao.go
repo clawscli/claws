@@ -3,6 +3,7 @@ package nodegroups
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/service/eks"
 	"github.com/aws/aws-sdk-go-v2/service/eks/types"
@@ -154,7 +155,7 @@ func (r *NodeGroupResource) InstanceTypes() string {
 	if len(r.NodeGroup.InstanceTypes) == 0 {
 		return ""
 	}
-	return appaws.Str(&r.NodeGroup.InstanceTypes[0])
+	return strings.Join(r.NodeGroup.InstanceTypes, ", ")
 }
 
 // DesiredSize returns desired node count

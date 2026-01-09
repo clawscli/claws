@@ -547,6 +547,7 @@ var defaultResources = map[string]string{
 	"ec2":               "instances",
 	"ecr":               "repositories",
 	"ecs":               "clusters",
+	"eks":               "clusters",
 	"elbv2":             "load-balancers",
 	"emr":               "clusters",
 	"events":            "rules",
