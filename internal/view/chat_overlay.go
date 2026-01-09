@@ -51,9 +51,6 @@ func newChatStyles() chatStyles {
 	}
 }
 
-// MaxToolRounds is the maximum number of tool execution rounds per user message.
-const MaxToolRounds = 10
-
 type ChatOverlay struct {
 	ctx      context.Context
 	registry *registry.Registry
@@ -422,7 +419,7 @@ func (c *ChatOverlay) handleStreamDone(_ <-chan ai.StreamEvent) (tea.Model, tea.
 	}
 
 	// If there are tool uses, execute them
-	if len(c.pendingToolUses) > 0 && c.toolRound < MaxToolRounds {
+	if len(c.pendingToolUses) > 0 && c.toolRound < config.File().GetAIMaxToolRounds() {
 		c.updateViewport()
 
 		// Clear streaming state before tool execution
@@ -460,7 +457,7 @@ func (c *ChatOverlay) handleStreamDone(_ <-chan ai.StreamEvent) (tea.Model, tea.
 		}
 	}
 
-	if len(c.pendingToolUses) > 0 && c.toolRound >= MaxToolRounds {
+	if len(c.pendingToolUses) > 0 && c.toolRound >= config.File().GetAIMaxToolRounds() {
 		c.messages = append(c.messages, chatMessage{
 			role:    ai.RoleAssistant,
 			content: "(tool limit reached)",

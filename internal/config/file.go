@@ -90,6 +90,7 @@ type AIConfig struct {
 	MaxSessions    int    `yaml:"max_sessions,omitempty"`
 	MaxTokens      int    `yaml:"max_tokens,omitempty"`
 	ThinkingBudget *int   `yaml:"thinking_budget,omitempty"`
+	MaxToolRounds  int    `yaml:"max_tool_rounds,omitempty"`
 	SaveSessions   *bool  `yaml:"save_sessions,omitempty"`
 }
 
@@ -390,6 +391,7 @@ const DefaultAIModel = "global.anthropic.claude-haiku-4-5-20251001-v1:0"
 const DefaultAIMaxSessions = 100
 const DefaultAIMaxTokens = 16000
 const DefaultAIThinkingBudget = 8000
+const DefaultAIMaxToolRounds = 15
 
 func (c *FileConfig) GetAIModel() string {
 	return withRLock(&c.mu, func() string {
@@ -429,6 +431,15 @@ func (c *FileConfig) GetAIThinkingBudget() int {
 			return 0
 		}
 		return v
+	})
+}
+
+func (c *FileConfig) GetAIMaxToolRounds() int {
+	return withRLock(&c.mu, func() int {
+		if c.AI.MaxToolRounds <= 0 {
+			return DefaultAIMaxToolRounds
+		}
+		return c.AI.MaxToolRounds
 	})
 }
 
