@@ -10,6 +10,7 @@ import (
 
 	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/log"
+	"github.com/google/uuid"
 )
 
 const (
@@ -201,6 +202,7 @@ func (m *SessionManager) ListSessions() ([]Session, error) {
 		id := entry.Name()[:len(entry.Name())-5]
 		session, err := m.LoadSession(id)
 		if err != nil {
+			log.Debug("failed to load session", "id", id, "error", err)
 			continue
 		}
 		sessions = append(sessions, *session)
@@ -283,5 +285,5 @@ func (m *SessionManager) pruneOldSessions() error {
 
 func generateSessionID() string {
 	now := time.Now()
-	return fmt.Sprintf("%s-%d", now.Format("2006-01-02"), now.UnixNano()%1000000)
+	return fmt.Sprintf("%s-%s", now.Format("2006-01-02"), uuid.New().String()[:8])
 }
