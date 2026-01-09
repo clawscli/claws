@@ -77,6 +77,10 @@ func (e *ToolExecutor) Tools() []Tool {
 						"type":        "string",
 						"description": "AWS profile name (optional, uses current profile if not specified)",
 					},
+					"include_resolved": map[string]any{
+						"type":        "boolean",
+						"description": "Include resolved/archived items (securityhub/findings only, default: false)",
+					},
 				},
 				"required": []string{"service", "resource_type", "region"},
 			},
@@ -179,6 +183,14 @@ func (e *ToolExecutor) Tools() []Tool {
 }
 
 func (e *ToolExecutor) Execute(ctx context.Context, call *ToolUseContent) ToolResultContent {
+	if call.InputError != "" {
+		return ToolResultContent{
+			ToolUseID: call.ID,
+			Content:   fmt.Sprintf("Error: malformed tool input: %s", call.InputError),
+			IsError:   true,
+		}
+	}
+
 	var content string
 	var isError bool
 
@@ -191,7 +203,8 @@ func (e *ToolExecutor) Execute(ctx context.Context, call *ToolUseContent) ToolRe
 		resourceType, _ := call.Input["resource_type"].(string)
 		region, _ := call.Input["region"].(string)
 		profile, _ := call.Input["profile"].(string)
-		content, isError = e.queryResources(ctx, service, resourceType, region, profile)
+		includeResolved, _ := call.Input["include_resolved"].(bool)
+		content, isError = e.queryResources(ctx, service, resourceType, region, profile, includeResolved)
 	case "get_resource_detail":
 		service, _ := call.Input["service"].(string)
 		resourceType, _ := call.Input["resource_type"].(string)
@@ -240,7 +253,7 @@ func (e *ToolExecutor) listResources(service string) string {
 	return result
 }
 
-func (e *ToolExecutor) queryResources(ctx context.Context, service, resourceType, region, profile string) (string, bool) {
+func (e *ToolExecutor) queryResources(ctx context.Context, service, resourceType, region, profile string, includeResolved bool) (string, bool) {
 	if service == "" {
 		return "Error: service parameter is required", true
 	}
@@ -255,6 +268,9 @@ func (e *ToolExecutor) queryResources(ctx context.Context, service, resourceType
 		ctx = appaws.WithSelectionOverride(ctx, appconfig.NamedProfile(profile))
 	}
 	ctx = appaws.WithRegionOverride(ctx, region)
+	if includeResolved {
+		ctx = dao.WithFilter(ctx, "ShowResolved", "true")
+	}
 	d, err := e.registry.GetDAO(ctx, service, resourceType)
 	if err != nil {
 		return fmt.Sprintf("Error: %s/%s not found. Use list_resources(service=\"%s\") to see available types.", service, resourceType, service), true
@@ -269,7 +285,16 @@ func (e *ToolExecutor) queryResources(ctx context.Context, service, resourceType
 		return fmt.Sprintf("No %s/%s resources found in %s", service, resourceType, region), false
 	}
 
-	result := fmt.Sprintf("Found %d %s/%s resources in %s:\n\n", len(resources), service, resourceType, region)
+	filterNote := ""
+	if service == "securityhub" && resourceType == "findings" {
+		if includeResolved {
+			filterNote = " (including resolved)"
+		} else {
+			filterNote = " (active only, use include_resolved=true for all)"
+		}
+	}
+
+	result := fmt.Sprintf("Found %d %s/%s resources in %s%s:\n\n", len(resources), service, resourceType, region, filterNote)
 	for i, r := range resources {
 		if i >= 50 {
 			result += fmt.Sprintf("\n... and %d more\n", len(resources)-50)
@@ -591,7 +616,7 @@ func (e *ToolExecutor) searchDocs(ctx context.Context, query string) string {
 		return fmt.Sprintf("Error creating request: %v", err)
 	}
 
-	reqCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	reqCtx, cancel := context.WithTimeout(ctx, appconfig.File().DocsSearchTimeout())
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(reqCtx, "POST", "https://proxy.search.docs.aws.amazon.com/search", bytes.NewBuffer(jsonBody))

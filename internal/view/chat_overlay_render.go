@@ -26,6 +26,17 @@ func (c *ChatOverlay) renderMessages() string {
 	c.thinkingLineRanges = make(map[int][2]int)
 	c.toolCallLineRanges = make(map[int][2]int)
 
+	if c.contextExpanded && c.aiCtx != nil {
+		params := c.renderContextParams()
+		for _, line := range strings.Split(strings.TrimSuffix(params, "\n"), "\n") {
+			sb.WriteString(c.styles.context.Render(line))
+			sb.WriteString("\n")
+			lineNum++
+		}
+		sb.WriteString("\n")
+		lineNum++
+	}
+
 	for i, msg := range c.messages {
 		if msg.toolUse != nil {
 			startLine := lineNum

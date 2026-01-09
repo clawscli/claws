@@ -3,11 +3,13 @@ package view
 import (
 	"fmt"
 	"slices"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/clawscli/claws/internal/action"
 	"github.com/clawscli/claws/internal/dao"
+	"github.com/clawscli/claws/internal/render"
 )
 
 // handleNavigation processes navigation key shortcuts
@@ -90,6 +92,7 @@ func (r *ResourceBrowser) StatusLine() string {
 	}
 
 	navInfo := r.getNavigationShortcuts()
+	toggleInfo := r.getToggleInfo()
 
 	dHint := "d:describe"
 	if r.markedResource != nil && markInFiltered {
@@ -113,7 +116,7 @@ func (r *ResourceBrowser) StatusLine() string {
 	}
 
 	if r.filterText != "" || filterInfo != "" {
-		base := fmt.Sprintf("%s/%s%s%s%s%s%s • %d/%d items • c:clear", r.service, r.resourceType, filterInfo, sortInfo, markInfo, autoReloadInfo, partialWarn, shown, total)
+		base := fmt.Sprintf("%s/%s%s%s%s%s%s%s • %d/%d items • c:clear", r.service, r.resourceType, filterInfo, sortInfo, markInfo, toggleInfo, autoReloadInfo, partialWarn, shown, total)
 		if hasActions {
 			base += " a:actions"
 		}
@@ -124,7 +127,7 @@ func (r *ResourceBrowser) StatusLine() string {
 		return base
 	}
 
-	base := fmt.Sprintf("%s/%s%s%s%s%s • %d items • /:filter %s", r.service, r.resourceType, sortInfo, markInfo, autoReloadInfo, partialWarn, total, dHint)
+	base := fmt.Sprintf("%s/%s%s%s%s%s%s • %d items • /:filter %s", r.service, r.resourceType, sortInfo, markInfo, toggleInfo, autoReloadInfo, partialWarn, total, dHint)
 	if hasActions {
 		base += " a:actions"
 	}
@@ -179,8 +182,9 @@ func (r *ResourceBrowser) SelectedResource() dao.Resource {
 	return r.filtered[cursor]
 }
 
-func (r *ResourceBrowser) ResourceCount() int { return len(r.filtered) }
-func (r *ResourceBrowser) FilterText() string { return r.filterText }
+func (r *ResourceBrowser) ResourceCount() int            { return len(r.filtered) }
+func (r *ResourceBrowser) FilterText() string            { return r.filterText }
+func (r *ResourceBrowser) ToggleStates() map[string]bool { return r.toggleStates }
 
 func (r *ResourceBrowser) getNavigationShortcuts() string {
 	if r.renderer == nil || len(r.filtered) == 0 {
@@ -190,4 +194,27 @@ func (r *ResourceBrowser) getNavigationShortcuts() string {
 	helper := &NavigationHelper{Renderer: r.renderer}
 	resource := dao.UnwrapResource(r.filtered[r.tc.Cursor()])
 	return helper.FormatShortcuts(resource)
+}
+
+func (r *ResourceBrowser) getToggleInfo() string {
+	if r.renderer == nil {
+		return ""
+	}
+	toggler, ok := r.renderer.(render.Toggler)
+	if !ok {
+		return ""
+	}
+	toggles := toggler.ListToggles()
+	if len(toggles) == 0 {
+		return ""
+	}
+	var parts []string
+	for _, t := range toggles {
+		label := t.LabelOff
+		if r.toggleStates[t.ContextKey] {
+			label = t.LabelOn
+		}
+		parts = append(parts, fmt.Sprintf("%s:%s", t.Key, label))
+	}
+	return " [" + strings.Join(parts, " ") + "]"
 }

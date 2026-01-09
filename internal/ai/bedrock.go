@@ -58,9 +58,10 @@ type ContentBlock struct {
 
 // ToolUseContent represents a tool invocation request from the LLM.
 type ToolUseContent struct {
-	ID    string         `json:"toolUseId"`
-	Name  string         `json:"name"`
-	Input map[string]any `json:"input"`
+	ID         string         `json:"toolUseId"`
+	Name       string         `json:"name"`
+	Input      map[string]any `json:"input"`
+	InputError string         `json:"-"`
 }
 
 // ToolResultContent represents the result of a tool execution.
@@ -355,23 +356,20 @@ func (c *Client) processStream(ctx context.Context, output *bedrockruntime.Conve
 			}
 
 		case *types.ConverseStreamOutputMemberContentBlockStop:
-			// End of content block
 			if currentToolUse != nil {
-				// Parse accumulated input as JSON
 				var input map[string]any
 				if err := json.Unmarshal([]byte(toolInputBuffer), &input); err != nil {
 					log.Debug("failed to parse tool input JSON", "error", err)
 					input = make(map[string]any)
+					currentToolUse.InputError = err.Error()
 				}
 				currentToolUse.Input = input
 
-				// Send complete tool use event
 				events <- StreamEvent{
 					Type:    "tool_use",
 					ToolUse: currentToolUse,
 				}
 
-				// Reset state
 				currentToolUse = nil
 				toolInputBuffer = ""
 			}

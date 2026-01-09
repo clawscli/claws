@@ -196,3 +196,9 @@ func (r *FindingRenderer) RenderSummary(resource dao.Resource) []render.SummaryF
 
 	return fields
 }
+
+func (r *FindingRenderer) ListToggles() []render.Toggle {
+	return []render.Toggle{
+		{Key: "r", ContextKey: "ShowResolved", LabelOn: "all", LabelOff: "active"},
+	}
+}

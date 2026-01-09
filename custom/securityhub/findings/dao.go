@@ -43,7 +43,7 @@ func (d *FindingDAO) List(ctx context.Context) ([]dao.Resource, error) {
 func (d *FindingDAO) ListPage(ctx context.Context, pageSize int, pageToken string) ([]dao.Resource, string, error) {
 	maxResults := int32(pageSize)
 	if maxResults > 100 {
-		maxResults = 100 // AWS API max
+		maxResults = 100
 	}
 
 	input := &securityhub.GetFindingsInput{
@@ -51,6 +51,18 @@ func (d *FindingDAO) ListPage(ctx context.Context, pageSize int, pageToken strin
 	}
 	if pageToken != "" {
 		input.NextToken = &pageToken
+	}
+
+	showResolved := dao.GetFilterFromContext(ctx, "ShowResolved")
+	if showResolved != "true" {
+		input.Filters = &types.AwsSecurityFindingFilters{
+			RecordState: []types.StringFilter{
+				{Value: stringPtr("ACTIVE"), Comparison: types.StringFilterComparisonEquals},
+			},
+			WorkflowStatus: []types.StringFilter{
+				{Value: stringPtr("RESOLVED"), Comparison: types.StringFilterComparisonNotEquals},
+			},
+		}
 	}
 
 	output, err := d.client.GetFindings(ctx, input)
@@ -70,6 +82,8 @@ func (d *FindingDAO) ListPage(ctx context.Context, pageSize int, pageToken strin
 
 	return resources, nextToken, nil
 }
+
+func stringPtr(s string) *string { return &s }
 
 // Get returns a specific finding by ID.
 func (d *FindingDAO) Get(ctx context.Context, id string) (dao.Resource, error) {

@@ -55,8 +55,9 @@ type Context struct {
 	Cluster        string `json:"cluster,omitempty"`
 	LogGroup       string `json:"log_group,omitempty"`
 
-	ResourceCount int    `json:"resource_count,omitempty"`
-	FilterText    string `json:"filter_text,omitempty"`
+	ResourceCount int             `json:"resource_count,omitempty"`
+	FilterText    string          `json:"filter_text,omitempty"`
+	Toggles       map[string]bool `json:"toggles,omitempty"`
 
 	DiffLeft  *ResourceRef `json:"diff_left,omitempty"`
 	DiffRight *ResourceRef `json:"diff_right,omitempty"`

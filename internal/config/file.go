@@ -19,6 +19,7 @@ const (
 	DefaultTagSearchTimeout        = 30 * time.Second
 	DefaultMetricsLoadTimeout      = 30 * time.Second
 	DefaultLogFetchTimeout         = 10 * time.Second
+	DefaultDocsSearchTimeout       = 10 * time.Second
 	DefaultMetricsWindow           = 15 * time.Minute
 	DefaultMaxConcurrentFetches    = 50
 	DefaultMaxStackSize            = 100
@@ -46,6 +47,7 @@ type TimeoutConfig struct {
 	TagSearch        Duration `yaml:"tag_search,omitempty"`
 	MetricsLoad      Duration `yaml:"metrics_load,omitempty"`
 	LogFetch         Duration `yaml:"log_fetch,omitempty"`
+	DocsSearch       Duration `yaml:"docs_search,omitempty"`
 }
 
 type CloudWatchConfig struct {
@@ -181,6 +183,7 @@ func DefaultFileConfig() *FileConfig {
 			TagSearch:        Duration(DefaultTagSearchTimeout),
 			MetricsLoad:      Duration(DefaultMetricsLoadTimeout),
 			LogFetch:         Duration(DefaultLogFetchTimeout),
+			DocsSearch:       Duration(DefaultDocsSearchTimeout),
 		},
 		Concurrency: ConcurrencyConfig{
 			MaxFetches: DefaultMaxConcurrentFetches,
@@ -249,6 +252,9 @@ func (c *FileConfig) applyDefaults() {
 	if c.Timeouts.LogFetch <= 0 {
 		c.Timeouts.LogFetch = Duration(DefaultLogFetchTimeout)
 	}
+	if c.Timeouts.DocsSearch <= 0 {
+		c.Timeouts.DocsSearch = Duration(DefaultDocsSearchTimeout)
+	}
 	if c.CloudWatch.Window <= 0 {
 		c.CloudWatch.Window = Duration(DefaultMetricsWindow)
 	}
@@ -302,6 +308,15 @@ func (c *FileConfig) LogFetchTimeout() time.Duration {
 			return DefaultLogFetchTimeout
 		}
 		return c.Timeouts.LogFetch.Duration()
+	})
+}
+
+func (c *FileConfig) DocsSearchTimeout() time.Duration {
+	return withRLock(&c.mu, func() time.Duration {
+		if c.Timeouts.DocsSearch == 0 {
+			return DefaultDocsSearchTimeout
+		}
+		return c.Timeouts.DocsSearch.Duration()
 	})
 }
 

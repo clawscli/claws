@@ -882,6 +882,7 @@ func (a *App) buildAIContext() *ai.Context {
 			ResourceType:  v.ResourceType(),
 			ResourceCount: v.ResourceCount(),
 			FilterText:    v.FilterText(),
+			Toggles:       v.ToggleStates(),
 			Profile:       currentProfile,
 			Regions:       regions,
 		}

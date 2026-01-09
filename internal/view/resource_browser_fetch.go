@@ -25,7 +25,12 @@ type listResourcesResult struct {
 func (r *ResourceBrowser) listResourcesWithContext(ctx context.Context, d dao.DAO) listResourcesResult {
 	listCtx := ctx
 	if r.fieldFilter != "" && r.fieldFilterValue != "" {
-		listCtx = dao.WithFilter(ctx, r.fieldFilter, r.fieldFilterValue)
+		listCtx = dao.WithFilter(listCtx, r.fieldFilter, r.fieldFilterValue)
+	}
+	for key, val := range r.toggleStates {
+		if val {
+			listCtx = dao.WithFilter(listCtx, key, "true")
+		}
 	}
 
 	var resources []dao.Resource
@@ -203,7 +208,12 @@ func (r *ResourceBrowser) fetchWithDAO(ctx context.Context, d dao.DAO, token str
 	if pagDAO, ok := d.(dao.PaginatedDAO); ok {
 		listCtx := ctx
 		if r.fieldFilter != "" && r.fieldFilterValue != "" {
-			listCtx = dao.WithFilter(ctx, r.fieldFilter, r.fieldFilterValue)
+			listCtx = dao.WithFilter(listCtx, r.fieldFilter, r.fieldFilterValue)
+		}
+		for key, val := range r.toggleStates {
+			if val {
+				listCtx = dao.WithFilter(listCtx, key, "true")
+			}
 		}
 		resources, nextToken, err := pagDAO.ListPage(listCtx, r.pageSize, token)
 		return listResourcesResult{resources: resources, nextToken: nextToken, err: err}
@@ -411,7 +421,12 @@ func (r *ResourceBrowser) loadNextPage() tea.Msg {
 
 	listCtx := r.ctx
 	if r.fieldFilter != "" && r.fieldFilterValue != "" {
-		listCtx = dao.WithFilter(r.ctx, r.fieldFilter, r.fieldFilterValue)
+		listCtx = dao.WithFilter(listCtx, r.fieldFilter, r.fieldFilterValue)
+	}
+	for key, val := range r.toggleStates {
+		if val {
+			listCtx = dao.WithFilter(listCtx, key, "true")
+		}
 	}
 
 	resources, nextToken, err := pagDAO.ListPage(listCtx, r.pageSize, r.nextPageToken)

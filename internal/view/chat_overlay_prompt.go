@@ -68,6 +68,13 @@ func (c *ChatOverlay) buildListContextPrompt() string {
 	if ctx.Profile != "" {
 		prompt += fmt.Sprintf(", profile=%s", ctx.Profile)
 	}
+	if ctx.Service == "securityhub" && ctx.ResourceType == "findings" {
+		if ctx.Toggles["ShowResolved"] {
+			prompt += ", show_resolved=true"
+		} else {
+			prompt += ", show_resolved=false (use include_resolved=true in query_resources for all)"
+		}
+	}
 	prompt += "\n</current_context>"
 	prompt += "\nUse query_resources to fetch and analyze the resource list. User may ask about patterns, issues, or specific items in the list."
 	return prompt
@@ -130,4 +137,42 @@ func (c *ChatOverlay) buildSingleContextPrompt() string {
 	prompt += "</current_context>"
 	prompt += "\nUse these values when querying this resource."
 	return prompt
+}
+
+func (c *ChatOverlay) renderContextParams() string {
+	ctx := c.aiCtx
+	if ctx == nil {
+		return ""
+	}
+
+	var lines []string
+	lines = append(lines, fmt.Sprintf("  mode: %s", ctx.Mode))
+
+	if len(ctx.Regions) > 0 {
+		lines = append(lines, fmt.Sprintf("  regions: %s", strings.Join(ctx.Regions, ", ")))
+	}
+	if ctx.ResourceCount > 0 {
+		lines = append(lines, fmt.Sprintf("  count: %d", ctx.ResourceCount))
+	}
+	if ctx.FilterText != "" {
+		lines = append(lines, fmt.Sprintf("  filter: %s", ctx.FilterText))
+	}
+	if ctx.Profile != "" {
+		lines = append(lines, fmt.Sprintf("  profile: %s", ctx.Profile))
+	}
+	if ctx.ResourceID != "" {
+		lines = append(lines, fmt.Sprintf("  id: %s", ctx.ResourceID))
+	}
+	if ctx.Cluster != "" {
+		lines = append(lines, fmt.Sprintf("  cluster: %s", ctx.Cluster))
+	}
+	if ctx.Service == "securityhub" && ctx.ResourceType == "findings" {
+		showResolved := "false"
+		if ctx.Toggles["ShowResolved"] {
+			showResolved = "true"
+		}
+		lines = append(lines, fmt.Sprintf("  show_resolved: %s", showResolved))
+	}
+
+	return strings.Join(lines, "\n") + "\n"
 }

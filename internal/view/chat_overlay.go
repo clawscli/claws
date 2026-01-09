@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -89,6 +90,11 @@ type ChatOverlay struct {
 
 	showingHistory bool
 	sessionHistory *SessionHistory
+
+	statusMsg     string
+	statusMsgTime time.Time
+
+	contextExpanded bool
 }
 
 // chatMessage is a UI-level message for display purposes.
@@ -256,6 +262,8 @@ func (c *ChatOverlay) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if c.session != nil {
 			if err := c.sessMgr.AddMessage(c.session, userMsg); err != nil {
 				log.Debug("failed to save user message", "error", err)
+				c.statusMsg = "Failed to save message"
+				c.statusMsgTime = time.Now()
 			}
 		}
 		return c, c.startStream(c.streamMessages)
@@ -267,6 +275,12 @@ func (c *ChatOverlay) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 }
 
 func (c *ChatOverlay) handleMouseClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
+	if c.aiCtx != nil && c.aiCtx.Service != "" && msg.Y == 1 {
+		c.contextExpanded = !c.contextExpanded
+		c.updateViewport()
+		return c, nil
+	}
+
 	if !c.vp.Ready {
 		return c, nil
 	}
@@ -440,6 +454,8 @@ func (c *ChatOverlay) handleStreamDone(_ <-chan ai.StreamEvent) (tea.Model, tea.
 		if c.session != nil {
 			if err := c.sessMgr.AddMessage(c.session, assistantMsg); err != nil {
 				log.Debug("failed to save assistant message", "error", err)
+				c.statusMsg = "Failed to save message"
+				c.statusMsgTime = time.Now()
 			}
 		}
 	}
@@ -530,6 +546,10 @@ func (c *ChatOverlay) ViewString() string {
 	sb.WriteString("\n")
 
 	if c.aiCtx != nil && c.aiCtx.Service != "" {
+		indicator := "▶"
+		if c.contextExpanded {
+			indicator = "▼"
+		}
 		ctx := fmt.Sprintf("Context: %s", c.aiCtx.Service)
 		if c.aiCtx.ResourceType != "" {
 			ctx += "/" + c.aiCtx.ResourceType
@@ -537,6 +557,7 @@ func (c *ChatOverlay) ViewString() string {
 		if c.aiCtx.ResourceName != "" {
 			ctx += " - " + c.aiCtx.ResourceName
 		}
+		ctx += " [" + indicator + "]"
 		sb.WriteString(c.styles.context.Render(ctx))
 		sb.WriteString("\n")
 	}
@@ -570,6 +591,9 @@ func (c *ChatOverlay) SetSize(width, height int) tea.Cmd {
 }
 
 func (c *ChatOverlay) StatusLine() string {
+	if c.statusMsg != "" && time.Since(c.statusMsgTime) < 3*time.Second {
+		return c.statusMsg
+	}
 	return "AI Chat | Enter: send | Esc: close"
 }
 
@@ -651,6 +675,17 @@ func (c *ChatOverlay) loadSession(sess *ai.Session) (tea.Model, tea.Cmd) {
 	if sess == nil {
 		return c, nil
 	}
+
+	// Stop any active stream before loading new session
+	if c.isStreaming {
+		c.isStreaming = false
+		c.streamingMsg = ""
+		c.streamingThinking = ""
+		c.pendingToolUses = nil
+		c.currentReasoning = ""
+		c.reasoningSignature = ""
+	}
+
 	c.session = sess
 	c.messages = []chatMessage{}
 	c.streamMessages = []ai.Message{}

@@ -122,6 +122,9 @@ type ResourceBrowser struct {
 
 	// Partial region errors (for multi-region queries)
 	partialErrors []string
+
+	// List-level toggles (e.g., show resolved findings)
+	toggleStates map[string]bool
 }
 
 // NewResourceBrowser creates a new ResourceBrowser
@@ -175,8 +178,9 @@ func newResourceBrowser(ctx context.Context, reg *registry.Registry, service, re
 		spinner:       ui.NewSpinner(),
 		styles:        newResourceBrowserStyles(),
 		pageSize:      100,
-		sortColumn:    -1, // -1 = no sort
+		sortColumn:    -1,
 		sortAscending: true,
+		toggleStates:  make(map[string]bool),
 	}
 }
 

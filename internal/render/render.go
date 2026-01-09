@@ -71,6 +71,19 @@ type Navigator interface {
 	Navigations(resource dao.Resource) []Navigation
 }
 
+// Toggle defines a list-level toggle for filtering or view modes
+type Toggle struct {
+	Key        string // Key to press (e.g., "r")
+	ContextKey string // Context key for DAO filtering (e.g., "ShowResolved")
+	LabelOn    string // Label when toggle is ON (e.g., "all")
+	LabelOff   string // Label when toggle is OFF (e.g., "active only")
+}
+
+// Toggler is an optional interface for renderers that support list-level toggles
+type Toggler interface {
+	ListToggles() []Toggle
+}
+
 // MetricSpecProvider is an optional interface for renderers that support inline metrics.
 type MetricSpecProvider interface {
 	MetricSpec() *MetricSpec
