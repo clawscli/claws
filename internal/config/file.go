@@ -23,6 +23,7 @@ const (
 	DefaultMetricsWindow           = 15 * time.Minute
 	DefaultMaxConcurrentFetches    = 50
 	DefaultMaxStackSize            = 100
+	DefaultAIMaxToolCallsPerQuery  = 50
 )
 
 func ConfigDir() (string, error) {
@@ -86,14 +87,15 @@ type NavigationConfig struct {
 }
 
 type AIConfig struct {
-	Profile        string `yaml:"profile,omitempty"`
-	Region         string `yaml:"region,omitempty"`
-	Model          string `yaml:"model,omitempty"`
-	MaxSessions    int    `yaml:"max_sessions,omitempty"`
-	MaxTokens      int    `yaml:"max_tokens,omitempty"`
-	ThinkingBudget *int   `yaml:"thinking_budget,omitempty"`
-	MaxToolRounds  int    `yaml:"max_tool_rounds,omitempty"`
-	SaveSessions   *bool  `yaml:"save_sessions,omitempty"`
+	Profile              string `yaml:"profile,omitempty"`
+	Region               string `yaml:"region,omitempty"`
+	Model                string `yaml:"model,omitempty"`
+	MaxSessions          int    `yaml:"max_sessions,omitempty"`
+	MaxTokens            int    `yaml:"max_tokens,omitempty"`
+	ThinkingBudget       *int   `yaml:"thinking_budget,omitempty"`
+	MaxToolRounds        int    `yaml:"max_tool_rounds,omitempty"`
+	MaxToolCallsPerQuery int    `yaml:"max_tool_calls_per_query,omitempty"`
+	SaveSessions         *bool  `yaml:"save_sessions,omitempty"`
 }
 
 // ThemeConfig holds theme configuration.
@@ -454,6 +456,15 @@ func (c *FileConfig) GetAIMaxToolRounds() int {
 			return DefaultAIMaxToolRounds
 		}
 		return c.AI.MaxToolRounds
+	})
+}
+
+func (c *FileConfig) GetAIMaxToolCallsPerQuery() int {
+	return withRLock(&c.mu, func() int {
+		if c.AI.MaxToolCallsPerQuery <= 0 {
+			return DefaultAIMaxToolCallsPerQuery
+		}
+		return c.AI.MaxToolCallsPerQuery
 	})
 }
 

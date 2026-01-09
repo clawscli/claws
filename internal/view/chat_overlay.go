@@ -81,6 +81,7 @@ type ChatOverlay struct {
 	reasoningSignature string
 	streamMessages     []ai.Message
 	toolRound          int
+	apiCallCount       int
 
 	width  int
 	height int
@@ -263,6 +264,7 @@ func (c *ChatOverlay) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		c.currentReasoning = ""
 		c.reasoningSignature = ""
 		c.toolRound = 0
+		c.apiCallCount = 0
 		c.err = nil
 		c.updateViewport()
 
@@ -503,11 +505,21 @@ func (c *ChatOverlay) handleStreamDone(_ <-chan ai.StreamEvent) (tea.Model, tea.
 }
 
 func (c *ChatOverlay) handleToolExecute(msg chatToolExecuteMsg) (tea.Model, tea.Cmd) {
+	// Check tool call limit before executing tools
+	maxCalls := config.File().GetAIMaxToolCallsPerQuery()
+	if c.apiCallCount >= maxCalls {
+		c.err = fmt.Errorf("Tool call limit reached (%d calls). Start new query to continue.", maxCalls)
+		c.isStreaming = false
+		c.updateViewport()
+		return c, nil
+	}
+
 	// Execute each tool and collect results
 	var toolResults []ai.ToolResultContent
 	for _, tu := range msg.toolUses {
 		result := c.executor.Execute(c.ctx, tu)
 		toolResults = append(toolResults, result)
+		c.apiCallCount++
 
 		c.messages = append(c.messages, chatMessage{
 			content:    result.Content,
@@ -748,6 +760,7 @@ func (c *ChatOverlay) newSession() (tea.Model, tea.Cmd) {
 	c.streamMessages = []ai.Message{}
 	c.collapsedThinking = make(map[int]bool)
 	c.collapsedToolCalls = make(map[int]bool)
+	c.apiCallCount = 0
 	c.updateViewport()
 	return c, nil
 }

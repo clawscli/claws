@@ -173,11 +173,42 @@ func (m *SessionManager) AddMessage(session *Session, msg Message) error {
 		return err
 	}
 	if len(session.Messages) == 1 {
-		if pruneErr := m.pruneOldSessions(); pruneErr != nil {
-			log.Debug("failed to prune old sessions", "error", pruneErr)
+		// Check if pruning is needed before loading all sessions
+		shouldPrune, checkErr := m.shouldPrune()
+		if checkErr != nil {
+			log.Debug("failed to check prune status", "error", checkErr)
+		} else if shouldPrune {
+			if pruneErr := m.pruneOldSessions(); pruneErr != nil {
+				log.Debug("failed to prune old sessions", "error", pruneErr)
+			}
 		}
 	}
 	return nil
+}
+
+func (m *SessionManager) shouldPrune() (bool, error) {
+	dir, err := m.sessionsDir()
+	if err != nil {
+		return false, err
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	// Count only .json files
+	count := 0
+	for _, entry := range entries {
+		if !entry.IsDir() && filepath.Ext(entry.Name()) == ".json" {
+			count++
+		}
+	}
+
+	return count > m.maxSessions, nil
 }
 
 func (m *SessionManager) ListSessions() ([]Session, error) {
@@ -262,23 +293,38 @@ func (m *SessionManager) saveCurrentID(id string) error {
 }
 
 func (m *SessionManager) pruneOldSessions() error {
-	sessions, err := m.ListSessions()
-	if err != nil {
-		return err
-	}
-
-	if len(sessions) <= m.maxSessions {
-		return nil
-	}
-
 	dir, err := m.sessionsDir()
 	if err != nil {
 		return err
 	}
 
-	for i := m.maxSessions; i < len(sessions); i++ {
-		path := filepath.Join(dir, sessions[i].ID+".json")
-		_ = os.Remove(path)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+
+	// Collect .json filenames
+	var names []string
+	for _, entry := range entries {
+		if !entry.IsDir() && filepath.Ext(entry.Name()) == ".json" {
+			names = append(names, entry.Name())
+		}
+	}
+
+	if len(names) <= m.maxSessions {
+		return nil
+	}
+
+	// Sort by filename (which includes timestamp: 20060102-150405-uuid)
+	sort.Strings(names)
+
+	// Delete oldest sessions
+	deleteCount := len(names) - m.maxSessions
+	for i := 0; i < deleteCount; i++ {
+		_ = os.Remove(filepath.Join(dir, names[i]))
 	}
 
 	return nil
@@ -286,5 +332,5 @@ func (m *SessionManager) pruneOldSessions() error {
 
 func generateSessionID() string {
 	now := time.Now()
-	return fmt.Sprintf("%s-%s", now.Format("2006-01-02"), uuid.New().String()[:8])
+	return fmt.Sprintf("%s-%s", now.Format("20060102-150405"), uuid.New().String()[:8])
 }

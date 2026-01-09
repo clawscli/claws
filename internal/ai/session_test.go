@@ -290,3 +290,96 @@ func TestSessionPruning(t *testing.T) {
 		t.Errorf("expected 3 sessions after pruning, got %d", len(sessions))
 	}
 }
+
+func TestShouldPrune(t *testing.T) {
+	tmpDir := t.TempDir()
+	origHome := os.Getenv("HOME")
+	defer os.Setenv("HOME", origHome)
+	os.Setenv("HOME", tmpDir)
+
+	sm := NewSessionManager(5, true)
+
+	t.Run("no sessions", func(t *testing.T) {
+		should, err := sm.shouldPrune()
+		if err != nil {
+			t.Fatalf("shouldPrune failed: %v", err)
+		}
+		if should {
+			t.Error("empty dir should not need pruning")
+		}
+	})
+
+	t.Run("under limit", func(t *testing.T) {
+		// Create 4 sessions (below limit of 5)
+		for i := 0; i < 4; i++ {
+			sess, err := sm.NewSession(nil)
+			if err != nil {
+				t.Fatalf("NewSession failed: %v", err)
+			}
+			if err := sm.SaveMessages(sess); err != nil {
+				t.Fatalf("SaveMessages failed: %v", err)
+			}
+		}
+
+		should, err := sm.shouldPrune()
+		if err != nil {
+			t.Fatalf("shouldPrune failed: %v", err)
+		}
+		if should {
+			t.Error("under limit should not need pruning")
+		}
+	})
+
+	t.Run("at limit", func(t *testing.T) {
+		// Add one more session (total 5, at limit)
+		sess, err := sm.NewSession(nil)
+		if err != nil {
+			t.Fatalf("NewSession failed: %v", err)
+		}
+		if err := sm.SaveMessages(sess); err != nil {
+			t.Fatalf("SaveMessages failed: %v", err)
+		}
+
+		should, err := sm.shouldPrune()
+		if err != nil {
+			t.Fatalf("shouldPrune failed: %v", err)
+		}
+		if should {
+			t.Error("at limit should not need pruning")
+		}
+	})
+
+	t.Run("over limit", func(t *testing.T) {
+		// Add one more session (total 6, over limit)
+		sess, err := sm.NewSession(nil)
+		if err != nil {
+			t.Fatalf("NewSession failed: %v", err)
+		}
+		if err := sm.SaveMessages(sess); err != nil {
+			t.Fatalf("SaveMessages failed: %v", err)
+		}
+
+		should, err := sm.shouldPrune()
+		if err != nil {
+			t.Fatalf("shouldPrune failed: %v", err)
+		}
+		if !should {
+			t.Error("over limit should need pruning")
+		}
+	})
+
+	t.Run("non-existent directory", func(t *testing.T) {
+		tmpDir2 := t.TempDir()
+		os.Setenv("HOME", tmpDir2)
+		defer os.Setenv("HOME", tmpDir)
+
+		sm2 := NewSessionManager(5, true)
+		should, err := sm2.shouldPrune()
+		if err != nil {
+			t.Fatalf("shouldPrune failed: %v", err)
+		}
+		if should {
+			t.Error("non-existent dir should not need pruning")
+		}
+	})
+}

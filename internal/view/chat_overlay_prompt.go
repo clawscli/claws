@@ -34,7 +34,7 @@ All resource tools require a region parameter. Use profile parameter when queryi
 
 Available tools:
 - list_resources(service): Lists resource types for a service
-- query_resources(service, resource_type, region, profile?): Lists actual resources
+- query_resources(service, resource_type, region, profile?, limit?, offset?): Lists resources (default: 100, max: 2000, supports pagination)
 - get_resource_detail(service, resource_type, region, id, cluster?, profile?): Gets resource details
 - tail_logs(service, resource_type, region, id, cluster?, profile?): Fetches CloudWatch logs for a resource
   - Supported: lambda/functions, ecs/services, ecs/tasks, ecs/task-definitions, codebuild/projects, codebuild/builds, cloudtrail/trails, apigateway/stages, apigateway/stages-v2, stepfunctions/state-machines

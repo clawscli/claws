@@ -667,6 +667,27 @@ func TestConcurrentSaves(t *testing.T) {
 	}
 }
 
+func TestGetAIMaxToolCallsPerQuery(t *testing.T) {
+	tests := []struct {
+		name   string
+		config AIConfig
+		want   int
+	}{
+		{"default", AIConfig{}, DefaultAIMaxToolCallsPerQuery},
+		{"custom", AIConfig{MaxToolCallsPerQuery: 25}, 25},
+		{"zero defaults", AIConfig{MaxToolCallsPerQuery: 0}, DefaultAIMaxToolCallsPerQuery},
+		{"negative defaults", AIConfig{MaxToolCallsPerQuery: -1}, DefaultAIMaxToolCallsPerQuery},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := &FileConfig{AI: tt.config}
+			if got := cfg.GetAIMaxToolCallsPerQuery(); got != tt.want {
+				t.Errorf("GetAIMaxToolCallsPerQuery() = %d, want %d", got, tt.want)
+			}
+		})
+	}
+}
+
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsHelper(s, substr))
 }

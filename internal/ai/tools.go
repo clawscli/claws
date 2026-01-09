@@ -81,6 +81,14 @@ func (e *ToolExecutor) Tools() []Tool {
 						"type":        "boolean",
 						"description": "Include resolved/archived items (securityhub/findings only, default: false)",
 					},
+					"limit": map[string]any{
+						"type":        "integer",
+						"description": "Maximum resources to return (default: 100, max: 2000)",
+					},
+					"offset": map[string]any{
+						"type":        "integer",
+						"description": "Skip first N resources for pagination (default: 0)",
+					},
 				},
 				"required": []string{"service", "resource_type", "region"},
 			},
@@ -204,7 +212,9 @@ func (e *ToolExecutor) Execute(ctx context.Context, call *ToolUseContent) ToolRe
 		region, _ := call.Input["region"].(string)
 		profile, _ := call.Input["profile"].(string)
 		includeResolved, _ := call.Input["include_resolved"].(bool)
-		content, isError = e.queryResources(ctx, service, resourceType, region, profile, includeResolved)
+		limit, _ := call.Input["limit"].(float64)
+		offset, _ := call.Input["offset"].(float64)
+		content, isError = e.queryResources(ctx, service, resourceType, region, profile, includeResolved, int(limit), int(offset))
 	case "get_resource_detail":
 		service, _ := call.Input["service"].(string)
 		resourceType, _ := call.Input["resource_type"].(string)
@@ -253,7 +263,7 @@ func (e *ToolExecutor) listResources(service string) string {
 	return result
 }
 
-func (e *ToolExecutor) queryResources(ctx context.Context, service, resourceType, region, profile string, includeResolved bool) (string, bool) {
+func (e *ToolExecutor) queryResources(ctx context.Context, service, resourceType, region, profile string, includeResolved bool, limit, offset int) (string, bool) {
 	if service == "" {
 		return "Error: service parameter is required", true
 	}
@@ -262,6 +272,19 @@ func (e *ToolExecutor) queryResources(ctx context.Context, service, resourceType
 	}
 	if region == "" {
 		return "Error: region parameter is required", true
+	}
+
+	// Validate and apply limit
+	if limit <= 0 {
+		limit = 100 // default changed from 50
+	}
+	if limit > 2000 {
+		limit = 2000 // max 2000
+	}
+
+	// Validate offset
+	if offset < 0 {
+		offset = 0
 	}
 
 	if profile != "" {
@@ -294,13 +317,28 @@ func (e *ToolExecutor) queryResources(ctx context.Context, service, resourceType
 		}
 	}
 
-	result := fmt.Sprintf("Found %d %s/%s resources in %s%s:\n\n", len(resources), service, resourceType, region, filterNote)
-	for i, r := range resources {
-		if i >= 50 {
-			result += fmt.Sprintf("\n... and %d more\n", len(resources)-50)
-			break
-		}
+	// Apply offset
+	start := offset
+	if start >= len(resources) {
+		return fmt.Sprintf("Offset %d exceeds total count %d", offset, len(resources)), false
+	}
+
+	end := start + limit
+	if end > len(resources) {
+		end = len(resources)
+	}
+
+	viewResources := resources[start:end]
+
+	result := fmt.Sprintf("Found %d %s/%s resources in %s%s (showing %d-%d):\n\n",
+		len(resources), service, resourceType, region, filterNote, start+1, end)
+
+	for _, r := range viewResources {
 		result += formatResourceSummary(r)
+	}
+
+	if end < len(resources) {
+		result += fmt.Sprintf("\n... and %d more (use offset=%d to see next page)\n", len(resources)-end, end)
 	}
 
 	return result, false
