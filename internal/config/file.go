@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/clawscli/claws/internal/log"
 	"gopkg.in/yaml.v3"
 )
 
@@ -407,7 +408,12 @@ func (c *FileConfig) GetAIThinkingBudget() int {
 		if c.AI.ThinkingBudget == nil {
 			return DefaultAIThinkingBudget
 		}
-		return *c.AI.ThinkingBudget
+		v := *c.AI.ThinkingBudget
+		if v < 0 {
+			log.Warn("ai.thinking_budget is negative, treating as disabled", "value", v)
+			return 0
+		}
+		return v
 	})
 }
 

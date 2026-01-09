@@ -13,6 +13,7 @@ import (
 	"github.com/clawscli/claws/internal/ai"
 	"github.com/clawscli/claws/internal/config"
 	apperrors "github.com/clawscli/claws/internal/errors"
+	"github.com/clawscli/claws/internal/log"
 	"github.com/clawscli/claws/internal/registry"
 	"github.com/clawscli/claws/internal/ui"
 )
@@ -253,7 +254,9 @@ func (c *ChatOverlay) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		userMsg := ai.NewUserMessage(text)
 		c.streamMessages = append(c.streamMessages, userMsg)
 		if c.session != nil {
-			_ = c.sessMgr.AddMessage(c.session, userMsg)
+			if err := c.sessMgr.AddMessage(c.session, userMsg); err != nil {
+				log.Debug("failed to save user message", "error", err)
+			}
 		}
 		return c, c.startStream(c.streamMessages)
 	}
@@ -435,7 +438,9 @@ func (c *ChatOverlay) handleStreamDone(_ <-chan ai.StreamEvent) (tea.Model, tea.
 		}
 		c.streamMessages = append(c.streamMessages, assistantMsg)
 		if c.session != nil {
-			_ = c.sessMgr.AddMessage(c.session, assistantMsg)
+			if err := c.sessMgr.AddMessage(c.session, assistantMsg); err != nil {
+				log.Debug("failed to save assistant message", "error", err)
+			}
 		}
 	}
 
@@ -643,6 +648,9 @@ func (c *ChatOverlay) handleHistoryUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (c *ChatOverlay) loadSession(sess *ai.Session) (tea.Model, tea.Cmd) {
+	if sess == nil {
+		return c, nil
+	}
 	c.session = sess
 	c.messages = []chatMessage{}
 	c.streamMessages = []ai.Message{}
