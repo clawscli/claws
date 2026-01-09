@@ -153,6 +153,13 @@ import (
 	_ "github.com/clawscli/claws/custom/ecs/task-definitions"
 	_ "github.com/clawscli/claws/custom/ecs/tasks"
 
+	// Eks
+	_ "github.com/clawscli/claws/custom/eks/access-entries"
+	_ "github.com/clawscli/claws/custom/eks/addons"
+	_ "github.com/clawscli/claws/custom/eks/clusters"
+	_ "github.com/clawscli/claws/custom/eks/fargate-profiles"
+	_ "github.com/clawscli/claws/custom/eks/node-groups"
+
 	// ElastiCache
 	_ "github.com/clawscli/claws/custom/elasticache/clusters"
 

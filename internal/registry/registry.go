@@ -173,6 +173,7 @@ func defaultDisplayNames() map[string]string {
 		"ecr":               "ECR",
 		"elasticache":       "ElastiCache",
 		"ecs":               "ECS",
+		"eks":               "EKS",
 		"elbv2":             "Elastic Load Balancing",
 		"emr":               "EMR",
 		"events":            "EventBridge",
@@ -220,7 +221,7 @@ func defaultCategories() []ServiceCategory {
 	return []ServiceCategory{
 		{
 			Name:     "Compute",
-			Services: []string{"ec2", "lambda", "ecs", "autoscaling", "apprunner", "batch", "emr"},
+			Services: []string{"ec2", "lambda", "ecs", "eks", "autoscaling", "apprunner", "batch", "emr"},
 		},
 		{
 			Name:     "Storage & Database",
@@ -646,6 +647,10 @@ var subResourceSet = map[string]struct{}{
 	"organizations/ous":                {},
 	"license-manager/grants":           {},
 	"appsync/data-sources":             {},
+	"eks/node-groups":                  {},
+	"eks/fargate-profiles":             {},
+	"eks/addons":                       {},
+	"eks/access-entries":               {},
 	"redshift/snapshots":               {},
 }
 
