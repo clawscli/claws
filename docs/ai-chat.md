@@ -12,7 +12,7 @@ Press `A` in the following views to open AI Chat:
 The assistant has access to:
 - Current resource context (what you're viewing)
 - Active AWS profile and region
-- Tools to query resources, delete resources, and search AWS documentation
+- Tools to query resources, fetch logs, and search AWS documentation
 
 ## Setup
 
@@ -55,6 +55,15 @@ See [Configuration](configuration.md) for all options.
 
 Press `A` in list/detail/diff views to open the AI Chat overlay.
 
+### What the AI Can Do
+
+- List and query AWS resources across services and regions
+- Get detailed information about specific resources
+- Fetch CloudWatch logs for supported resources (Lambda, ECS, CodeBuild, etc.)
+- Search AWS documentation
+
+The AI automatically uses the current profile, region, and resource context from your view.
+
 ### Context Awareness
 
 The assistant automatically receives context based on your current view:
@@ -81,90 +90,6 @@ Right: ec2/instances/i-def456
 ### Session History
 
 Press `Ctrl+H` to view and resume previous chat sessions.
-
-## Available Tools
-
-The AI assistant has access to the following tools:
-
-### list_resources
-
-Lists AWS resources by service and type.
-
-**Example**: "Show me all Lambda functions in us-east-1"
-
-The assistant will execute:
-```
-list_resources(service="lambda", resource_type="functions", region="us-east-1")
-```
-
-### get_resource
-
-Gets detailed information about a specific resource.
-
-**Example**: "Get details for instance i-abc123"
-
-The assistant will execute:
-```
-get_resource(service="ec2", resource_type="instances", id="i-abc123", region="us-west-2")
-```
-
-### delete_resource
-
-Deletes a resource (requires confirmation).
-
-**Example**: "Delete the unused security group sg-xyz789"
-
-The assistant will execute:
-```
-delete_resource(service="vpc", resource_type="security-groups", id="sg-xyz789", region="us-west-2")
-```
-
-**Note**: The assistant will ask for confirmation before executing destructive actions.
-
-### search_aws_docs
-
-Searches AWS documentation for relevant information.
-
-**Example**: "What's the difference between t3 and t3a instances?"
-
-The assistant will execute:
-```
-search_aws_docs(query="t3 vs t3a instance types EC2")
-```
-
-## Example Queries
-
-### Security Analysis
-```
-Check this list and tell me what looks risky
-```
-```
-Find security groups with 0.0.0.0/0 open to the internet
-```
-
-### Resource Comparison
-```
-Compare these two instances and recommend which one to keep
-```
-```
-What's the cost difference between t2.micro and t3.medium?
-```
-
-### Cost Optimization
-```
-Show me EC2 instances running for more than 30 days
-```
-```
-Find unused EBS volumes
-```
-
-### Documentation Lookup
-```
-How do I enable detailed monitoring for this instance?
-```
-```
-What's the maximum retention period for CloudWatch Logs?
-```
 
 ## Keyboard Shortcuts
 
