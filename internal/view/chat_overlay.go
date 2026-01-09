@@ -438,6 +438,18 @@ func (c *ChatOverlay) handleStreamDone(_ <-chan ai.StreamEvent) (tea.Model, tea.
 	if len(c.pendingToolUses) > 0 && c.toolRound < config.File().GetAIMaxToolRounds() {
 		c.updateViewport()
 
+		// Save assistant message with tool uses to session
+		if c.session != nil && len(assistantBlocks) > 0 {
+			assistantMsg := ai.Message{
+				Role:    ai.RoleAssistant,
+				Content: assistantBlocks,
+			}
+			c.streamMessages = append(c.streamMessages, assistantMsg)
+			if err := c.sessMgr.AddMessage(c.session, assistantMsg); err != nil {
+				log.Warn("failed to save assistant message with tool uses", "error", err)
+			}
+		}
+
 		// Clear streaming state before tool execution
 		toolUses := c.pendingToolUses
 		c.pendingToolUses = nil
@@ -508,17 +520,11 @@ func (c *ChatOverlay) handleToolExecute(msg chatToolExecuteMsg) (tea.Model, tea.
 	c.updateViewport()
 
 	// Build the new messages to send to API:
-	// 1. Previous messages
-	// 2. Assistant message with tool uses (from this turn)
-	// 3. User message with tool results
+	// 1. Previous messages (including assistant message with tool uses from handleStreamDone)
+	// 2. User message with tool results
 
-	// Add assistant message with the accumulated blocks
-	messages := make([]ai.Message, len(msg.messages), len(msg.messages)+2)
+	messages := make([]ai.Message, len(msg.messages), len(msg.messages)+1)
 	copy(messages, msg.messages)
-	messages = append(messages, ai.Message{
-		Role:    ai.RoleAssistant,
-		Content: msg.assistantBlocks,
-	})
 
 	// Add user message with tool results
 	var resultBlocks []ai.ContentBlock
@@ -532,6 +538,14 @@ func (c *ChatOverlay) handleToolExecute(msg chatToolExecuteMsg) (tea.Model, tea.
 
 	c.streamMessages = messages
 	c.isStreaming = true
+
+	// Save tool result message to session
+	if c.session != nil {
+		toolResultMsg := messages[len(messages)-1] // Last message with tool results
+		if err := c.sessMgr.AddMessage(c.session, toolResultMsg); err != nil {
+			log.Warn("failed to save tool result message", "error", err)
+		}
+	}
 
 	return c, c.startStream(messages)
 }
