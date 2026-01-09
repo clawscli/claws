@@ -134,7 +134,7 @@ func NewClient(ctx context.Context, opts ...ClientOption) (*Client, error) {
 	// Use AI-specific profile/region if configured
 	fileCfg := appconfig.File()
 	if profile := fileCfg.GetAIProfile(); profile != "" {
-		ctx = appaws.WithSelectionOverride(ctx, appconfig.NamedProfile(profile))
+		ctx = appaws.WithSelectionOverride(ctx, appconfig.ProfileSelectionFromID(profile))
 	}
 	if region := fileCfg.GetAIRegion(); region != "" {
 		ctx = appaws.WithRegionOverride(ctx, region)

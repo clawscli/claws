@@ -81,7 +81,7 @@ type ChatOverlay struct {
 	reasoningSignature string
 	streamMessages     []ai.Message
 	toolRound          int
-	apiCallCount       int
+	toolCallCount      int // Counts tool calls within current query (reset per query)
 
 	width  int
 	height int
@@ -264,7 +264,7 @@ func (c *ChatOverlay) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		c.currentReasoning = ""
 		c.reasoningSignature = ""
 		c.toolRound = 0
-		c.apiCallCount = 0
+		c.toolCallCount = 0 // Reset per-query tool call counter
 		c.err = nil
 		c.updateViewport()
 
@@ -507,7 +507,7 @@ func (c *ChatOverlay) handleStreamDone(_ <-chan ai.StreamEvent) (tea.Model, tea.
 func (c *ChatOverlay) handleToolExecute(msg chatToolExecuteMsg) (tea.Model, tea.Cmd) {
 	// Check tool call limit before executing tools
 	maxCalls := config.File().GetAIMaxToolCallsPerQuery()
-	if c.apiCallCount >= maxCalls {
+	if c.toolCallCount >= maxCalls {
 		c.err = fmt.Errorf("Tool call limit reached (%d calls). Start new query to continue.", maxCalls)
 		c.isStreaming = false
 		c.updateViewport()
@@ -519,7 +519,7 @@ func (c *ChatOverlay) handleToolExecute(msg chatToolExecuteMsg) (tea.Model, tea.
 	for _, tu := range msg.toolUses {
 		result := c.executor.Execute(c.ctx, tu)
 		toolResults = append(toolResults, result)
-		c.apiCallCount++
+		c.toolCallCount++
 
 		c.messages = append(c.messages, chatMessage{
 			content:    result.Content,
@@ -730,6 +730,7 @@ func (c *ChatOverlay) loadSession(sess *ai.Session) (tea.Model, tea.Cmd) {
 	c.streamMessages = []ai.Message{}
 	c.collapsedThinking = make(map[int]bool)
 	c.collapsedToolCalls = make(map[int]bool)
+	c.toolCallCount = 0 // Reset per-query counter
 
 	for _, msg := range sess.Messages {
 		cm := chatMessage{role: msg.Role}
@@ -760,7 +761,7 @@ func (c *ChatOverlay) newSession() (tea.Model, tea.Cmd) {
 	c.streamMessages = []ai.Message{}
 	c.collapsedThinking = make(map[int]bool)
 	c.collapsedToolCalls = make(map[int]bool)
-	c.apiCallCount = 0
+	c.toolCallCount = 0 // Reset per-query counter
 	c.updateViewport()
 	return c, nil
 }
