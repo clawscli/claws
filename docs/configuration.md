@@ -42,11 +42,12 @@ navigation:
 
 ai:
   model: "global.anthropic.claude-haiku-4-5-20251001-v1:0"  # Bedrock model ID
-  max_sessions: 100       # Max stored sessions (default: 100)
-  max_tokens: 16000       # Max response tokens (default: 16000)
-  thinking_budget: 8000   # Extended thinking token budget (default: 8000)
-  max_tool_rounds: 15     # Max tool execution rounds per message (default: 15)
-  save_sessions: false    # Persist chat sessions to disk (default: false)
+  max_sessions: 100            # Max stored sessions (default: 100)
+  max_tokens: 16000            # Max response tokens (default: 16000)
+  thinking_budget: 8000        # Extended thinking token budget (default: 8000)
+  max_tool_rounds: 15          # Max tool execution rounds per message (default: 15)
+  max_tool_calls_per_query: 50 # Max tool calls per user query (default: 50)
+  save_sessions: false         # Persist chat sessions to disk (default: false)
 
 theme: nord               # Preset: dark, light, nord, dracula, gruvbox, catppuccin
 
