@@ -320,7 +320,7 @@ func (e *ToolExecutor) queryResources(ctx context.Context, service, resourceType
 	// Apply offset
 	start := offset
 	if start >= len(resources) {
-		return fmt.Sprintf("Offset %d exceeds total count %d", offset, len(resources)), false
+		return fmt.Sprintf("Offset %d exceeds total count %d", offset, len(resources)), true
 	}
 
 	end := start + limit
