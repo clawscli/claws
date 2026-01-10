@@ -1,6 +1,6 @@
 # Supported Services
 
-claws supports **69 services** with **163 resources**.
+claws supports **69 services** with **169 resources**.
 
 ## Compute
 
@@ -8,7 +8,7 @@ claws supports **69 services** with **163 resources**.
 |---------|-----------|
 | EC2 | Instances, Volumes, Security Groups, Elastic IPs, Key Pairs, AMIs, Snapshots, Launch Templates, Capacity Reservations |
 | Lambda | Functions |
-| ECS | Clusters, Services, Tasks |
+| ECS | Clusters, Services, Tasks, Task Definitions |
 | Auto Scaling | Groups, Activities |
 | App Runner | Services, Operations |
 | Batch | Job Queues, Compute Environments, Jobs, Job Definitions |
@@ -39,6 +39,7 @@ claws supports **69 services** with **163 resources**.
 | Service | Resources |
 |---------|-----------|
 | ECR | Repositories, Images |
+| EKS | Clusters, Node Groups, Fargate Profiles, Addons, Access Entries |
 | Bedrock | Foundation Models, Guardrails, Inference Profiles |
 | Bedrock Agent | Agents, Knowledge Bases, Data Sources, Prompts, Flows |
 | Bedrock AgentCore | Runtimes, Endpoints, Versions |
@@ -155,3 +156,4 @@ Quick shortcuts for common services:
 | `agent` | Bedrock Agent Agents |
 | `models` | Bedrock Foundation Models |
 | `guardrail` | Bedrock Guardrails |
+| `eks` | EKS |
