@@ -178,7 +178,7 @@ func (r *ResourceBrowser) handleEnter() (tea.Model, tea.Cmd) {
 	if len(r.filtered) > 0 && cursor >= 0 && cursor < len(r.filtered) {
 		ctx, resource := r.contextForResource(r.filtered[cursor])
 		if r.markedResource != nil && r.markedResource.GetID() != resource.GetID() {
-			diffView := NewDiffView(ctx, dao.UnwrapResource(r.markedResource), dao.UnwrapResource(resource), r.renderer, r.service, r.resourceType)
+			diffView := NewDiffView(ctx, r.markedResource, resource, r.renderer, r.service, r.resourceType)
 			return r, func() tea.Msg {
 				return NavigateMsg{View: diffView}
 			}
