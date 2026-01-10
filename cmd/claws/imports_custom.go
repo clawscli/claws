@@ -153,7 +153,7 @@ import (
 	_ "github.com/clawscli/claws/custom/ecs/task-definitions"
 	_ "github.com/clawscli/claws/custom/ecs/tasks"
 
-	// Eks
+	// EKS
 	_ "github.com/clawscli/claws/custom/eks/access-entries"
 	_ "github.com/clawscli/claws/custom/eks/addons"
 	_ "github.com/clawscli/claws/custom/eks/clusters"

@@ -13,7 +13,7 @@ A terminal UI for AWS resource management
 ## Features
 
 - **Interactive TUI** - Navigate AWS resources with vim-style keybindings
-- **69 services, 163 resources** - EC2, S3, Lambda, RDS, ECS, and more
+- **69 services, 169 resources** - EC2, S3, Lambda, RDS, ECS, EKS, and more
 - **Multi-profile & Multi-region** - Query multiple accounts/regions in parallel
 - **Resource actions** - Start/stop instances, delete resources, tail logs
 - **Cross-resource navigation** - Jump from VPC to subnets, Lambda to CloudWatch
