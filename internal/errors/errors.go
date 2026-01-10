@@ -90,6 +90,7 @@ func IsNotFound(err error) bool {
 		"NoSuchKey",
 		"NotFoundException",
 		"ResourceNotFoundFault",
+		"not found", // Match lowercase pattern from DAO Get() methods
 	)
 }
 
