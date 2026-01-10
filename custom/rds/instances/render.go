@@ -298,7 +298,7 @@ func (r *InstanceRenderer) Navigations(resource dao.Resource) []render.Navigatio
 	// Cluster navigation (for Aurora instances)
 	if ir.Item.DBClusterIdentifier != nil {
 		navs = append(navs, render.Navigation{
-			Key: "c", Label: "Cluster", Service: "rds", Resource: "clusters",
+			Key: "p", Label: "Cluster", Service: "rds", Resource: "clusters",
 			FilterField: "DBClusterIdentifier", FilterValue: *ir.Item.DBClusterIdentifier,
 		})
 	}

@@ -308,7 +308,7 @@ func (r *TaskRenderer) Navigations(resource dao.Resource) []render.Navigation {
 
 	navs := []render.Navigation{
 		{
-			Key:         "c",
+			Key:         "p",
 			Label:       "Cluster",
 			Service:     "ecs",
 			Resource:    "clusters",

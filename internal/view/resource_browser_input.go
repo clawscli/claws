@@ -133,9 +133,9 @@ func (r *ResourceBrowser) handleClearFilter() (tea.Model, tea.Cmd) {
 	r.fieldFilter = ""
 	r.fieldFilterValue = ""
 	r.markedResource = nil
-	r.applyFilter()
-	r.buildTable()
-	return r, nil
+	r.loading = true
+	r.err = nil
+	return r, tea.Batch(r.loadResources, r.spinner.Tick)
 }
 
 func (r *ResourceBrowser) handleEsc() (tea.Model, tea.Cmd) {
@@ -196,7 +196,7 @@ func (r *ResourceBrowser) handleAction() (tea.Model, tea.Cmd) {
 	if len(r.filtered) > 0 && cursor >= 0 && cursor < len(r.filtered) {
 		if actions := action.Global.Get(r.service, r.resourceType); len(actions) > 0 {
 			ctx, resource := r.contextForResource(r.filtered[cursor])
-			actionMenu := NewActionMenu(ctx, resource, r.service, r.resourceType)
+			actionMenu := NewActionMenu(ctx, dao.UnwrapResource(resource), r.service, r.resourceType)
 			return r, func() tea.Msg {
 				return ShowModalMsg{Modal: &Modal{Content: actionMenu, Width: ModalWidthActionMenu}}
 			}

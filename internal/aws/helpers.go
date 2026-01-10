@@ -60,6 +60,7 @@ func Int64Ptr(i int64) *int64 {
 
 // ExtractResourceName extracts the resource name from an AWS ARN.
 // e.g., "arn:aws:iam::123456789012:role/MyRole" -> "MyRole"
+// e.g., "arn:aws:iam::123456789012:role/service-role/MyRole" -> "MyRole"
 // e.g., "arn:aws:ecs:us-east-1:123456789012:cluster/my-cluster" -> "my-cluster"
 // e.g., "arn:aws:s3:::my-bucket" -> "my-bucket"
 func ExtractResourceName(arn string) string {
