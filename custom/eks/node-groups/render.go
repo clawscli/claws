@@ -15,6 +15,8 @@ type NodeGroupRenderer struct {
 	render.BaseRenderer
 }
 
+var _ render.Navigator = (*NodeGroupRenderer)(nil)
+
 // NewNodeGroupRenderer creates a new NodeGroupRenderer
 func NewNodeGroupRenderer() render.Renderer {
 	return &NodeGroupRenderer{
@@ -242,4 +244,83 @@ func (rnd *NodeGroupRenderer) RenderSummary(resource dao.Resource) []render.Summ
 		{Label: "Version", Value: ngr.Version()},
 		{Label: "Desired", Value: fmt.Sprintf("%d", ngr.DesiredSize())},
 	}
+}
+
+func (rnd *NodeGroupRenderer) Navigations(resource dao.Resource) []render.Navigation {
+	ngr, ok := resource.(*NodeGroupResource)
+	if !ok {
+		return nil
+	}
+
+	var navs []render.Navigation
+
+	// Parent cluster (always present)
+	if clusterName := appaws.Str(ngr.NodeGroup.ClusterName); clusterName != "" {
+		navs = append(navs, render.Navigation{
+			Key:         "p",
+			Label:       "Cluster",
+			Service:     "eks",
+			Resource:    "clusters",
+			FilterField: "ClusterName",
+			FilterValue: clusterName,
+		})
+	}
+
+	// IAM Node Role
+	if nodeRole := appaws.Str(ngr.NodeGroup.NodeRole); nodeRole != "" {
+		roleName := appaws.ExtractResourceName(nodeRole)
+		navs = append(navs, render.Navigation{
+			Key:         "r",
+			Label:       "Node Role",
+			Service:     "iam",
+			Resource:    "roles",
+			FilterField: "RoleName",
+			FilterValue: roleName,
+		})
+	}
+
+	// Auto Scaling Group (if exists)
+	if res := ngr.NodeGroup.Resources; res != nil && len(res.AutoScalingGroups) > 0 {
+		asgName := appaws.Str(res.AutoScalingGroups[0].Name)
+		if asgName != "" {
+			navs = append(navs, render.Navigation{
+				Key:         "g",
+				Label:       "Auto Scaling Group",
+				Service:     "autoscaling",
+				Resource:    "groups",
+				FilterField: "AutoScalingGroupName",
+				FilterValue: asgName,
+			})
+		}
+	}
+
+	// Launch Template (if exists)
+	if lt := ngr.NodeGroup.LaunchTemplate; lt != nil {
+		if ltId := appaws.Str(lt.Id); ltId != "" {
+			navs = append(navs, render.Navigation{
+				Key:         "t",
+				Label:       "Launch Template",
+				Service:     "ec2",
+				Resource:    "launch-templates",
+				FilterField: "LaunchTemplateId",
+				FilterValue: ltId,
+			})
+		}
+	}
+
+	// SSH Key Pair (if remote access configured)
+	if ra := ngr.NodeGroup.RemoteAccess; ra != nil {
+		if keyName := appaws.Str(ra.Ec2SshKey); keyName != "" {
+			navs = append(navs, render.Navigation{
+				Key:         "k",
+				Label:       "SSH Key Pair",
+				Service:     "ec2",
+				Resource:    "key-pairs",
+				FilterField: "KeyName",
+				FilterValue: keyName,
+			})
+		}
+	}
+
+	return navs
 }

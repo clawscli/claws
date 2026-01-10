@@ -15,6 +15,8 @@ type FargateProfileRenderer struct {
 	render.BaseRenderer
 }
 
+var _ render.Navigator = (*FargateProfileRenderer)(nil)
+
 // NewFargateProfileRenderer creates a new FargateProfileRenderer
 func NewFargateProfileRenderer() render.Renderer {
 	return &FargateProfileRenderer{
@@ -130,4 +132,40 @@ func (rnd *FargateProfileRenderer) RenderSummary(resource dao.Resource) []render
 		{Label: "Status", Value: fpr.Status()},
 		{Label: "Created", Value: fpr.CreatedAge()},
 	}
+}
+
+func (rnd *FargateProfileRenderer) Navigations(resource dao.Resource) []render.Navigation {
+	fpr, ok := resource.(*FargateProfileResource)
+	if !ok {
+		return nil
+	}
+
+	var navs []render.Navigation
+
+	// Parent cluster (always present)
+	if clusterName := appaws.Str(fpr.FargateProfile.ClusterName); clusterName != "" {
+		navs = append(navs, render.Navigation{
+			Key:         "p",
+			Label:       "Cluster",
+			Service:     "eks",
+			Resource:    "clusters",
+			FilterField: "ClusterName",
+			FilterValue: clusterName,
+		})
+	}
+
+	// Pod Execution Role
+	if roleArn := appaws.Str(fpr.FargateProfile.PodExecutionRoleArn); roleArn != "" {
+		roleName := appaws.ExtractResourceName(roleArn)
+		navs = append(navs, render.Navigation{
+			Key:         "r",
+			Label:       "Pod Execution Role",
+			Service:     "iam",
+			Resource:    "roles",
+			FilterField: "RoleName",
+			FilterValue: roleName,
+		})
+	}
+
+	return navs
 }

@@ -251,7 +251,7 @@ func (rnd *ClusterRenderer) Navigations(resource dao.Resource) []render.Navigati
 		return nil
 	}
 
-	return []render.Navigation{
+	navs := []render.Navigation{
 		{
 			Key:         "n",
 			Label:       "Node Groups",
@@ -269,7 +269,7 @@ func (rnd *ClusterRenderer) Navigations(resource dao.Resource) []render.Navigati
 			FilterValue: cr.GetName(),
 		},
 		{
-			Key:         "a",
+			Key:         "o",
 			Label:       "Add-ons",
 			Service:     "eks",
 			Resource:    "addons",
@@ -285,4 +285,57 @@ func (rnd *ClusterRenderer) Navigations(resource dao.Resource) []render.Navigati
 			FilterValue: cr.GetName(),
 		},
 	}
+
+	// CloudWatch Logs (Control Plane)
+	navs = append(navs, render.Navigation{
+		Key:         "l",
+		Label:       "Control Plane Logs",
+		Service:     "cloudwatch",
+		Resource:    "log-groups",
+		FilterField: "LogGroupPrefix",
+		FilterValue: "/aws/eks/" + cr.GetName() + "/cluster",
+	})
+
+	// IAM Cluster Role
+	if roleArn := appaws.Str(cr.Cluster.RoleArn); roleArn != "" {
+		roleName := appaws.ExtractResourceName(roleArn)
+		navs = append(navs, render.Navigation{
+			Key:         "r",
+			Label:       "Cluster Role",
+			Service:     "iam",
+			Resource:    "roles",
+			FilterField: "RoleName",
+			FilterValue: roleName,
+		})
+	}
+
+	// VPC
+	if vpc := cr.Cluster.ResourcesVpcConfig; vpc != nil {
+		if vpcId := appaws.Str(vpc.VpcId); vpcId != "" {
+			navs = append(navs, render.Navigation{
+				Key:         "v",
+				Label:       "VPC",
+				Service:     "vpc",
+				Resource:    "vpcs",
+				FilterField: "VpcId",
+				FilterValue: vpcId,
+			})
+		}
+	}
+
+	// Cluster Security Group
+	if vpc := cr.Cluster.ResourcesVpcConfig; vpc != nil {
+		if sgId := appaws.Str(vpc.ClusterSecurityGroupId); sgId != "" {
+			navs = append(navs, render.Navigation{
+				Key:         "s",
+				Label:       "Cluster Security Group",
+				Service:     "ec2",
+				Resource:    "security-groups",
+				FilterField: "GroupId",
+				FilterValue: sgId,
+			})
+		}
+	}
+
+	return navs
 }

@@ -15,6 +15,8 @@ type AddonRenderer struct {
 	render.BaseRenderer
 }
 
+var _ render.Navigator = (*AddonRenderer)(nil)
+
 // NewAddonRenderer creates a new AddonRenderer
 func NewAddonRenderer() render.Renderer {
 	return &AddonRenderer{
@@ -157,4 +159,40 @@ func (rnd *AddonRenderer) RenderSummary(resource dao.Resource) []render.SummaryF
 		{Label: "Version", Value: ar.Version()},
 		{Label: "Status", Value: ar.Status()},
 	}
+}
+
+func (rnd *AddonRenderer) Navigations(resource dao.Resource) []render.Navigation {
+	ar, ok := resource.(*AddonResource)
+	if !ok {
+		return nil
+	}
+
+	var navs []render.Navigation
+
+	// Parent cluster (always present)
+	if clusterName := appaws.Str(ar.Addon.ClusterName); clusterName != "" {
+		navs = append(navs, render.Navigation{
+			Key:         "p",
+			Label:       "Cluster",
+			Service:     "eks",
+			Resource:    "clusters",
+			FilterField: "ClusterName",
+			FilterValue: clusterName,
+		})
+	}
+
+	// Service Account Role (if configured)
+	if roleArn := appaws.Str(ar.Addon.ServiceAccountRoleArn); roleArn != "" {
+		roleName := appaws.ExtractResourceName(roleArn)
+		navs = append(navs, render.Navigation{
+			Key:         "r",
+			Label:       "Service Account Role",
+			Service:     "iam",
+			Resource:    "roles",
+			FilterField: "RoleName",
+			FilterValue: roleName,
+		})
+	}
+
+	return navs
 }

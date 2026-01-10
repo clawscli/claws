@@ -14,6 +14,8 @@ type AccessEntryRenderer struct {
 	render.BaseRenderer
 }
 
+var _ render.Navigator = (*AccessEntryRenderer)(nil)
+
 // NewAccessEntryRenderer creates a new AccessEntryRenderer
 func NewAccessEntryRenderer() render.Renderer {
 	return &AccessEntryRenderer{
@@ -122,4 +124,53 @@ func (rnd *AccessEntryRenderer) RenderSummary(resource dao.Resource) []render.Su
 		{Label: "Type", Value: aer.Type()},
 		{Label: "Username", Value: aer.Username()},
 	}
+}
+
+func (rnd *AccessEntryRenderer) Navigations(resource dao.Resource) []render.Navigation {
+	aer, ok := resource.(*AccessEntryResource)
+	if !ok {
+		return nil
+	}
+
+	var navs []render.Navigation
+
+	// Parent cluster (always present)
+	if clusterName := appaws.Str(aer.AccessEntry.ClusterName); clusterName != "" {
+		navs = append(navs, render.Navigation{
+			Key:         "p",
+			Label:       "Cluster",
+			Service:     "eks",
+			Resource:    "clusters",
+			FilterField: "ClusterName",
+			FilterValue: clusterName,
+		})
+	}
+
+	// IAM Principal (User or Role)
+	if principalArn := appaws.Str(aer.AccessEntry.PrincipalArn); principalArn != "" {
+		principalName := appaws.ExtractResourceName(principalArn)
+
+		// Determine if it's a role or user from ARN
+		var service, resource string
+		if strings.Contains(principalArn, ":user/") {
+			service = "iam"
+			resource = "users"
+		} else if strings.Contains(principalArn, ":role/") {
+			service = "iam"
+			resource = "roles"
+		}
+
+		if service != "" {
+			navs = append(navs, render.Navigation{
+				Key:         "i",
+				Label:       "IAM Principal",
+				Service:     service,
+				Resource:    resource,
+				FilterField: strings.Title(resource[:len(resource)-1]) + "Name", // UserName or RoleName
+				FilterValue: principalName,
+			})
+		}
+	}
+
+	return navs
 }
