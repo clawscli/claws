@@ -32,6 +32,20 @@ func NewClusterDAO(ctx context.Context) (dao.DAO, error) {
 }
 
 func (d *ClusterDAO) List(ctx context.Context) ([]dao.Resource, error) {
+	// Check for ClusterName filter (for navigation from child resources)
+	if clusterName := dao.GetFilterFromContext(ctx, "ClusterName"); clusterName != "" {
+		// Direct lookup for specific cluster
+		cluster, err := d.Get(ctx, clusterName)
+		if err != nil {
+			// If not found, return empty list (not an error for filtering)
+			if apperrors.IsNotFound(err) {
+				return []dao.Resource{}, nil
+			}
+			return nil, err
+		}
+		return []dao.Resource{cluster}, nil
+	}
+
 	// List cluster names
 	clusterNames, err := appaws.Paginate(ctx, func(token *string) ([]string, *string, error) {
 		output, err := d.client.ListClusters(ctx, &eks.ListClustersInput{

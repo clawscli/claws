@@ -133,9 +133,9 @@ func (r *ResourceBrowser) handleClearFilter() (tea.Model, tea.Cmd) {
 	r.fieldFilter = ""
 	r.fieldFilterValue = ""
 	r.markedResource = nil
-	r.applyFilter()
-	r.buildTable()
-	return r, nil
+	r.loading = true
+	r.err = nil
+	return r, tea.Batch(r.loadResources, r.spinner.Tick)
 }
 
 func (r *ResourceBrowser) handleEsc() (tea.Model, tea.Cmd) {
