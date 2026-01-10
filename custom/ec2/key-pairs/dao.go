@@ -31,6 +31,27 @@ func NewKeyPairDAO(ctx context.Context) (dao.DAO, error) {
 }
 
 func (d *KeyPairDAO) List(ctx context.Context) ([]dao.Resource, error) {
+	// Check for KeyName filter (for navigation from child resources)
+	if keyName := dao.GetFilterFromContext(ctx, "KeyName"); keyName != "" {
+		// DescribeKeyPairs supports KeyNames filter directly
+		output, err := d.client.DescribeKeyPairs(ctx, &ec2.DescribeKeyPairsInput{
+			KeyNames: []string{keyName},
+		})
+		if err != nil {
+			// If not found, return empty list (not an error for filtering)
+			if apperrors.IsNotFound(err) {
+				return []dao.Resource{}, nil
+			}
+			return nil, apperrors.Wrap(err, "describe key pairs")
+		}
+
+		var resources []dao.Resource
+		for _, kp := range output.KeyPairs {
+			resources = append(resources, NewKeyPairResource(kp))
+		}
+		return resources, nil
+	}
+
 	output, err := d.client.DescribeKeyPairs(ctx, &ec2.DescribeKeyPairsInput{})
 	if err != nil {
 		return nil, apperrors.Wrap(err, "describe key pairs")

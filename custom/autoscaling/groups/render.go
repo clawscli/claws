@@ -260,7 +260,7 @@ func (r *AutoScalingGroupRenderer) Navigations(resource dao.Resource) []render.N
 
 	return []render.Navigation{
 		{
-			Key: "a", Label: "Activities", Service: "autoscaling", Resource: "activities",
+			Key: "g", Label: "Activities", Service: "autoscaling", Resource: "activities",
 			FilterField: "AutoScalingGroupName", FilterValue: rr.AutoScalingGroupName(),
 		},
 		{

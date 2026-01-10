@@ -14,8 +14,10 @@ import (
 
 type DiffView struct {
 	ctx          context.Context
-	left         dao.Resource
-	right        dao.Resource
+	left         dao.Resource // wrapped resource (for metadata)
+	right        dao.Resource // wrapped resource (for metadata)
+	leftUnwrap   dao.Resource // unwrapped for rendering
+	rightUnwrap  dao.Resource // unwrapped for rendering
 	renderer     render.Renderer
 	service      string
 	resourceType string
@@ -39,11 +41,14 @@ func newDiffViewStyles() diffViewStyles {
 }
 
 // NewDiffView creates a new DiffView for comparing two resources
+// Accepts wrapped resources (ProfiledResource/RegionalResource) and unwraps internally for rendering
 func NewDiffView(ctx context.Context, left, right dao.Resource, renderer render.Renderer, service, resourceType string) *DiffView {
 	return &DiffView{
 		ctx:          ctx,
-		left:         left,
-		right:        right,
+		left:         left,                     // keep wrapped for metadata
+		right:        right,                    // keep wrapped for metadata
+		leftUnwrap:   dao.UnwrapResource(left), // unwrap for rendering
+		rightUnwrap:  dao.UnwrapResource(right),
 		renderer:     renderer,
 		service:      service,
 		resourceType: resourceType,
@@ -108,7 +113,7 @@ func (d *DiffView) SetSize(width, height int) tea.Cmd {
 
 // StatusLine implements View
 func (d *DiffView) StatusLine() string {
-	return dao.UnwrapResource(d.left).GetName() + " vs " + dao.UnwrapResource(d.right).GetName() + " • ↑/↓:scroll • q/esc:back"
+	return d.leftUnwrap.GetName() + " vs " + d.rightUnwrap.GetName() + " • ↑/↓:scroll • q/esc:back"
 }
 
 // renderSideBySide generates the side-by-side view
@@ -124,8 +129,8 @@ func (d *DiffView) renderSideBySide() string {
 	leftDetail := ""
 	rightDetail := ""
 	if d.renderer != nil {
-		leftDetail = d.renderer.RenderDetail(dao.UnwrapResource(d.left))
-		rightDetail = d.renderer.RenderDetail(dao.UnwrapResource(d.right))
+		leftDetail = d.renderer.RenderDetail(d.leftUnwrap)
+		rightDetail = d.renderer.RenderDetail(d.rightUnwrap)
 	}
 
 	// Split into lines
@@ -136,8 +141,8 @@ func (d *DiffView) renderSideBySide() string {
 	colWidth := (d.width - 3) / 2
 
 	// Column headers
-	leftHeader := TruncateOrPadString("◀ "+dao.UnwrapResource(d.left).GetName(), colWidth)
-	rightHeader := TruncateOrPadString(dao.UnwrapResource(d.right).GetName()+" ▶", colWidth)
+	leftHeader := TruncateOrPadString("◀ "+d.leftUnwrap.GetName(), colWidth)
+	rightHeader := TruncateOrPadString(d.rightUnwrap.GetName()+" ▶", colWidth)
 	out.WriteString(s.header.Render(leftHeader))
 	out.WriteString(s.separator.Render(" │ "))
 	out.WriteString(s.header.Render(rightHeader))

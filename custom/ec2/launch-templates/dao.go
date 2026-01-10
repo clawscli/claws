@@ -33,6 +33,20 @@ func NewLaunchTemplateDAO(ctx context.Context) (dao.DAO, error) {
 
 // List returns all Launch Templates
 func (d *LaunchTemplateDAO) List(ctx context.Context) ([]dao.Resource, error) {
+	// Check for LaunchTemplateId filter (for navigation from child resources)
+	if ltID := dao.GetFilterFromContext(ctx, "LaunchTemplateId"); ltID != "" {
+		// Direct lookup for specific launch template
+		lt, err := d.Get(ctx, ltID)
+		if err != nil {
+			// If not found, return empty list (not an error for filtering)
+			if apperrors.IsNotFound(err) {
+				return []dao.Resource{}, nil
+			}
+			return nil, err
+		}
+		return []dao.Resource{lt}, nil
+	}
+
 	templates, err := appaws.Paginate(ctx, func(token *string) ([]types.LaunchTemplate, *string, error) {
 		output, err := d.client.DescribeLaunchTemplates(ctx, &ec2.DescribeLaunchTemplatesInput{
 			NextToken: token,

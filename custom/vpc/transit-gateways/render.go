@@ -192,7 +192,7 @@ func (r *TransitGatewayRenderer) Navigations(resource dao.Resource) []render.Nav
 	}
 	return []render.Navigation{
 		{
-			Key:         "a",
+			Key:         "t",
 			Label:       "Attachments",
 			Service:     "vpc",
 			Resource:    "tgw-attachments",

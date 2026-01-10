@@ -3,14 +3,6 @@ version: '3'
 vars:
   LOCALSTACK_CONTAINER: claws-localstack
 
-# Shared environment for LocalStack tasks
-env: &localstack-env
-  AWS_ENDPOINT_URL: http://localhost:4566
-  AWS_ACCESS_KEY_ID: test
-  AWS_SECRET_ACCESS_KEY: test
-  AWS_DEFAULT_REGION: us-east-1
-  AWS_EC2_METADATA_DISABLED: "true"
-
 tasks:
   build:
     desc: Build the claws binary
@@ -74,20 +66,35 @@ tasks:
   localstack:demo-setup:
     desc: Create demo resources in LocalStack (VPCs, EC2, S3)
     deps: [localstack:start]
-    env: *localstack-env
+    env:
+      AWS_ENDPOINT_URL: http://localhost:4566
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_EC2_METADATA_DISABLED: "true"
     cmds:
       - ./scripts/localstack-demo-setup.sh
 
   localstack:demo-cleanup:
     desc: Cleanup demo resources from LocalStack
-    env: *localstack-env
+    env:
+      AWS_ENDPOINT_URL: http://localhost:4566
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_EC2_METADATA_DISABLED: "true"
     cmds:
       - ./scripts/localstack-demo-cleanup.sh
 
   localstack:demo:
     desc: Run claws against LocalStack
     deps: [build, localstack:start]
-    env: *localstack-env
+    env:
+      AWS_ENDPOINT_URL: http://localhost:4566
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_EC2_METADATA_DISABLED: "true"
     cmds:
       - ./claws
 
@@ -150,7 +157,12 @@ tasks:
   test-localstack:
     desc: Run integration tests with LocalStack
     deps: [localstack:start]
-    env: *localstack-env
+    env:
+      AWS_ENDPOINT_URL: http://localhost:4566
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_EC2_METADATA_DISABLED: "true"
     cmds:
       - go test -v ./... -tags=integration -timeout 60s
 
@@ -198,3 +210,24 @@ tasks:
         git push origin "$VERSION"
         echo "Release $VERSION created and pushed!"
         echo "GitHub Actions will build and publish the release."
+
+  # EKS Integration Test tasks
+  eks-test-up:
+    desc: Deploy EKS test stack for integration testing (~15-20 min)
+    dir: custom/eks/test-fixtures/cloudformation
+    cmds:
+      - ./deploy.sh
+
+  eks-test-down:
+    desc: Clean up EKS test stack (~10-15 min)
+    dir: custom/eks/test-fixtures/cloudformation
+    cmds:
+      - ./cleanup.sh
+
+  eks-test:
+    desc: Full EKS integration test (deploy, test, cleanup)
+    cmds:
+      - task: eks-test-up
+      - |
+        echo "Stack deployed. Test with claws manually, then run 'task eks-test-down' to cleanup."
+        echo "Example: AWS_REGION=us-east-1 claws"

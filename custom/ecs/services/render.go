@@ -373,7 +373,7 @@ func (r *ServiceRenderer) Navigations(resource dao.Resource) []render.Navigation
 			FilterValue: svc.GetName(),
 		},
 		{
-			Key:         "c",
+			Key:         "p",
 			Label:       "Cluster",
 			Service:     "ecs",
 			Resource:    "clusters",

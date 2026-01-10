@@ -200,7 +200,7 @@ func (r *ExecutionRenderer) Navigations(resource dao.Resource) []render.Navigati
 
 	// State Machine navigation
 	navs = append(navs, render.Navigation{
-		Key: "m", Label: "State Machine", Service: "stepfunctions", Resource: "state-machines",
+		Key: "s", Label: "State Machine", Service: "stepfunctions", Resource: "state-machines",
 		FilterField: "StateMachineArn", FilterValue: er.StateMachineARN(),
 	})
 
