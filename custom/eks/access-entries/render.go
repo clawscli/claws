@@ -161,12 +161,20 @@ func (rnd *AccessEntryRenderer) Navigations(resource dao.Resource) []render.Navi
 		}
 
 		if service != "" {
+			// Determine filter field name based on resource type
+			var filterField string
+			if resource == "users" {
+				filterField = "UserName"
+			} else {
+				filterField = "RoleName"
+			}
+
 			navs = append(navs, render.Navigation{
 				Key:         "i",
 				Label:       "IAM Principal",
 				Service:     service,
 				Resource:    resource,
-				FilterField: strings.Title(resource[:len(resource)-1]) + "Name", // UserName or RoleName
+				FilterField: filterField,
 				FilterValue: principalName,
 			})
 		}
