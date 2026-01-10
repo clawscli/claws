@@ -57,7 +57,7 @@ task eks-test-up
 # Use claws to test
 AWS_REGION=us-east-1 claws
 
-# Clean up when done
+# Clean up when done (auto-retries on DELETE_FAILED)
 task eks-test-down
 ```
 
@@ -89,6 +89,8 @@ AWS_REGION=us-east-1 claws
 | `STACK_NAME` | claws-eks-test | CloudFormation stack name |
 | `CLUSTER_NAME` | claws-test-cluster | EKS cluster name |
 | `AWS_REGION` | us-east-1 | AWS region |
+| `CI_MODE` | false | Skip interactive prompts (cleanup.sh) |
+| `MAX_RETRY` | 2 | Max deletion retry attempts (cleanup.sh) |
 
 Example with custom values:
 
@@ -137,15 +139,24 @@ aws cloudformation describe-stack-events \
 
 ### Cleanup fails
 
-If cleanup fails due to dependencies (e.g., LoadBalancers created by Kubernetes services), manually delete those resources first:
+**NEW:** cleanup.sh now auto-retries on DELETE_FAILED and fixes auth mode issues automatically.
+
+If cleanup still fails after retries:
 
 ```bash
-# List any LoadBalancers created by the cluster
+# Check failure reason
+aws cloudformation describe-stack-events \
+  --stack-name claws-eks-test \
+  --region us-east-1 \
+  --query 'StackEvents[?ResourceStatus==`DELETE_FAILED`]' \
+  --max-items 10
+
+# For LoadBalancers created by k8s services:
 aws elbv2 describe-load-balancers --region us-east-1 \
   --query 'LoadBalancers[?VpcId==`<VPC_ID>`]'
 
-# Delete them manually, then retry cleanup
-./cleanup.sh
+# Delete manually, then retry
+CI_MODE=true ./cleanup.sh  # Skip confirmation prompt
 ```
 
 ## Security
