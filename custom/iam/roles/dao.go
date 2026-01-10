@@ -39,6 +39,20 @@ func (d *RoleDAO) List(ctx context.Context) ([]dao.Resource, error) {
 // ListPage returns a page of IAM roles.
 // Implements dao.PaginatedDAO interface.
 func (d *RoleDAO) ListPage(ctx context.Context, pageSize int, pageToken string) ([]dao.Resource, string, error) {
+	// Check for RoleName filter
+	if roleName := dao.GetFilterFromContext(ctx, "RoleName"); roleName != "" {
+		// Direct lookup for specific role
+		role, err := d.Get(ctx, roleName)
+		if err != nil {
+			// If not found, return empty list (not an error for filtering)
+			if apperrors.IsNotFound(err) {
+				return []dao.Resource{}, "", nil
+			}
+			return nil, "", err
+		}
+		return []dao.Resource{role}, "", nil
+	}
+
 	maxItems := int32(pageSize)
 	if maxItems > 1000 {
 		maxItems = 1000 // AWS API max

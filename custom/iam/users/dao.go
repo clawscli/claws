@@ -40,6 +40,20 @@ func NewUserDAO(ctx context.Context) (dao.DAO, error) {
 }
 
 func (d *UserDAO) List(ctx context.Context) ([]dao.Resource, error) {
+	// Check for UserName filter
+	if userName := dao.GetFilterFromContext(ctx, "UserName"); userName != "" {
+		// Direct lookup for specific user
+		user, err := d.Get(ctx, userName)
+		if err != nil {
+			// If not found, return empty list (not an error for filtering)
+			if apperrors.IsNotFound(err) {
+				return []dao.Resource{}, nil
+			}
+			return nil, err
+		}
+		return []dao.Resource{user}, nil
+	}
+
 	paginator := iam.NewListUsersPaginator(d.client, &iam.ListUsersInput{})
 
 	var resources []dao.Resource
