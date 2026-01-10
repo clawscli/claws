@@ -33,6 +33,20 @@ func NewAutoScalingGroupDAO(ctx context.Context) (dao.DAO, error) {
 
 // List returns all Auto Scaling Groups
 func (d *AutoScalingGroupDAO) List(ctx context.Context) ([]dao.Resource, error) {
+	// Check for AutoScalingGroupName filter (for navigation from child resources)
+	if asgName := dao.GetFilterFromContext(ctx, "AutoScalingGroupName"); asgName != "" {
+		// Direct lookup for specific ASG
+		asg, err := d.Get(ctx, asgName)
+		if err != nil {
+			// If not found, return empty list (not an error for filtering)
+			if apperrors.IsNotFound(err) {
+				return []dao.Resource{}, nil
+			}
+			return nil, err
+		}
+		return []dao.Resource{asg}, nil
+	}
+
 	asgs, err := appaws.Paginate(ctx, func(token *string) ([]types.AutoScalingGroup, *string, error) {
 		output, err := d.client.DescribeAutoScalingGroups(ctx, &autoscaling.DescribeAutoScalingGroupsInput{
 			NextToken: token,
