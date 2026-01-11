@@ -17,7 +17,10 @@ import (
 	"github.com/clawscli/claws/internal/ui"
 )
 
-const commandInputWidth = 30
+const (
+	commandInputWidth    = 30
+	commandInputWidthMax = 50
+)
 
 // CommandInput handles command mode input
 // commandInputStyles holds cached lipgloss styles for performance
@@ -126,6 +129,7 @@ func (c *CommandInput) Update(msg tea.Msg) (tea.Cmd, *NavigateMsg) {
 
 		case "tab":
 			// Cycle through suggestions
+			// Reset() before SetValue() fixes cursor offset when replacing longer text
 			if len(c.suggestions) > 0 {
 				c.textInput.Reset()
 				c.textInput.SetValue(c.suggestions[c.suggIdx])
@@ -158,6 +162,14 @@ func (c *CommandInput) Update(msg tea.Msg) (tea.Cmd, *NavigateMsg) {
 	// Update suggestions on input change
 	c.updateSuggestions()
 
+	// Dynamic width: expand when input exceeds default width
+	inputLen := len(c.textInput.Value())
+	if inputLen > commandInputWidth {
+		c.textInput.SetWidth(commandInputWidthMax)
+	} else {
+		c.textInput.SetWidth(commandInputWidth)
+	}
+
 	return cmd, nil
 }
 
@@ -174,50 +186,110 @@ func (c *CommandInput) View() string {
 
 	s := c.styles
 	inputView := s.input.Render(c.textInput.View())
-
-	// Check if input is an alias and show resolution
 	input := c.textInput.Value()
-	var aliasView string
-	if service, resource, ok := c.registry.ResolveAlias(input); ok {
-		var resolvedPath string
-		if resource != "" {
-			resolvedPath = service + "/" + resource
-		} else {
-			resolvedPath = service
-		}
-		aliasView = s.alias.Render(" → " + resolvedPath)
+
+	// Calculate where Enter will navigate to (alias resolution or prefix match)
+	destination := c.resolveDestination(input)
+
+	// Build view: destination (highlighted) + other suggestions (dim)
+	var destView, suggView string
+
+	if destination != "" {
+		destView = s.alias.Render(" → " + s.highlight.Render(destination))
 	}
 
-	// Show suggestions
-	var suggView string
-	if len(c.suggestions) > 0 && c.textInput.Value() != "" {
+	// Show other suggestions (white, no highlight)
+	if len(c.suggestions) > 0 && input != "" {
 		maxShow := 5
-		if len(c.suggestions) < maxShow {
-			maxShow = len(c.suggestions)
+		shown := 0
+		var parts []string
+
+		for _, sugg := range c.suggestions {
+			if sugg == destination {
+				continue // Skip duplicate
+			}
+			if shown >= maxShow {
+				break
+			}
+			parts = append(parts, sugg)
+			shown++
 		}
 
-		suggText := " → "
-		for i := 0; i < maxShow; i++ {
-			if i > 0 {
-				suggText += " | "
-			}
-			if i == c.suggIdx%len(c.suggestions) {
-				suggText += s.highlight.Render(c.suggestions[i])
+		if len(parts) > 0 {
+			var suggText string
+			if destView != "" {
+				suggText = " | " + strings.Join(parts, " | ")
 			} else {
-				suggText += c.suggestions[i]
+				suggText = " → " + strings.Join(parts, " | ")
 			}
+			if len(c.suggestions) > maxShow+1 {
+				suggText += " ..."
+			}
+			suggView = s.alias.Render(suggText) // alias = NoStyle (white)
 		}
-		if len(c.suggestions) > maxShow {
-			suggText += " ..."
-		}
-		suggView = s.suggestion.Render(suggText)
 	}
 
-	// Prefer alias resolution over suggestions when both exist
-	if aliasView != "" {
-		return lipgloss.JoinHorizontal(lipgloss.Left, inputView, aliasView)
+	return lipgloss.JoinHorizontal(lipgloss.Left, inputView, destView, suggView)
+}
+
+// resolveDestination returns where Enter will navigate to for the given input.
+// It uses the same logic as executeCommand: alias resolution, then prefix match.
+func (c *CommandInput) resolveDestination(input string) string {
+	if input == "" {
+		return ""
 	}
-	return lipgloss.JoinHorizontal(lipgloss.Left, inputView, suggView)
+
+	// Skip non-navigation commands
+	if strings.HasPrefix(input, "tag ") || strings.HasPrefix(input, "tags ") ||
+		strings.HasPrefix(input, "diff ") || strings.HasPrefix(input, "sort ") ||
+		strings.HasPrefix(input, "theme ") || strings.HasPrefix(input, "autosave ") ||
+		strings.HasPrefix(input, "login ") {
+		return ""
+	}
+
+	// Try alias resolution first
+	if service, resource, ok := c.registry.ResolveAlias(input); ok {
+		if resource != "" {
+			return service + "/" + resource
+		}
+		return service
+	}
+
+	// If input contains "/", try ParseServiceResource for full path
+	if strings.Contains(input, "/") {
+		if service, resourceType, err := c.registry.ParseServiceResource(input); err == nil {
+			if resourceType != "" {
+				return service + "/" + resourceType
+			}
+			return service
+		}
+	}
+
+	// Fallback: prefix match on service
+	parts := strings.SplitN(input, "/", 2)
+	servicePart := parts[0]
+	resourcePart := ""
+	if len(parts) > 1 {
+		resourcePart = parts[1]
+	}
+
+	for _, svc := range c.registry.ListServices() {
+		if strings.HasPrefix(svc, servicePart) {
+			if resourcePart == "" {
+				// Show service only (not service/default-resource)
+				return svc
+			}
+			// Prefix match on resource
+			for _, res := range c.registry.ListResources(svc) {
+				if strings.HasPrefix(res, resourcePart) {
+					return svc + "/" + res
+				}
+			}
+			return svc
+		}
+	}
+
+	return ""
 }
 
 // SetTagProvider sets the tag completion provider
@@ -521,13 +593,15 @@ func (c *CommandInput) GetSuggestions() []string {
 		}
 
 		for _, svc := range c.registry.ListServices() {
-			if strings.HasPrefix(svc, input) {
+			// Skip if input exactly matches service (already fully typed)
+			if svc != input && strings.HasPrefix(svc, input) {
 				suggestions = append(suggestions, svc)
 			}
 		}
 
 		for _, alias := range c.registry.GetAliases() {
-			if strings.HasPrefix(alias, input) {
+			// Skip if input exactly matches alias (already fully typed)
+			if alias != input && strings.HasPrefix(alias, input) {
 				suggestions = append(suggestions, alias)
 			}
 		}

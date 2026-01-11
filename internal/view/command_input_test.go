@@ -109,8 +109,8 @@ func TestCommandInput_GetSuggestions_Aliases(t *testing.T) {
 		expected []string
 	}{
 		{"cost", []string{"costexplorer", "cost-explorer"}},
-		{"cf", []string{"cf", "cfn"}},
-		{"cfn", []string{"cfn"}},
+		{"cf", []string{"cfn"}}, // "cf" excluded (exact match)
+		{"cfn", []string{}},     // "cfn" excluded (exact match)
 	}
 
 	for _, tt := range tests {
@@ -538,5 +538,66 @@ func TestCommandInput_ServicesCommand(t *testing.T) {
 				t.Errorf("%q: ClearStack = true, want false (preserves stack)", input)
 			}
 		})
+	}
+}
+
+func TestCommandInput_CtrlCExit(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	ci := NewCommandInput(ctx, reg)
+	ci.Activate()
+
+	if !ci.IsActive() {
+		t.Fatal("Expected command input to be active")
+	}
+
+	// Press Ctrl+C
+	ci.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
+
+	if ci.IsActive() {
+		t.Error("Expected Ctrl+C to deactivate command input")
+	}
+}
+
+func TestCommandInput_AliasResolutionInView(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	ci := NewCommandInput(ctx, reg)
+	ci.Activate()
+
+	// "sq" is an alias for "service-quotas"
+	ci.textInput.SetValue("sq")
+	ci.updateSuggestions()
+
+	view := ci.View()
+
+	// View should contain the resolved alias
+	if !contains(view, "service-quotas") {
+		t.Errorf("View should contain resolved alias 'service-quotas', got: %q", view)
+	}
+}
+
+func TestCommandInput_DynamicWidth(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	ci := NewCommandInput(ctx, reg)
+	ci.Activate()
+
+	// Short input - default width
+	ci.textInput.SetValue("ec2")
+	ci.Update(tea.KeyPressMsg{Code: '2', Text: "2"})
+
+	// Long input - expanded width
+	longInput := "diff i-0123456789abcdef0 i-fedcba9876543210"
+	ci.textInput.SetValue(longInput)
+	ci.Update(tea.KeyPressMsg{Code: '0', Text: "0"})
+
+	// Just verify no panic with long input
+	view := ci.View()
+	if view == "" {
+		t.Error("Expected non-empty view for long input")
 	}
 }
