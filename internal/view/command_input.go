@@ -254,8 +254,15 @@ func (c *CommandInput) renderInputWithSuggestion(s commandInputStyles, input str
 	// Remove trailing padding from textinput so suggestion appears right after cursor
 	trimmedView := strings.TrimRight(baseView, " ")
 
-	// Render: trimmed input + dim suffix (within same input box style)
-	return s.input.Render(trimmedView + s.suggestion.Render(suffix))
+	// Restore padding after suffix to maintain original width
+	removedPadding := len(baseView) - len(trimmedView)
+	paddingNeeded := removedPadding - len(suffix)
+	if paddingNeeded < 0 {
+		paddingNeeded = 0
+	}
+
+	// Render: trimmed input + dim suffix + padding (within same input box style)
+	return s.input.Render(trimmedView + s.suggestion.Render(suffix) + strings.Repeat(" ", paddingNeeded))
 }
 
 // View renders the command input
