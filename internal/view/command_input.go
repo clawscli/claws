@@ -23,6 +23,7 @@ type commandInputStyles struct {
 	input      lipgloss.Style
 	suggestion lipgloss.Style
 	highlight  lipgloss.Style
+	alias      lipgloss.Style
 }
 
 func newCommandInputStyles() commandInputStyles {
@@ -30,6 +31,7 @@ func newCommandInputStyles() commandInputStyles {
 		input:      ui.InputFieldStyle(),
 		suggestion: ui.DimStyle(),
 		highlight:  ui.HighlightStyle(),
+		alias:      lipgloss.NewStyle(), // Normal text, not dimmed
 	}
 }
 
@@ -87,6 +89,7 @@ func (c *CommandInput) Activate() tea.Cmd {
 	c.textInput.Focus()
 	c.suggestions = nil
 	c.suggIdx = 0
+	c.updateSuggestions()
 	return textinput.Blink
 }
 
@@ -111,7 +114,7 @@ func (c *CommandInput) Update(msg tea.Msg) (tea.Cmd, *NavigateMsg) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		switch msg.String() {
-		case "esc":
+		case "esc", "ctrl+c":
 			c.Deactivate()
 			return nil, nil
 
@@ -166,10 +169,24 @@ func (c *CommandInput) View() string {
 	}
 
 	s := c.styles
-	result := s.input.Render(c.textInput.View())
+	inputView := s.input.Render(c.textInput.View())
+
+	// Check if input is an alias and show resolution
+	input := c.textInput.Value()
+	var aliasView string
+	if service, resource, ok := c.registry.ResolveAlias(input); ok {
+		var resolvedPath string
+		if resource != "" {
+			resolvedPath = service + "/" + resource
+		} else {
+			resolvedPath = service
+		}
+		aliasView = s.alias.Render(" → " + resolvedPath)
+	}
 
 	// Show suggestions
-	if len(c.suggestions) > 0 && c.textInput.Value() != "" {
+	var suggView string
+	if len(c.suggestions) > 0 {
 		maxShow := 5
 		if len(c.suggestions) < maxShow {
 			maxShow = len(c.suggestions)
@@ -189,15 +206,20 @@ func (c *CommandInput) View() string {
 		if len(c.suggestions) > maxShow {
 			suggText += " ..."
 		}
-		result += s.suggestion.Render(suggText)
+		suggView = s.suggestion.Render(suggText)
 	}
 
-	return result
+	// Prefer alias resolution over suggestions when both exist
+	if aliasView != "" {
+		return lipgloss.JoinHorizontal(lipgloss.Left, inputView, aliasView)
+	}
+	return lipgloss.JoinHorizontal(lipgloss.Left, inputView, suggView)
 }
 
 // SetWidth sets the input width
 func (c *CommandInput) SetWidth(width int) {
-	c.textInput.SetWidth(width - 4)
+	// Don't set width on textInput to allow suggestions to display properly
+	// The input will auto-size based on content
 }
 
 // SetTagProvider sets the tag completion provider
