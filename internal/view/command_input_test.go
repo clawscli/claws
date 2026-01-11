@@ -391,25 +391,29 @@ func TestCommandInput_DiffTabCompletion(t *testing.T) {
 		}
 	}
 
-	// Press Tab
+	// Press Tab - bash-style: first expand to common prefix "diff i-"
 	ci.Update(tea.KeyPressMsg{Code: tea.KeyTab})
-
-	// Verify input value is set correctly
 	got := ci.textInput.Value()
-	if got != "diff i-123" {
-		t.Errorf("After Tab, textInput.Value() = %q, want %q", got, "diff i-123")
+	if got != "diff i-" {
+		t.Errorf("After 1st Tab, textInput.Value() = %q, want %q (common prefix)", got, "diff i-")
 	}
 
-	// Press Tab again
+	// Press Tab again - now cycle to first suggestion
+	ci.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	got = ci.textInput.Value()
+	if got != "diff i-123" {
+		t.Errorf("After 2nd Tab, textInput.Value() = %q, want %q", got, "diff i-123")
+	}
+
+	// Press Tab again - cycle to second suggestion
 	ci.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 	got = ci.textInput.Value()
 	if got != "diff i-456" {
-		t.Errorf("After 2nd Tab, textInput.Value() = %q, want %q", got, "diff i-456")
+		t.Errorf("After 3rd Tab, textInput.Value() = %q, want %q", got, "diff i-456")
 	}
 
 	// Check View() contains "diff"
 	view := ci.View()
-	t.Logf("View after Tab: %q", view)
 	if !contains(view, "diff") {
 		t.Errorf("View() should contain 'diff', got: %q", view)
 	}
@@ -430,18 +434,20 @@ func TestCommandInput_DiffTabCompletion_RealKeyInput(t *testing.T) {
 
 	t.Logf("After typing 'diff ': Value=%q, suggestions=%v", ci.textInput.Value(), ci.suggestions)
 
-	// Press Tab
+	// Press Tab - bash-style: first expand to common prefix "diff i-"
 	ci.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 
 	got := ci.textInput.Value()
-	t.Logf("After Tab: Value=%q", got)
-
-	if got != "diff i-123" {
-		t.Errorf("After Tab, textInput.Value() = %q, want %q", got, "diff i-123")
+	if got != "diff i-" {
+		t.Errorf("After 1st Tab, textInput.Value() = %q, want %q (common prefix)", got, "diff i-")
 	}
 
-	view := ci.View()
-	t.Logf("View: %q", view)
+	// Press Tab again - now cycle to first suggestion
+	ci.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	got = ci.textInput.Value()
+	if got != "diff i-123" {
+		t.Errorf("After 2nd Tab, textInput.Value() = %q, want %q", got, "diff i-123")
+	}
 }
 
 func contains(s, substr string) bool {
@@ -599,5 +605,88 @@ func TestCommandInput_DynamicWidth(t *testing.T) {
 	view := ci.View()
 	if view == "" {
 		t.Error("Expected non-empty view for long input")
+	}
+}
+
+func TestCommonPrefix(t *testing.T) {
+	tests := []struct {
+		name        string
+		suggestions []string
+		want        string
+	}{
+		{"empty", []string{}, ""},
+		{"single", []string{"ec2"}, "ec2"},
+		{"exact match", []string{"ec2", "ec2"}, "ec2"},
+		{"common prefix", []string{"saaa", "saab", "saba"}, "sa"},
+		{"no common", []string{"abc", "xyz"}, ""},
+		{"full prefix", []string{"ec2", "ec2/instances"}, "ec2"},
+		{"different lengths", []string{"cloudformation", "cloudfront", "cloudwatch"}, "cloud"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := commonPrefix(tt.suggestions)
+			if got != tt.want {
+				t.Errorf("commonPrefix(%v) = %q, want %q", tt.suggestions, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCommandInput_BashStyleTabCompletion(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	ci := NewCommandInput(ctx, reg)
+	ci.Activate()
+
+	// Type "cloud" - multiple matches with common prefix "cloud"
+	ci.textInput.SetValue("cloud")
+	ci.updateSuggestions()
+
+	// Should have multiple suggestions starting with "cloud"
+	if len(ci.suggestions) < 2 {
+		t.Skipf("Need multiple cloud* services for this test, got %d", len(ci.suggestions))
+	}
+
+	// First Tab: should expand to common prefix (might be "cloud" itself if that's the max)
+	ci.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	afterFirstTab := ci.textInput.Value()
+
+	// Common prefix should be >= original input
+	if len(afterFirstTab) < len("cloud") {
+		t.Errorf("After first Tab, value %q is shorter than input 'cloud'", afterFirstTab)
+	}
+
+	// If common prefix == input, second Tab should cycle to first suggestion
+	if afterFirstTab == "cloud" {
+		ci.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+		afterSecondTab := ci.textInput.Value()
+		if afterSecondTab == "cloud" {
+			t.Errorf("After second Tab, value should have cycled to a suggestion")
+		}
+	}
+}
+
+func TestCommandInput_TabCompletionSingleMatch(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	ci := NewCommandInput(ctx, reg)
+	ci.Activate()
+
+	// Type something that matches only one service
+	ci.textInput.SetValue("bedroc")
+	ci.updateSuggestions()
+
+	if len(ci.suggestions) != 1 {
+		t.Skipf("Expected exactly 1 suggestion for 'bedroc', got %d: %v", len(ci.suggestions), ci.suggestions)
+	}
+
+	// Tab should complete directly to the single match
+	ci.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	got := ci.textInput.Value()
+	if got != "bedrock" {
+		t.Errorf("After Tab with single match, got %q, want 'bedrock'", got)
 	}
 }
