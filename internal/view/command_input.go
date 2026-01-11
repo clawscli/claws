@@ -292,8 +292,7 @@ func (c *CommandInput) resolveDestination(input string) string {
 
 	// Fallback: prefix match on service/alias
 	if svc, res, ok := c.resolvePrefixMatch(input); ok {
-		// Only show resource if user explicitly typed "/"
-		if strings.Contains(input, "/") && res != "" {
+		if res != "" {
 			return svc + "/" + res
 		}
 		return svc
@@ -322,12 +321,14 @@ func (c *CommandInput) resolvePrefixMatch(input string) (service, resource strin
 	}
 
 	// Try prefix match on alias if no service matched
+	var aliasResource string
 	if matchedService == "" {
 		for _, alias := range c.registry.GetAliases() {
 			if strings.HasPrefix(alias, servicePart) {
-				// Resolve alias to service
-				if resolved, _, resolveOK := c.registry.ResolveAlias(alias); resolveOK {
+				// Resolve alias to service (and resource if alias includes it)
+				if resolved, res, resolveOK := c.registry.ResolveAlias(alias); resolveOK {
 					matchedService = resolved
+					aliasResource = res
 					break
 				}
 			}
@@ -338,9 +339,9 @@ func (c *CommandInput) resolvePrefixMatch(input string) (service, resource strin
 		return "", "", false
 	}
 
-	// If no resource part, return service only (default resource will be used)
+	// If no resource part specified, use alias resource (if any) or let caller use default
 	if resourcePart == "" {
-		return matchedService, "", true
+		return matchedService, aliasResource, true
 	}
 
 	// Try prefix match on resource name (sorted, so first match = alphabetically first)
