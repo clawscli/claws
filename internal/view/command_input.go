@@ -89,7 +89,6 @@ func (c *CommandInput) Activate() tea.Cmd {
 	c.textInput.Focus()
 	c.suggestions = nil
 	c.suggIdx = 0
-	c.updateSuggestions()
 	return textinput.Blink
 }
 
@@ -186,7 +185,7 @@ func (c *CommandInput) View() string {
 
 	// Show suggestions
 	var suggView string
-	if len(c.suggestions) > 0 {
+	if len(c.suggestions) > 0 && c.textInput.Value() != "" {
 		maxShow := 5
 		if len(c.suggestions) < maxShow {
 			maxShow = len(c.suggestions)
@@ -214,12 +213,6 @@ func (c *CommandInput) View() string {
 		return lipgloss.JoinHorizontal(lipgloss.Left, inputView, aliasView)
 	}
 	return lipgloss.JoinHorizontal(lipgloss.Left, inputView, suggView)
-}
-
-// SetWidth sets the input width
-func (c *CommandInput) SetWidth(width int) {
-	// Don't set width on textInput to allow suggestions to display properly
-	// The input will auto-size based on content
 }
 
 // SetTagProvider sets the tag completion provider

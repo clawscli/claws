@@ -134,14 +134,6 @@ func TestCommandInput_GetSuggestions_Aliases(t *testing.T) {
 	}
 }
 
-func TestCommandInput_SetWidth(t *testing.T) {
-	ctx := context.Background()
-	reg := registry.New()
-
-	ci := NewCommandInput(ctx, reg)
-	ci.SetWidth(100)
-}
-
 func TestCommandInput_Update_Esc(t *testing.T) {
 	ctx := context.Background()
 	reg := registry.New()

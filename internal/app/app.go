@@ -205,7 +205,6 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.width = msg.Width
 		a.height = msg.Height
 		a.help.SetWidth(msg.Width)
-		a.commandInput.SetWidth(msg.Width)
 		// Update cached styles with new width
 		a.styles = newAppStyles(msg.Width)
 		// Mark warnings ready after first WindowSizeMsg (terminal initialized).
