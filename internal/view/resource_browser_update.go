@@ -118,8 +118,9 @@ func (r *ResourceBrowser) handleTagFilterMsg(msg TagFilterMsg) (tea.Model, tea.C
 func (r *ResourceBrowser) handleDiffMsg(msg DiffMsg) (tea.Model, tea.Cmd) {
 	var leftRes, rightRes dao.Resource
 
+	// Match by ID (from GetResourceIDs)
 	for _, res := range r.filtered {
-		if res.GetName() == msg.RightName {
+		if res.GetID() == msg.RightID {
 			rightRes = res
 			break
 		}
@@ -128,13 +129,13 @@ func (r *ResourceBrowser) handleDiffMsg(msg DiffMsg) (tea.Model, tea.Cmd) {
 		return r, nil
 	}
 
-	if msg.LeftName == "" {
+	if msg.LeftID == "" {
 		if len(r.filtered) > 0 && r.tc.Cursor() < len(r.filtered) {
 			leftRes = r.filtered[r.tc.Cursor()]
 		}
 	} else {
 		for _, res := range r.filtered {
-			if res.GetName() == msg.LeftName {
+			if res.GetID() == msg.LeftID {
 				leftRes = res
 				break
 			}

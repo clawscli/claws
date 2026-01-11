@@ -109,8 +109,8 @@ func TestCommandInput_GetSuggestions_Aliases(t *testing.T) {
 		expected []string
 	}{
 		{"cost", []string{"costexplorer", "cost-explorer"}},
-		{"cf", []string{"cf", "cfn"}},
-		{"cfn", []string{"cfn"}},
+		{"cf", []string{"cfn"}}, // "cf" excluded (exact match)
+		{"cfn", []string{}},     // "cfn" excluded (exact match)
 	}
 
 	for _, tt := range tests {
@@ -132,14 +132,6 @@ func TestCommandInput_GetSuggestions_Aliases(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestCommandInput_SetWidth(t *testing.T) {
-	ctx := context.Background()
-	reg := registry.New()
-
-	ci := NewCommandInput(ctx, reg)
-	ci.SetWidth(100)
 }
 
 func TestCommandInput_Update_Esc(t *testing.T) {
@@ -228,16 +220,16 @@ func TestCommandInput_QuitCommand(t *testing.T) {
 
 // mockDiffProvider for testing getDiffSuggestions
 type mockDiffProvider struct {
-	names      []string
-	markedName string
+	ids      []string
+	markedID string
 }
 
-func (m *mockDiffProvider) GetResourceNames() []string {
-	return m.names
+func (m *mockDiffProvider) GetResourceIDs() []string {
+	return m.ids
 }
 
-func (m *mockDiffProvider) GetMarkedResourceName() string {
-	return m.markedName
+func (m *mockDiffProvider) GetMarkedResourceID() string {
+	return m.markedID
 }
 
 func TestCommandInput_getDiffSuggestions(t *testing.T) {
@@ -258,91 +250,91 @@ func TestCommandInput_getDiffSuggestions(t *testing.T) {
 		},
 		{
 			name:     "empty args returns all sorted",
-			provider: &mockDiffProvider{names: []string{"web-server", "db-server", "cache"}},
+			provider: &mockDiffProvider{ids: []string{"web-server", "db-server", "cache"}},
 			args:     "",
 			want:     []string{"diff cache", "diff db-server", "diff web-server"},
 		},
 		{
 			name:     "prefix match",
-			provider: &mockDiffProvider{names: []string{"web-server", "db-server", "cache"}},
+			provider: &mockDiffProvider{ids: []string{"web-server", "db-server", "cache"}},
 			args:     "web",
 			want:     []string{"diff web-server"},
 		},
 		{
 			name:     "prefix match multiple sorted",
-			provider: &mockDiffProvider{names: []string{"web-server", "web-api", "db-server"}},
+			provider: &mockDiffProvider{ids: []string{"web-server", "web-api", "db-server"}},
 			args:     "web",
 			want:     []string{"diff web-api", "diff web-server"},
 		},
 		{
 			name:     "fuzzy fallback when no prefix sorted",
-			provider: &mockDiffProvider{names: []string{"web-server", "db-server", "cache"}},
+			provider: &mockDiffProvider{ids: []string{"web-server", "db-server", "cache"}},
 			args:     "server",
 			want:     []string{"diff db-server", "diff web-server"},
 		},
 		{
 			name:     "fuzzy match pattern",
-			provider: &mockDiffProvider{names: []string{"web-server", "db-server", "cache"}},
+			provider: &mockDiffProvider{ids: []string{"web-server", "db-server", "cache"}},
 			args:     "wsr",
 			want:     []string{"diff web-server"},
 		},
 		{
 			name:     "case insensitive prefix",
-			provider: &mockDiffProvider{names: []string{"Web-Server", "DB-Server", "Cache"}},
+			provider: &mockDiffProvider{ids: []string{"Web-Server", "DB-Server", "Cache"}},
 			args:     "WEB",
 			want:     []string{"diff Web-Server"},
 		},
 		{
 			name:     "case insensitive fuzzy sorted",
-			provider: &mockDiffProvider{names: []string{"Web-Server", "DB-Server", "Cache"}},
+			provider: &mockDiffProvider{ids: []string{"Web-Server", "DB-Server", "Cache"}},
 			args:     "SERVER",
 			want:     []string{"diff DB-Server", "diff Web-Server"},
 		},
 		{
 			name:     "no match returns empty",
-			provider: &mockDiffProvider{names: []string{"web-server", "db-server"}},
+			provider: &mockDiffProvider{ids: []string{"web-server", "db-server"}},
 			args:     "xyz",
 			want:     nil,
 		},
 		{
 			name:     "second name completion excludes first sorted",
-			provider: &mockDiffProvider{names: []string{"web-server", "db-server", "cache"}},
+			provider: &mockDiffProvider{ids: []string{"web-server", "db-server", "cache"}},
 			args:     "web-server ",
 			want:     []string{"diff web-server cache", "diff web-server db-server"},
 		},
 		{
 			name:     "second name with prefix",
-			provider: &mockDiffProvider{names: []string{"web-server", "db-server", "cache"}},
+			provider: &mockDiffProvider{ids: []string{"web-server", "db-server", "cache"}},
 			args:     "web-server db",
 			want:     []string{"diff web-server db-server"},
 		},
 		{
 			name:     "second name fuzzy fallback",
-			provider: &mockDiffProvider{names: []string{"web-server", "db-server", "cache"}},
+			provider: &mockDiffProvider{ids: []string{"web-server", "db-server", "cache"}},
 			args:     "web-server sr",
 			want:     []string{"diff web-server db-server"},
 		},
 		{
 			name:     "second name no match",
-			provider: &mockDiffProvider{names: []string{"web-server", "db-server"}},
+			provider: &mockDiffProvider{ids: []string{"web-server", "db-server"}},
 			args:     "web-server xyz",
 			want:     nil,
 		},
 		{
 			name:     "empty names list",
-			provider: &mockDiffProvider{names: []string{}},
+			provider: &mockDiffProvider{ids: []string{}},
 			args:     "",
 			want:     nil,
 		},
 		{
 			name:     "single resource for first",
-			provider: &mockDiffProvider{names: []string{"only-one"}},
+			provider: &mockDiffProvider{ids: []string{"only-one"}},
 			args:     "",
 			want:     []string{"diff only-one"},
 		},
 		{
 			name:     "single resource for second - no suggestions",
-			provider: &mockDiffProvider{names: []string{"only-one"}},
+			provider: &mockDiffProvider{ids: []string{"only-one"}},
 			args:     "only-one ",
 			want:     nil,
 		},
@@ -372,6 +364,103 @@ func TestCommandInput_getDiffSuggestions(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCommandInput_DiffTabCompletion(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	ci := NewCommandInput(ctx, reg)
+	ci.SetDiffProvider(&mockDiffProvider{ids: []string{"i-123", "i-456", "i-789"}})
+	ci.Activate()
+
+	// Type "diff "
+	ci.textInput.SetValue("diff ")
+	ci.updateSuggestions()
+
+	// Verify suggestions are generated
+	if len(ci.suggestions) != 3 {
+		t.Fatalf("Expected 3 suggestions, got %d: %v", len(ci.suggestions), ci.suggestions)
+	}
+
+	// Verify suggestions have correct format
+	expected := []string{"diff i-123", "diff i-456", "diff i-789"}
+	for i, want := range expected {
+		if ci.suggestions[i] != want {
+			t.Errorf("suggestions[%d] = %q, want %q", i, ci.suggestions[i], want)
+		}
+	}
+
+	// Press Tab - bash-style: first expand to common prefix "diff i-"
+	ci.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	got := ci.textInput.Value()
+	if got != "diff i-" {
+		t.Errorf("After 1st Tab, textInput.Value() = %q, want %q (common prefix)", got, "diff i-")
+	}
+
+	// Press Tab again - now cycle to first suggestion
+	ci.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	got = ci.textInput.Value()
+	if got != "diff i-123" {
+		t.Errorf("After 2nd Tab, textInput.Value() = %q, want %q", got, "diff i-123")
+	}
+
+	// Press Tab again - cycle to second suggestion
+	ci.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	got = ci.textInput.Value()
+	if got != "diff i-456" {
+		t.Errorf("After 3rd Tab, textInput.Value() = %q, want %q", got, "diff i-456")
+	}
+
+	// Check View() contains "diff"
+	view := ci.View()
+	if !contains(view, "diff") {
+		t.Errorf("View() should contain 'diff', got: %q", view)
+	}
+}
+
+func TestCommandInput_DiffTabCompletion_RealKeyInput(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	ci := NewCommandInput(ctx, reg)
+	ci.SetDiffProvider(&mockDiffProvider{ids: []string{"i-123", "i-456", "i-789"}})
+	ci.Activate()
+
+	// Type "diff " character by character (simulating real input)
+	for _, r := range "diff " {
+		ci.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
+	}
+
+	t.Logf("After typing 'diff ': Value=%q, suggestions=%v", ci.textInput.Value(), ci.suggestions)
+
+	// Press Tab - bash-style: first expand to common prefix "diff i-"
+	ci.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+
+	got := ci.textInput.Value()
+	if got != "diff i-" {
+		t.Errorf("After 1st Tab, textInput.Value() = %q, want %q (common prefix)", got, "diff i-")
+	}
+
+	// Press Tab again - now cycle to first suggestion
+	ci.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	got = ci.textInput.Value()
+	if got != "diff i-123" {
+		t.Errorf("After 2nd Tab, textInput.Value() = %q, want %q", got, "diff i-123")
+	}
+}
+
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsAt(s, substr))
+}
+
+func containsAt(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }
 
 func TestCommandInput_ClearHistoryCommand(t *testing.T) {
@@ -455,5 +544,149 @@ func TestCommandInput_ServicesCommand(t *testing.T) {
 				t.Errorf("%q: ClearStack = true, want false (preserves stack)", input)
 			}
 		})
+	}
+}
+
+func TestCommandInput_CtrlCExit(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	ci := NewCommandInput(ctx, reg)
+	ci.Activate()
+
+	if !ci.IsActive() {
+		t.Fatal("Expected command input to be active")
+	}
+
+	// Press Ctrl+C
+	ci.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
+
+	if ci.IsActive() {
+		t.Error("Expected Ctrl+C to deactivate command input")
+	}
+}
+
+func TestCommandInput_AliasResolutionInView(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	ci := NewCommandInput(ctx, reg)
+	ci.Activate()
+
+	// "sq" is an alias for "service-quotas"
+	ci.textInput.SetValue("sq")
+	ci.updateSuggestions()
+
+	view := ci.View()
+
+	// View should contain the resolved alias
+	if !contains(view, "service-quotas") {
+		t.Errorf("View should contain resolved alias 'service-quotas', got: %q", view)
+	}
+}
+
+func TestCommandInput_DynamicWidth(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	ci := NewCommandInput(ctx, reg)
+	ci.Activate()
+
+	// Short input - default width
+	ci.textInput.SetValue("ec2")
+	ci.Update(tea.KeyPressMsg{Code: '2', Text: "2"})
+
+	// Long input - expanded width
+	longInput := "diff i-0123456789abcdef0 i-fedcba9876543210"
+	ci.textInput.SetValue(longInput)
+	ci.Update(tea.KeyPressMsg{Code: '0', Text: "0"})
+
+	// Just verify no panic with long input
+	view := ci.View()
+	if view == "" {
+		t.Error("Expected non-empty view for long input")
+	}
+}
+
+func TestCommonPrefix(t *testing.T) {
+	tests := []struct {
+		name        string
+		suggestions []string
+		want        string
+	}{
+		{"empty", []string{}, ""},
+		{"single", []string{"ec2"}, "ec2"},
+		{"exact match", []string{"ec2", "ec2"}, "ec2"},
+		{"common prefix", []string{"saaa", "saab", "saba"}, "sa"},
+		{"no common", []string{"abc", "xyz"}, ""},
+		{"full prefix", []string{"ec2", "ec2/instances"}, "ec2"},
+		{"different lengths", []string{"cloudformation", "cloudfront", "cloudwatch"}, "cloud"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := commonPrefix(tt.suggestions)
+			if got != tt.want {
+				t.Errorf("commonPrefix(%v) = %q, want %q", tt.suggestions, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCommandInput_BashStyleTabCompletion(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	ci := NewCommandInput(ctx, reg)
+	ci.Activate()
+
+	// Type "cloud" - multiple matches with common prefix "cloud"
+	ci.textInput.SetValue("cloud")
+	ci.updateSuggestions()
+
+	// Should have multiple suggestions starting with "cloud"
+	if len(ci.suggestions) < 2 {
+		t.Skipf("Need multiple cloud* services for this test, got %d", len(ci.suggestions))
+	}
+
+	// First Tab: should expand to common prefix (might be "cloud" itself if that's the max)
+	ci.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	afterFirstTab := ci.textInput.Value()
+
+	// Common prefix should be >= original input
+	if len(afterFirstTab) < len("cloud") {
+		t.Errorf("After first Tab, value %q is shorter than input 'cloud'", afterFirstTab)
+	}
+
+	// If common prefix == input, second Tab should cycle to first suggestion
+	if afterFirstTab == "cloud" {
+		ci.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+		afterSecondTab := ci.textInput.Value()
+		if afterSecondTab == "cloud" {
+			t.Errorf("After second Tab, value should have cycled to a suggestion")
+		}
+	}
+}
+
+func TestCommandInput_TabCompletionSingleMatch(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	ci := NewCommandInput(ctx, reg)
+	ci.Activate()
+
+	// Type something that matches only one service
+	ci.textInput.SetValue("bedroc")
+	ci.updateSuggestions()
+
+	if len(ci.suggestions) != 1 {
+		t.Skipf("Expected exactly 1 suggestion for 'bedroc', got %d: %v", len(ci.suggestions), ci.suggestions)
+	}
+
+	// Tab should complete directly to the single match
+	ci.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	got := ci.textInput.Value()
+	if got != "bedrock" {
+		t.Errorf("After Tab with single match, got %q, want 'bedrock'", got)
 	}
 }

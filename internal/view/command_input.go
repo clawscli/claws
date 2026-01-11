@@ -17,12 +17,18 @@ import (
 	"github.com/clawscli/claws/internal/ui"
 )
 
+const (
+	commandInputWidth    = 30
+	commandInputWidthMax = 50
+)
+
 // CommandInput handles command mode input
 // commandInputStyles holds cached lipgloss styles for performance
 type commandInputStyles struct {
 	input      lipgloss.Style
 	suggestion lipgloss.Style
 	highlight  lipgloss.Style
+	alias      lipgloss.Style
 }
 
 func newCommandInputStyles() commandInputStyles {
@@ -30,6 +36,7 @@ func newCommandInputStyles() commandInputStyles {
 		input:      ui.InputFieldStyle(),
 		suggestion: ui.DimStyle(),
 		highlight:  ui.HighlightStyle(),
+		alias:      ui.NoStyle(), // Normal text, not dimmed
 	}
 }
 
@@ -41,12 +48,12 @@ type TagCompletionProvider interface {
 	GetTagValues(key string) []string
 }
 
-// DiffCompletionProvider provides resource names for diff command completion
+// DiffCompletionProvider provides resource IDs for diff command completion
 type DiffCompletionProvider interface {
-	// GetResourceNames returns all resource names for completion
-	GetResourceNames() []string
-	// GetMarkedResourceName returns the marked resource name (empty if none)
-	GetMarkedResourceName() string
+	// GetResourceIDs returns all resource IDs for completion
+	GetResourceIDs() []string
+	// GetMarkedResourceID returns the marked resource ID (empty if none)
+	GetMarkedResourceID() string
 }
 
 type CommandInput struct {
@@ -69,8 +76,8 @@ func NewCommandInput(ctx context.Context, reg *registry.Registry) *CommandInput 
 	ti := textinput.New()
 	ti.Placeholder = "service/resource"
 	ti.Prompt = ":"
-	ti.CharLimit = 50
-	ti.SetWidth(30)
+	ti.CharLimit = 150
+	ti.SetWidth(commandInputWidth)
 
 	return &CommandInput{
 		ctx:       ctx,
@@ -111,7 +118,7 @@ func (c *CommandInput) Update(msg tea.Msg) (tea.Cmd, *NavigateMsg) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		switch msg.String() {
-		case "esc":
+		case "esc", "ctrl+c":
 			c.Deactivate()
 			return nil, nil
 
@@ -121,25 +128,48 @@ func (c *CommandInput) Update(msg tea.Msg) (tea.Cmd, *NavigateMsg) {
 			return cmd, nav
 
 		case "tab":
-			// Cycle through suggestions
-			if len(c.suggestions) > 0 {
-				c.textInput.SetValue(c.suggestions[c.suggIdx])
-				c.suggIdx = (c.suggIdx + 1) % len(c.suggestions)
-			} else {
-				// Get fresh suggestions
+			// Bash-style completion: common prefix first, then cycle
+			if len(c.suggestions) == 0 {
 				c.updateSuggestions()
-				if len(c.suggestions) > 0 {
-					c.textInput.SetValue(c.suggestions[0])
-					c.suggIdx = 1 % len(c.suggestions)
+			}
+			if len(c.suggestions) > 0 {
+				current := c.textInput.Value()
+				prefix := commonPrefix(c.suggestions)
+
+				if len(prefix) > len(current) {
+					// Expand to common prefix
+					c.textInput.Reset()
+					c.textInput.SetValue(prefix)
+					c.suggIdx = 0
+				} else {
+					// Common prefix = current input, cycle through suggestions
+					c.textInput.Reset()
+					c.textInput.SetValue(c.suggestions[c.suggIdx])
+					c.suggIdx = (c.suggIdx + 1) % len(c.suggestions)
 				}
 			}
 			return nil, nil
 
 		case "shift+tab":
-			// Cycle backward through suggestions
+			// Bash-style completion: common prefix first, then cycle backward
+			if len(c.suggestions) == 0 {
+				c.updateSuggestions()
+			}
 			if len(c.suggestions) > 0 {
-				c.suggIdx = (c.suggIdx - 1 + len(c.suggestions)) % len(c.suggestions)
-				c.textInput.SetValue(c.suggestions[c.suggIdx])
+				current := c.textInput.Value()
+				prefix := commonPrefix(c.suggestions)
+
+				if len(prefix) > len(current) {
+					// Expand to common prefix
+					c.textInput.Reset()
+					c.textInput.SetValue(prefix)
+					c.suggIdx = 0
+				} else {
+					// Common prefix = current input, cycle backward
+					c.suggIdx = (c.suggIdx - 1 + len(c.suggestions)) % len(c.suggestions)
+					c.textInput.Reset()
+					c.textInput.SetValue(c.suggestions[c.suggIdx])
+				}
 			}
 			return nil, nil
 		}
@@ -150,6 +180,14 @@ func (c *CommandInput) Update(msg tea.Msg) (tea.Cmd, *NavigateMsg) {
 
 	// Update suggestions on input change
 	c.updateSuggestions()
+
+	// Dynamic width: expand when input exceeds default width
+	inputLen := len(c.textInput.Value())
+	if inputLen > commandInputWidth {
+		c.textInput.SetWidth(commandInputWidthMax)
+	} else {
+		c.textInput.SetWidth(commandInputWidth)
+	}
 
 	return cmd, nil
 }
@@ -166,38 +204,141 @@ func (c *CommandInput) View() string {
 	}
 
 	s := c.styles
-	result := s.input.Render(c.textInput.View())
+	inputView := s.input.Render(c.textInput.View())
+	input := c.textInput.Value()
 
-	// Show suggestions
-	if len(c.suggestions) > 0 && c.textInput.Value() != "" {
-		maxShow := 5
-		if len(c.suggestions) < maxShow {
-			maxShow = len(c.suggestions)
-		}
+	// Calculate where Enter will navigate to (alias resolution or prefix match)
+	destination := c.resolveDestination(input)
 
-		suggText := " → "
-		for i := 0; i < maxShow; i++ {
-			if i > 0 {
-				suggText += " | "
-			}
-			if i == c.suggIdx%len(c.suggestions) {
-				suggText += s.highlight.Render(c.suggestions[i])
-			} else {
-				suggText += c.suggestions[i]
-			}
-		}
-		if len(c.suggestions) > maxShow {
-			suggText += " ..."
-		}
-		result += s.suggestion.Render(suggText)
+	// Build view: destination (highlighted) + other suggestions (dim)
+	var destView, suggView string
+
+	if destination != "" {
+		destView = s.alias.Render(" → " + s.highlight.Render(destination))
 	}
 
-	return result
+	// Show other suggestions (white, no highlight)
+	if len(c.suggestions) > 0 && input != "" {
+		maxShow := 5
+		shown := 0
+		var parts []string
+
+		for _, sugg := range c.suggestions {
+			if sugg == destination {
+				continue // Skip duplicate
+			}
+			if shown >= maxShow {
+				break
+			}
+			parts = append(parts, sugg)
+			shown++
+		}
+
+		if len(parts) > 0 {
+			var suggText string
+			if destView != "" {
+				suggText = " | " + strings.Join(parts, " | ")
+			} else {
+				suggText = " → " + strings.Join(parts, " | ")
+			}
+			if len(c.suggestions) > maxShow+1 {
+				suggText += " ..."
+			}
+			suggView = s.alias.Render(suggText) // alias = NoStyle (white)
+		}
+	}
+
+	return lipgloss.JoinHorizontal(lipgloss.Left, inputView, destView, suggView)
 }
 
-// SetWidth sets the input width
-func (c *CommandInput) SetWidth(width int) {
-	c.textInput.SetWidth(width - 4)
+// resolveDestination returns where Enter will navigate to for the given input.
+// It uses the same logic as executeCommand: alias resolution, then prefix match.
+func (c *CommandInput) resolveDestination(input string) string {
+	if input == "" {
+		return ""
+	}
+
+	// Skip non-navigation commands
+	if strings.HasPrefix(input, "tag ") || strings.HasPrefix(input, "tags ") ||
+		strings.HasPrefix(input, "diff ") || strings.HasPrefix(input, "sort ") ||
+		strings.HasPrefix(input, "theme ") || strings.HasPrefix(input, "autosave ") ||
+		strings.HasPrefix(input, "login ") {
+		return ""
+	}
+
+	// Try alias resolution first
+	if service, resource, ok := c.registry.ResolveAlias(input); ok {
+		if resource != "" {
+			return service + "/" + resource
+		}
+		return service
+	}
+
+	// If input contains "/", try ParseServiceResource for full path
+	if strings.Contains(input, "/") {
+		if service, resourceType, err := c.registry.ParseServiceResource(input); err == nil {
+			if resourceType != "" {
+				return service + "/" + resourceType
+			}
+			return service
+		}
+	}
+
+	// Fallback: prefix match on service/alias
+	if svc, res, ok := c.resolvePrefixMatch(input); ok {
+		// Only show resource if user explicitly typed "/"
+		if strings.Contains(input, "/") && res != "" {
+			return svc + "/" + res
+		}
+		return svc
+	}
+
+	return ""
+}
+
+// resolvePrefixMatch tries prefix match on services and aliases, returns resolved service/resource.
+// Returns empty strings if no match found.
+func (c *CommandInput) resolvePrefixMatch(input string) (service, resource string, ok bool) {
+	parts := strings.SplitN(input, "/", 2)
+	servicePart := parts[0]
+	resourcePart := ""
+	if len(parts) > 1 {
+		resourcePart = parts[1]
+	}
+
+	// Try prefix match on service name
+	var matched string
+	for _, svc := range c.registry.ListServices() {
+		if strings.HasPrefix(svc, servicePart) {
+			matched = svc
+			break
+		}
+	}
+
+	// Try prefix match on alias if no service matched
+	if matched == "" {
+		for _, alias := range c.registry.GetAliases() {
+			if strings.HasPrefix(alias, servicePart) {
+				matched = alias
+				break
+			}
+		}
+	}
+
+	if matched == "" {
+		return "", "", false
+	}
+
+	// Build full path and parse via ParseServiceResource (handles alias resolution)
+	fullPath := matched
+	if resourcePart != "" {
+		fullPath = matched + "/" + resourcePart
+	}
+	svc, res, err := c.registry.ParseServiceResource(fullPath)
+	if err != nil {
+		return "", "", false
+	}
+	return svc, res, true
 }
 
 // SetTagProvider sets the tag completion provider
@@ -303,11 +444,11 @@ func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 		parts := strings.Fields(suffix)
 		if len(parts) == 1 {
 			return func() tea.Msg {
-				return DiffMsg{LeftName: "", RightName: parts[0]}
+				return DiffMsg{LeftID: "", RightID: parts[0]}
 			}, nil
 		} else if len(parts) >= 2 {
 			return func() tea.Msg {
-				return DiffMsg{LeftName: parts[0], RightName: parts[1]}
+				return DiffMsg{LeftID: parts[0], RightID: parts[1]}
 			}, nil
 		}
 	}
@@ -342,38 +483,14 @@ func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 	}
 
 	// Fallback: prefix matching for partial input
-	parts := strings.SplitN(input, "/", 2)
-	service = parts[0]
-	resourceType = ""
-	if len(parts) > 1 {
-		resourceType = parts[1]
-	}
-
-	// Try prefix match on service
-	for _, svc := range c.registry.ListServices() {
-		if strings.HasPrefix(svc, service) {
-			service = svc
-			if resourceType == "" {
-				resourceType = c.registry.DefaultResource(svc)
-			} else {
-				// Prefix match on resource
-				for _, res := range c.registry.ListResources(svc) {
-					if strings.HasPrefix(res, resourceType) {
-						resourceType = res
-						break
-					}
-				}
-			}
-			break
-		}
-	}
-
-	if _, ok := c.registry.Get(service, resourceType); ok {
-		browser := NewResourceBrowserWithType(c.ctx, c.registry, service, resourceType)
+	if svc, res, ok := c.resolvePrefixMatch(input); ok {
+		browser := NewResourceBrowserWithType(c.ctx, c.registry, svc, res)
 		return nil, &NavigateMsg{View: browser}
 	}
 
-	return nil, nil
+	return func() tea.Msg {
+		return ErrorMsg{Err: fmt.Errorf("unknown command: %s", input)}
+	}, nil
 }
 
 func (c *CommandInput) parseSortArgs(args string) tea.Cmd {
@@ -501,13 +618,15 @@ func (c *CommandInput) GetSuggestions() []string {
 		}
 
 		for _, svc := range c.registry.ListServices() {
-			if strings.HasPrefix(svc, input) {
+			// Skip if input exactly matches service (already fully typed)
+			if svc != input && strings.HasPrefix(svc, input) {
 				suggestions = append(suggestions, svc)
 			}
 		}
 
 		for _, alias := range c.registry.GetAliases() {
-			if strings.HasPrefix(alias, input) {
+			// Skip if input exactly matches alias (already fully typed)
+			if alias != input && strings.HasPrefix(alias, input) {
 				suggestions = append(suggestions, alias)
 			}
 		}
@@ -549,33 +668,33 @@ func (c *CommandInput) getDiffSuggestions(args string) []string {
 		return nil
 	}
 
-	names := c.diffProvider.GetResourceNames()
+	ids := c.diffProvider.GetResourceIDs()
 	parts := strings.SplitN(args, " ", 2)
 
 	if len(parts) == 2 {
-		firstName := parts[0]
+		firstID := parts[0]
 		secondPrefix := strings.ToLower(parts[1])
 
 		var filtered []string
-		for _, name := range names {
-			if name != firstName {
-				filtered = append(filtered, name)
+		for _, id := range ids {
+			if id != firstID {
+				filtered = append(filtered, id)
 			}
 		}
 
 		matched := matchNamesWithFallback(filtered, secondPrefix)
 		var suggestions []string
-		for _, name := range matched {
-			suggestions = append(suggestions, "diff "+firstName+" "+name)
+		for _, id := range matched {
+			suggestions = append(suggestions, "diff "+firstID+" "+id)
 		}
 		return suggestions
 	}
 
 	prefix := strings.ToLower(args)
-	matched := matchNamesWithFallback(names, prefix)
+	matched := matchNamesWithFallback(ids, prefix)
 	var suggestions []string
-	for _, name := range matched {
-		suggestions = append(suggestions, "diff "+name)
+	for _, id := range matched {
+		suggestions = append(suggestions, "diff "+id)
 	}
 	return suggestions
 }
@@ -620,4 +739,26 @@ func (c *CommandInput) getTagSuggestions(cmdPrefix, tagPart string) []string {
 	}
 
 	return suggestions
+}
+
+// commonPrefix returns the longest common prefix of all suggestions.
+// Returns empty string if suggestions is empty.
+func commonPrefix(suggestions []string) string {
+	if len(suggestions) == 0 {
+		return ""
+	}
+	if len(suggestions) == 1 {
+		return suggestions[0]
+	}
+
+	prefix := suggestions[0]
+	for _, s := range suggestions[1:] {
+		for len(prefix) > 0 && !strings.HasPrefix(s, prefix) {
+			prefix = prefix[:len(prefix)-1]
+		}
+		if prefix == "" {
+			return ""
+		}
+	}
+	return prefix
 }
