@@ -195,28 +195,8 @@ func (c *CommandInput) updateSuggestions() {
 	c.suggIdx = 0
 }
 
-// updateWidth adjusts input width based on current input length (4-stage: 15 → 30 → 60 → 90)
-func (c *CommandInput) updateWidth() {
-	inputLen := len(c.textInput.Value())
-	var newWidth int
-	switch {
-	case inputLen >= commandInputWidth3:
-		newWidth = commandInputWidth4
-	case inputLen >= commandInputWidth2:
-		newWidth = commandInputWidth3
-	case inputLen >= commandInputWidth1:
-		newWidth = commandInputWidth2
-	default:
-		newWidth = commandInputWidth1
-	}
-	c.textInput.SetWidth(newWidth)
-	// Re-set value to reset display offset after width change
-	c.textInput.SetValue(c.textInput.Value())
-}
-
-// currentThreshold returns the current width threshold for the input
-func (c *CommandInput) currentThreshold() int {
-	inputLen := len(c.textInput.Value())
+// currentThreshold returns the width threshold for the given input length
+func currentThreshold(inputLen int) int {
 	switch {
 	case inputLen >= commandInputWidth3:
 		return commandInputWidth4
@@ -227,6 +207,14 @@ func (c *CommandInput) currentThreshold() int {
 	default:
 		return commandInputWidth1
 	}
+}
+
+// updateWidth adjusts input width based on current input length (4-stage: 15 → 30 → 60 → 90)
+func (c *CommandInput) updateWidth() {
+	newWidth := currentThreshold(len(c.textInput.Value()))
+	c.textInput.SetWidth(newWidth)
+	// Re-set value to reset display offset after width change
+	c.textInput.SetValue(c.textInput.Value())
 }
 
 // renderInputWithSuggestion renders textinput with fish-style inline suggestion
@@ -247,7 +235,7 @@ func (c *CommandInput) renderInputWithSuggestion(s commandInputStyles, input str
 	}
 
 	// Calculate remaining space within threshold
-	threshold := c.currentThreshold()
+	threshold := currentThreshold(len(input))
 	remaining := threshold - len(input)
 	if remaining <= 0 {
 		return s.input.Render(baseView)

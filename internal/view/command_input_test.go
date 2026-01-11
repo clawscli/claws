@@ -746,3 +746,91 @@ func TestCommandInput_AliasResourcePreservation(t *testing.T) {
 		t.Errorf("resolveDestination('log') = %q, want 'cloudwatch/log-groups'", dest)
 	}
 }
+
+func TestCurrentThreshold(t *testing.T) {
+	tests := []struct {
+		inputLen int
+		want     int
+	}{
+		{0, 15},
+		{14, 15},
+		{15, 30}, // >= triggers expansion
+		{29, 30},
+		{30, 60}, // >= triggers expansion
+		{59, 60},
+		{60, 90},  // >= triggers expansion
+		{100, 90}, // max threshold
+	}
+
+	for _, tt := range tests {
+		got := currentThreshold(tt.inputLen)
+		if got != tt.want {
+			t.Errorf("currentThreshold(%d) = %d, want %d", tt.inputLen, got, tt.want)
+		}
+	}
+}
+
+func TestCommandInput_FishStyleSuggestion(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	reg.RegisterCustom("ec2", "instances", registry.Entry{})
+	reg.RegisterCustom("ec2", "volumes", registry.Entry{})
+
+	ci := NewCommandInput(ctx, reg)
+	ci.Activate()
+
+	tests := []struct {
+		name       string
+		input      string
+		wantSuffix string // suffix should appear in view (dim)
+	}{
+		{"partial service", "ec", "2"},              // ec -> ec2
+		{"service with slash", "ec2/", "instances"}, // ec2/ -> ec2/instances
+		{"partial resource", "ec2/in", "stances"},   // ec2/in -> ec2/instances
+		{"full match", "ec2/instances", ""},         // no suffix for exact match
+		{"no match", "xyz", ""},                     // no suggestion
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ci.textInput.SetValue(tt.input)
+			ci.updateSuggestions()
+
+			view := ci.View()
+
+			if tt.wantSuffix != "" {
+				if !contains(view, tt.wantSuffix) {
+					t.Errorf("View should contain suffix %q for input %q, got: %q", tt.wantSuffix, tt.input, view)
+				}
+			}
+		})
+	}
+}
+
+func TestCommandInput_SuggestionTruncation(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	// Register a service with long name
+	reg.RegisterCustom("cloudformation", "stacks", registry.Entry{})
+
+	ci := NewCommandInput(ctx, reg)
+	ci.Activate()
+
+	// Input "cloud" (5 chars) with threshold 15 -> remaining 10 chars
+	// Suggestion "cloudformation" has suffix "formation" (9 chars) - fits
+	ci.textInput.SetValue("cloud")
+	ci.updateSuggestions()
+
+	view := ci.View()
+	if !contains(view, "formation") {
+		t.Errorf("Expected 'formation' suffix in view, got: %q", view)
+	}
+
+	// Input 10 chars with threshold 15 -> remaining 5 chars
+	// Suffix should be truncated
+	ci.textInput.SetValue("cloudfoooo") // 10 chars, no real match but test truncation logic
+	ci.updateSuggestions()
+	// No assertion needed - just ensure no panic
+}
