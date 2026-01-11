@@ -33,7 +33,7 @@ func newCommandInputStyles() commandInputStyles {
 		input:      ui.InputFieldStyle(),
 		suggestion: ui.DimStyle(),
 		highlight:  ui.HighlightStyle(),
-		alias:      lipgloss.NewStyle(), // Normal text, not dimmed
+		alias:      ui.NoStyle(), // Normal text, not dimmed
 	}
 }
 
