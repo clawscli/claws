@@ -690,3 +690,59 @@ func TestCommandInput_TabCompletionSingleMatch(t *testing.T) {
 		t.Errorf("After Tab with single match, got %q, want 'bedrock'", got)
 	}
 }
+
+func TestCommandInput_ResourcePrefixMatching(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	// Register ec2 with multiple resources
+	reg.RegisterCustom("ec2", "instances", registry.Entry{})
+	reg.RegisterCustom("ec2", "images", registry.Entry{})
+	reg.RegisterCustom("ec2", "volumes", registry.Entry{})
+
+	ci := NewCommandInput(ctx, reg)
+	ci.Activate()
+
+	tests := []struct {
+		input    string
+		wantDest string
+	}{
+		{"ec2/in", "ec2/instances"},        // prefix match "in" -> "instances"
+		{"ec2/im", "ec2/images"},           // prefix match "im" -> "images"
+		{"ec2/vol", "ec2/volumes"},         // prefix match "vol" -> "volumes"
+		{"ec2/instances", "ec2/instances"}, // exact match
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got := ci.resolveDestination(tt.input)
+			if got != tt.wantDest {
+				t.Errorf("resolveDestination(%q) = %q, want %q", tt.input, got, tt.wantDest)
+			}
+		})
+	}
+}
+
+func TestCommandInput_AliasResourcePreservation(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	// Register cloudwatch with log-groups (the "logs" alias points here)
+	reg.RegisterCustom("cloudwatch", "log-groups", registry.Entry{})
+	reg.RegisterCustom("cloudwatch", "metrics", registry.Entry{})
+
+	ci := NewCommandInput(ctx, reg)
+	ci.Activate()
+
+	// "logs" alias resolves to "cloudwatch/log-groups"
+	dest := ci.resolveDestination("logs")
+	if dest != "cloudwatch/log-groups" {
+		t.Errorf("resolveDestination('logs') = %q, want 'cloudwatch/log-groups'", dest)
+	}
+
+	// Prefix match on alias should also work
+	dest = ci.resolveDestination("log")
+	if dest != "cloudwatch/log-groups" {
+		t.Errorf("resolveDestination('log') = %q, want 'cloudwatch/log-groups'", dest)
+	}
+}

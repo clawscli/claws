@@ -276,8 +276,14 @@ func (c *CommandInput) resolveDestination(input string) string {
 
 	// If input contains "/", try ParseServiceResource for full path
 	if strings.Contains(input, "/") {
+		parts := strings.SplitN(input, "/", 2)
+		resourcePart := ""
+		if len(parts) > 1 {
+			resourcePart = parts[1]
+		}
 		if service, resourceType, err := c.registry.ParseServiceResource(input); err == nil {
-			if resourceType != "" {
+			// Only show resource if user typed something after "/"
+			if resourcePart != "" && resourceType != "" {
 				return service + "/" + resourceType
 			}
 			return service
@@ -286,8 +292,7 @@ func (c *CommandInput) resolveDestination(input string) string {
 
 	// Fallback: prefix match on service/alias
 	if svc, res, ok := c.resolvePrefixMatch(input); ok {
-		// Only show resource if user explicitly typed "/"
-		if strings.Contains(input, "/") && res != "" {
+		if res != "" {
 			return svc + "/" + res
 		}
 		return svc
@@ -296,8 +301,8 @@ func (c *CommandInput) resolveDestination(input string) string {
 	return ""
 }
 
-// resolvePrefixMatch tries prefix match on services and aliases, returns resolved service/resource.
-// Returns empty strings if no match found.
+// resolvePrefixMatch tries prefix match on services, aliases, and resources.
+// Returns resolved service/resource. Empty strings if no match found.
 func (c *CommandInput) resolvePrefixMatch(input string) (service, resource string, ok bool) {
 	parts := strings.SplitN(input, "/", 2)
 	servicePart := parts[0]
@@ -307,38 +312,47 @@ func (c *CommandInput) resolvePrefixMatch(input string) (service, resource strin
 	}
 
 	// Try prefix match on service name
-	var matched string
+	var matchedService string
 	for _, svc := range c.registry.ListServices() {
 		if strings.HasPrefix(svc, servicePart) {
-			matched = svc
+			matchedService = svc
 			break
 		}
 	}
 
 	// Try prefix match on alias if no service matched
-	if matched == "" {
+	var aliasResource string
+	if matchedService == "" {
 		for _, alias := range c.registry.GetAliases() {
 			if strings.HasPrefix(alias, servicePart) {
-				matched = alias
-				break
+				// Resolve alias to service (and resource if alias includes it)
+				if resolved, res, resolveOK := c.registry.ResolveAlias(alias); resolveOK {
+					matchedService = resolved
+					aliasResource = res
+					break
+				}
 			}
 		}
 	}
 
-	if matched == "" {
+	if matchedService == "" {
 		return "", "", false
 	}
 
-	// Build full path and parse via ParseServiceResource (handles alias resolution)
-	fullPath := matched
-	if resourcePart != "" {
-		fullPath = matched + "/" + resourcePart
+	// If no resource part specified, use alias resource (if any) or let caller use default
+	if resourcePart == "" {
+		return matchedService, aliasResource, true
 	}
-	svc, res, err := c.registry.ParseServiceResource(fullPath)
-	if err != nil {
-		return "", "", false
+
+	// Try prefix match on resource name (sorted, so first match = alphabetically first)
+	for _, res := range c.registry.ListResources(matchedService) {
+		if strings.HasPrefix(res, resourcePart) {
+			return matchedService, res, true
+		}
 	}
-	return svc, res, true
+
+	// No matching resource found
+	return "", "", false
 }
 
 // SetTagProvider sets the tag completion provider
@@ -484,6 +498,9 @@ func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 
 	// Fallback: prefix matching for partial input
 	if svc, res, ok := c.resolvePrefixMatch(input); ok {
+		if res == "" {
+			res = c.registry.DefaultResource(svc)
+		}
 		browser := NewResourceBrowserWithType(c.ctx, c.registry, svc, res)
 		return nil, &NavigateMsg{View: browser}
 	}

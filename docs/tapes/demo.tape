@@ -15,9 +15,6 @@ Enter
 
 Sleep 2.5s
 
-Type "s"
-Sleep 2s
-
 Type ":"
 Sleep 1.5s
 Type "vpc/subnets"
