@@ -17,6 +17,8 @@ import (
 	"github.com/clawscli/claws/internal/ui"
 )
 
+const commandInputWidth = 30
+
 // CommandInput handles command mode input
 // commandInputStyles holds cached lipgloss styles for performance
 type commandInputStyles struct {
@@ -72,7 +74,7 @@ func NewCommandInput(ctx context.Context, reg *registry.Registry) *CommandInput 
 	ti.Placeholder = "service/resource"
 	ti.Prompt = ":"
 	ti.CharLimit = 50
-	ti.SetWidth(30)
+	ti.SetWidth(commandInputWidth)
 
 	return &CommandInput{
 		ctx:       ctx,
