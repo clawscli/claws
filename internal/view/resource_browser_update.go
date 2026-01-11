@@ -120,7 +120,7 @@ func (r *ResourceBrowser) handleDiffMsg(msg DiffMsg) (tea.Model, tea.Cmd) {
 
 	// Match by ID (from GetResourceIDs)
 	for _, res := range r.filtered {
-		if res.GetID() == msg.RightName {
+		if res.GetID() == msg.RightID {
 			rightRes = res
 			break
 		}
@@ -129,13 +129,13 @@ func (r *ResourceBrowser) handleDiffMsg(msg DiffMsg) (tea.Model, tea.Cmd) {
 		return r, nil
 	}
 
-	if msg.LeftName == "" {
+	if msg.LeftID == "" {
 		if len(r.filtered) > 0 && r.tc.Cursor() < len(r.filtered) {
 			leftRes = r.filtered[r.tc.Cursor()]
 		}
 	} else {
 		for _, res := range r.filtered {
-			if res.GetID() == msg.LeftName {
+			if res.GetID() == msg.LeftID {
 				leftRes = res
 				break
 			}

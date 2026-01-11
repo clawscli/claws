@@ -323,11 +323,11 @@ func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 		parts := strings.Fields(suffix)
 		if len(parts) == 1 {
 			return func() tea.Msg {
-				return DiffMsg{LeftName: "", RightName: parts[0]}
+				return DiffMsg{LeftID: "", RightID: parts[0]}
 			}, nil
 		} else if len(parts) >= 2 {
 			return func() tea.Msg {
-				return DiffMsg{LeftName: parts[0], RightName: parts[1]}
+				return DiffMsg{LeftID: parts[0], RightID: parts[1]}
 			}, nil
 		}
 	}

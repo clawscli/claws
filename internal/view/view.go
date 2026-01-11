@@ -87,10 +87,10 @@ type TagFilterMsg struct {
 }
 
 // DiffMsg tells the current view to show diff between resources
-// If LeftName is empty, use current cursor row as left resource
+// If LeftID is empty, use current cursor row as left resource
 type DiffMsg struct {
-	LeftName  string // Name of left resource (empty = current row)
-	RightName string // Name of right resource
+	LeftID  string // ID of left resource (empty = current row)
+	RightID string // ID of right resource
 }
 
 // ClearHistoryMsg tells the app to clear the navigation stack
