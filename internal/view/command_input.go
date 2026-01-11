@@ -45,12 +45,12 @@ type TagCompletionProvider interface {
 	GetTagValues(key string) []string
 }
 
-// DiffCompletionProvider provides resource names for diff command completion
+// DiffCompletionProvider provides resource IDs for diff command completion
 type DiffCompletionProvider interface {
-	// GetResourceNames returns all resource names for completion
-	GetResourceNames() []string
-	// GetMarkedResourceName returns the marked resource name (empty if none)
-	GetMarkedResourceName() string
+	// GetResourceIDs returns all resource IDs for completion
+	GetResourceIDs() []string
+	// GetMarkedResourceID returns the marked resource ID (empty if none)
+	GetMarkedResourceID() string
 }
 
 type CommandInput struct {
@@ -73,7 +73,7 @@ func NewCommandInput(ctx context.Context, reg *registry.Registry) *CommandInput 
 	ti := textinput.New()
 	ti.Placeholder = "service/resource"
 	ti.Prompt = ":"
-	ti.CharLimit = 50
+	ti.CharLimit = 150
 	ti.SetWidth(commandInputWidth)
 
 	return &CommandInput{
@@ -127,12 +127,14 @@ func (c *CommandInput) Update(msg tea.Msg) (tea.Cmd, *NavigateMsg) {
 		case "tab":
 			// Cycle through suggestions
 			if len(c.suggestions) > 0 {
+				c.textInput.Reset()
 				c.textInput.SetValue(c.suggestions[c.suggIdx])
 				c.suggIdx = (c.suggIdx + 1) % len(c.suggestions)
 			} else {
 				// Get fresh suggestions
 				c.updateSuggestions()
 				if len(c.suggestions) > 0 {
+					c.textInput.Reset()
 					c.textInput.SetValue(c.suggestions[0])
 					c.suggIdx = 1 % len(c.suggestions)
 				}
@@ -143,6 +145,7 @@ func (c *CommandInput) Update(msg tea.Msg) (tea.Cmd, *NavigateMsg) {
 			// Cycle backward through suggestions
 			if len(c.suggestions) > 0 {
 				c.suggIdx = (c.suggIdx - 1 + len(c.suggestions)) % len(c.suggestions)
+				c.textInput.Reset()
 				c.textInput.SetValue(c.suggestions[c.suggIdx])
 			}
 			return nil, nil
@@ -566,33 +569,33 @@ func (c *CommandInput) getDiffSuggestions(args string) []string {
 		return nil
 	}
 
-	names := c.diffProvider.GetResourceNames()
+	ids := c.diffProvider.GetResourceIDs()
 	parts := strings.SplitN(args, " ", 2)
 
 	if len(parts) == 2 {
-		firstName := parts[0]
+		firstID := parts[0]
 		secondPrefix := strings.ToLower(parts[1])
 
 		var filtered []string
-		for _, name := range names {
-			if name != firstName {
-				filtered = append(filtered, name)
+		for _, id := range ids {
+			if id != firstID {
+				filtered = append(filtered, id)
 			}
 		}
 
 		matched := matchNamesWithFallback(filtered, secondPrefix)
 		var suggestions []string
-		for _, name := range matched {
-			suggestions = append(suggestions, "diff "+firstName+" "+name)
+		for _, id := range matched {
+			suggestions = append(suggestions, "diff "+firstID+" "+id)
 		}
 		return suggestions
 	}
 
 	prefix := strings.ToLower(args)
-	matched := matchNamesWithFallback(names, prefix)
+	matched := matchNamesWithFallback(ids, prefix)
 	var suggestions []string
-	for _, name := range matched {
-		suggestions = append(suggestions, "diff "+name)
+	for _, id := range matched {
+		suggestions = append(suggestions, "diff "+id)
 	}
 	return suggestions
 }

@@ -436,19 +436,19 @@ func (r *ResourceBrowser) GetTagValues(key string) []string {
 	return values
 }
 
-// GetResourceNames implements DiffCompletionProvider
-func (r *ResourceBrowser) GetResourceNames() []string {
-	names := make([]string, 0, len(r.filtered))
+// GetResourceIDs implements DiffCompletionProvider
+func (r *ResourceBrowser) GetResourceIDs() []string {
+	ids := make([]string, 0, len(r.filtered))
 	for _, res := range r.filtered {
-		names = append(names, res.GetName())
+		ids = append(ids, res.GetID())
 	}
-	return names
+	return ids
 }
 
-// GetMarkedResourceName implements DiffCompletionProvider
-func (r *ResourceBrowser) GetMarkedResourceName() string {
+// GetMarkedResourceID implements DiffCompletionProvider
+func (r *ResourceBrowser) GetMarkedResourceID() string {
 	if r.markedResource == nil {
 		return ""
 	}
-	return r.markedResource.GetName()
+	return r.markedResource.GetID()
 }

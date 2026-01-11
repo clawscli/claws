@@ -220,16 +220,16 @@ func TestCommandInput_QuitCommand(t *testing.T) {
 
 // mockDiffProvider for testing getDiffSuggestions
 type mockDiffProvider struct {
-	names      []string
-	markedName string
+	ids      []string
+	markedID string
 }
 
-func (m *mockDiffProvider) GetResourceNames() []string {
-	return m.names
+func (m *mockDiffProvider) GetResourceIDs() []string {
+	return m.ids
 }
 
-func (m *mockDiffProvider) GetMarkedResourceName() string {
-	return m.markedName
+func (m *mockDiffProvider) GetMarkedResourceID() string {
+	return m.markedID
 }
 
 func TestCommandInput_getDiffSuggestions(t *testing.T) {
@@ -250,91 +250,91 @@ func TestCommandInput_getDiffSuggestions(t *testing.T) {
 		},
 		{
 			name:     "empty args returns all sorted",
-			provider: &mockDiffProvider{names: []string{"web-server", "db-server", "cache"}},
+			provider: &mockDiffProvider{ids: []string{"web-server", "db-server", "cache"}},
 			args:     "",
 			want:     []string{"diff cache", "diff db-server", "diff web-server"},
 		},
 		{
 			name:     "prefix match",
-			provider: &mockDiffProvider{names: []string{"web-server", "db-server", "cache"}},
+			provider: &mockDiffProvider{ids: []string{"web-server", "db-server", "cache"}},
 			args:     "web",
 			want:     []string{"diff web-server"},
 		},
 		{
 			name:     "prefix match multiple sorted",
-			provider: &mockDiffProvider{names: []string{"web-server", "web-api", "db-server"}},
+			provider: &mockDiffProvider{ids: []string{"web-server", "web-api", "db-server"}},
 			args:     "web",
 			want:     []string{"diff web-api", "diff web-server"},
 		},
 		{
 			name:     "fuzzy fallback when no prefix sorted",
-			provider: &mockDiffProvider{names: []string{"web-server", "db-server", "cache"}},
+			provider: &mockDiffProvider{ids: []string{"web-server", "db-server", "cache"}},
 			args:     "server",
 			want:     []string{"diff db-server", "diff web-server"},
 		},
 		{
 			name:     "fuzzy match pattern",
-			provider: &mockDiffProvider{names: []string{"web-server", "db-server", "cache"}},
+			provider: &mockDiffProvider{ids: []string{"web-server", "db-server", "cache"}},
 			args:     "wsr",
 			want:     []string{"diff web-server"},
 		},
 		{
 			name:     "case insensitive prefix",
-			provider: &mockDiffProvider{names: []string{"Web-Server", "DB-Server", "Cache"}},
+			provider: &mockDiffProvider{ids: []string{"Web-Server", "DB-Server", "Cache"}},
 			args:     "WEB",
 			want:     []string{"diff Web-Server"},
 		},
 		{
 			name:     "case insensitive fuzzy sorted",
-			provider: &mockDiffProvider{names: []string{"Web-Server", "DB-Server", "Cache"}},
+			provider: &mockDiffProvider{ids: []string{"Web-Server", "DB-Server", "Cache"}},
 			args:     "SERVER",
 			want:     []string{"diff DB-Server", "diff Web-Server"},
 		},
 		{
 			name:     "no match returns empty",
-			provider: &mockDiffProvider{names: []string{"web-server", "db-server"}},
+			provider: &mockDiffProvider{ids: []string{"web-server", "db-server"}},
 			args:     "xyz",
 			want:     nil,
 		},
 		{
 			name:     "second name completion excludes first sorted",
-			provider: &mockDiffProvider{names: []string{"web-server", "db-server", "cache"}},
+			provider: &mockDiffProvider{ids: []string{"web-server", "db-server", "cache"}},
 			args:     "web-server ",
 			want:     []string{"diff web-server cache", "diff web-server db-server"},
 		},
 		{
 			name:     "second name with prefix",
-			provider: &mockDiffProvider{names: []string{"web-server", "db-server", "cache"}},
+			provider: &mockDiffProvider{ids: []string{"web-server", "db-server", "cache"}},
 			args:     "web-server db",
 			want:     []string{"diff web-server db-server"},
 		},
 		{
 			name:     "second name fuzzy fallback",
-			provider: &mockDiffProvider{names: []string{"web-server", "db-server", "cache"}},
+			provider: &mockDiffProvider{ids: []string{"web-server", "db-server", "cache"}},
 			args:     "web-server sr",
 			want:     []string{"diff web-server db-server"},
 		},
 		{
 			name:     "second name no match",
-			provider: &mockDiffProvider{names: []string{"web-server", "db-server"}},
+			provider: &mockDiffProvider{ids: []string{"web-server", "db-server"}},
 			args:     "web-server xyz",
 			want:     nil,
 		},
 		{
 			name:     "empty names list",
-			provider: &mockDiffProvider{names: []string{}},
+			provider: &mockDiffProvider{ids: []string{}},
 			args:     "",
 			want:     nil,
 		},
 		{
 			name:     "single resource for first",
-			provider: &mockDiffProvider{names: []string{"only-one"}},
+			provider: &mockDiffProvider{ids: []string{"only-one"}},
 			args:     "",
 			want:     []string{"diff only-one"},
 		},
 		{
 			name:     "single resource for second - no suggestions",
-			provider: &mockDiffProvider{names: []string{"only-one"}},
+			provider: &mockDiffProvider{ids: []string{"only-one"}},
 			args:     "only-one ",
 			want:     nil,
 		},
@@ -364,6 +364,97 @@ func TestCommandInput_getDiffSuggestions(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCommandInput_DiffTabCompletion(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	ci := NewCommandInput(ctx, reg)
+	ci.SetDiffProvider(&mockDiffProvider{ids: []string{"i-123", "i-456", "i-789"}})
+	ci.Activate()
+
+	// Type "diff "
+	ci.textInput.SetValue("diff ")
+	ci.updateSuggestions()
+
+	// Verify suggestions are generated
+	if len(ci.suggestions) != 3 {
+		t.Fatalf("Expected 3 suggestions, got %d: %v", len(ci.suggestions), ci.suggestions)
+	}
+
+	// Verify suggestions have correct format
+	expected := []string{"diff i-123", "diff i-456", "diff i-789"}
+	for i, want := range expected {
+		if ci.suggestions[i] != want {
+			t.Errorf("suggestions[%d] = %q, want %q", i, ci.suggestions[i], want)
+		}
+	}
+
+	// Press Tab
+	ci.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+
+	// Verify input value is set correctly
+	got := ci.textInput.Value()
+	if got != "diff i-123" {
+		t.Errorf("After Tab, textInput.Value() = %q, want %q", got, "diff i-123")
+	}
+
+	// Press Tab again
+	ci.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	got = ci.textInput.Value()
+	if got != "diff i-456" {
+		t.Errorf("After 2nd Tab, textInput.Value() = %q, want %q", got, "diff i-456")
+	}
+
+	// Check View() contains "diff"
+	view := ci.View()
+	t.Logf("View after Tab: %q", view)
+	if !contains(view, "diff") {
+		t.Errorf("View() should contain 'diff', got: %q", view)
+	}
+}
+
+func TestCommandInput_DiffTabCompletion_RealKeyInput(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	ci := NewCommandInput(ctx, reg)
+	ci.SetDiffProvider(&mockDiffProvider{ids: []string{"i-123", "i-456", "i-789"}})
+	ci.Activate()
+
+	// Type "diff " character by character (simulating real input)
+	for _, r := range "diff " {
+		ci.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
+	}
+
+	t.Logf("After typing 'diff ': Value=%q, suggestions=%v", ci.textInput.Value(), ci.suggestions)
+
+	// Press Tab
+	ci.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+
+	got := ci.textInput.Value()
+	t.Logf("After Tab: Value=%q", got)
+
+	if got != "diff i-123" {
+		t.Errorf("After Tab, textInput.Value() = %q, want %q", got, "diff i-123")
+	}
+
+	view := ci.View()
+	t.Logf("View: %q", view)
+}
+
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsAt(s, substr))
+}
+
+func containsAt(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }
 
 func TestCommandInput_ClearHistoryCommand(t *testing.T) {
