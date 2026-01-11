@@ -31,7 +31,7 @@ jobs:
         run: go build ./...
 
       - name: Lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v9
         with:
           install-mode: goinstall
           version: v1.64.8
