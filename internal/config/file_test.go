@@ -739,6 +739,38 @@ func TestSetConfigPath_NonExistent(t *testing.T) {
 	}
 }
 
+func TestSetConfigPath_TildeExpansion(t *testing.T) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Skip("cannot get user home dir")
+	}
+
+	// Create temp file in home dir for test
+	tmpFile := filepath.Join(home, ".claws-test-config.yaml")
+	if err := os.WriteFile(tmpFile, []byte("theme: test\n"), 0600); err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+	defer os.Remove(tmpFile)
+
+	// Reset custom path after test
+	defer func() {
+		configPathMu.Lock()
+		customConfigPath = ""
+		configPathMu.Unlock()
+	}()
+
+	// Test tilde expansion
+	if err := SetConfigPath("~/.claws-test-config.yaml"); err != nil {
+		t.Fatalf("SetConfigPath with tilde failed: %v", err)
+	}
+
+	// Verify path was expanded
+	got := GetConfigPath()
+	if got != tmpFile {
+		t.Errorf("GetConfigPath() = %q, want %q (expanded)", got, tmpFile)
+	}
+}
+
 func TestCustomConfigPath_Load(t *testing.T) {
 	tmpDir := t.TempDir()
 	customPath := filepath.Join(tmpDir, "my-config.yaml")

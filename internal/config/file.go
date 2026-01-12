@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -32,9 +33,20 @@ var (
 	configPathMu     sync.RWMutex
 )
 
+// expandTilde expands ~ to user home directory.
+func expandTilde(path string) string {
+	if strings.HasPrefix(path, "~/") {
+		if home, err := os.UserHomeDir(); err == nil {
+			return filepath.Join(home, path[2:])
+		}
+	}
+	return path
+}
+
 // SetConfigPath sets custom config file path. Must be called before File().
 // Returns error if file doesn't exist or isn't readable.
 func SetConfigPath(path string) error {
+	path = expandTilde(path)
 	if _, err := os.Stat(path); err != nil {
 		return fmt.Errorf("config file: %w", err)
 	}
