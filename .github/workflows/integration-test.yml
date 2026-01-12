@@ -45,6 +45,7 @@ jobs:
           exit 1
 
       - name: Setup demo data
+        timeout-minutes: 5
         run: ./scripts/localstack-demo-setup.sh
 
       - name: Create AWS config for demo

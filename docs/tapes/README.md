@@ -8,7 +8,9 @@ This directory contains [VHS](https://github.com/charmbracelet/vhs) tape files f
 |------|---------|--------|
 | `demo.tape` | Main demo GIF | `docs/images/demo.gif` |
 | `themes.tape` | Theme screenshots | `docs/images/theme-*.png` |
+| `theme-light.tape` | Light theme (white bg) | `docs/images/theme-light.png` |
 | `features.tape` | Feature screenshots | `docs/images/*.png` |
+| `command-mode.tape` | Command suggestions/completion | `docs/images/cmd-*.png` |
 
 ## Usage (Recommended)
 
@@ -19,9 +21,14 @@ Use task commands from project root (requires Docker + Linux):
 task demo:record
 
 # Record individual items
-task demo:record:gif       # Main demo GIF only
-task demo:record:themes    # Theme screenshots only
-task demo:record:features  # Feature screenshots only
+task demo:record:gif          # Main demo GIF only
+task demo:record:themes       # Theme screenshots only
+task demo:record:theme-light  # Light theme (requires white terminal bg)
+task demo:record:features     # Feature screenshots only
+task demo:record:command-mode # Command mode tests
+
+# Run all tapes as integration tests
+task test:vhs
 ```
 
 This automatically:
