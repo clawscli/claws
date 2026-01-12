@@ -9,28 +9,33 @@ Set TypingSpeed 0.05
 Type "./claws"
 Enter
 Sleep 2s
+Require "Services"
 
 Type ":"
 Sleep 0.5s
 Type "ec2/instances"
 Enter
 Sleep 2s
+Require "Instance ID"
 Screenshot docs/images/resource-browser.png
 
 Type "d"
 Sleep 2s
+Require "Detail"
 Screenshot docs/images/detail-view.png
 Escape
 Sleep 1s
 
 Type "a"
 Sleep 1.5s
+Require "Stop"
 Screenshot docs/images/actions-menu.png
 Escape
 Sleep 1s
 
 Type "R"
 Sleep 1s
+Require "Region"
 Screenshot docs/images/multi-region.png
 Type "/ap-northeast-1"
 Sleep 1s

@@ -14,6 +14,7 @@ Sleep 1.5s
 Enter
 
 Sleep 2.5s
+Require "Services"
 
 Type ":"
 Sleep 1.5s
@@ -21,11 +22,13 @@ Type "vpc/subnets"
 Sleep 1.5s
 Enter
 Sleep 2s
+Require "Subnet ID"
 
 Type "/web"
 Sleep 1s
 Enter
 Sleep 2s
+Require "web"
 
 Type "m"
 Sleep 1s
@@ -33,6 +36,7 @@ Type "G"
 Sleep 1s
 Type "d"
 Sleep 3s
+Require "Detail"
 Escape
 Sleep 1.5s
 
@@ -42,14 +46,17 @@ Type "ec2/instances"
 Sleep 1.5s
 Enter
 Sleep 2s
+Require "Instance ID"
 
 Type "/running"
 Sleep 1s
 Enter
 Sleep 2s
+Require "running"
 
 Type "a"
 Sleep 2s
+Require "Stop"
 Type "S"
 Sleep 1.5s
 Type "y"
@@ -62,6 +69,7 @@ Sleep 2s
 
 Type "a"
 Sleep 2s
+Require "Describe"
 Type "D"
 Sleep 2s
 Type "i-"

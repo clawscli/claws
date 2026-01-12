@@ -13,6 +13,7 @@ Sleep 0.5s
 Type "ec2/instances"
 Enter
 Sleep 2s
+Require "Instance ID"
 
 Screenshot docs/images/theme-light.png
 

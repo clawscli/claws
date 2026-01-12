@@ -107,7 +107,9 @@ tasks:
     cmds:
       - task: demo:record:gif
       - task: demo:record:themes
+      - task: demo:record:theme-light
       - task: demo:record:features
+      - task: demo:record:command-mode
 
   demo:record:gif:
     desc: Record demo.gif only
@@ -153,6 +155,57 @@ tasks:
           -e AWS_ENDPOINT_URL=http://localhost:4566 \
           -e AWS_EC2_METADATA_DISABLED=true \
           ghcr.io/charmbracelet/vhs docs/tapes/features.tape
+
+  demo:record:theme-light:
+    desc: Record light theme screenshot (requires white terminal background)
+    deps: [build, localstack:start, localstack:demo-setup]
+    preconditions:
+      - sh: '[ "$(uname -s)" = "Linux" ]'
+        msg: "demo:record requires Linux (--network host not supported on macOS/Windows)"
+    cmds:
+      - |
+        docker run --rm --network host \
+          -v "$(pwd)":/vhs \
+          -v "$(pwd)/scripts/demo-aws-config:/root/.aws:ro" \
+          -e AWS_ENDPOINT_URL=http://localhost:4566 \
+          -e AWS_EC2_METADATA_DISABLED=true \
+          ghcr.io/charmbracelet/vhs docs/tapes/theme-light.tape
+
+  demo:record:command-mode:
+    desc: Record command mode suggestion/completion test
+    deps: [build, localstack:start, localstack:demo-setup]
+    preconditions:
+      - sh: '[ "$(uname -s)" = "Linux" ]'
+        msg: "demo:record requires Linux (--network host not supported on macOS/Windows)"
+    cmds:
+      - |
+        docker run --rm --network host \
+          -v "$(pwd)":/vhs \
+          -v "$(pwd)/scripts/demo-aws-config:/root/.aws:ro" \
+          -e AWS_ENDPOINT_URL=http://localhost:4566 \
+          -e AWS_EC2_METADATA_DISABLED=true \
+          ghcr.io/charmbracelet/vhs docs/tapes/command-mode.tape
+
+  test:vhs:
+    desc: Run all VHS tapes as integration tests
+    deps: [build, localstack:start, localstack:demo-setup]
+    preconditions:
+      - sh: '[ "$(uname -s)" = "Linux" ]'
+        msg: "test:vhs requires Linux (--network host not supported on macOS/Windows)"
+    cmds:
+      - |
+        set -e
+        for tape in docs/tapes/*.tape; do
+          echo "=========================================="
+          echo "Running: $tape"
+          echo "=========================================="
+          docker run --rm --network host \
+            -v "$(pwd)":/vhs \
+            -v "$(pwd)/scripts/demo-aws-config:/root/.aws:ro" \
+            -e AWS_ENDPOINT_URL=http://localhost:4566 \
+            -e AWS_EC2_METADATA_DISABLED=true \
+            ghcr.io/charmbracelet/vhs "$tape"
+        done
 
   test-localstack:
     desc: Run integration tests with LocalStack

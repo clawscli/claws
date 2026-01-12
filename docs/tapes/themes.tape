@@ -15,26 +15,12 @@ Sleep 0.5s
 Type "ec2/instances"
 Enter
 Sleep 2s
+Require "Instance ID"
 Screenshot docs/images/theme-dark.png
 Type "q"
 Sleep 0.5s
 
-# Theme: light (white background)
-Set Theme { "background": "#ffffff", "foreground": "#333333", "black": "#000000", "white": "#ffffff" }
-Type "./claws -t light"
-Enter
-Sleep 2s
-Type ":"
-Sleep 0.5s
-Type "ec2/instances"
-Enter
-Sleep 2s
-Screenshot docs/images/theme-light.png
-Type "q"
-Sleep 0.5s
-
-# Reset to dark background for remaining themes
-Set Theme "Builtin Dark"
+# Theme: light - see theme-light.tape (requires white terminal background)
 
 # Theme: nord
 Type "./claws -t nord"
@@ -45,6 +31,7 @@ Sleep 0.5s
 Type "ec2/instances"
 Enter
 Sleep 2s
+Require "Instance ID"
 Screenshot docs/images/theme-nord.png
 Type "q"
 Sleep 0.5s
@@ -58,6 +45,7 @@ Sleep 0.5s
 Type "ec2/instances"
 Enter
 Sleep 2s
+Require "Instance ID"
 Screenshot docs/images/theme-dracula.png
 Type "q"
 Sleep 0.5s
@@ -71,6 +59,7 @@ Sleep 0.5s
 Type "ec2/instances"
 Enter
 Sleep 2s
+Require "Instance ID"
 Screenshot docs/images/theme-gruvbox.png
 Type "q"
 Sleep 0.5s
@@ -84,6 +73,7 @@ Sleep 0.5s
 Type "ec2/instances"
 Enter
 Sleep 2s
+Require "Instance ID"
 Screenshot docs/images/theme-catppuccin.png
 Type "q"
 Sleep 0.5s

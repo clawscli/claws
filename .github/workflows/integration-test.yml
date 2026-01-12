@@ -1,0 +1,77 @@
+name: Integration Test
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+jobs:
+  vhs-test:
+    runs-on: ubuntu-latest
+    env:
+      CGO_ENABLED: 0
+      AWS_ENDPOINT_URL: http://localhost:4566
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_EC2_METADATA_DISABLED: "true"
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Build
+        run: go build -o claws ./cmd/claws
+
+      - name: Start LocalStack
+        run: |
+          docker run -d --name localstack -p 4566:4566 localstack/localstack:4.12.0
+          echo "Waiting for LocalStack..."
+          for i in $(seq 1 30); do
+            if curl -s http://localhost:4566/_localstack/health | grep -qE '"s3": "(available|running)"'; then
+              echo "LocalStack is ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "LocalStack failed to start"
+          exit 1
+
+      - name: Setup demo data
+        run: ./scripts/localstack-demo-setup.sh
+
+      - name: Create AWS config for demo
+        run: |
+          mkdir -p ~/.aws
+          cp scripts/demo-aws-config/config ~/.aws/config
+          cp scripts/demo-aws-config/credentials ~/.aws/credentials
+
+      - name: Run VHS tapes
+        run: |
+          set -e
+          for tape in docs/tapes/*.tape; do
+            echo "=========================================="
+            echo "Running: $tape"
+            echo "=========================================="
+            docker run --rm --network host \
+              -v "$(pwd)":/vhs \
+              -v ~/.aws:/root/.aws:ro \
+              -e AWS_ENDPOINT_URL=http://localhost:4566 \
+              -e AWS_EC2_METADATA_DISABLED=true \
+              ghcr.io/charmbracelet/vhs "$tape"
+          done
+
+      - name: Upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vhs-screenshots
+          path: docs/images/
+          retention-days: 7
