@@ -29,7 +29,7 @@ func main() {
 	// Set custom config path (CLI flag > env var > default)
 	configPath := opts.configFile
 	if configPath == "" {
-		configPath = os.Getenv("CLAWS_CONFIG")
+		configPath = strings.TrimSpace(os.Getenv("CLAWS_CONFIG"))
 	}
 	if configPath != "" {
 		if err := config.SetConfigPath(configPath); err != nil {
