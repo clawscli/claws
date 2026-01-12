@@ -10,7 +10,29 @@ claws uses your standard AWS configuration:
 
 ## Configuration File
 
-Optional settings can be stored in `~/.config/claws/config.yaml`:
+Optional settings can be stored in `~/.config/claws/config.yaml`.
+
+### Custom Config File Path
+
+Use a custom config file instead of the default:
+
+```bash
+# Via CLI flag
+claws -c /path/to/config.yaml
+claws --config ~/work/claws-work.yaml
+
+# Via environment variable
+CLAWS_CONFIG=/path/to/config.yaml claws
+```
+
+**Precedence:** `-c` flag > `CLAWS_CONFIG` env var > default (`~/.config/claws/config.yaml`)
+
+Use cases:
+- Environment-specific configs (work/personal)
+- CI/CD with project-specific settings
+- Testing with different configurations
+
+### Config File Format
 
 ```yaml
 timeouts:

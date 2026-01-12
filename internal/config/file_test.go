@@ -688,6 +688,100 @@ func TestGetAIMaxToolCallsPerQuery(t *testing.T) {
 	}
 }
 
+func TestSetConfigPath(t *testing.T) {
+	// Create temp config file
+	tmpDir := t.TempDir()
+	customPath := filepath.Join(tmpDir, "custom-config.yaml")
+	if err := os.WriteFile(customPath, []byte("theme: dracula\n"), 0644); err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+
+	// Reset custom path after test
+	defer func() {
+		configPathMu.Lock()
+		customConfigPath = ""
+		configPathMu.Unlock()
+	}()
+
+	// Test setting valid path
+	if err := SetConfigPath(customPath); err != nil {
+		t.Fatalf("SetConfigPath failed: %v", err)
+	}
+
+	// Verify GetConfigPath returns the custom path
+	if got := GetConfigPath(); got != customPath {
+		t.Errorf("GetConfigPath() = %q, want %q", got, customPath)
+	}
+
+	// Verify ConfigPath returns the custom path
+	got, err := ConfigPath()
+	if err != nil {
+		t.Fatalf("ConfigPath failed: %v", err)
+	}
+	if got != customPath {
+		t.Errorf("ConfigPath() = %q, want %q", got, customPath)
+	}
+
+	// Verify ConfigDir returns custom path's directory
+	gotDir, err := ConfigDir()
+	if err != nil {
+		t.Fatalf("ConfigDir failed: %v", err)
+	}
+	if gotDir != tmpDir {
+		t.Errorf("ConfigDir() = %q, want %q", gotDir, tmpDir)
+	}
+}
+
+func TestSetConfigPath_NonExistent(t *testing.T) {
+	err := SetConfigPath("/nonexistent/path/config.yaml")
+	if err == nil {
+		t.Error("SetConfigPath should fail for non-existent file")
+	}
+}
+
+func TestCustomConfigPath_Load(t *testing.T) {
+	tmpDir := t.TempDir()
+	customPath := filepath.Join(tmpDir, "my-config.yaml")
+	configData := `theme: nord
+startup:
+  regions:
+    - eu-west-1
+  profiles:
+    - custom-profile
+`
+	if err := os.WriteFile(customPath, []byte(configData), 0644); err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+
+	// Reset custom path after test
+	defer func() {
+		configPathMu.Lock()
+		customConfigPath = ""
+		configPathMu.Unlock()
+	}()
+
+	if err := SetConfigPath(customPath); err != nil {
+		t.Fatalf("SetConfigPath failed: %v", err)
+	}
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+
+	if cfg.Theme.Preset != "nord" {
+		t.Errorf("Theme.Preset = %q, want %q", cfg.Theme.Preset, "nord")
+	}
+
+	regions, profiles := cfg.GetStartup()
+	if len(regions) != 1 || regions[0] != "eu-west-1" {
+		t.Errorf("regions = %v, want [eu-west-1]", regions)
+	}
+	if len(profiles) != 1 || profiles[0] != "custom-profile" {
+		t.Errorf("profiles = %v, want [custom-profile]", profiles)
+	}
+}
+
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsHelper(s, substr))
 }

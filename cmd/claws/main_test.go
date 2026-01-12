@@ -124,3 +124,25 @@ func TestParseFlags_Combined(t *testing.T) {
 		t.Error("readOnly should be true")
 	}
 }
+
+func TestParseFlags_ConfigFile(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     []string
+		expected string
+	}{
+		{"short flag", []string{"-c", "/path/to/config.yaml"}, "/path/to/config.yaml"},
+		{"long flag", []string{"--config", "/custom/config.yaml"}, "/custom/config.yaml"},
+		{"with other flags", []string{"-p", "dev", "-c", "/config.yaml", "-r", "us-east-1"}, "/config.yaml"},
+		{"no config", []string{"-p", "dev"}, ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := parseFlagsFromArgs(tt.args)
+			if opts.configFile != tt.expected {
+				t.Errorf("configFile = %q, want %q", opts.configFile, tt.expected)
+			}
+		})
+	}
+}

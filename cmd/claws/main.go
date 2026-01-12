@@ -26,6 +26,18 @@ func main() {
 
 	propagateAllProxy()
 
+	// Set custom config path (CLI flag > env var > default)
+	configPath := opts.configFile
+	if configPath == "" {
+		configPath = os.Getenv("CLAWS_CONFIG")
+	}
+	if configPath != "" {
+		if err := config.SetConfigPath(configPath); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
 	fileCfg := config.File()
 	cfg := config.Global()
 
@@ -110,6 +122,7 @@ type cliOptions struct {
 	envCreds   bool
 	autosave   *bool
 	logFile    string
+	configFile string
 	service    string
 	resourceID string
 	theme      string
@@ -160,6 +173,11 @@ func parseFlagsFromArgs(args []string) cliOptions {
 			if i+1 < len(args) {
 				i++
 				opts.logFile = args[i]
+			}
+		case "-c", "--config":
+			if i+1 < len(args) {
+				i++
+				opts.configFile = args[i]
 			}
 		case "-s", "--service":
 			if i+1 < len(args) {
@@ -221,6 +239,8 @@ func printUsage() {
 	fmt.Println("        Enable saving region/profile/theme to config file")
 	fmt.Println("  --no-autosave")
 	fmt.Println("        Disable saving region/profile/theme to config file")
+	fmt.Println("  -c, --config <path>")
+	fmt.Println("        Use custom config file instead of ~/.config/claws/config.yaml")
 	fmt.Println("  -l, --log-file <path>")
 	fmt.Println("        Enable debug logging to specified file")
 	fmt.Println("  -t, --theme <name>")
@@ -242,6 +262,7 @@ func printUsage() {
 	fmt.Println("  claws -r us-east-1,ap-northeast-1 Query multiple regions")
 	fmt.Println()
 	fmt.Println("Environment Variables:")
+	fmt.Println("  CLAWS_CONFIG=<path>      Use custom config file")
 	fmt.Println("  CLAWS_READ_ONLY=1|true   Enable read-only mode")
 	fmt.Println("  ALL_PROXY                Propagated to HTTP_PROXY/HTTPS_PROXY if not set")
 }

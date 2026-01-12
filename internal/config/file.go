@@ -27,7 +27,39 @@ const (
 	DefaultAIMaxToolCallsPerQuery  = 50
 )
 
+var (
+	customConfigPath string
+	configPathMu     sync.RWMutex
+)
+
+// SetConfigPath sets custom config file path. Must be called before File().
+// Returns error if file doesn't exist or isn't readable.
+func SetConfigPath(path string) error {
+	if _, err := os.Stat(path); err != nil {
+		return fmt.Errorf("config file: %w", err)
+	}
+	configPathMu.Lock()
+	customConfigPath = path
+	configPathMu.Unlock()
+	return nil
+}
+
+// GetConfigPath returns the current custom config path (empty if using default).
+func GetConfigPath() string {
+	configPathMu.RLock()
+	defer configPathMu.RUnlock()
+	return customConfigPath
+}
+
 func ConfigDir() (string, error) {
+	configPathMu.RLock()
+	custom := customConfigPath
+	configPathMu.RUnlock()
+
+	if custom != "" {
+		return filepath.Dir(custom), nil
+	}
+
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("get home dir: %w", err)
@@ -36,6 +68,14 @@ func ConfigDir() (string, error) {
 }
 
 func ConfigPath() (string, error) {
+	configPathMu.RLock()
+	custom := customConfigPath
+	configPathMu.RUnlock()
+
+	if custom != "" {
+		return custom, nil
+	}
+
 	dir, err := ConfigDir()
 	if err != nil {
 		return "", err
