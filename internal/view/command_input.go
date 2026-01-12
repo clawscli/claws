@@ -474,6 +474,18 @@ func (c *CommandInput) executeCommand() (tea.Cmd, *NavigateMsg) {
 		return nil, &NavigateMsg{View: browser, ClearStack: false}
 	}
 
+	// Handle settings command - show settings modal
+	if input == "settings" {
+		return func() tea.Msg {
+			return ShowModalMsg{
+				Modal: &Modal{
+					Content: NewSettingsView(c.ctx),
+					Width:   ModalWidthSettings,
+				},
+			}
+		}, nil
+	}
+
 	// Handle sort command: :sort (clear) or :sort <column> (sort by column)
 	if input == "sort" {
 		return func() tea.Msg {
@@ -702,6 +714,10 @@ func (c *CommandInput) GetSuggestions() []string {
 
 		if strings.HasPrefix("autosave", input) {
 			suggestions = append(suggestions, "autosave")
+		}
+
+		if strings.HasPrefix("settings", input) {
+			suggestions = append(suggestions, "settings")
 		}
 
 		for _, svc := range c.registry.ListServices() {

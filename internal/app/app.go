@@ -599,7 +599,7 @@ func (a *App) handleModalUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a.handleProfilesChanged(msg)
 
 	case tea.KeyPressMsg:
-		if view.IsEscKey(msg) || msg.Code == tea.KeyBackspace || msg.String() == "q" {
+		if view.IsEscKey(msg) || msg.Code == tea.KeyBackspace || msg.String() == "q" || msg.String() == "ctrl+c" {
 			if ic, ok := a.modal.Content.(view.InputCapture); ok && ic.HasActiveInput() {
 				break
 			}
