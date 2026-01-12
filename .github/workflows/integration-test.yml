@@ -75,3 +75,7 @@ jobs:
           name: vhs-screenshots
           path: docs/images/
           retention-days: 7
+
+      - name: Cleanup LocalStack
+        if: always()
+        run: docker stop localstack || true

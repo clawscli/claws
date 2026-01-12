@@ -57,6 +57,7 @@ Type ":ec2/"
 Sleep 300ms
 Enter
 Sleep 2s
+Require "ec2"
 
 # ec2/c Enter → ec2/capacity-reservations
 Type ":ec2/c"
