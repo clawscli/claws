@@ -12,6 +12,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	apperrors "github.com/clawscli/claws/internal/errors"
 	"github.com/clawscli/claws/internal/log"
 )
 
@@ -34,24 +35,29 @@ var (
 )
 
 // expandTilde expands ~ to user home directory.
-func expandTilde(path string) string {
+func expandTilde(path string) (string, error) {
 	if strings.HasPrefix(path, "~/") {
-		if home, err := os.UserHomeDir(); err == nil {
-			return filepath.Join(home, path[2:])
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("expand ~: %w", err)
 		}
+		return filepath.Join(home, path[2:]), nil
 	}
-	return path
+	return path, nil
 }
 
 // SetConfigPath sets custom config file path. Must be called before File().
 // Returns error if file doesn't exist or isn't readable.
 func SetConfigPath(path string) error {
-	path = expandTilde(path)
-	if _, err := os.Stat(path); err != nil {
-		return fmt.Errorf("config file: %w", err)
+	expanded, err := expandTilde(path)
+	if err != nil {
+		return apperrors.Wrap(err, "config file", "path", path)
+	}
+	if _, err := os.Stat(expanded); err != nil {
+		return apperrors.Wrap(err, "config file", "path", expanded)
 	}
 	configPathMu.Lock()
-	customConfigPath = path
+	customConfigPath = expanded
 	configPathMu.Unlock()
 	return nil
 }
