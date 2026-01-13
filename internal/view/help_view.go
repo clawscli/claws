@@ -110,6 +110,7 @@ func (h *HelpView) renderContent() string {
 	out += s.key.Render(":login <name>") + s.desc.Render("AWS Console login with profile") + "\n"
 	out += s.key.Render(":theme <name>") + s.desc.Render("Change theme (dark/light/nord/dracula/...)") + "\n"
 	out += s.key.Render(":autosave") + s.desc.Render("Toggle config persistence (on/off)") + "\n"
+	out += s.key.Render(":settings") + s.desc.Render("Show current settings") + "\n"
 
 	// Tag Commands
 	out += "\n" + s.section.Render("Tag Commands") + "\n"
