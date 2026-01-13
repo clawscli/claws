@@ -10,6 +10,7 @@ import (
 
 	"github.com/clawscli/claws/internal/action"
 	"github.com/clawscli/claws/internal/clipboard"
+	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/log"
 	"github.com/clawscli/claws/internal/registry"
@@ -141,6 +142,11 @@ func (d *DetailView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch msg.String() {
+		case "ctrl+e":
+			compact := config.Global().CompactHeader()
+			config.Global().SetCompactHeader(!compact)
+			d.headerPanel.ReloadStyles()
+			return d, nil
 		case "a":
 			if actions := action.Global.Get(d.service, d.resType); len(actions) > 0 {
 				actionMenu := NewActionMenu(d.ctx, dao.UnwrapResource(d.resource), d.service, d.resType)

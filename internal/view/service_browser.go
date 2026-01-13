@@ -9,6 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/registry"
 	"github.com/clawscli/claws/internal/ui"
 )
@@ -274,6 +275,12 @@ func (s *ServiceBrowser) handleNavigation(msg tea.KeyPressMsg) (tea.Model, tea.C
 		return s, func() tea.Msg {
 			return NavigateMsg{View: dashboard, ClearStack: false}
 		}
+	case "ctrl+e":
+		compact := config.Global().CompactHeader()
+		config.Global().SetCompactHeader(!compact)
+		s.headerPanel.ReloadStyles()
+		s.updateViewport()
+		return s, nil
 	case "/":
 		s.filterActive = true
 		s.filterInput.Focus()

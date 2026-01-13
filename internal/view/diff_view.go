@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/render"
 	"github.com/clawscli/claws/internal/ui"
@@ -67,6 +68,15 @@ func (d *DiffView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		// Let app handle back navigation (esc/backspace/q handled by app.go)
 		if IsEscKey(msg) {
+			return d, nil
+		}
+		switch msg.String() {
+		case "ctrl+e":
+			compact := config.Global().CompactHeader()
+			config.Global().SetCompactHeader(!compact)
+			if d.vp.Ready {
+				d.vp.Model.SetContent(d.renderSideBySide())
+			}
 			return d, nil
 		}
 	case ThemeChangedMsg:
