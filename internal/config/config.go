@@ -176,12 +176,13 @@ func (s ProfileSelection) ID() string {
 }
 
 type Config struct {
-	mu         sync.RWMutex
-	regions    []string
-	selections []ProfileSelection
-	accountIDs map[string]string
-	warnings   []string
-	readOnly   bool
+	mu            sync.RWMutex
+	regions       []string
+	selections    []ProfileSelection
+	accountIDs    map[string]string
+	warnings      []string
+	readOnly      bool
+	compactHeader bool
 }
 
 var (
@@ -344,6 +345,14 @@ func (c *Config) ReadOnly() bool {
 
 func (c *Config) SetReadOnly(readOnly bool) {
 	doWithLock(&c.mu, func() { c.readOnly = readOnly })
+}
+
+func (c *Config) CompactHeader() bool {
+	return withRLock(&c.mu, func() bool { return c.compactHeader })
+}
+
+func (c *Config) SetCompactHeader(compact bool) {
+	doWithLock(&c.mu, func() { c.compactHeader = compact })
 }
 
 func (c *Config) AddWarning(msg string) {

@@ -209,6 +209,7 @@ type FileConfig struct {
 	Theme               ThemeConfig       `yaml:"theme,omitempty"`
 	Navigation          NavigationConfig  `yaml:"navigation,omitempty"`
 	AI                  AIConfig          `yaml:"ai,omitempty"`
+	CompactHeader       bool              `yaml:"compact_header,omitempty"`
 }
 
 // Duration wraps time.Duration for YAML marshal/unmarshal as string (e.g., "5s", "30s")
@@ -590,6 +591,12 @@ func (c *FileConfig) SavePersistence(enabled bool) error {
 		autosaveNode := findOrCreateMappingKey(mapping, "autosave")
 		ensureMappingNode(autosaveNode)
 		setBoolValue(autosaveNode, "enabled", enabled)
+	})
+}
+
+func (c *FileConfig) GetCompactHeader() bool {
+	return withRLock(&c.mu, func() bool {
+		return c.CompactHeader
 	})
 }
 

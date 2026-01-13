@@ -53,6 +53,9 @@ func main() {
 	}
 	cfg.SetReadOnly(opts.readOnly)
 
+	compactHeader := opts.compactHeader || fileCfg.GetCompactHeader()
+	cfg.SetCompactHeader(compactHeader)
+
 	for _, p := range opts.profiles {
 		if !config.IsValidProfileName(p) {
 			fmt.Fprintf(os.Stderr, "Error: invalid profile name: %s\n", p)
@@ -116,16 +119,17 @@ func main() {
 }
 
 type cliOptions struct {
-	profiles   []string
-	regions    []string
-	readOnly   bool
-	envCreds   bool
-	autosave   *bool
-	logFile    string
-	configFile string
-	service    string
-	resourceID string
-	theme      string
+	profiles      []string
+	regions       []string
+	readOnly      bool
+	envCreds      bool
+	autosave      *bool
+	logFile       string
+	configFile    string
+	service       string
+	resourceID    string
+	theme         string
+	compactHeader bool
 }
 
 // parseFlags parses command line flags and returns options
@@ -194,6 +198,8 @@ func parseFlagsFromArgs(args []string) cliOptions {
 				i++
 				opts.theme = args[i]
 			}
+		case "--compact":
+			opts.compactHeader = true
 		case "-h", "--help":
 			showHelp = true
 		case "-v", "--version":
