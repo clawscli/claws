@@ -40,6 +40,7 @@ Thumbs.db
 CLAUDE.md
 AGENTS.md
 .serena/
+.sisyphus/
 
 # Build artifacts
 dist/
