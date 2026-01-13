@@ -162,6 +162,10 @@ func (h *HeaderPanel) Height(rendered string) int {
 
 // RenderHome renders a simple header box for the home page (no service/resource info)
 func (h *HeaderPanel) RenderHome() string {
+	if config.Global().CompactHeader() {
+		return h.RenderCompact("", "")
+	}
+
 	s := h.styles
 
 	lines := make([]string, headerFixedLines)
@@ -187,11 +191,75 @@ func (h *HeaderPanel) RenderHome() string {
 	return panelStyle.Render(content)
 }
 
+// RenderCompact renders a single-line compact header
+// Format: profile(acc) │ region │ Service › Type
+func (h *HeaderPanel) RenderCompact(service, resourceType string) string {
+	cfg := config.Global()
+	s := h.styles
+
+	var profilePart string
+	if cfg.IsMultiProfile() {
+		selections := cfg.Selections()
+		profilePart = formatProfilesWithAccounts(selections, cfg.AccountIDs(), ui.DangerStyle())
+	} else {
+		name := cfg.Selection().DisplayName()
+		accID := cmp.Or(cfg.AccountID(), "-")
+
+		var accDisplay string
+		if accID == "-" || accID == "" {
+			accDisplay = ui.DangerStyle().Render("(-)")
+		} else if len(accID) >= 3 {
+			accDisplay = "(" + accID[:3] + "...)"
+		} else {
+			accDisplay = "(" + accID + ")"
+		}
+
+		profilePart = TruncateString(name, 20) + " " + accDisplay
+	}
+
+	regions := cfg.Regions()
+	regionDisplay := cmp.Or(strings.Join(regions, ", "), "-")
+	regionPart := TruncateString(regionDisplay, 30)
+
+	var servicePart string
+	if service != "" {
+		displayName := registry.Global.GetDisplayName(service)
+		servicePart = displayName + " › " + resourceType
+	}
+
+	separator := " │ "
+	var parts []string
+	parts = append(parts, profilePart)
+	parts = append(parts, regionPart)
+	if servicePart != "" {
+		parts = append(parts, servicePart)
+	}
+
+	content := strings.Join(parts, separator)
+
+	availableWidth := h.width - 6
+	if availableWidth < 40 {
+		availableWidth = 60
+	}
+	content = TruncateString(content, availableWidth)
+
+	panelStyle := s.panel
+	if h.width > 4 {
+		panelStyle = panelStyle.Width(h.width - 2)
+	}
+
+	return panelStyle.Render(content)
+}
+
 // Render renders the header panel with fixed height
 // service: current service name (e.g., "ec2")
 // resourceType: current resource type (e.g., "instances")
 // summaryFields: fields from renderer.RenderSummary()
 func (h *HeaderPanel) Render(service, resourceType string, summaryFields []render.SummaryField) string {
+	if config.Global().CompactHeader() {
+		return h.RenderCompact(service, resourceType)
+	}
+
 	s := h.styles
 
 	lines := make([]string, headerFixedLines)
