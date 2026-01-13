@@ -89,6 +89,27 @@ func TestConfig_ReadOnlyGetSet(t *testing.T) {
 	}
 }
 
+func TestConfig_CompactHeaderGetSet(t *testing.T) {
+	cfg := &Config{}
+
+	// Initial value should be false
+	if cfg.CompactHeader() {
+		t.Error("CompactHeader() = true, want false")
+	}
+
+	// Set to true
+	cfg.SetCompactHeader(true)
+	if !cfg.CompactHeader() {
+		t.Error("CompactHeader() = false, want true")
+	}
+
+	// Set back to false
+	cfg.SetCompactHeader(false)
+	if cfg.CompactHeader() {
+		t.Error("CompactHeader() = true, want false")
+	}
+}
+
 func TestConfig_Warnings(t *testing.T) {
 	cfg := &Config{}
 
