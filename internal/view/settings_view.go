@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/ui"
@@ -16,16 +17,31 @@ const (
 	settingsSeparatorInset = 10
 )
 
+// settingsViewStyles holds cached lipgloss styles for performance.
+type settingsViewStyles struct {
+	title     lipgloss.Style
+	separator lipgloss.Style
+}
+
+func newSettingsViewStyles() settingsViewStyles {
+	return settingsViewStyles{
+		title:     ui.TitleStyle(),
+		separator: ui.DimStyle(),
+	}
+}
+
 type SettingsView struct {
 	ctx          context.Context
 	vp           ViewportState
 	screenWidth  int
 	screenHeight int
+	styles       settingsViewStyles
 }
 
 func NewSettingsView(ctx context.Context) *SettingsView {
 	return &SettingsView{
-		ctx: ctx,
+		ctx:    ctx,
+		styles: newSettingsViewStyles(),
 	}
 }
 
@@ -34,6 +50,19 @@ func (v *SettingsView) Init() tea.Cmd {
 }
 
 func (v *SettingsView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg.(type) {
+	case ThemeChangedMsg:
+		v.styles = newSettingsViewStyles()
+		if v.vp.Ready {
+			v.vp.Model.SetContent(v.buildContent())
+		}
+		return v, nil
+	}
+
+	if !v.vp.Ready {
+		return v, nil
+	}
+
 	var cmd tea.Cmd
 	v.vp.Model, cmd = v.vp.Model.Update(msg)
 	return v, cmd
@@ -68,10 +97,10 @@ func (v *SettingsView) buildContent() string {
 	globalCfg := config.Global()
 
 	separatorWidth := ModalWidthSettings - settingsSeparatorInset
-	separator := ui.DimStyle().Render("  " + strings.Repeat("─", separatorWidth))
+	separator := v.styles.separator.Render("  " + strings.Repeat("─", separatorWidth))
 
 	// Section 1: Config File
-	sb.WriteString(ui.TitleStyle().Render("Config File"))
+	sb.WriteString(v.styles.title.Render("Config File"))
 	sb.WriteString("\n\n")
 	configPath := config.GetConfigPath()
 	if configPath != "" {
@@ -86,7 +115,7 @@ func (v *SettingsView) buildContent() string {
 	sb.WriteString("\n\n")
 
 	// Section 2: Runtime
-	sb.WriteString(ui.TitleStyle().Render("Runtime"))
+	sb.WriteString(v.styles.title.Render("Runtime"))
 	sb.WriteString("\n\n")
 
 	// Regions
@@ -124,7 +153,7 @@ func (v *SettingsView) buildContent() string {
 	sb.WriteString("\n\n")
 
 	// Section 3: Startup
-	sb.WriteString(ui.TitleStyle().Render("Startup"))
+	sb.WriteString(v.styles.title.Render("Startup"))
 	sb.WriteString("\n\n")
 
 	view := cfg.GetStartupView()
@@ -150,7 +179,7 @@ func (v *SettingsView) buildContent() string {
 	sb.WriteString("\n\n")
 
 	// Section 4: Theme
-	sb.WriteString(ui.TitleStyle().Render("Theme"))
+	sb.WriteString(v.styles.title.Render("Theme"))
 	sb.WriteString("\n\n")
 
 	theme := cfg.GetTheme()
@@ -174,7 +203,7 @@ func (v *SettingsView) buildContent() string {
 	sb.WriteString("\n\n")
 
 	// Section 5: Timeouts
-	sb.WriteString(ui.TitleStyle().Render("Timeouts"))
+	sb.WriteString(v.styles.title.Render("Timeouts"))
 	sb.WriteString("\n\n")
 	sb.WriteString(fmt.Sprintf("  AWS Init      %s\n", cfg.Timeouts.AWSInit.Duration().String()))
 	sb.WriteString(fmt.Sprintf("  Multi-region  %s\n", cfg.Timeouts.MultiRegionFetch.Duration().String()))
@@ -187,7 +216,7 @@ func (v *SettingsView) buildContent() string {
 	sb.WriteString("\n\n")
 
 	// Section 6: Concurrency
-	sb.WriteString(ui.TitleStyle().Render("Concurrency"))
+	sb.WriteString(v.styles.title.Render("Concurrency"))
 	sb.WriteString("\n\n")
 	sb.WriteString(fmt.Sprintf("  Max fetches   %d\n", cfg.Concurrency.MaxFetches))
 	sb.WriteString("\n")
@@ -195,7 +224,7 @@ func (v *SettingsView) buildContent() string {
 	sb.WriteString("\n\n")
 
 	// Section 7: CloudWatch
-	sb.WriteString(ui.TitleStyle().Render("CloudWatch"))
+	sb.WriteString(v.styles.title.Render("CloudWatch"))
 	sb.WriteString("\n\n")
 	sb.WriteString(fmt.Sprintf("  Metrics window  %s\n", cfg.CloudWatch.Window.Duration().String()))
 	sb.WriteString("\n")
@@ -203,7 +232,7 @@ func (v *SettingsView) buildContent() string {
 	sb.WriteString("\n\n")
 
 	// Section 8: Navigation
-	sb.WriteString(ui.TitleStyle().Render("Navigation"))
+	sb.WriteString(v.styles.title.Render("Navigation"))
 	sb.WriteString("\n\n")
 	sb.WriteString(fmt.Sprintf("  Max stack size  %d\n", cfg.Navigation.MaxStackSize))
 	sb.WriteString("\n")
@@ -211,7 +240,7 @@ func (v *SettingsView) buildContent() string {
 	sb.WriteString("\n\n")
 
 	// Section 9: Autosave
-	sb.WriteString(ui.TitleStyle().Render("Autosave"))
+	sb.WriteString(v.styles.title.Render("Autosave"))
 	sb.WriteString("\n\n")
 	enabled := "no"
 	if cfg.Autosave.Enabled {
@@ -223,7 +252,7 @@ func (v *SettingsView) buildContent() string {
 	sb.WriteString("\n\n")
 
 	// Section 10: AI
-	sb.WriteString(ui.TitleStyle().Render("AI"))
+	sb.WriteString(v.styles.title.Render("AI"))
 	sb.WriteString("\n\n")
 
 	aiProfile := cfg.AI.Profile
