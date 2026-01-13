@@ -35,6 +35,7 @@ func (r *ResourceBrowser) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 		compact := config.Global().CompactHeader()
 		config.Global().SetCompactHeader(!compact)
 		r.headerPanel.ReloadStyles()
+		r.buildTable()
 		return r, nil
 	case "ctrl+r":
 		return r.handleRefresh()

@@ -71,8 +71,6 @@ func (h *HeaderPanel) renderProfileAccountLine() string {
 		var accDisplay string
 		if accID == "-" || accID == "" {
 			accDisplay = ui.DangerStyle().Render("(-)")
-		} else if len(accID) > 12 {
-			accDisplay = "(" + accID + ")"
 		} else {
 			accDisplay = "(" + accID + ")"
 		}

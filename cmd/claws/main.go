@@ -251,6 +251,8 @@ func printUsage() {
 	fmt.Println("        Enable debug logging to specified file")
 	fmt.Println("  -t, --theme <name>")
 	fmt.Println("        Color theme: dark, light, nord, dracula, gruvbox, catppuccin")
+	fmt.Println("  --compact")
+	fmt.Println("        Start with compact header mode (toggle with Ctrl+E)")
 	fmt.Println("  -v, --version")
 	fmt.Println("        Show version")
 	fmt.Println("  -h, --help")

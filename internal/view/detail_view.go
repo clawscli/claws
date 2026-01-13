@@ -48,6 +48,8 @@ type DetailView struct {
 	refreshErr  error
 	spinner     spinner.Model
 	styles      detailViewStyles
+	width       int
+	height      int
 }
 
 // NewDetailView creates a new DetailView
@@ -146,6 +148,7 @@ func (d *DetailView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			compact := config.Global().CompactHeader()
 			config.Global().SetCompactHeader(!compact)
 			d.headerPanel.ReloadStyles()
+			d.recalcViewport()
 			return d, nil
 		case "a":
 			if actions := action.Global.Get(d.service, d.resType); len(actions) > 0 {
@@ -211,8 +214,16 @@ func (d *DetailView) View() tea.View {
 
 // SetSize implements View
 func (d *DetailView) SetSize(width, height int) tea.Cmd {
+	d.width = width
+	d.height = height
 	d.headerPanel.SetWidth(width)
 
+	d.recalcViewport()
+
+	return nil
+}
+
+func (d *DetailView) recalcViewport() {
 	// Calculate header height dynamically
 	var summaryFields []render.SummaryField
 	if d.renderer != nil {
@@ -221,14 +232,12 @@ func (d *DetailView) SetSize(width, height int) tea.Cmd {
 	headerStr := d.headerPanel.Render(d.service, d.resType, summaryFields)
 	headerHeight := d.headerPanel.Height(headerStr)
 
-	viewportHeight := max(height-headerHeight+1, 5)
+	viewportHeight := max(d.height-headerHeight+1, 5)
 
-	d.vp.SetSize(width, viewportHeight)
+	d.vp.SetSize(d.width, viewportHeight)
 
 	content := d.renderContent()
 	d.vp.Model.SetContent(content)
-
-	return nil
 }
 
 func (d *DetailView) StatusLine() string {
