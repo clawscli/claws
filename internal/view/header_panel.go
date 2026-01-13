@@ -166,20 +166,10 @@ func (h *HeaderPanel) RenderHome() string {
 		return h.RenderCompact("", "")
 	}
 
-	s := h.styles
-
-	lines := make([]string, headerFixedLines)
-	lines[0] = h.renderProfileAccountLine()
-	lines[1] = h.renderRegionServiceLine("", "")
-
-	sepWidth := h.width - 6
-	if sepWidth < 20 {
-		sepWidth = 60
+	lines := []string{
+		h.renderProfileAccountLine(),
+		h.renderRegionServiceLine("", ""),
 	}
-	lines[2] = s.separator.Render(strings.Repeat("─", sepWidth))
-
-	lines[3] = ""
-	lines[4] = ""
 
 	content := strings.Join(lines, "\n")
 
