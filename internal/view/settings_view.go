@@ -3,6 +3,7 @@ package view
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -121,7 +122,7 @@ func (v *SettingsView) buildContent() string {
 	// Regions
 	runtimeRegions := globalCfg.Regions()
 	startupRegions := cfg.Startup.Regions
-	regionsMatch := v.slicesEqual(runtimeRegions, startupRegions)
+	regionsMatch := slices.Equal(runtimeRegions, startupRegions)
 	regionStr := strings.Join(runtimeRegions, ", ")
 	if regionStr == "" {
 		regionStr = noneValue
@@ -134,7 +135,7 @@ func (v *SettingsView) buildContent() string {
 	// Profiles
 	runtimeProfiles := v.getProfileIDs(globalCfg.Selections())
 	startupProfiles := cfg.Startup.GetProfiles()
-	profilesMatch := v.slicesEqual(runtimeProfiles, startupProfiles)
+	profilesMatch := slices.Equal(runtimeProfiles, startupProfiles)
 	profileStr := v.formatProfiles(globalCfg.Selections())
 	if !profilesMatch && len(startupProfiles) > 0 {
 		profileStr += " (CLI)"
@@ -377,16 +378,4 @@ func (v *SettingsView) getProfileIDs(selections []config.ProfileSelection) []str
 		ids[i] = sel.ID()
 	}
 	return ids
-}
-
-func (v *SettingsView) slicesEqual(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
 }
