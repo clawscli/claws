@@ -125,6 +125,23 @@ func formatProfilesWithAccounts(selections []config.ProfileSelection, accountIDs
 
 	separator := valueStyle.Render(", ")
 	sepWidth := lipgloss.Width(separator)
+
+	if maxWidth <= 0 && len(selections) > 1 {
+		first := selections[0]
+		name := first.DisplayName()
+		accID := accountIDs[first.ID()]
+
+		var firstPart string
+		if accID == "" || accID == "-" {
+			firstPart = valueStyle.Render(name+" ") + dangerStyle.Render("(-)")
+		} else {
+			firstPart = valueStyle.Render(name + " (" + accID + ")")
+		}
+
+		suffix := valueStyle.Render("(+" + strconv.Itoa(len(selections)-1) + ")")
+		return firstPart + separator + suffix
+	}
+
 	parts := make([]string, 0, len(selections))
 	currentWidth := 0
 
@@ -179,8 +196,13 @@ func formatRegions(regions []string, valueStyle lipgloss.Style, maxWidth int) st
 		return valueStyle.Render("-")
 	}
 
-	if len(regions) == 1 || maxWidth <= 0 {
-		return valueStyle.Render(strings.Join(regions, ", "))
+	if len(regions) == 1 {
+		return valueStyle.Render(regions[0])
+	}
+
+	if maxWidth <= 0 {
+		separator := valueStyle.Render(", ")
+		return valueStyle.Render(regions[0]) + separator + valueStyle.Render("(+"+strconv.Itoa(len(regions)-1)+")")
 	}
 
 	separator := valueStyle.Render(", ")

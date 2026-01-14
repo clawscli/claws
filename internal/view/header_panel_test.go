@@ -192,6 +192,13 @@ func TestFormatRegions(t *testing.T) {
 			maxWidth:   25,
 			wantSuffix: "(+2)",
 		},
+		{
+			name:       "non-positive width truncates",
+			regions:    []string{"us-east-1", "us-west-2", "eu-west-1"},
+			maxWidth:   0,
+			wantSuffix: "(+2)",
+			notWant:    "us-west-2",
+		},
 	}
 
 	for _, tt := range tests {
@@ -279,6 +286,22 @@ func TestFormatProfilesWithAccounts(t *testing.T) {
 			},
 			maxWidth:   30,
 			wantSuffix: "(+2)",
+		},
+		{
+			name: "non-positive width truncates",
+			selections: []config.ProfileSelection{
+				config.NamedProfile("dev"),
+				config.NamedProfile("staging"),
+				config.NamedProfile("prod"),
+			},
+			accountIDs: map[string]string{
+				"dev":     "111111111111",
+				"staging": "222222222222",
+				"prod":    "333333333333",
+			},
+			maxWidth:   0,
+			wantSuffix: "(+2)",
+			notWant:    "staging",
 		},
 		{
 			name: "missing account shows danger style",
