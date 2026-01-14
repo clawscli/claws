@@ -167,17 +167,3 @@ func TestSettingsView_FormatProfiles_Empty(t *testing.T) {
 		t.Errorf("formatProfiles([]) should return %q, got %q", noneValue, result)
 	}
 }
-
-func TestSettingsView_GetProfileIDs(t *testing.T) {
-	sv := NewSettingsView(context.Background())
-
-	ids := sv.getProfileIDs(nil)
-	if len(ids) != 0 {
-		t.Errorf("getProfileIDs(nil) should return empty slice, got %d items", len(ids))
-	}
-
-	ids = sv.getProfileIDs([]config.ProfileSelection{})
-	if len(ids) != 0 {
-		t.Errorf("getProfileIDs([]) should return empty slice, got %d items", len(ids))
-	}
-}

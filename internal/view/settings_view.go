@@ -3,7 +3,6 @@ package view
 import (
 	"context"
 	"fmt"
-	"slices"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -154,25 +153,13 @@ func (v *SettingsView) buildContent() string {
 	sb.WriteString(v.styles.title.Render("Runtime"))
 	sb.WriteString("\n\n")
 
-	runtimeRegions := globalCfg.Regions()
-	startupRegions := cfg.Startup.Regions
-	regionsMatch := slices.Equal(runtimeRegions, startupRegions)
-	regionStr := strings.Join(runtimeRegions, ", ")
+	regionStr := strings.Join(globalCfg.Regions(), ", ")
 	if regionStr == "" {
 		regionStr = noneValue
 	}
-	if !regionsMatch && len(startupRegions) > 0 {
-		regionStr += " (CLI)"
-	}
 	sb.WriteString(fmt.Sprintf("  Regions       %s\n", wrapSettingsValue(regionStr, valueWidth)))
 
-	runtimeProfiles := v.getProfileIDs(globalCfg.Selections())
-	startupProfiles := cfg.Startup.GetProfiles()
-	profilesMatch := slices.Equal(runtimeProfiles, startupProfiles)
 	profileStr := v.formatProfiles(globalCfg.Selections())
-	if !profilesMatch && len(startupProfiles) > 0 {
-		profileStr += " (CLI)"
-	}
 	sb.WriteString(fmt.Sprintf("  Profiles      %s\n", wrapSettingsValue(profileStr, valueWidth)))
 
 	// Read-only
@@ -186,11 +173,7 @@ func (v *SettingsView) buildContent() string {
 	if globalCfg.CompactHeader() {
 		compactHeader = "yes"
 	}
-	compactHeaderSource := ""
-	if globalCfg.CompactHeader() != cfg.GetCompactHeader() {
-		compactHeaderSource = " (CLI)"
-	}
-	sb.WriteString(fmt.Sprintf("  Compact       %s%s\n", compactHeader, compactHeaderSource))
+	sb.WriteString(fmt.Sprintf("  Compact       %s\n", compactHeader))
 
 	sb.WriteString("\n")
 	sb.WriteString(separator)
@@ -387,12 +370,4 @@ func (v *SettingsView) formatProfiles(selections []config.ProfileSelection) stri
 		names[i] = sel.DisplayName()
 	}
 	return strings.Join(names, ", ")
-}
-
-func (v *SettingsView) getProfileIDs(selections []config.ProfileSelection) []string {
-	ids := make([]string, len(selections))
-	for i, sel := range selections {
-		ids[i] = sel.ID()
-	}
-	return ids
 }

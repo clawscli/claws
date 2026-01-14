@@ -49,7 +49,7 @@ cloudwatch:
   window: 15m             # Metrics data window period (default: 15m)
 
 autosave:
-  enabled: true           # Save region/profile/theme on change (default: false)
+  enabled: true           # Save region/profile/theme/compact_header on change (default: false)
 
 compact_header: false     # Use single-line compact header (default: false)
 
