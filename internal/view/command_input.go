@@ -42,20 +42,6 @@ func newCommandInputStyles() commandInputStyles {
 	}
 }
 
-func newTextInputStyles() textinput.Styles {
-	t := ui.Current()
-	state := textinput.StyleState{
-		Text:        lipgloss.NewStyle().Foreground(t.Text),
-		Placeholder: lipgloss.NewStyle().Foreground(t.TextDim),
-		Suggestion:  lipgloss.NewStyle().Foreground(t.TextDim),
-		Prompt:      lipgloss.NewStyle().Foreground(t.Text),
-	}
-	return textinput.Styles{
-		Focused: state,
-		Blurred: state,
-	}
-}
-
 // TagCompletionProvider provides tag keys and values for completion
 type TagCompletionProvider interface {
 	// GetTagKeys returns all unique tag keys from current resources
@@ -94,7 +80,7 @@ func NewCommandInput(ctx context.Context, reg *registry.Registry) *CommandInput 
 	ti.Prompt = ":"
 	ti.CharLimit = 150
 	ti.SetWidth(commandInputWidth1)
-	ti.SetStyles(newTextInputStyles())
+	ti.SetStyles(ui.TextInputStyles())
 
 	return &CommandInput{
 		ctx:       ctx,
@@ -116,7 +102,7 @@ func (c *CommandInput) Activate() tea.Cmd {
 
 func (c *CommandInput) ReloadStyles() {
 	c.styles = newCommandInputStyles()
-	c.textInput.SetStyles(newTextInputStyles())
+	c.textInput.SetStyles(ui.TextInputStyles())
 }
 
 // Deactivate deactivates command mode

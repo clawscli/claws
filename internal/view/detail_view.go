@@ -232,6 +232,9 @@ func (d *DetailView) recalcViewport() {
 
 	d.vp.SetSize(d.width, viewportHeight)
 
+	if !d.vp.Ready {
+		return
+	}
 	content := d.renderContent()
 	d.vp.Model.SetContent(content)
 }

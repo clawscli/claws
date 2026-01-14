@@ -117,6 +117,8 @@ func (h *HeaderPanel) renderRegionServiceLine(service, resourceType string) stri
 	return leftPart + strings.Repeat(" ", padding) + rightPart
 }
 
+// formatProfilesWithAccounts formats profiles with account IDs, truncating with (+N) suffix when they don't all fit.
+// Note: The first profile is always shown regardless of maxWidth to ensure at least one item is visible.
 func formatProfilesWithAccounts(selections []config.ProfileSelection, accountIDs map[string]string, valueStyle, dangerStyle lipgloss.Style, maxWidth int) string {
 	if len(selections) == 0 {
 		return valueStyle.Render("-")
@@ -170,7 +172,8 @@ func formatProfilesWithAccounts(selections []config.ProfileSelection, accountIDs
 	return strings.Join(parts, separator)
 }
 
-// formatRegions formats regions with (+N) suffix when they don't all fit
+// formatRegions formats regions with (+N) suffix when they don't all fit.
+// Note: The first region is always shown regardless of maxWidth to ensure at least one item is visible.
 func formatRegions(regions []string, valueStyle lipgloss.Style, maxWidth int) string {
 	if len(regions) == 0 {
 		return valueStyle.Render("-")

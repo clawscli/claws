@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/textinput"
 	"charm.land/lipgloss/v2"
 
 	"github.com/clawscli/claws/internal/config"
@@ -471,4 +472,18 @@ func NewSpinner() spinner.Model {
 	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(Current().Accent)
 	return s
+}
+
+func TextInputStyles() textinput.Styles {
+	t := Current()
+	state := textinput.StyleState{
+		Text:        lipgloss.NewStyle().Foreground(t.Text),
+		Placeholder: lipgloss.NewStyle().Foreground(t.TextDim),
+		Suggestion:  lipgloss.NewStyle().Foreground(t.TextDim),
+		Prompt:      lipgloss.NewStyle().Foreground(t.Text),
+	}
+	return textinput.Styles{
+		Focused: state,
+		Blurred: state,
+	}
 }
