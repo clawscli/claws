@@ -600,6 +600,17 @@ func (c *FileConfig) GetCompactHeader() bool {
 	})
 }
 
+func (c *FileConfig) SaveCompactHeader(compact bool) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.CompactHeader = compact
+
+	return c.patchConfigLocked(func(mapping *yaml.Node) {
+		setBoolValue(mapping, "compact_header", compact)
+	})
+}
+
 func (c *FileConfig) patchConfigLocked(patchFn func(mapping *yaml.Node)) error {
 	path, err := ConfigPath()
 	if err != nil {

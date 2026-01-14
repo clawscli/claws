@@ -351,8 +351,13 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			)
 
 		case key.Matches(msg, a.keys.CompactHeader):
-			compact := config.Global().CompactHeader()
-			config.Global().SetCompactHeader(!compact)
+			compact := !config.Global().CompactHeader()
+			config.Global().SetCompactHeader(compact)
+			if config.File().PersistenceEnabled() {
+				if err := config.File().SaveCompactHeader(compact); err != nil {
+					log.Warn("failed to persist compact header", "error", err)
+				}
+			}
 			return a, func() tea.Msg { return view.CompactHeaderChangedMsg{} }
 		}
 

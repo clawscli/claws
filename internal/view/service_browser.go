@@ -48,7 +48,9 @@ type ServiceBrowser struct {
 	headerPanel *HeaderPanel
 
 	// Viewport for scrolling
-	vp ViewportState
+	vp     ViewportState
+	width  int
+	height int
 
 	// Filter
 	filterInput  textinput.Model
@@ -178,6 +180,7 @@ func (s *ServiceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		s.updateViewport()
 		return s, nil
 	case CompactHeaderChangedMsg:
+		s.recalcViewport()
 		return s, nil
 
 	case tea.KeyPressMsg:
@@ -575,22 +578,29 @@ func (s *ServiceBrowser) renderCell(item serviceItem, selected bool) string {
 
 // SetSize implements View
 func (s *ServiceBrowser) SetSize(width, height int) tea.Cmd {
+	s.width = width
+	s.height = height
+
 	// Set header panel width
 	s.headerPanel.SetWidth(width)
 
 	// Calculate columns based on width
 	s.cols = max(minColumns, min((width-cellPaddingX)/cellWidth, maxColumns))
 
+	s.recalcViewport()
+
+	return nil
+}
+
+func (s *ServiceBrowser) recalcViewport() {
 	// Calculate header height dynamically
 	headerStr := s.headerPanel.RenderHome()
 	headerHeight := s.headerPanel.Height(headerStr)
 
-	vpHeight := max(height-headerHeight+1, 5)
+	vpHeight := max(s.height-headerHeight+1, 5)
 
-	s.vp.SetSize(width, vpHeight)
+	s.vp.SetSize(s.width, vpHeight)
 	s.vp.Model.SetContent(s.renderContent())
-
-	return nil
 }
 
 // StatusLine implements View
