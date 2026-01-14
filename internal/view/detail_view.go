@@ -228,6 +228,7 @@ func (d *DetailView) recalcViewport() {
 	headerStr := d.headerPanel.Render(d.service, d.resType, summaryFields)
 	headerHeight := d.headerPanel.Height(headerStr)
 
+	// +1 compensates for border overlap; min 5 lines to keep viewport usable
 	viewportHeight := max(d.height-headerHeight+1, 5)
 
 	d.vp.SetSize(d.width, viewportHeight)

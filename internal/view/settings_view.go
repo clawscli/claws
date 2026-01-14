@@ -190,7 +190,7 @@ func (v *SettingsView) buildContent() string {
 	if globalCfg.CompactHeader() != cfg.GetCompactHeader() {
 		compactHeaderSource = " (CLI)"
 	}
-	sb.WriteString(fmt.Sprintf("  Compact header  %s%s\n", compactHeader, compactHeaderSource))
+	sb.WriteString(fmt.Sprintf("  Compact       %s%s\n", compactHeader, compactHeaderSource))
 
 	sb.WriteString("\n")
 	sb.WriteString(separator)

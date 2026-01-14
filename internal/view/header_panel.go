@@ -21,7 +21,6 @@ const (
 	minAvailableWidth     = 40
 	defaultAvailableWidth = 60
 	profileTruncateWidth  = 20
-	regionTruncateWidth   = 30
 )
 
 // HeaderPanel renders the fixed header panel at the top of resource views
@@ -147,6 +146,7 @@ func formatProfilesWithAccounts(selections []config.ProfileSelection, accountIDs
 			remainingAfter := len(selections) - i - 1
 			suffixWidth := 0
 			if remainingAfter > 0 {
+				// +1 because suffix shows total skipped count (current + remaining)
 				suffixWidth = lipgloss.Width("(+" + strconv.Itoa(remainingAfter+1) + ")")
 			}
 
@@ -197,6 +197,7 @@ func formatRegions(regions []string, valueStyle lipgloss.Style, maxWidth int) st
 			remainingAfter := len(regions) - i - 1
 			suffixWidth := 0
 			if remainingAfter > 0 {
+				// +1 because suffix shows total skipped count (current + remaining)
 				suffixWidth = lipgloss.Width("(+" + strconv.Itoa(remainingAfter+1) + ")")
 			}
 
