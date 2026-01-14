@@ -14,11 +14,14 @@ import (
 )
 
 const (
-	// headerFixedLines is the fixed number of content lines in the header panel
-	// 1: context line, 1: separator, 3: summary field rows
-	headerFixedLines = 5
-	// maxFieldValueWidth is the maximum width for a single field value before truncation
-	maxFieldValueWidth = 30
+	// headerFixedLines: 2 profile/region + 1 separator + 2 summary rows
+	headerFixedLines      = 5
+	maxFieldValueWidth    = 30
+	headerPanelPadding    = 6
+	minAvailableWidth     = 40
+	defaultAvailableWidth = 60
+	profileTruncateWidth  = 20
+	regionTruncateWidth   = 30
 )
 
 // HeaderPanel renders the fixed header panel at the top of resource views
@@ -67,15 +70,7 @@ func (h *HeaderPanel) renderProfileAccountLine() string {
 	} else {
 		name := cfg.Selection().DisplayName()
 		accID := cmp.Or(cfg.AccountID(), "-")
-
-		var accDisplay string
-		if accID == "-" || accID == "" {
-			accDisplay = ui.DangerStyle().Render("(-)")
-		} else {
-			accDisplay = "(" + accID + ")"
-		}
-
-		profileWithAccount = name + " " + accDisplay
+		profileWithAccount = formatSingleProfile(name, accID, 0)
 	}
 
 	return s.label.Render("Profile: ") + s.value.Render(profileWithAccount)
@@ -101,9 +96,9 @@ func (h *HeaderPanel) renderRegionServiceLine(service, resourceType string) stri
 
 	leftWidth := lipgloss.Width(leftPart)
 	rightWidth := lipgloss.Width(rightPart)
-	availableWidth := h.width - 6
-	if availableWidth < 40 {
-		availableWidth = 60
+	availableWidth := h.width - headerPanelPadding
+	if availableWidth < minAvailableWidth {
+		availableWidth = defaultAvailableWidth
 	}
 
 	padding := max(2, availableWidth-leftWidth-rightWidth)
@@ -139,6 +134,22 @@ func formatProfilesWithAccounts(selections []config.ProfileSelection, accountIDs
 	}
 
 	return strings.Join(parts, ", ")
+}
+
+// formatSingleProfile formats a single profile with account ID
+// truncateWidth: 0 = no truncation, >0 = truncate name to this width
+func formatSingleProfile(name, accID string, truncateWidth int) string {
+	var accDisplay string
+	if accID == "-" || accID == "" {
+		accDisplay = ui.DangerStyle().Render("(-)")
+	} else {
+		accDisplay = "(" + accID + ")"
+	}
+
+	if truncateWidth > 0 {
+		name = TruncateString(name, truncateWidth)
+	}
+	return name + " " + accDisplay
 }
 
 // SetWidth sets the panel width
@@ -189,20 +200,12 @@ func (h *HeaderPanel) RenderCompact(service, resourceType string) string {
 	} else {
 		name := cfg.Selection().DisplayName()
 		accID := cmp.Or(cfg.AccountID(), "-")
-
-		var accDisplay string
-		if accID == "-" || accID == "" {
-			accDisplay = ui.DangerStyle().Render("(-)")
-		} else {
-			accDisplay = "(" + accID + ")"
-		}
-
-		profilePart = TruncateString(name, 20) + " " + accDisplay
+		profilePart = formatSingleProfile(name, accID, profileTruncateWidth)
 	}
 
 	regions := cfg.Regions()
 	regionDisplay := cmp.Or(strings.Join(regions, ", "), "-")
-	regionPart := TruncateString(regionDisplay, 30)
+	regionPart := TruncateString(regionDisplay, regionTruncateWidth)
 
 	var servicePart string
 	if service != "" {
@@ -222,9 +225,9 @@ func (h *HeaderPanel) RenderCompact(service, resourceType string) string {
 
 	content := strings.Join(parts, separator)
 
-	availableWidth := h.width - 6
-	if availableWidth < 40 {
-		availableWidth = 60
+	availableWidth := h.width - headerPanelPadding
+	if availableWidth < minAvailableWidth {
+		availableWidth = defaultAvailableWidth
 	}
 	content = TruncateString(content, availableWidth)
 
@@ -252,9 +255,9 @@ func (h *HeaderPanel) Render(service, resourceType string, summaryFields []rende
 	lines[0] = h.renderProfileAccountLine()
 	lines[1] = h.renderRegionServiceLine(service, resourceType)
 
-	sepWidth := h.width - 6
-	if sepWidth < 20 {
-		sepWidth = 60
+	sepWidth := h.width - headerPanelPadding
+	if sepWidth < minAvailableWidth/2 {
+		sepWidth = defaultAvailableWidth
 	}
 	lines[2] = s.separator.Render(strings.Repeat("─", sepWidth))
 
@@ -262,9 +265,9 @@ func (h *HeaderPanel) Render(service, resourceType string, summaryFields []rende
 		lines[3] = s.dim.Render("No resource selected")
 		lines[4] = ""
 	} else {
-		availableWidth := h.width - 6
-		if availableWidth < 40 {
-			availableWidth = 60
+		availableWidth := h.width - headerPanelPadding
+		if availableWidth < minAvailableWidth {
+			availableWidth = defaultAvailableWidth
 		}
 
 		separator := s.dim.Render("  │  ")

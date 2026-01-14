@@ -193,7 +193,6 @@ func (d *DashboardView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		d.headerPanel.ReloadStyles()
 		return d, nil
 	case CompactHeaderChangedMsg:
-		d.headerPanel.ReloadStyles()
 		return d, nil
 
 	case tea.MouseClickMsg:

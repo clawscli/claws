@@ -18,6 +18,7 @@ func TestHeaderPanel_New(t *testing.T) {
 
 func TestHeaderPanel_RenderNormalMode(t *testing.T) {
 	cfg := config.Global()
+	t.Cleanup(func() { cfg.SetCompactHeader(false) })
 	cfg.SetCompactHeader(false)
 
 	hp := NewHeaderPanel()
@@ -40,6 +41,7 @@ func TestHeaderPanel_RenderNormalMode(t *testing.T) {
 
 func TestHeaderPanel_RenderCompactMode(t *testing.T) {
 	cfg := config.Global()
+	t.Cleanup(func() { cfg.SetCompactHeader(false) })
 	cfg.SetCompactHeader(true)
 
 	hp := NewHeaderPanel()
@@ -59,6 +61,7 @@ func TestHeaderPanel_RenderCompactMode(t *testing.T) {
 
 func TestHeaderPanel_RenderModeSwitching(t *testing.T) {
 	cfg := config.Global()
+	t.Cleanup(func() { cfg.SetCompactHeader(false) })
 	hp := NewHeaderPanel()
 	hp.SetWidth(80)
 
@@ -77,6 +80,7 @@ func TestHeaderPanel_RenderModeSwitching(t *testing.T) {
 
 func TestHeaderPanel_RenderHome(t *testing.T) {
 	cfg := config.Global()
+	t.Cleanup(func() { cfg.SetCompactHeader(false) })
 	hp := NewHeaderPanel()
 	hp.SetWidth(80)
 
@@ -93,6 +97,7 @@ func TestHeaderPanel_RenderHome(t *testing.T) {
 
 func TestHeaderPanel_RenderHomeCompact(t *testing.T) {
 	cfg := config.Global()
+	t.Cleanup(func() { cfg.SetCompactHeader(false) })
 	hp := NewHeaderPanel()
 	hp.SetWidth(80)
 
@@ -106,6 +111,7 @@ func TestHeaderPanel_RenderHomeCompact(t *testing.T) {
 
 func TestHeaderPanel_RenderWithSummaryFields(t *testing.T) {
 	cfg := config.Global()
+	t.Cleanup(func() { cfg.SetCompactHeader(false) })
 	cfg.SetCompactHeader(false)
 
 	hp := NewHeaderPanel()
@@ -128,10 +134,11 @@ func TestHeaderPanel_RenderWithSummaryFields(t *testing.T) {
 }
 
 func TestHeaderPanel_Height(t *testing.T) {
+	cfg := config.Global()
+	t.Cleanup(func() { cfg.SetCompactHeader(false) })
+
 	hp := NewHeaderPanel()
 	hp.SetWidth(80)
-
-	cfg := config.Global()
 	cfg.SetCompactHeader(false)
 
 	output := hp.Render("ec2", "instances", nil)
