@@ -23,12 +23,14 @@ const (
 type settingsViewStyles struct {
 	title     lipgloss.Style
 	separator lipgloss.Style
+	text      lipgloss.Style
 }
 
 func newSettingsViewStyles() settingsViewStyles {
 	return settingsViewStyles{
 		title:     ui.TitleStyle(),
 		separator: ui.DimStyle(),
+		text:      ui.TextStyle(),
 	}
 }
 
@@ -296,7 +298,7 @@ func (v *SettingsView) buildContent() string {
 	}
 	sb.WriteString(fmt.Sprintf("  Save sessions    %s\n", saveSessions))
 
-	return sb.String()
+	return v.styles.text.Render(sb.String())
 }
 
 func (v *SettingsView) getThemeOverrides(theme config.ThemeConfig) []string {

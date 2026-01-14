@@ -38,7 +38,21 @@ func newCommandInputStyles() commandInputStyles {
 		input:      ui.InputFieldStyle(),
 		suggestion: ui.DimStyle(),
 		highlight:  ui.HighlightStyle(),
-		alias:      ui.NoStyle(), // Normal text, not dimmed
+		alias:      ui.TextStyle(),
+	}
+}
+
+func newTextInputStyles() textinput.Styles {
+	t := ui.Current()
+	state := textinput.StyleState{
+		Text:        lipgloss.NewStyle().Foreground(t.Text),
+		Placeholder: lipgloss.NewStyle().Foreground(t.TextDim),
+		Suggestion:  lipgloss.NewStyle().Foreground(t.TextDim),
+		Prompt:      lipgloss.NewStyle().Foreground(t.Text),
+	}
+	return textinput.Styles{
+		Focused: state,
+		Blurred: state,
 	}
 }
 
@@ -80,6 +94,7 @@ func NewCommandInput(ctx context.Context, reg *registry.Registry) *CommandInput 
 	ti.Prompt = ":"
 	ti.CharLimit = 150
 	ti.SetWidth(commandInputWidth1)
+	ti.SetStyles(newTextInputStyles())
 
 	return &CommandInput{
 		ctx:       ctx,
@@ -101,6 +116,7 @@ func (c *CommandInput) Activate() tea.Cmd {
 
 func (c *CommandInput) ReloadStyles() {
 	c.styles = newCommandInputStyles()
+	c.textInput.SetStyles(newTextInputStyles())
 }
 
 // Deactivate deactivates command mode
@@ -314,7 +330,7 @@ func (c *CommandInput) View() string {
 			if len(c.suggestions) > maxShow+1 {
 				suggText += " ..."
 			}
-			suggView = s.alias.Render(suggText) // alias = NoStyle (white)
+			suggView = s.alias.Render(suggText)
 		}
 	}
 

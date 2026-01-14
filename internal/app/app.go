@@ -523,7 +523,7 @@ func (a *App) View() tea.View {
 
 	var statusContent string
 	if a.commandMode {
-		statusContent = a.commandInput.View() + " • Esc:cancel Enter:run Tab:complete"
+		statusContent = a.commandInput.View() + ui.DimStyle().Render(" • Esc:cancel Enter:run Tab:complete")
 	} else {
 		if a.err != nil {
 			statusContent = ui.DangerStyle().Render("Error: " + a.err.Error())
