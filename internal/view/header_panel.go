@@ -127,13 +127,10 @@ func formatProfilesWithAccounts(selections []config.ProfileSelection, accountIDs
 		name := sel.DisplayName()
 		accID := accountIDs[sel.ID()]
 
-		// Truncate long account IDs to first 3 digits + "..."
 		var accDisplay string
 		if accID == "" || accID == "-" {
 			// Connection failure - show red (-)
 			accDisplay = dangerStyle.Render("(-)")
-		} else if len(accID) > 6 {
-			accDisplay = "(" + accID[:3] + "...)"
 		} else {
 			accDisplay = "(" + accID + ")"
 		}
@@ -196,8 +193,6 @@ func (h *HeaderPanel) RenderCompact(service, resourceType string) string {
 		var accDisplay string
 		if accID == "-" || accID == "" {
 			accDisplay = ui.DangerStyle().Render("(-)")
-		} else if len(accID) >= 3 {
-			accDisplay = "(" + accID[:3] + "...)"
 		} else {
 			accDisplay = "(" + accID + ")"
 		}
@@ -212,13 +207,15 @@ func (h *HeaderPanel) RenderCompact(service, resourceType string) string {
 	var servicePart string
 	if service != "" {
 		displayName := registry.Global.GetDisplayName(service)
-		servicePart = displayName + " › " + resourceType
+		servicePart = s.accent.Render(displayName) +
+			s.dim.Render(" › ") +
+			s.accent.Render(resourceType)
 	}
 
-	separator := " │ "
+	separator := s.dim.Render(" │ ")
 	var parts []string
-	parts = append(parts, profilePart)
-	parts = append(parts, regionPart)
+	parts = append(parts, s.value.Render(profilePart))
+	parts = append(parts, s.value.Render(regionPart))
 	if servicePart != "" {
 		parts = append(parts, servicePart)
 	}

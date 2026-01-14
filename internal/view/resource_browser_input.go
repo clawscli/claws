@@ -6,7 +6,6 @@ import (
 
 	"github.com/clawscli/claws/internal/action"
 	"github.com/clawscli/claws/internal/clipboard"
-	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/render"
 )
@@ -31,12 +30,6 @@ func (r *ResourceBrowser) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 		r.filterActive = true
 		r.filterInput.Focus()
 		return r, textinput.Blink
-	case "ctrl+e":
-		compact := config.Global().CompactHeader()
-		config.Global().SetCompactHeader(!compact)
-		r.headerPanel.ReloadStyles()
-		r.buildTable()
-		return r, nil
 	case "ctrl+r":
 		return r.handleRefresh()
 	case "c":

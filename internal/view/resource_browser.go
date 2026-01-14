@@ -224,6 +224,8 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		r.headerPanel.ReloadStyles()
 		r.buildTable()
 		return r, nil
+	case CompactHeaderChangedMsg:
+		return r, nil
 	case SortMsg:
 		return r.handleSortMsg(msg)
 	case TagFilterMsg:

@@ -67,6 +67,9 @@ type RefreshMsg struct{}
 // ThemeChangedMsg tells views to reload their cached styles
 type ThemeChangedMsg struct{}
 
+// CompactHeaderChangedMsg tells views to update header rendering
+type CompactHeaderChangedMsg struct{}
+
 type ThemeChangeMsg struct {
 	Name string
 }

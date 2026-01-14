@@ -2,8 +2,6 @@ package view
 
 import (
 	tea "charm.land/bubbletea/v2"
-
-	"github.com/clawscli/claws/internal/config"
 )
 
 func (d *DashboardView) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
@@ -19,11 +17,6 @@ func (d *DashboardView) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd)
 		return d, func() tea.Msg {
 			return NavigateMsg{View: browser}
 		}
-	case "ctrl+e":
-		compact := config.Global().CompactHeader()
-		config.Global().SetCompactHeader(!compact)
-		d.headerPanel.ReloadStyles()
-		return d, nil
 	case "ctrl+r":
 		return d.Update(RefreshMsg{})
 	case "h", "left":

@@ -359,12 +359,6 @@ func (v *TagSearchView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			v.filterInput.Focus()
 			return v, textinput.Blink
 
-		case "ctrl+e":
-			compact := config.Global().CompactHeader()
-			config.Global().SetCompactHeader(!compact)
-			v.buildTable()
-			return v, nil
-
 		case "c":
 			v.filterText = ""
 			v.filterInput.SetValue("")
