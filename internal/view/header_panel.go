@@ -58,22 +58,25 @@ func NewHeaderPanel() *HeaderPanel {
 	}
 }
 
-// renderProfileAccountLine renders line 1: Profile(AccountID) format
 func (h *HeaderPanel) renderProfileAccountLine() string {
 	cfg := config.Global()
 	s := h.styles
 
+	labelStr := s.label.Render("Profile: ")
+	labelWidth := lipgloss.Width(labelStr)
+	availableWidth := h.width - headerPanelPadding - labelWidth
+
 	var profileWithAccount string
 	if cfg.IsMultiProfile() {
 		selections := cfg.Selections()
-		profileWithAccount = formatProfilesWithAccounts(selections, cfg.AccountIDs(), ui.DangerStyle())
+		profileWithAccount = formatProfilesWithAccounts(selections, cfg.AccountIDs(), s.value, ui.DangerStyle(), availableWidth)
 	} else {
 		name := cfg.Selection().DisplayName()
 		accID := cmp.Or(cfg.AccountID(), "-")
-		profileWithAccount = formatSingleProfile(name, accID, 0)
+		profileWithAccount = formatSingleProfile(name, accID, s.value, 0)
 	}
 
-	return s.label.Render("Profile: ") + s.value.Render(profileWithAccount)
+	return labelStr + profileWithAccount
 }
 
 // renderRegionServiceLine renders line 2: Region on left, Service›Type right-aligned
@@ -106,50 +109,68 @@ func (h *HeaderPanel) renderRegionServiceLine(service, resourceType string) stri
 	return leftPart + strings.Repeat(" ", padding) + rightPart
 }
 
-// formatProfilesWithAccounts formats profiles with account IDs in the format: name1 (acc1), name2 (acc2)
-// Connection failures are shown as name (-) in red
-func formatProfilesWithAccounts(selections []config.ProfileSelection, accountIDs map[string]string, dangerStyle lipgloss.Style) string {
-	const maxShow = 2
+func formatProfilesWithAccounts(selections []config.ProfileSelection, accountIDs map[string]string, valueStyle, dangerStyle lipgloss.Style, maxWidth int) string {
+	if len(selections) == 0 {
+		return valueStyle.Render("-")
+	}
+
+	separator := valueStyle.Render(", ")
+	sepWidth := lipgloss.Width(separator)
 	parts := make([]string, 0, len(selections))
+	currentWidth := 0
 
 	for i, sel := range selections {
-		if i >= maxShow {
-			remaining := len(selections) - maxShow
-			parts = append(parts, "(+"+strconv.Itoa(remaining)+")")
-			break
-		}
-
 		name := sel.DisplayName()
 		accID := accountIDs[sel.ID()]
 
-		var accDisplay string
+		var part string
 		if accID == "" || accID == "-" {
-			// Connection failure - show red (-)
-			accDisplay = dangerStyle.Render("(-)")
+			part = valueStyle.Render(name+" ") + dangerStyle.Render("(-)")
 		} else {
-			accDisplay = "(" + accID + ")"
+			part = valueStyle.Render(name + " (" + accID + ")")
 		}
 
-		parts = append(parts, name+" "+accDisplay)
+		partWidth := lipgloss.Width(part)
+
+		if maxWidth > 0 && len(parts) > 0 {
+			remaining := len(selections) - i
+			suffixWidth := 0
+			if remaining > 0 {
+				suffixWidth = lipgloss.Width("(+" + strconv.Itoa(remaining) + ")")
+			}
+
+			neededWidth := currentWidth + sepWidth + partWidth
+			if remaining > 0 {
+				neededWidth += sepWidth + suffixWidth
+			}
+
+			if neededWidth > maxWidth {
+				parts = append(parts, valueStyle.Render("(+"+strconv.Itoa(remaining)+")"))
+				break
+			}
+		}
+
+		if len(parts) > 0 {
+			currentWidth += sepWidth
+		}
+		parts = append(parts, part)
+		currentWidth += partWidth
 	}
 
-	return strings.Join(parts, ", ")
+	return strings.Join(parts, separator)
 }
 
 // formatSingleProfile formats a single profile with account ID
 // truncateWidth: 0 = no truncation, >0 = truncate name to this width
-func formatSingleProfile(name, accID string, truncateWidth int) string {
-	var accDisplay string
-	if accID == "-" || accID == "" {
-		accDisplay = ui.DangerStyle().Render("(-)")
-	} else {
-		accDisplay = "(" + accID + ")"
-	}
-
+func formatSingleProfile(name, accID string, valueStyle lipgloss.Style, truncateWidth int) string {
 	if truncateWidth > 0 {
 		name = TruncateString(name, truncateWidth)
 	}
-	return name + " " + accDisplay
+
+	if accID == "-" || accID == "" {
+		return valueStyle.Render(name+" ") + ui.DangerStyle().Render("(-)")
+	}
+	return valueStyle.Render(name + " (" + accID + ")")
 }
 
 // SetWidth sets the panel width
@@ -187,48 +208,57 @@ func (h *HeaderPanel) RenderHome() string {
 	return panelStyle.Render(content)
 }
 
-// RenderCompact renders a single-line compact header
-// Format: profile(acc) │ region │ Service › Type
 func (h *HeaderPanel) RenderCompact(service, resourceType string) string {
 	cfg := config.Global()
 	s := h.styles
 
-	var profilePart string
-	if cfg.IsMultiProfile() {
-		selections := cfg.Selections()
-		profilePart = formatProfilesWithAccounts(selections, cfg.AccountIDs(), ui.DangerStyle())
-	} else {
-		name := cfg.Selection().DisplayName()
-		accID := cmp.Or(cfg.AccountID(), "-")
-		profilePart = formatSingleProfile(name, accID, profileTruncateWidth)
+	separator := s.dim.Render(" │ ")
+	sepWidth := lipgloss.Width(separator)
+
+	availableWidth := h.width - headerPanelPadding
+	if availableWidth < minAvailableWidth {
+		availableWidth = defaultAvailableWidth
 	}
 
 	regions := cfg.Regions()
 	regionDisplay := cmp.Or(strings.Join(regions, ", "), "-")
 	regionPart := TruncateString(regionDisplay, regionTruncateWidth)
+	regionWidth := lipgloss.Width(regionPart)
 
 	var servicePart string
+	serviceWidth := 0
 	if service != "" {
 		displayName := registry.Global.GetDisplayName(service)
 		servicePart = s.accent.Render(displayName) +
 			s.dim.Render(" › ") +
 			s.accent.Render(resourceType)
+		serviceWidth = lipgloss.Width(servicePart)
 	}
 
-	separator := s.dim.Render(" │ ")
+	fixedWidth := regionWidth + sepWidth
+	if servicePart != "" {
+		fixedWidth += serviceWidth + sepWidth
+	}
+	profileMaxWidth := availableWidth - fixedWidth
+
+	var profilePart string
+	if cfg.IsMultiProfile() {
+		selections := cfg.Selections()
+		profilePart = formatProfilesWithAccounts(selections, cfg.AccountIDs(), s.value, ui.DangerStyle(), profileMaxWidth)
+	} else {
+		name := cfg.Selection().DisplayName()
+		accID := cmp.Or(cfg.AccountID(), "-")
+		profilePart = formatSingleProfile(name, accID, s.value, profileTruncateWidth)
+	}
+
 	var parts []string
-	parts = append(parts, s.value.Render(profilePart))
+	parts = append(parts, profilePart)
 	parts = append(parts, s.value.Render(regionPart))
 	if servicePart != "" {
 		parts = append(parts, servicePart)
 	}
 
 	content := strings.Join(parts, separator)
-
-	availableWidth := h.width - headerPanelPadding
-	if availableWidth < minAvailableWidth {
-		availableWidth = defaultAvailableWidth
-	}
 	content = TruncateString(content, availableWidth)
 
 	panelStyle := s.panel
