@@ -21,6 +21,9 @@ const (
 	minAvailableWidth     = 40
 	defaultAvailableWidth = 60
 	profileTruncateWidth  = 20
+	// profileWidthRatio: profile gets 2/3 of remaining width, region gets 1/3 (compact mode)
+	profileWidthRatio = 2
+	regionWidthRatio  = 3
 )
 
 // HeaderPanel renders the fixed header panel at the top of resource views
@@ -321,7 +324,7 @@ func (h *HeaderPanel) RenderCompact(service, resourceType string) string {
 		numSeparators = 3
 	}
 	remainingWidth := availableWidth - serviceWidth - (numSeparators-1)*sepWidth
-	profileMaxWidth := remainingWidth * 2 / 3
+	profileMaxWidth := remainingWidth * profileWidthRatio / regionWidthRatio
 	regionMaxWidth := remainingWidth - profileMaxWidth
 
 	var profilePart string

@@ -17,6 +17,8 @@ import (
 	"github.com/clawscli/claws/internal/ui"
 )
 
+const minViewportHeight = 5
+
 // DetailView displays detailed information about a single resource
 // detailViewStyles holds cached lipgloss styles for performance
 type detailViewStyles struct {
@@ -228,8 +230,8 @@ func (d *DetailView) recalcViewport() {
 	headerStr := d.headerPanel.Render(d.service, d.resType, summaryFields)
 	headerHeight := d.headerPanel.Height(headerStr)
 
-	// +1 compensates for border overlap; min 5 lines to keep viewport usable
-	viewportHeight := max(d.height-headerHeight+1, 5)
+	// +1 compensates for border overlap
+	viewportHeight := max(d.height-headerHeight+1, minViewportHeight)
 
 	d.vp.SetSize(d.width, viewportHeight)
 
