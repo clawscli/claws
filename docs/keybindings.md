@@ -23,6 +23,7 @@ Complete reference for all keyboard shortcuts in claws.
 | `:services` | Go to service browser |
 | `/` | Filter mode (fuzzy search) |
 | `A` | AI Chat (Bedrock) |
+| `Ctrl+E` | Toggle compact header |
 | `?` | Show help |
 
 ## Resource Browser
@@ -63,6 +64,7 @@ Complete reference for all keyboard shortcuts in claws.
 | `:diff <n1> <n2>` | Compare two named resources |
 | `:theme <name>` | Change color theme |
 | `:autosave on/off` | Enable/disable config autosave |
+| `:settings` | Show current settings |
 | `:clear-history` | Clear navigation history (stack) |
 
 ## Mouse Support

@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"charm.land/lipgloss/v2"
+
 	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/render"
 )
@@ -151,5 +153,155 @@ func TestHeaderPanel_Height(t *testing.T) {
 	expectedHeight := strings.Count(output, "\n") + 1
 	if height != expectedHeight {
 		t.Errorf("Height() = %d, want %d based on newline count", height, expectedHeight)
+	}
+}
+
+func TestFormatRegions(t *testing.T) {
+	valueStyle := lipgloss.NewStyle()
+
+	tests := []struct {
+		name       string
+		regions    []string
+		maxWidth   int
+		wantSuffix string
+		notWant    string
+	}{
+		{
+			name:       "empty regions",
+			regions:    nil,
+			maxWidth:   100,
+			wantSuffix: "-",
+		},
+		{
+			name:       "single region",
+			regions:    []string{"us-east-1"},
+			maxWidth:   100,
+			wantSuffix: "us-east-1",
+			notWant:    "(+",
+		},
+		{
+			name:       "two regions fit",
+			regions:    []string{"us-east-1", "us-west-2"},
+			maxWidth:   100,
+			wantSuffix: "us-west-2",
+			notWant:    "(+",
+		},
+		{
+			name:       "narrow width truncates",
+			regions:    []string{"us-east-1", "us-west-2", "eu-west-1"},
+			maxWidth:   25,
+			wantSuffix: "(+2)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := formatRegions(tt.regions, valueStyle, tt.maxWidth)
+
+			if !strings.Contains(result, tt.wantSuffix) {
+				t.Errorf("formatRegions() = %q, want to contain %q", result, tt.wantSuffix)
+			}
+
+			if tt.notWant != "" && strings.Contains(result, tt.notWant) {
+				t.Errorf("formatRegions() = %q, should not contain %q", result, tt.notWant)
+			}
+		})
+	}
+}
+
+func TestFormatProfilesWithAccounts(t *testing.T) {
+	valueStyle := lipgloss.NewStyle()
+	dangerStyle := lipgloss.NewStyle()
+
+	tests := []struct {
+		name       string
+		selections []config.ProfileSelection
+		accountIDs map[string]string
+		maxWidth   int
+		wantSuffix string
+		notWant    string
+	}{
+		{
+			name:       "empty selections",
+			selections: nil,
+			accountIDs: nil,
+			maxWidth:   100,
+			wantSuffix: "-",
+		},
+		{
+			name: "single profile fits",
+			selections: []config.ProfileSelection{
+				config.NamedProfile("dev"),
+			},
+			accountIDs: map[string]string{"dev": "111111111111"},
+			maxWidth:   100,
+			wantSuffix: "dev",
+			notWant:    "(+",
+		},
+		{
+			name: "two profiles fit without suffix",
+			selections: []config.ProfileSelection{
+				config.NamedProfile("dev"),
+				config.NamedProfile("prod"),
+			},
+			accountIDs: map[string]string{
+				"dev":  "111111111111",
+				"prod": "222222222222",
+			},
+			maxWidth:   200,
+			wantSuffix: "prod",
+			notWant:    "(+",
+		},
+		{
+			name: "narrow width truncates second profile",
+			selections: []config.ProfileSelection{
+				config.NamedProfile("dev"),
+				config.NamedProfile("prod"),
+			},
+			accountIDs: map[string]string{
+				"dev":  "111111111111",
+				"prod": "222222222222",
+			},
+			maxWidth:   25,
+			wantSuffix: "(+1)",
+		},
+		{
+			name: "very narrow width truncates all but first",
+			selections: []config.ProfileSelection{
+				config.NamedProfile("dev"),
+				config.NamedProfile("staging"),
+				config.NamedProfile("prod"),
+			},
+			accountIDs: map[string]string{
+				"dev":     "111111111111",
+				"staging": "222222222222",
+				"prod":    "333333333333",
+			},
+			maxWidth:   30,
+			wantSuffix: "(+2)",
+		},
+		{
+			name: "missing account shows danger style",
+			selections: []config.ProfileSelection{
+				config.NamedProfile("dev"),
+			},
+			accountIDs: map[string]string{},
+			maxWidth:   100,
+			wantSuffix: "(-)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := formatProfilesWithAccounts(tt.selections, tt.accountIDs, valueStyle, dangerStyle, tt.maxWidth)
+
+			if !strings.Contains(result, tt.wantSuffix) {
+				t.Errorf("formatProfilesWithAccounts() = %q, want to contain %q", result, tt.wantSuffix)
+			}
+
+			if tt.notWant != "" && strings.Contains(result, tt.notWant) {
+				t.Errorf("formatProfilesWithAccounts() = %q, should not contain %q", result, tt.notWant)
+			}
+		})
 	}
 }

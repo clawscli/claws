@@ -96,7 +96,6 @@ func TestSettingsView_BuildContent(t *testing.T) {
 	expectedSections := []string{
 		"Config File",
 		"Runtime",
-		"Startup",
 		"Theme",
 		"Timeouts",
 		"Concurrency",
@@ -109,6 +108,19 @@ func TestSettingsView_BuildContent(t *testing.T) {
 	for _, section := range expectedSections {
 		if !strings.Contains(content, section) {
 			t.Errorf("buildContent() should contain section %q", section)
+		}
+	}
+
+	expectedFields := []string{
+		"Compact header",
+		"Read-only",
+		"Regions",
+		"Profiles",
+	}
+
+	for _, field := range expectedFields {
+		if !strings.Contains(content, field) {
+			t.Errorf("buildContent() should contain field %q", field)
 		}
 	}
 }

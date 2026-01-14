@@ -16,6 +16,7 @@ import (
 const (
 	noneValue              = "(none)"
 	settingsSeparatorInset = 10
+	settingsLabelWidth     = 18
 )
 
 // settingsViewStyles holds cached lipgloss styles for performance.
@@ -29,6 +30,37 @@ func newSettingsViewStyles() settingsViewStyles {
 		title:     ui.TitleStyle(),
 		separator: ui.DimStyle(),
 	}
+}
+
+func wrapSettingsValue(value string, maxWidth int) string {
+	if lipgloss.Width(value) <= maxWidth || maxWidth <= 0 {
+		return value
+	}
+
+	var lines []string
+	indent := strings.Repeat(" ", settingsLabelWidth)
+
+	words := strings.Split(value, ", ")
+	var currentLine string
+
+	for i, word := range words {
+		sep := ""
+		if i > 0 {
+			sep = ", "
+		}
+		candidate := currentLine + sep + word
+		if lipgloss.Width(candidate) > maxWidth && currentLine != "" {
+			lines = append(lines, currentLine)
+			currentLine = word
+		} else {
+			currentLine = candidate
+		}
+	}
+	if currentLine != "" {
+		lines = append(lines, currentLine)
+	}
+
+	return strings.Join(lines, "\n"+indent)
 }
 
 type SettingsView struct {
@@ -100,12 +132,13 @@ func (v *SettingsView) buildContent() string {
 	separatorWidth := max(0, ModalWidthSettings-settingsSeparatorInset)
 	separator := v.styles.separator.Render("  " + strings.Repeat("─", separatorWidth))
 
-	// Section 1: Config File
+	valueWidth := ModalWidthSettings - settingsLabelWidth - 2
+
 	sb.WriteString(v.styles.title.Render("Config File"))
 	sb.WriteString("\n\n")
 	configPath := config.GetConfigPath()
 	if configPath != "" {
-		sb.WriteString(fmt.Sprintf("  Path          %s\n", configPath))
+		sb.WriteString(fmt.Sprintf("  Path          %s\n", wrapSettingsValue(configPath, valueWidth)))
 		sb.WriteString("  Type          custom\n")
 	} else {
 		sb.WriteString("  Path          ~/.config/claws/config.yaml (default)\n")
@@ -119,7 +152,6 @@ func (v *SettingsView) buildContent() string {
 	sb.WriteString(v.styles.title.Render("Runtime"))
 	sb.WriteString("\n\n")
 
-	// Regions
 	runtimeRegions := globalCfg.Regions()
 	startupRegions := cfg.Startup.Regions
 	regionsMatch := slices.Equal(runtimeRegions, startupRegions)
@@ -130,9 +162,8 @@ func (v *SettingsView) buildContent() string {
 	if !regionsMatch && len(startupRegions) > 0 {
 		regionStr += " (CLI)"
 	}
-	sb.WriteString(fmt.Sprintf("  Regions       %s\n", regionStr))
+	sb.WriteString(fmt.Sprintf("  Regions       %s\n", wrapSettingsValue(regionStr, valueWidth)))
 
-	// Profiles
 	runtimeProfiles := v.getProfileIDs(globalCfg.Selections())
 	startupProfiles := cfg.Startup.GetProfiles()
 	profilesMatch := slices.Equal(runtimeProfiles, startupProfiles)
@@ -140,7 +171,7 @@ func (v *SettingsView) buildContent() string {
 	if !profilesMatch && len(startupProfiles) > 0 {
 		profileStr += " (CLI)"
 	}
-	sb.WriteString(fmt.Sprintf("  Profiles      %s\n", profileStr))
+	sb.WriteString(fmt.Sprintf("  Profiles      %s\n", wrapSettingsValue(profileStr, valueWidth)))
 
 	// Read-only
 	readOnly := "no"
@@ -149,37 +180,21 @@ func (v *SettingsView) buildContent() string {
 	}
 	sb.WriteString(fmt.Sprintf("  Read-only     %s\n", readOnly))
 
-	sb.WriteString("\n")
-	sb.WriteString(separator)
-	sb.WriteString("\n\n")
-
-	// Section 3: Startup
-	sb.WriteString(v.styles.title.Render("Startup"))
-	sb.WriteString("\n\n")
-
-	view := cfg.GetStartupView()
-	if view == "" {
-		view = noneValue
+	compactHeader := "no"
+	if globalCfg.CompactHeader() {
+		compactHeader = "yes"
 	}
-	sb.WriteString(fmt.Sprintf("  View          %s\n", view))
-
-	startupRegionStr := strings.Join(cfg.Startup.Regions, ", ")
-	if startupRegionStr == "" {
-		startupRegionStr = noneValue
+	compactHeaderSource := ""
+	if globalCfg.CompactHeader() != cfg.GetCompactHeader() {
+		compactHeaderSource = " (CLI)"
 	}
-	sb.WriteString(fmt.Sprintf("  Regions       %s\n", startupRegionStr))
-
-	startupProfileStr := strings.Join(cfg.Startup.GetProfiles(), ", ")
-	if startupProfileStr == "" {
-		startupProfileStr = noneValue
-	}
-	sb.WriteString(fmt.Sprintf("  Profiles      %s\n", startupProfileStr))
+	sb.WriteString(fmt.Sprintf("  Compact header  %s%s\n", compactHeader, compactHeaderSource))
 
 	sb.WriteString("\n")
 	sb.WriteString(separator)
 	sb.WriteString("\n\n")
 
-	// Section 4: Theme
+	// Section 3: Theme
 	sb.WriteString(v.styles.title.Render("Theme"))
 	sb.WriteString("\n\n")
 
@@ -268,7 +283,7 @@ func (v *SettingsView) buildContent() string {
 	}
 	sb.WriteString(fmt.Sprintf("  Region        %s\n", aiRegion))
 
-	sb.WriteString(fmt.Sprintf("  Model         %s\n", cfg.GetAIModel()))
+	sb.WriteString(fmt.Sprintf("  Model         %s\n", wrapSettingsValue(cfg.GetAIModel(), valueWidth)))
 	sb.WriteString(fmt.Sprintf("  Max sessions  %d\n", cfg.GetAIMaxSessions()))
 	sb.WriteString(fmt.Sprintf("  Max tokens    %d\n", cfg.GetAIMaxTokens()))
 	sb.WriteString(fmt.Sprintf("  Thinking budget  %d\n", cfg.GetAIThinkingBudget()))

@@ -51,6 +51,8 @@ cloudwatch:
 autosave:
   enabled: true           # Save region/profile/theme on change (default: false)
 
+compact_header: false     # Use single-line compact header (default: false)
+
 startup:                  # Applied on launch if present
   view: services          # Startup view: "dashboard", "services", or "service/resource" (e.g., "ec2", "rds/snapshots")
   profiles:               # Multiple profiles supported
@@ -84,7 +86,7 @@ theme: nord               # Preset: dark, light, nord, dracula, gruvbox, catppuc
 
 The config file is **not created automatically**. Create it manually if needed.
 
-CLI flags (`-p`, `-r`, `-t`, `--autosave`, `--no-autosave`) override config file settings.
+CLI flags (`-p`, `-r`, `-t`, `--compact`, `--autosave`, `--no-autosave`) override config file settings.
 Multiple values supported: `-p dev,prod` or `-p dev -p prod`.
 
 ### Special Profile IDs

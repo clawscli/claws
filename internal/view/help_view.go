@@ -149,6 +149,7 @@ func (h *HelpView) renderContent() string {
 	out += "\n" + s.section.Render("Global") + "\n"
 	out += s.key.Render("R") + s.desc.Render("Switch AWS region") + "\n"
 	out += s.key.Render("P") + s.desc.Render("Switch AWS profile") + "\n"
+	out += s.key.Render("Ctrl+E") + s.desc.Render("Toggle compact header") + "\n"
 	out += s.key.Render("?") + s.desc.Render("Show this help") + "\n"
 
 	// Command examples

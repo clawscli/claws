@@ -84,27 +84,35 @@ func (h *HeaderPanel) renderRegionServiceLine(service, resourceType string) stri
 	cfg := config.Global()
 	s := h.styles
 
-	regions := cfg.Regions()
-	regionDisplay := cmp.Or(strings.Join(regions, ", "), "-")
-	leftPart := s.label.Render("Region: ") + s.value.Render(regionDisplay)
+	labelStr := s.label.Render("Region: ")
+	labelWidth := lipgloss.Width(labelStr)
 
-	if service == "" {
-		return leftPart
-	}
-
-	displayName := registry.Global.GetDisplayName(service)
-	rightPart := s.accent.Render(displayName) +
-		s.dim.Render(" › ") +
-		s.accent.Render(resourceType)
-
-	leftWidth := lipgloss.Width(leftPart)
-	rightWidth := lipgloss.Width(rightPart)
 	availableWidth := h.width - headerPanelPadding
 	if availableWidth < minAvailableWidth {
 		availableWidth = defaultAvailableWidth
 	}
 
-	padding := max(2, availableWidth-leftWidth-rightWidth)
+	var rightPart string
+	rightWidth := 0
+	if service != "" {
+		displayName := registry.Global.GetDisplayName(service)
+		rightPart = s.accent.Render(displayName) +
+			s.dim.Render(" › ") +
+			s.accent.Render(resourceType)
+		rightWidth = lipgloss.Width(rightPart)
+	}
+
+	minPadding := 2
+	regionMaxWidth := availableWidth - labelWidth - rightWidth - minPadding
+	regionPart := formatRegions(cfg.Regions(), s.value, regionMaxWidth)
+	leftPart := labelStr + regionPart
+
+	if service == "" {
+		return leftPart
+	}
+
+	leftWidth := lipgloss.Width(leftPart)
+	padding := max(minPadding, availableWidth-leftWidth-rightWidth)
 
 	return leftPart + strings.Repeat(" ", padding) + rightPart
 }
@@ -133,19 +141,21 @@ func formatProfilesWithAccounts(selections []config.ProfileSelection, accountIDs
 		partWidth := lipgloss.Width(part)
 
 		if maxWidth > 0 && len(parts) > 0 {
-			remaining := len(selections) - i
+			// remainingAfter = items AFTER current (not including current)
+			remainingAfter := len(selections) - i - 1
 			suffixWidth := 0
-			if remaining > 0 {
-				suffixWidth = lipgloss.Width("(+" + strconv.Itoa(remaining) + ")")
+			if remainingAfter > 0 {
+				suffixWidth = lipgloss.Width("(+" + strconv.Itoa(remainingAfter+1) + ")")
 			}
 
 			neededWidth := currentWidth + sepWidth + partWidth
-			if remaining > 0 {
+			if remainingAfter > 0 {
 				neededWidth += sepWidth + suffixWidth
 			}
 
 			if neededWidth > maxWidth {
-				parts = append(parts, valueStyle.Render("(+"+strconv.Itoa(remaining)+")"))
+				skipped := len(selections) - i
+				parts = append(parts, valueStyle.Render("(+"+strconv.Itoa(skipped)+")"))
 				break
 			}
 		}
@@ -155,6 +165,56 @@ func formatProfilesWithAccounts(selections []config.ProfileSelection, accountIDs
 		}
 		parts = append(parts, part)
 		currentWidth += partWidth
+	}
+
+	return strings.Join(parts, separator)
+}
+
+// formatRegions formats regions with (+N) suffix when they don't all fit
+func formatRegions(regions []string, valueStyle lipgloss.Style, maxWidth int) string {
+	if len(regions) == 0 {
+		return valueStyle.Render("-")
+	}
+
+	if len(regions) == 1 || maxWidth <= 0 {
+		return valueStyle.Render(strings.Join(regions, ", "))
+	}
+
+	separator := valueStyle.Render(", ")
+	sepWidth := lipgloss.Width(separator)
+	parts := make([]string, 0, len(regions))
+	currentWidth := 0
+
+	for i, region := range regions {
+		part := valueStyle.Render(region)
+		partWidth := lipgloss.Width(part)
+
+		if len(parts) > 0 {
+			// remainingAfter = items AFTER current (not including current)
+			remainingAfter := len(regions) - i - 1
+			suffixWidth := 0
+			if remainingAfter > 0 {
+				suffixWidth = lipgloss.Width("(+" + strconv.Itoa(remainingAfter+1) + ")")
+			}
+
+			neededWidth := currentWidth + sepWidth + partWidth
+			if remainingAfter > 0 {
+				neededWidth += sepWidth + suffixWidth
+			}
+
+			if neededWidth > maxWidth {
+				skipped := len(regions) - i
+				parts = append(parts, valueStyle.Render("(+"+strconv.Itoa(skipped)+")"))
+				break
+			}
+		}
+
+		parts = append(parts, part)
+		if len(parts) == 1 {
+			currentWidth = partWidth
+		} else {
+			currentWidth += sepWidth + partWidth
+		}
 	}
 
 	return strings.Join(parts, separator)
@@ -220,11 +280,6 @@ func (h *HeaderPanel) RenderCompact(service, resourceType string) string {
 		availableWidth = defaultAvailableWidth
 	}
 
-	regions := cfg.Regions()
-	regionDisplay := cmp.Or(strings.Join(regions, ", "), "-")
-	regionPart := TruncateString(regionDisplay, regionTruncateWidth)
-	regionWidth := lipgloss.Width(regionPart)
-
 	var servicePart string
 	serviceWidth := 0
 	if service != "" {
@@ -235,11 +290,13 @@ func (h *HeaderPanel) RenderCompact(service, resourceType string) string {
 		serviceWidth = lipgloss.Width(servicePart)
 	}
 
-	fixedWidth := regionWidth + sepWidth
+	numSeparators := 2
 	if servicePart != "" {
-		fixedWidth += serviceWidth + sepWidth
+		numSeparators = 3
 	}
-	profileMaxWidth := availableWidth - fixedWidth
+	remainingWidth := availableWidth - serviceWidth - (numSeparators-1)*sepWidth
+	profileMaxWidth := remainingWidth * 2 / 3
+	regionMaxWidth := remainingWidth - profileMaxWidth
 
 	var profilePart string
 	if cfg.IsMultiProfile() {
@@ -251,9 +308,11 @@ func (h *HeaderPanel) RenderCompact(service, resourceType string) string {
 		profilePart = formatSingleProfile(name, accID, s.value, profileTruncateWidth)
 	}
 
+	regionPart := formatRegions(cfg.Regions(), s.value, regionMaxWidth)
+
 	var parts []string
 	parts = append(parts, profilePart)
-	parts = append(parts, s.value.Render(regionPart))
+	parts = append(parts, regionPart)
 	if servicePart != "" {
 		parts = append(parts, servicePart)
 	}

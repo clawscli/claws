@@ -23,7 +23,7 @@ const (
 	ModalWidthProfile       = 55
 	ModalWidthProfileDetail = 65
 	ModalWidthActionMenu    = 60
-	ModalWidthSettings      = 70
+	ModalWidthSettings      = 75
 	ModalWidthChat          = 80
 )
 
