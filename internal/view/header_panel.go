@@ -15,12 +15,11 @@ import (
 
 const (
 	// headerFixedLines: 2 profile/region + 1 separator + 2 summary rows
-	headerFixedLines      = 5
-	maxFieldValueWidth    = 30
-	headerPanelPadding    = 6
-	minAvailableWidth     = 40
-	defaultAvailableWidth = 60
-	profileTruncateWidth  = 20
+	headerFixedLines     = 5
+	maxFieldValueWidth   = 30
+	headerPanelPadding   = 6
+	minAvailableWidth    = 40
+	profileTruncateWidth = 20
 	// profileWidthRatio: profile gets 2/3 of remaining width, region gets 1/3 (compact mode)
 	profileWidthRatio = 2
 	regionWidthRatio  = 3
@@ -89,10 +88,7 @@ func (h *HeaderPanel) renderRegionServiceLine(service, resourceType string) stri
 	labelStr := s.label.Render("Region: ")
 	labelWidth := lipgloss.Width(labelStr)
 
-	availableWidth := h.width - headerPanelPadding
-	if availableWidth < minAvailableWidth {
-		availableWidth = defaultAvailableWidth
-	}
+	availableWidth := max(h.width-headerPanelPadding, minAvailableWidth)
 
 	var rightPart string
 	rightWidth := 0
@@ -304,10 +300,7 @@ func (h *HeaderPanel) RenderCompact(service, resourceType string) string {
 	separator := s.dim.Render(" │ ")
 	sepWidth := lipgloss.Width(separator)
 
-	availableWidth := h.width - headerPanelPadding
-	if availableWidth < minAvailableWidth {
-		availableWidth = defaultAvailableWidth
-	}
+	availableWidth := max(h.width-headerPanelPadding, minAvailableWidth)
 
 	var servicePart string
 	serviceWidth := 0
@@ -373,20 +366,14 @@ func (h *HeaderPanel) Render(service, resourceType string, summaryFields []rende
 	lines[0] = h.renderProfileAccountLine()
 	lines[1] = h.renderRegionServiceLine(service, resourceType)
 
-	sepWidth := h.width - headerPanelPadding
-	if sepWidth < minAvailableWidth/2 {
-		sepWidth = defaultAvailableWidth
-	}
+	sepWidth := max(h.width-headerPanelPadding, minAvailableWidth)
 	lines[2] = s.separator.Render(strings.Repeat("─", sepWidth))
 
 	if len(summaryFields) == 0 {
 		lines[3] = s.dim.Render("No resource selected")
 		lines[4] = ""
 	} else {
-		availableWidth := h.width - headerPanelPadding
-		if availableWidth < minAvailableWidth {
-			availableWidth = defaultAvailableWidth
-		}
+		availableWidth := max(h.width-headerPanelPadding, minAvailableWidth)
 
 		separator := s.dim.Render("  │  ")
 		sepWidth := lipgloss.Width(separator)
