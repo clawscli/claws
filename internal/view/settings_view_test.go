@@ -112,7 +112,7 @@ func TestSettingsView_BuildContent(t *testing.T) {
 	}
 
 	expectedFields := []string{
-		"Compact header",
+		"Compact",
 		"Read-only",
 		"Regions",
 		"Profiles",
