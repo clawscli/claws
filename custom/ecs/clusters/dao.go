@@ -10,6 +10,7 @@ import (
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
 	apperrors "github.com/clawscli/claws/internal/errors"
+	"github.com/clawscli/claws/internal/log"
 )
 
 // ClusterDAO provides data access for ECS clusters
@@ -49,20 +50,28 @@ func (d *ClusterDAO) List(ctx context.Context) ([]dao.Resource, error) {
 		return nil, nil
 	}
 
-	// Describe clusters to get details
-	descInput := &ecs.DescribeClustersInput{
-		Clusters: clusterArns,
-		Include:  []types.ClusterField{types.ClusterFieldStatistics, types.ClusterFieldSettings},
-	}
+	// Describe clusters in batches of 100 (API limit)
+	resources := make([]dao.Resource, 0, len(clusterArns))
+	for i := 0; i < len(clusterArns); i += 100 {
+		end := i + 100
+		if end > len(clusterArns) {
+			end = len(clusterArns)
+		}
 
-	descOutput, err := d.client.DescribeClusters(ctx, descInput)
-	if err != nil {
-		return nil, apperrors.Wrap(err, "describe clusters")
-	}
+		descInput := &ecs.DescribeClustersInput{
+			Clusters: clusterArns[i:end],
+			Include:  []types.ClusterField{types.ClusterFieldStatistics, types.ClusterFieldSettings},
+		}
 
-	resources := make([]dao.Resource, 0, len(descOutput.Clusters))
-	for _, cluster := range descOutput.Clusters {
-		resources = append(resources, NewClusterResource(cluster))
+		descOutput, err := d.client.DescribeClusters(ctx, descInput)
+		if err != nil {
+			log.Warn("describe clusters", "error", err)
+			continue
+		}
+
+		for _, cluster := range descOutput.Clusters {
+			resources = append(resources, NewClusterResource(cluster))
+		}
 	}
 
 	return resources, nil
