@@ -298,6 +298,14 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return a, nil
 		}
 
+		if ic, ok := a.currentView.(view.InputCapture); ok && ic.HasActiveInput() {
+			model, cmd := a.currentView.Update(msg)
+			if v, ok := model.(view.View); ok {
+				a.currentView = v
+			}
+			return a, cmd
+		}
+
 		switch {
 		case key.Matches(msg, a.keys.Quit):
 			switch a.currentView.(type) {
