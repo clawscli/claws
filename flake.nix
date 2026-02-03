@@ -17,6 +17,8 @@
             golangci-lint
           ];
 
+          env.GOROOT = "${pkgs.go_1_25}/share/go";
+
           shellHook = ''
             echo "claws dev env - Go $(go version | cut -d' ' -f3)"
           '';
