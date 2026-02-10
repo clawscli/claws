@@ -179,6 +179,14 @@ import (
 	// Firewall Manager
 	_ "github.com/clawscli/claws/custom/fms/policies"
 
+	// GameLift
+	_ "github.com/clawscli/claws/custom/gamelift/builds"
+	_ "github.com/clawscli/claws/custom/gamelift/fleets"
+	_ "github.com/clawscli/claws/custom/gamelift/game-session-queues"
+	_ "github.com/clawscli/claws/custom/gamelift/game-sessions"
+	_ "github.com/clawscli/claws/custom/gamelift/matchmaking-configs"
+	_ "github.com/clawscli/claws/custom/gamelift/scripts"
+
 	// Glue
 	_ "github.com/clawscli/claws/custom/glue/crawlers"
 	_ "github.com/clawscli/claws/custom/glue/databases"

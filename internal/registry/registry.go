@@ -132,6 +132,7 @@ func defaultAliases() map[string]string {
 		"cognito":          "cognito-idp",
 		"config":           "configservice",
 		"macie":            "macie2",
+		"gl":               "gamelift",
 	}
 }
 
@@ -165,6 +166,7 @@ func defaultDisplayNames() map[string]string {
 		"directconnect":     "Direct Connect",
 		"dynamodb":          "DynamoDB",
 		"fms":               "Firewall Manager",
+		"gamelift":          "GameLift",
 		"glue":              "Glue",
 		"guardduty":         "GuardDuty",
 		"health":            "Health",
@@ -262,6 +264,10 @@ func defaultCategories() []ServiceCategory {
 		{
 			Name:     "Cost Management",
 			Services: []string{"risp", "ce", "budgets"},
+		},
+		{
+			Name:     "Game Development",
+			Services: []string{"gamelift"},
 		},
 	}
 }
@@ -547,6 +553,7 @@ var defaultResources = map[string]string{
 	"ec2":               "instances",
 	"ecr":               "repositories",
 	"ecs":               "clusters",
+	"gamelift":          "fleets",
 	"eks":               "clusters",
 	"elbv2":             "load-balancers",
 	"emr":               "clusters",
@@ -645,6 +652,7 @@ var subResourceSet = map[string]struct{}{
 	"datasync/task-executions":         {},
 	"batch/jobs":                       {},
 	"emr/steps":                        {},
+	"gamelift/game-sessions":           {},
 	"organizations/ous":                {},
 	"license-manager/grants":           {},
 	"appsync/data-sources":             {},
