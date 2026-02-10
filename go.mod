@@ -7,7 +7,7 @@ require (
 	charm.land/bubbletea/v2 v2.0.0-rc.2
 	charm.land/lipgloss/v2 v2.0.0-beta.3.0.20251106192539-4b304240aab7
 	github.com/atotto/clipboard v0.1.4
-	github.com/aws/aws-sdk-go-v2 v1.41.0
+	github.com/aws/aws-sdk-go-v2 v1.41.1
 	github.com/aws/aws-sdk-go-v2/config v1.32.5
 	github.com/aws/aws-sdk-go-v2/service/accessanalyzer v1.45.7
 	github.com/aws/aws-sdk-go-v2/service/acm v1.37.18
@@ -48,6 +48,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/emr v1.57.4
 	github.com/aws/aws-sdk-go-v2/service/eventbridge v1.45.17
 	github.com/aws/aws-sdk-go-v2/service/fms v1.44.16
+	github.com/aws/aws-sdk-go-v2/service/gamelift v1.50.0
 	github.com/aws/aws-sdk-go-v2/service/glue v1.135.3
 	github.com/aws/aws-sdk-go-v2/service/guardduty v1.70.1
 	github.com/aws/aws-sdk-go-v2/service/health v1.35.5
@@ -97,8 +98,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.4 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.5 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.16 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.16 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.16 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.17 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.17 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.4 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.16 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.4 // indirect
