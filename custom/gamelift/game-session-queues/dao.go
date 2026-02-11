@@ -2,6 +2,7 @@ package gamesessionqueues
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/gamelift"
 	"github.com/aws/aws-sdk-go-v2/service/gamelift/types"
@@ -60,7 +61,7 @@ func (d *QueueDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		return nil, apperrors.Wrapf(err, "describe gamelift game session queue %s", id)
 	}
 	if len(output.GameSessionQueues) == 0 {
-		return nil, apperrors.Wrapf(err, "gamelift game session queue %s not found", id)
+		return nil, fmt.Errorf("gamelift game session queue %s not found", id)
 	}
 	return NewQueueResource(output.GameSessionQueues[0]), nil
 }

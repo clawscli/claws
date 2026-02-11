@@ -2,6 +2,7 @@ package matchmakingconfigs
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/gamelift"
@@ -61,7 +62,7 @@ func (d *MatchmakingConfigDAO) Get(ctx context.Context, id string) (dao.Resource
 		return nil, apperrors.Wrapf(err, "describe gamelift matchmaking configuration %s", id)
 	}
 	if len(output.Configurations) == 0 {
-		return nil, apperrors.Wrapf(err, "gamelift matchmaking configuration %s not found", id)
+		return nil, fmt.Errorf("gamelift matchmaking configuration %s not found", id)
 	}
 	return NewMatchmakingConfigResource(output.Configurations[0]), nil
 }

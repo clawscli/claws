@@ -2,6 +2,7 @@ package fleets
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/gamelift"
@@ -61,7 +62,7 @@ func (d *FleetDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		return nil, apperrors.Wrapf(err, "describe gamelift fleet %s", id)
 	}
 	if len(output.FleetAttributes) == 0 {
-		return nil, apperrors.Wrapf(err, "gamelift fleet %s not found", id)
+		return nil, fmt.Errorf("gamelift fleet %s not found", id)
 	}
 	return NewFleetResource(output.FleetAttributes[0]), nil
 }
