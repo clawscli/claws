@@ -1,6 +1,6 @@
 # 지원 서비스
 
-claws는 **69개 서비스**와 **169개 리소스**를 지원합니다.
+claws는 **70개 서비스**와 **175개 리소스**를 지원합니다.
 
 ## 컴퓨팅
 
@@ -116,6 +116,12 @@ claws는 **69개 서비스**와 **169개 리소스**를 지원합니다.
 | Trusted Advisor | Recommendations |
 | Budgets | Budgets, Notifications |
 
+## 게임 개발
+
+| Service | Resources |
+|---------|-----------|
+| GameLift | Fleets, Builds, Scripts, Game Sessions, Game Session Queues, Matchmaking Configurations |
+
 ---
 
 ## 서비스 별칭
@@ -157,3 +163,4 @@ claws는 **69개 서비스**와 **169개 리소스**를 지원합니다.
 | `models` | Bedrock Foundation Models |
 | `guardrail` | Bedrock Guardrails |
 | `eks` | EKS |
+| `gl` | GameLift |

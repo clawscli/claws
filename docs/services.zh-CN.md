@@ -1,6 +1,6 @@
 # 支持的服务
 
-claws 支持 **69 个服务**和 **169 个资源**。
+claws 支持 **70 个服务**和 **175 个资源**。
 
 ## 计算
 
@@ -116,6 +116,12 @@ claws 支持 **69 个服务**和 **169 个资源**。
 | Trusted Advisor | Recommendations |
 | Budgets | Budgets, Notifications |
 
+## 游戏开发
+
+| Service | Resources |
+|---------|-----------|
+| GameLift | Fleets, Builds, Scripts, Game Sessions, Game Session Queues, Matchmaking Configurations |
+
 ---
 
 ## 服务别名
@@ -157,3 +163,4 @@ claws 支持 **69 个服务**和 **169 个资源**。
 | `models` | Bedrock Foundation Models |
 | `guardrail` | Bedrock Guardrails |
 | `eks` | EKS |
+| `gl` | GameLift |

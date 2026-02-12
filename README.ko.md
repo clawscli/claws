@@ -15,7 +15,7 @@ AWS 리소스 관리를 위한 터미널 UI
 ## 기능
 
 - **인터랙티브 TUI** - vim 스타일 키 바인딩으로 AWS 리소스를 탐색할 수 있습니다
-- **69개 서비스, 169개 리소스** - EC2, S3, Lambda, RDS, ECS, EKS 등 다양한 서비스를 지원합니다
+- **70개 서비스, 175개 리소스** - EC2, S3, Lambda, RDS, ECS, EKS 등 다양한 서비스를 지원합니다
 - **멀티 프로필 및 멀티 리전** - 여러 계정/리전을 병렬로 조회할 수 있습니다
 - **리소스 액션** - 인스턴스 시작/중지, 리소스 삭제, 로그 테일링이 가능합니다
 - **크로스 리소스 탐색** - VPC에서 서브넷으로, Lambda에서 CloudWatch로 이동할 수 있습니다
@@ -111,7 +111,7 @@ claws --read-only
 | 문서 | 설명 |
 |------|------|
 | [키보드 단축키](docs/keybindings.ko.md) | 완전한 키보드 단축키 참조 |
-| [지원되는 서비스](docs/services.ko.md) | 모든 69개 서비스 및 163개 리소스 |
+| [지원되는 서비스](docs/services.ko.md) | 모든 70개 서비스 및 175개 리소스 |
 | [설정](docs/configuration.ko.md) | 설정 파일, 테마 및 옵션 |
 | [IAM 권한](docs/iam-permissions.ko.md) | 필요한 AWS 권한 |
 | [AI 채팅](docs/ai-chat.ko.md) | AI 어시스턴트 사용 및 기능 |

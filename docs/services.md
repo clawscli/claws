@@ -1,6 +1,6 @@
 # Supported Services
 
-claws supports **69 services** with **169 resources**.
+claws supports **70 services** with **175 resources**.
 
 ## Compute
 
@@ -116,6 +116,12 @@ claws supports **69 services** with **169 resources**.
 | Trusted Advisor | Recommendations |
 | Budgets | Budgets, Notifications |
 
+## Game Development
+
+| Service | Resources |
+|---------|-----------|
+| GameLift | Fleets, Builds, Scripts, Game Sessions, Game Session Queues, Matchmaking Configurations |
+
 ---
 
 ## Service Aliases
@@ -157,3 +163,4 @@ Quick shortcuts for common services:
 | `models` | Bedrock Foundation Models |
 | `guardrail` | Bedrock Guardrails |
 | `eks` | EKS |
+| `gl` | GameLift |

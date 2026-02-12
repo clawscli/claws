@@ -1,6 +1,6 @@
 # 対応サービス一覧
 
-clawsは **69サービス**、**169リソース** に対応しています。
+clawsは **70サービス**、**175リソース** に対応しています。
 
 ## コンピューティング
 
@@ -116,6 +116,12 @@ clawsは **69サービス**、**169リソース** に対応しています。
 | Trusted Advisor | Recommendations |
 | Budgets | Budgets, Notifications |
 
+## ゲーム開発
+
+| Service | Resources |
+|---------|-----------|
+| GameLift | Fleets, Builds, Scripts, Game Sessions, Game Session Queues, Matchmaking Configurations |
+
 ---
 
 ## サービスエイリアス
@@ -157,3 +163,4 @@ clawsは **69サービス**、**169リソース** に対応しています。
 | `models` | Bedrock Foundation Models |
 | `guardrail` | Bedrock Guardrails |
 | `eks` | EKS |
+| `gl` | GameLift |

@@ -15,7 +15,7 @@ A terminal UI for AWS resource management
 ## Features
 
 - **Interactive TUI** - Navigate AWS resources with vim-style keybindings
-- **69 services, 169 resources** - EC2, S3, Lambda, RDS, ECS, EKS, and more
+- **70 services, 175 resources** - EC2, S3, Lambda, RDS, ECS, EKS, and more
 - **Multi-profile & Multi-region** - Query multiple accounts/regions in parallel
 - **Resource actions** - Start/stop instances, delete resources, tail logs
 - **Cross-resource navigation** - Jump from VPC to subnets, Lambda to CloudWatch
@@ -111,7 +111,7 @@ See [docs/keybindings.md](docs/keybindings.md) for complete reference.
 | Document | Description |
 |----------|-------------|
 | [Key Bindings](docs/keybindings.md) | Complete keyboard shortcuts reference |
-| [Supported Services](docs/services.md) | All 69 services and 163 resources |
+| [Supported Services](docs/services.md) | All 70 services and 175 resources |
 | [Configuration](docs/configuration.md) | Config file, themes, and options |
 | [IAM Permissions](docs/iam-permissions.md) | Required AWS permissions |
 | [AI Chat](docs/ai-chat.md) | AI assistant usage and features |

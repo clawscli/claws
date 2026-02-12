@@ -15,7 +15,7 @@ AWS 资源管理终端 UI
 ## 功能
 
 - **交互式 TUI** - 使用 vim 风格的快捷键浏览 AWS 资源
-- **69 个服务、169 个资源** - 支持 EC2、S3、Lambda、RDS、ECS、EKS 等众多服务
+- **70 个服务、175 个资源** - 支持 EC2、S3、Lambda、RDS、ECS、EKS 等众多服务
 - **多配置文件与多区域** - 并行查询多个账户和区域
 - **资源操作** - 启动/停止实例、删除资源、追踪日志
 - **跨资源导航** - 从 VPC 跳转到子网，从 Lambda 跳转到 CloudWatch
@@ -111,7 +111,7 @@ claws --read-only
 | 文档 | 说明 |
 |------|------|
 | [键盘快捷键](docs/keybindings.zh-CN.md) | 完整的键盘快捷键参考 |
-| [支持的服务](docs/services.zh-CN.md) | 全部 69 个服务和 163 个资源 |
+| [支持的服务](docs/services.zh-CN.md) | 全部 70 个服务和 175 个资源 |
 | [配置](docs/configuration.zh-CN.md) | 配置文件、主题和选项 |
 | [IAM 权限](docs/iam-permissions.zh-CN.md) | 所需的 AWS 权限 |
 | [AI 聊天](docs/ai-chat.zh-CN.md) | AI 助手使用和功能 |
