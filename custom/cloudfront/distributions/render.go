@@ -2,6 +2,7 @@ package distributions
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/clawscli/claws/internal/dao"
@@ -25,11 +26,10 @@ func NewDistributionRenderer() *DistributionRenderer {
 			Resource: "distributions",
 			Cols: []render.Column{
 				{Name: "ID", Width: 16, Getter: getDistributionId},
-				{Name: "DOMAIN", Width: 32, Getter: getDomainName},
+				{Name: "DOMAIN", Width: 35, Getter: getDomainName},
 				{Name: "STATUS", Width: 12, Getter: getStatus},
-				{Name: "ORIGIN", Width: 25, Getter: getDefaultOrigin},
-				{Name: "ALIASES", Width: 8, Getter: getAliasCount},
 				{Name: "AGE", Width: 10, Getter: getAge},
+				{Name: "ALIASES", Width: 20, Getter: getAllAliases}, // last column: expands to fill screen
 			},
 		},
 	}
@@ -60,28 +60,6 @@ func getStatus(r dao.Resource) string {
 	return ""
 }
 
-func getDefaultOrigin(r dao.Resource) string {
-	if dist, ok := r.(*DistributionResource); ok {
-		origin := dist.DefaultOrigin()
-		if len(origin) > 23 {
-			return origin[:23] + "..."
-		}
-		return origin
-	}
-	return ""
-}
-
-func getAliasCount(r dao.Resource) string {
-	if dist, ok := r.(*DistributionResource); ok {
-		count := dist.AliasCount()
-		if count > 0 {
-			return fmt.Sprintf("%d", count)
-		}
-		return "-"
-	}
-	return ""
-}
-
 func getAge(r dao.Resource) string {
 	if dist, ok := r.(*DistributionResource); ok {
 		if dist.Item.LastModifiedTime != nil {
@@ -89,6 +67,17 @@ func getAge(r dao.Resource) string {
 		}
 	}
 	return "-"
+}
+
+func getAllAliases(r dao.Resource) string {
+	if dist, ok := r.(*DistributionResource); ok {
+		aliases := dist.Aliases()
+		if len(aliases) == 0 {
+			return "-"
+		}
+		return strings.Join(aliases, ", ")
+	}
+	return ""
 }
 
 // RenderDetail renders detailed distribution information
@@ -116,7 +105,9 @@ func (r *DistributionRenderer) RenderDetail(resource dao.Resource) string {
 	// Aliases
 	if aliases := dist.Aliases(); len(aliases) > 0 {
 		d.Section("Alternate Domain Names (CNAMEs)")
-		d.Field("Aliases", strings.Join(aliases, ", "))
+		for _, alias := range aliases {
+			d.Field("Alias", alias)
+		}
 	}
 
 	// Origins
@@ -198,7 +189,20 @@ func (r *DistributionRenderer) RenderDetail(resource dao.Resource) string {
 		d.Field("WAF Web ACL", webAclId)
 	}
 
-	// Status
+	// Tags (only available after d:describe / Enter)
+	if tags := dist.GetTags(); len(tags) > 0 {
+		d.Section("Tags")
+		keys := make([]string, 0, len(tags))
+		for k := range tags {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			d.Field(k, tags[k])
+		}
+	}
+
+	// In-progress invalidations
 	if batches := dist.InProgressInvalidationBatches(); batches > 0 {
 		d.Section("In Progress")
 		d.Field("Invalidation Batches", fmt.Sprintf("%d", batches))
