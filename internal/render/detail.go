@@ -128,7 +128,7 @@ func (d *DetailBuilder) DimIndent(text string) *DetailBuilder {
 
 // Tag adds a single tag line (key: value format)
 func (d *DetailBuilder) Tag(key, value string) *DetailBuilder {
-	d.sb.WriteString(d.styles.Label.Render(key+":") + d.styles.Value.Render(value) + "\n")
+	d.sb.WriteString("  " + d.styles.Dim.Render(key+":") + " " + d.styles.Value.Render(value) + "\n")
 	return d
 }
 

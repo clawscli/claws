@@ -194,7 +194,6 @@ func (r *ClusterRenderer) Navigations(resource dao.Resource) []render.Navigation
 			Resource:    "services",
 			FilterField: "ClusterName",
 			FilterValue: clusterName,
-			AutoReload:  true,
 		},
 		{
 			Key:         "t",
