@@ -94,6 +94,21 @@ func (d *DistributionDAO) Get(ctx context.Context, id string) (dao.Resource, err
 	}
 
 	res := NewDistributionResource(summary)
+
+	// Fetch tags (only on Get/describe, not on List)
+	if arn := appaws.Str(dist.ARN); arn != "" {
+		tagsOutput, err := d.client.ListTagsForResource(ctx, &cloudfront.ListTagsForResourceInput{
+			Resource: &arn,
+		})
+		if err == nil && tagsOutput.Tags != nil {
+			for _, tag := range tagsOutput.Tags.Items {
+				if tag.Key != nil && tag.Value != nil {
+					res.Tags[*tag.Key] = *tag.Value
+				}
+			}
+		}
+	}
+
 	// Store the invalidation batches from the full distribution
 	if dist.InProgressInvalidationBatches != nil {
 		res.InProgressInvalidations = *dist.InProgressInvalidationBatches
