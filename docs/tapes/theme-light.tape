@@ -4,6 +4,12 @@ Set Width 1920
 Set Height 1080
 Set TypingSpeed 0.05s
 
+Hide
+Type "export PS1='$ '; clear"
+Enter
+Sleep 200ms
+Show
+
 Type "./claws -t light"
 Enter
 Sleep 2s

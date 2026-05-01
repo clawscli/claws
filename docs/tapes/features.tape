@@ -6,6 +6,12 @@ Set Width 1920
 Set Height 1080
 Set TypingSpeed 0.05
 
+Hide
+Type "export PS1='$ '; clear"
+Enter
+Sleep 200ms
+Show
+
 Type "./claws"
 Enter
 Sleep 2s
