@@ -6,6 +6,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	"github.com/clawscli/claws/internal/enrichment"
 	"github.com/clawscli/claws/internal/render"
 )
 
@@ -115,7 +116,9 @@ func (r *UserRenderer) RenderDetail(resource dao.Resource) string {
 
 	// Access Keys
 	d.Section("Access Keys")
-	if len(ur.AccessKeys) == 0 {
+	if enrichment.IsFailure(ur.AccessKeysStatus) {
+		d.Field("Access Keys", enrichment.Display(ur.AccessKeysStatus))
+	} else if len(ur.AccessKeys) == 0 {
 		d.Field("Access Keys", render.Empty)
 	} else {
 		d.Field("Access Key Count", fmt.Sprintf("%d", len(ur.AccessKeys)))
@@ -130,7 +133,9 @@ func (r *UserRenderer) RenderDetail(resource dao.Resource) string {
 
 	// MFA Devices
 	d.Section("MFA")
-	if len(ur.MFADevices) == 0 {
+	if enrichment.IsFailure(ur.MFADevicesStatus) {
+		d.Field("MFA Status", enrichment.Display(ur.MFADevicesStatus))
+	} else if len(ur.MFADevices) == 0 {
 		d.Field("MFA Status", "Not enabled")
 	} else {
 		d.Field("MFA Status", "Enabled")
@@ -147,7 +152,9 @@ func (r *UserRenderer) RenderDetail(resource dao.Resource) string {
 
 	// Groups
 	d.Section("Groups")
-	if len(ur.Groups) == 0 {
+	if enrichment.IsFailure(ur.GroupsStatus) {
+		d.Field("Groups", enrichment.Display(ur.GroupsStatus))
+	} else if len(ur.Groups) == 0 {
 		d.Field("Groups", render.Empty)
 	} else {
 		d.Field("Group Count", fmt.Sprintf("%d", len(ur.Groups)))
@@ -158,7 +165,16 @@ func (r *UserRenderer) RenderDetail(resource dao.Resource) string {
 
 	// Attached Policies
 	d.Section("Attached Policies")
-	if len(ur.AttachedPolicies) == 0 && len(ur.InlinePolicies) == 0 {
+	managedFailed := enrichment.IsFailure(ur.AttachedPoliciesStatus)
+	inlineFailed := enrichment.IsFailure(ur.InlinePoliciesStatus)
+	if managedFailed || inlineFailed {
+		if managedFailed {
+			d.Field("Managed Policies", enrichment.Display(ur.AttachedPoliciesStatus))
+		}
+		if inlineFailed {
+			d.Field("Inline Policies", enrichment.Display(ur.InlinePoliciesStatus))
+		}
+	} else if len(ur.AttachedPolicies) == 0 && len(ur.InlinePolicies) == 0 {
 		d.Field("Policies", render.Empty)
 	} else {
 		if len(ur.AttachedPolicies) > 0 {

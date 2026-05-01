@@ -8,6 +8,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	"github.com/clawscli/claws/internal/enrichment"
 	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
@@ -88,6 +89,11 @@ func (d *PolicyDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		})
 		if err == nil && versionOutput.PolicyVersion != nil && versionOutput.PolicyVersion.Document != nil {
 			res.PolicyDocument = *versionOutput.PolicyVersion.Document
+			res.PolicyDocumentStatus = enrichment.Fetched
+		} else if err != nil {
+			res.PolicyDocumentStatus = enrichment.FailureStatus(err)
+		} else {
+			res.PolicyDocumentStatus = enrichment.Fetched
 		}
 	}
 
@@ -96,6 +102,9 @@ func (d *PolicyDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		res.AttachedUsers = entities.PolicyUsers
 		res.AttachedRoles = entities.PolicyRoles
 		res.AttachedGroups = entities.PolicyGroups
+		res.AttachedEntitiesStatus = enrichment.Fetched
+	} else {
+		res.AttachedEntitiesStatus = enrichment.FailureStatus(err)
 	}
 
 	return res, nil
@@ -120,11 +129,13 @@ func (d *PolicyDAO) Delete(ctx context.Context, id string) error {
 // PolicyResource wraps an IAM Policy
 type PolicyResource struct {
 	dao.BaseResource
-	Item           types.Policy
-	PolicyDocument string
-	AttachedUsers  []types.PolicyUser
-	AttachedRoles  []types.PolicyRole
-	AttachedGroups []types.PolicyGroup
+	Item                   types.Policy
+	PolicyDocument         string
+	PolicyDocumentStatus   enrichment.Status
+	AttachedUsers          []types.PolicyUser
+	AttachedRoles          []types.PolicyRole
+	AttachedGroups         []types.PolicyGroup
+	AttachedEntitiesStatus enrichment.Status
 }
 
 // NewPolicyResource creates a new PolicyResource

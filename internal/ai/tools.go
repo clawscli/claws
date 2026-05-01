@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
@@ -759,11 +760,162 @@ func formatResourceDetail(r dao.Resource) string {
 	}
 
 	if raw := r.Raw(); raw != nil {
-		data, err := json.MarshalIndent(raw, "", "  ")
+		data, err := json.MarshalIndent(redactSensitiveRaw(raw), "", "  ")
 		if err == nil {
 			result += fmt.Sprintf("\nRaw Data:\n%s\n", string(data))
 		}
 	}
 
 	return result
+}
+
+func redactSensitiveRaw(raw any) any {
+	data, err := json.Marshal(raw)
+	if err != nil {
+		return raw
+	}
+
+	var decoded any
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return raw
+	}
+	return redactSensitiveValue(decoded)
+}
+
+func redactSensitiveValue(v any) any {
+	switch value := v.(type) {
+	case map[string]any:
+		redacted := make(map[string]any, len(value))
+		sensitiveRecord := hasSensitiveLabelField(value)
+		for key, nested := range value {
+			normalizedKey := normalizeRawKey(key)
+			if sensitiveRecord && (isSensitiveLabelField(normalizedKey) || isSensitiveValueField(normalizedKey)) {
+				redacted[key] = "[REDACTED]"
+				continue
+			}
+			if isSensitiveRawKey(key) {
+				redacted[key] = "[REDACTED]"
+				continue
+			}
+			redacted[key] = redactSensitiveValue(nested)
+		}
+		return redacted
+	case []any:
+		redacted := make([]any, len(value))
+		for i, nested := range value {
+			redacted[i] = redactSensitiveValue(nested)
+		}
+		return redacted
+	default:
+		return value
+	}
+}
+
+func hasSensitiveLabelField(value map[string]any) bool {
+	for key, nested := range value {
+		if !isSensitiveLabelField(normalizeRawKey(key)) {
+			continue
+		}
+		label, ok := nested.(string)
+		if ok && isSensitiveRawKey(label) {
+			return true
+		}
+	}
+	return false
+}
+
+func isSensitiveLabelField(normalizedKey string) bool {
+	switch normalizedKey {
+	case "name", "key", "parameterkey", "outputkey":
+		return true
+	default:
+		return false
+	}
+}
+
+func isSensitiveValueField(normalizedKey string) bool {
+	switch normalizedKey {
+	case "value", "parametervalue", "outputvalue", "resolvedvalue":
+		return true
+	default:
+		return false
+	}
+}
+
+func isSensitiveRawKey(key string) bool {
+	normalized := normalizeRawKey(key)
+	if exactSensitiveRawKeys[normalized] {
+		return true
+	}
+	for _, segment := range rawKeySegments(key) {
+		if sensitiveRawKeySegments[segment] {
+			return true
+		}
+	}
+	return false
+}
+
+var exactSensitiveRawKeys = map[string]bool{
+	"authorization":        true,
+	"clientsecret":         true,
+	"credential":           true,
+	"credentials":          true,
+	"environment":          true,
+	"environmentvariables": true,
+	"privatekey":           true,
+	"variables":            true,
+	"secret":               true,
+	"secrets":              true,
+	"secretstring":         true,
+	"secretbinary":         true,
+	"password":             true,
+	"token":                true,
+	"apikey":               true,
+	"accesskey":            true,
+	"accesskeyid":          true,
+	"secretaccesskey":      true,
+	"sessiontoken":         true,
+}
+
+var sensitiveRawKeySegments = map[string]bool{
+	"authorization": true,
+	"credential":    true,
+	"credentials":   true,
+	"environment":   true,
+	"password":      true,
+	"private":       true,
+	"secret":        true,
+	"token":         true,
+}
+
+func rawKeySegments(key string) []string {
+	var segments []string
+	var current []rune
+	var previous rune
+	for _, r := range key {
+		if r == '_' || r == '-' || r == ' ' || r == '.' || r == '/' {
+			segments = appendNormalizedSegment(segments, current)
+			current = nil
+			previous = 0
+			continue
+		}
+		if len(current) > 0 && unicode.IsUpper(r) && (unicode.IsLower(previous) || unicode.IsDigit(previous)) {
+			segments = appendNormalizedSegment(segments, current)
+			current = nil
+		}
+		current = append(current, unicode.ToLower(r))
+		previous = r
+	}
+	return appendNormalizedSegment(segments, current)
+}
+
+func appendNormalizedSegment(segments []string, segment []rune) []string {
+	if len(segment) == 0 {
+		return segments
+	}
+	return append(segments, string(segment))
+}
+
+func normalizeRawKey(key string) string {
+	return strings.ToLower(strings.ReplaceAll(strings.ReplaceAll(key, "_", ""), "-", ""))
 }

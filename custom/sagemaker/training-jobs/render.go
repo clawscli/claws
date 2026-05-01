@@ -121,7 +121,7 @@ func (r *TrainingJobRenderer) RenderDetail(resource dao.Resource) string {
 	if len(job.GetInputDataConfig()) > 0 || job.GetOutputS3Path() != "" || job.GetModelArtifactsS3() != "" {
 		d.Section("Data Configuration")
 		for _, ch := range job.GetInputDataConfig() {
-			if ch.ChannelName != nil && ch.DataSource != nil && ch.DataSource.S3DataSource != nil {
+			if ch.ChannelName != nil && ch.DataSource != nil && ch.DataSource.S3DataSource != nil && ch.DataSource.S3DataSource.S3Uri != nil {
 				d.Field("Input: "+*ch.ChannelName, *ch.DataSource.S3DataSource.S3Uri)
 			}
 		}

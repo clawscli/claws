@@ -144,4 +144,4 @@ ai:
   save_sessions: true  # 默认：false
 ```
 
-会话存储在 `~/.config/claws/sessions/` 中。
+会话存储在 `~/.config/claws/chat/sessions/` 中。

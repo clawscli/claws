@@ -8,17 +8,23 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	"github.com/clawscli/claws/internal/enrichment"
 	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
 // UserDetail contains extended user information from multiple API calls
 type UserDetail struct {
-	User             types.User
-	AccessKeys       []types.AccessKeyMetadata
-	MFADevices       []types.MFADevice
-	Groups           []types.Group
-	AttachedPolicies []types.AttachedPolicy
-	InlinePolicies   []string
+	User                   types.User
+	AccessKeys             []types.AccessKeyMetadata
+	MFADevices             []types.MFADevice
+	Groups                 []types.Group
+	AttachedPolicies       []types.AttachedPolicy
+	InlinePolicies         []string
+	AccessKeysStatus       enrichment.Status
+	MFADevicesStatus       enrichment.Status
+	GroupsStatus           enrichment.Status
+	AttachedPoliciesStatus enrichment.Status
+	InlinePoliciesStatus   enrichment.Status
 }
 
 // UserDAO provides data access for IAM Users
@@ -84,26 +90,41 @@ func (d *UserDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 	// Fetch access keys
 	if keys, err := d.client.ListAccessKeys(ctx, &iam.ListAccessKeysInput{UserName: &id}); err == nil {
 		detail.AccessKeys = keys.AccessKeyMetadata
+		detail.AccessKeysStatus = enrichment.Fetched
+	} else {
+		detail.AccessKeysStatus = enrichment.FailureStatus(err)
 	}
 
 	// Fetch MFA devices
 	if mfa, err := d.client.ListMFADevices(ctx, &iam.ListMFADevicesInput{UserName: &id}); err == nil {
 		detail.MFADevices = mfa.MFADevices
+		detail.MFADevicesStatus = enrichment.Fetched
+	} else {
+		detail.MFADevicesStatus = enrichment.FailureStatus(err)
 	}
 
 	// Fetch groups
 	if groups, err := d.client.ListGroupsForUser(ctx, &iam.ListGroupsForUserInput{UserName: &id}); err == nil {
 		detail.Groups = groups.Groups
+		detail.GroupsStatus = enrichment.Fetched
+	} else {
+		detail.GroupsStatus = enrichment.FailureStatus(err)
 	}
 
 	// Fetch attached policies
 	if policies, err := d.client.ListAttachedUserPolicies(ctx, &iam.ListAttachedUserPoliciesInput{UserName: &id}); err == nil {
 		detail.AttachedPolicies = policies.AttachedPolicies
+		detail.AttachedPoliciesStatus = enrichment.Fetched
+	} else {
+		detail.AttachedPoliciesStatus = enrichment.FailureStatus(err)
 	}
 
 	// Fetch inline policy names
 	if inline, err := d.client.ListUserPolicies(ctx, &iam.ListUserPoliciesInput{UserName: &id}); err == nil {
 		detail.InlinePolicies = inline.PolicyNames
+		detail.InlinePoliciesStatus = enrichment.Fetched
+	} else {
+		detail.InlinePoliciesStatus = enrichment.FailureStatus(err)
 	}
 
 	return NewUserResourceWithDetail(detail), nil
@@ -122,12 +143,17 @@ func (d *UserDAO) Delete(ctx context.Context, id string) error {
 // UserResource wraps an IAM User
 type UserResource struct {
 	dao.BaseResource
-	Item             types.User
-	AccessKeys       []types.AccessKeyMetadata
-	MFADevices       []types.MFADevice
-	Groups           []types.Group
-	AttachedPolicies []types.AttachedPolicy
-	InlinePolicies   []string
+	Item                   types.User
+	AccessKeys             []types.AccessKeyMetadata
+	MFADevices             []types.MFADevice
+	Groups                 []types.Group
+	AttachedPolicies       []types.AttachedPolicy
+	InlinePolicies         []string
+	AccessKeysStatus       enrichment.Status
+	MFADevicesStatus       enrichment.Status
+	GroupsStatus           enrichment.Status
+	AttachedPoliciesStatus enrichment.Status
+	InlinePoliciesStatus   enrichment.Status
 }
 
 // NewUserResource creates a new UserResource
@@ -158,12 +184,17 @@ func NewUserResourceWithDetail(detail UserDetail) *UserResource {
 			Tags: appaws.TagsToMap(detail.User.Tags),
 			Data: detail.User,
 		},
-		Item:             detail.User,
-		AccessKeys:       detail.AccessKeys,
-		MFADevices:       detail.MFADevices,
-		Groups:           detail.Groups,
-		AttachedPolicies: detail.AttachedPolicies,
-		InlinePolicies:   detail.InlinePolicies,
+		Item:                   detail.User,
+		AccessKeys:             detail.AccessKeys,
+		MFADevices:             detail.MFADevices,
+		Groups:                 detail.Groups,
+		AttachedPolicies:       detail.AttachedPolicies,
+		InlinePolicies:         detail.InlinePolicies,
+		AccessKeysStatus:       detail.AccessKeysStatus,
+		MFADevicesStatus:       detail.MFADevicesStatus,
+		GroupsStatus:           detail.GroupsStatus,
+		AttachedPoliciesStatus: detail.AttachedPoliciesStatus,
+		InlinePoliciesStatus:   detail.InlinePoliciesStatus,
 	}
 }
 

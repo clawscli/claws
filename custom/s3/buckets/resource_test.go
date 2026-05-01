@@ -1,11 +1,15 @@
 package buckets
 
 import (
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/smithy-go"
+
+	"github.com/clawscli/claws/internal/enrichment"
 )
 
 func TestNewBucketResource(t *testing.T) {
@@ -76,8 +80,10 @@ func TestBucketResource_ExtendedInfo(t *testing.T) {
 	// Set extended info (normally done by DAO.Get)
 	resource.Region = "us-west-2"
 	resource.Versioning = "Enabled"
+	resource.VersioningStatus = enrichment.Configured
 	resource.MFADelete = "Disabled"
 	resource.EncryptionEnabled = true
+	resource.EncryptionStatus = enrichment.Configured
 	resource.EncryptionAlgorithm = "aws:kms"
 	resource.EncryptionKMSKeyID = "arn:aws:kms:us-west-2:123456789012:key/abc123"
 	resource.BucketKeyEnabled = true
@@ -91,6 +97,7 @@ func TestBucketResource_ExtendedInfo(t *testing.T) {
 		BlockPublicPolicy:     true,
 		RestrictPublicBuckets: true,
 	}
+	resource.PublicAccessBlockStatus = enrichment.Configured
 
 	// Verify extended info
 	if resource.Region != "us-west-2" {
@@ -113,6 +120,52 @@ func TestBucketResource_ExtendedInfo(t *testing.T) {
 	}
 	if !resource.PublicAccessBlock.BlockPublicAcls {
 		t.Error("BlockPublicAcls should be true")
+	}
+}
+
+func TestBucketRendererShowsUnknownForFailedSecurityEnrichment(t *testing.T) {
+	resource := &BucketResource{
+		BucketName:              "test-bucket",
+		Region:                  "us-east-1",
+		VersioningStatus:        enrichment.FetchFailed,
+		EncryptionStatus:        enrichment.AccessDenied,
+		PublicAccessBlockStatus: enrichment.FetchFailed,
+	}
+
+	detail := (&BucketRenderer{}).RenderDetail(resource)
+
+	for _, want := range []string{
+		"Unknown (fetch failed)",
+		"Unknown (access denied)",
+	} {
+		if !strings.Contains(detail, want) {
+			t.Fatalf("expected %q in detail, got %q", want, detail)
+		}
+	}
+	if strings.Contains(detail, "Not configured") {
+		t.Fatalf("fetch failures must not render as not configured: %q", detail)
+	}
+}
+
+func TestS3EnrichmentFailureStatusClassifiesNotConfiguredErrors(t *testing.T) {
+	tests := []struct {
+		name string
+		code string
+		want enrichment.Status
+	}{
+		{name: "encryption not configured", code: "ServerSideEncryptionConfigurationNotFoundError", want: enrichment.NotConfigured},
+		{name: "public access block not configured", code: "NoSuchPublicAccessBlockConfiguration", want: enrichment.NotConfigured},
+		{name: "access denied", code: "AccessDeniedException", want: enrichment.AccessDenied},
+		{name: "other failure", code: "InternalError", want: enrichment.FetchFailed},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := &smithy.GenericAPIError{Code: tt.code, Message: tt.name}
+			if got := enrichmentFailureStatus(err); got != tt.want {
+				t.Fatalf("enrichmentFailureStatus(%q) = %q, want %q", tt.code, got, tt.want)
+			}
+		})
 	}
 }
 

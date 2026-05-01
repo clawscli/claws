@@ -8,6 +8,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	"github.com/clawscli/claws/internal/enrichment"
 	"github.com/clawscli/claws/internal/render"
 )
 
@@ -131,7 +132,10 @@ func (r *PolicyRenderer) RenderDetail(resource dao.Resource) string {
 	}
 
 	// Attached Entities
-	if len(pr.AttachedUsers) > 0 || len(pr.AttachedRoles) > 0 || len(pr.AttachedGroups) > 0 {
+	if enrichment.IsFailure(pr.AttachedEntitiesStatus) {
+		d.Section("Attached To")
+		d.Field("Entities", enrichment.Display(pr.AttachedEntitiesStatus))
+	} else if len(pr.AttachedUsers) > 0 || len(pr.AttachedRoles) > 0 || len(pr.AttachedGroups) > 0 {
 		d.Section("Attached To")
 		if len(pr.AttachedUsers) > 0 {
 			d.Field("Users", fmt.Sprintf("%d", len(pr.AttachedUsers)))
@@ -154,7 +158,10 @@ func (r *PolicyRenderer) RenderDetail(resource dao.Resource) string {
 	}
 
 	// Policy Document
-	if pr.PolicyDocument != "" {
+	if enrichment.IsFailure(pr.PolicyDocumentStatus) {
+		d.Section("Policy Document")
+		d.Field("Document", enrichment.Display(pr.PolicyDocumentStatus))
+	} else if pr.PolicyDocument != "" {
 		d.Section("Policy Document")
 		d.Line(formatPolicyDoc(pr.PolicyDocument))
 	}

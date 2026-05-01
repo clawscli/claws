@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/clawscli/claws/internal/dao"
+	"github.com/clawscli/claws/internal/enrichment"
 	"github.com/clawscli/claws/internal/render"
 )
 
@@ -97,10 +98,21 @@ func (r *BucketRenderer) RenderDetail(resource dao.Resource) string {
 
 	// Versioning
 	d.Section("Versioning")
-	if b.Versioning != "" {
+	switch b.VersioningStatus {
+	case enrichment.Configured:
 		d.Field("Status", b.Versioning)
-	} else {
+	case enrichment.NotConfigured:
 		d.Field("Status", render.NotConfigured)
+	case enrichment.AccessDenied, enrichment.FetchFailed:
+		d.Field("Status", enrichment.Display(b.VersioningStatus))
+	default:
+		// List() resources do not fetch enrichment status, but older callers may
+		// still populate Versioning directly.
+		if b.Versioning != "" {
+			d.Field("Status", b.Versioning)
+		} else {
+			d.Field("Status", enrichment.Display(enrichment.Unknown))
+		}
 	}
 	if b.MFADelete != "" {
 		d.Field("MFA Delete", b.MFADelete)
@@ -108,7 +120,9 @@ func (r *BucketRenderer) RenderDetail(resource dao.Resource) string {
 
 	// Encryption
 	d.Section("Server-Side Encryption")
-	if b.EncryptionEnabled {
+	if b.EncryptionStatus == enrichment.AccessDenied || b.EncryptionStatus == enrichment.FetchFailed || b.EncryptionStatus == enrichment.Unknown {
+		d.Field("Status", enrichment.Display(b.EncryptionStatus))
+	} else if b.EncryptionEnabled {
 		d.Field("Status", "Enabled")
 		d.Field("Algorithm", b.EncryptionAlgorithm)
 		if b.EncryptionKMSKeyID != "" {
@@ -123,7 +137,9 @@ func (r *BucketRenderer) RenderDetail(resource dao.Resource) string {
 
 	// Public Access Block
 	d.Section("Block Public Access")
-	if b.PublicAccessBlock != nil {
+	if b.PublicAccessBlockStatus == enrichment.AccessDenied || b.PublicAccessBlockStatus == enrichment.FetchFailed || b.PublicAccessBlockStatus == enrichment.Unknown {
+		d.Field("Status", enrichment.Display(b.PublicAccessBlockStatus))
+	} else if b.PublicAccessBlock != nil {
 		pab := b.PublicAccessBlock
 		allBlocked := pab.BlockPublicAcls && pab.IgnorePublicAcls && pab.BlockPublicPolicy && pab.RestrictPublicBuckets
 		if allBlocked {
@@ -199,13 +215,17 @@ func (r *BucketRenderer) RenderSummary(resource dao.Resource) []render.SummaryFi
 	}
 
 	// Versioning (if fetched)
-	if b.Versioning != "" {
+	if b.VersioningStatus == enrichment.Configured && b.Versioning != "" {
 		fields = append(fields, render.SummaryField{Label: "Versioning", Value: b.Versioning})
+	} else if b.VersioningStatus == enrichment.AccessDenied || b.VersioningStatus == enrichment.FetchFailed {
+		fields = append(fields, render.SummaryField{Label: "Versioning", Value: enrichment.Display(b.VersioningStatus)})
 	}
 
 	// Encryption (if fetched)
 	if b.EncryptionEnabled {
 		fields = append(fields, render.SummaryField{Label: "Encryption", Value: b.EncryptionAlgorithm})
+	} else if b.EncryptionStatus == enrichment.AccessDenied || b.EncryptionStatus == enrichment.FetchFailed {
+		fields = append(fields, render.SummaryField{Label: "Encryption", Value: enrichment.Display(b.EncryptionStatus)})
 	}
 
 	// Public Access Block (if fetched)
@@ -217,6 +237,8 @@ func (r *BucketRenderer) RenderSummary(resource dao.Resource) []render.SummaryFi
 		} else {
 			fields = append(fields, render.SummaryField{Label: "Public Access", Value: "Partial"})
 		}
+	} else if b.PublicAccessBlockStatus == enrichment.AccessDenied || b.PublicAccessBlockStatus == enrichment.FetchFailed {
+		fields = append(fields, render.SummaryField{Label: "Public Access", Value: enrichment.Display(b.PublicAccessBlockStatus)})
 	}
 
 	// Object Lock (if enabled)

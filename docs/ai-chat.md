@@ -144,4 +144,4 @@ ai:
   save_sessions: true  # Default: false
 ```
 
-Sessions are stored in `~/.config/claws/sessions/`.
+Sessions are stored in `~/.config/claws/chat/sessions/`.

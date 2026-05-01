@@ -8,6 +8,12 @@ Set Width 1920
 Set Height 1080
 Set TypingSpeed 0.08
 
+Hide
+Type "export PS1='$ '; clear"
+Enter
+Sleep 200ms
+Show
+
 Sleep 0.5s
 Type "./claws -p prod,dev -r us-east-1,us-west-2"
 Sleep 1.5s

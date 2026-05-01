@@ -2,6 +2,7 @@ version: '3'
 
 vars:
   LOCALSTACK_CONTAINER: claws-localstack
+  LOCALSTACK_IMAGE: localstack/localstack:4.12.0
 
 tasks:
   build:
@@ -33,9 +34,9 @@ tasks:
 
   # LocalStack tasks
   localstack:start:
-    desc: Start LocalStack container
+    desc: Start pinned LocalStack container
     cmds:
-      - docker start {{.LOCALSTACK_CONTAINER}} 2>/dev/null || docker run -d --name {{.LOCALSTACK_CONTAINER}} -p 4566:4566 localstack/localstack:4.12.0
+      - docker start {{.LOCALSTACK_CONTAINER}} 2>/dev/null || docker run -d --name {{.LOCALSTACK_CONTAINER}} -p 4566:4566 {{.LOCALSTACK_IMAGE}}
       - |
         echo "Waiting for LocalStack to be ready..."
         for i in $(seq 1 30); do
@@ -99,11 +100,11 @@ tasks:
       - ./claws
 
   demo:record:
-    desc: Record all demos (gif + screenshots) using VHS + LocalStack
+    desc: Record all demos (gif + screenshots) using host VHS + LocalStack
     deps: [build, localstack:start, localstack:demo-setup]
     preconditions:
-      - sh: '[ "$(uname -s)" = "Linux" ]'
-        msg: "demo:record requires Linux (--network host not supported on macOS/Windows)"
+      - sh: command -v vhs >/dev/null 2>&1
+        msg: "vhs is required. Install it locally before running demo recording tasks."
     cmds:
       - task: demo:record:gif
       - task: demo:record:themes
@@ -115,83 +116,101 @@ tasks:
     desc: Record demo.gif only
     deps: [build, localstack:start, localstack:demo-setup]
     preconditions:
-      - sh: '[ "$(uname -s)" = "Linux" ]'
-        msg: "demo:record requires Linux (--network host not supported on macOS/Windows)"
+      - sh: command -v vhs >/dev/null 2>&1
+        msg: "vhs is required. Install it locally before running demo recording tasks."
+    env:
+      AWS_ENDPOINT_URL: http://localhost:4566
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_EC2_METADATA_DISABLED: "true"
+      AWS_CONFIG_FILE: scripts/demo-aws-config/config
+      AWS_SHARED_CREDENTIALS_FILE: scripts/demo-aws-config/credentials
     cmds:
-      - |
-        docker run --rm --network host \
-          -v "$(pwd)":/vhs \
-          -v "$(pwd)/scripts/demo-aws-config:/root/.aws:ro" \
-          -e AWS_ENDPOINT_URL=http://localhost:4566 \
-          -e AWS_EC2_METADATA_DISABLED=true \
-          ghcr.io/charmbracelet/vhs docs/tapes/demo.tape
+      - vhs docs/tapes/demo.tape
 
   demo:record:themes:
     desc: Record theme screenshots only
     deps: [build, localstack:start, localstack:demo-setup]
     preconditions:
-      - sh: '[ "$(uname -s)" = "Linux" ]'
-        msg: "demo:record requires Linux (--network host not supported on macOS/Windows)"
+      - sh: command -v vhs >/dev/null 2>&1
+        msg: "vhs is required. Install it locally before running demo recording tasks."
+    env:
+      AWS_ENDPOINT_URL: http://localhost:4566
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_EC2_METADATA_DISABLED: "true"
+      AWS_CONFIG_FILE: scripts/demo-aws-config/config
+      AWS_SHARED_CREDENTIALS_FILE: scripts/demo-aws-config/credentials
     cmds:
-      - |
-        docker run --rm --network host \
-          -v "$(pwd)":/vhs \
-          -v "$(pwd)/scripts/demo-aws-config:/root/.aws:ro" \
-          -e AWS_ENDPOINT_URL=http://localhost:4566 \
-          -e AWS_EC2_METADATA_DISABLED=true \
-          ghcr.io/charmbracelet/vhs docs/tapes/themes.tape
+      - vhs docs/tapes/themes.tape
 
   demo:record:features:
     desc: Record feature screenshots only
     deps: [build, localstack:start, localstack:demo-setup]
     preconditions:
-      - sh: '[ "$(uname -s)" = "Linux" ]'
-        msg: "demo:record requires Linux (--network host not supported on macOS/Windows)"
+      - sh: command -v vhs >/dev/null 2>&1
+        msg: "vhs is required. Install it locally before running demo recording tasks."
+    env:
+      AWS_ENDPOINT_URL: http://localhost:4566
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_EC2_METADATA_DISABLED: "true"
+      AWS_CONFIG_FILE: scripts/demo-aws-config/config
+      AWS_SHARED_CREDENTIALS_FILE: scripts/demo-aws-config/credentials
     cmds:
-      - |
-        docker run --rm --network host \
-          -v "$(pwd)":/vhs \
-          -v "$(pwd)/scripts/demo-aws-config:/root/.aws:ro" \
-          -e AWS_ENDPOINT_URL=http://localhost:4566 \
-          -e AWS_EC2_METADATA_DISABLED=true \
-          ghcr.io/charmbracelet/vhs docs/tapes/features.tape
+      - vhs docs/tapes/features.tape
 
   demo:record:theme-light:
     desc: Record light theme screenshot (requires white terminal background)
     deps: [build, localstack:start, localstack:demo-setup]
     preconditions:
-      - sh: '[ "$(uname -s)" = "Linux" ]'
-        msg: "demo:record requires Linux (--network host not supported on macOS/Windows)"
+      - sh: command -v vhs >/dev/null 2>&1
+        msg: "vhs is required. Install it locally before running demo recording tasks."
+    env:
+      AWS_ENDPOINT_URL: http://localhost:4566
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_EC2_METADATA_DISABLED: "true"
+      AWS_CONFIG_FILE: scripts/demo-aws-config/config
+      AWS_SHARED_CREDENTIALS_FILE: scripts/demo-aws-config/credentials
     cmds:
-      - |
-        docker run --rm --network host \
-          -v "$(pwd)":/vhs \
-          -v "$(pwd)/scripts/demo-aws-config:/root/.aws:ro" \
-          -e AWS_ENDPOINT_URL=http://localhost:4566 \
-          -e AWS_EC2_METADATA_DISABLED=true \
-          ghcr.io/charmbracelet/vhs docs/tapes/theme-light.tape
+      - vhs docs/tapes/theme-light.tape
 
   demo:record:command-mode:
     desc: Record command mode suggestion/completion test
     deps: [build, localstack:start, localstack:demo-setup]
     preconditions:
-      - sh: '[ "$(uname -s)" = "Linux" ]'
-        msg: "demo:record requires Linux (--network host not supported on macOS/Windows)"
+      - sh: command -v vhs >/dev/null 2>&1
+        msg: "vhs is required. Install it locally before running demo recording tasks."
+    env:
+      AWS_ENDPOINT_URL: http://localhost:4566
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_EC2_METADATA_DISABLED: "true"
+      AWS_CONFIG_FILE: scripts/demo-aws-config/config
+      AWS_SHARED_CREDENTIALS_FILE: scripts/demo-aws-config/credentials
     cmds:
-      - |
-        docker run --rm --network host \
-          -v "$(pwd)":/vhs \
-          -v "$(pwd)/scripts/demo-aws-config:/root/.aws:ro" \
-          -e AWS_ENDPOINT_URL=http://localhost:4566 \
-          -e AWS_EC2_METADATA_DISABLED=true \
-          ghcr.io/charmbracelet/vhs docs/tapes/command-mode.tape
+      - vhs docs/tapes/command-mode.tape
 
   test:vhs:
-    desc: Run all VHS tapes as integration tests
+    desc: Run all VHS tapes as integration tests using host VHS
     deps: [build, localstack:start, localstack:demo-setup]
     preconditions:
-      - sh: '[ "$(uname -s)" = "Linux" ]'
-        msg: "test:vhs requires Linux (--network host not supported on macOS/Windows)"
+      - sh: command -v vhs >/dev/null 2>&1
+        msg: "vhs is required. Install it locally before running VHS integration tests."
+    env:
+      AWS_ENDPOINT_URL: http://localhost:4566
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_EC2_METADATA_DISABLED: "true"
+      AWS_CONFIG_FILE: scripts/demo-aws-config/config
+      AWS_SHARED_CREDENTIALS_FILE: scripts/demo-aws-config/credentials
     cmds:
       - |
         set -e
@@ -199,12 +218,7 @@ tasks:
           echo "=========================================="
           echo "Running: $tape"
           echo "=========================================="
-          docker run --rm --network host \
-            -v "$(pwd)":/vhs \
-            -v "$(pwd)/scripts/demo-aws-config:/root/.aws:ro" \
-            -e AWS_ENDPOINT_URL=http://localhost:4566 \
-            -e AWS_EC2_METADATA_DISABLED=true \
-            ghcr.io/charmbracelet/vhs "$tape"
+          vhs "$tape"
         done
 
   test-localstack:

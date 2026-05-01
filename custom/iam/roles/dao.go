@@ -8,6 +8,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	"github.com/clawscli/claws/internal/enrichment"
 	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
@@ -96,11 +97,17 @@ func (d *RoleDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 	// Fetch attached policies
 	if policies, err := d.client.ListAttachedRolePolicies(ctx, &iam.ListAttachedRolePoliciesInput{RoleName: &id}); err == nil {
 		res.AttachedPolicies = policies.AttachedPolicies
+		res.AttachedPoliciesStatus = enrichment.Fetched
+	} else {
+		res.AttachedPoliciesStatus = enrichment.FailureStatus(err)
 	}
 
 	// Fetch inline policy names
 	if inline, err := d.client.ListRolePolicies(ctx, &iam.ListRolePoliciesInput{RoleName: &id}); err == nil {
 		res.InlinePolicies = inline.PolicyNames
+		res.InlinePoliciesStatus = enrichment.Fetched
+	} else {
+		res.InlinePoliciesStatus = enrichment.FailureStatus(err)
 	}
 
 	return res, nil
@@ -125,9 +132,11 @@ func (d *RoleDAO) Delete(ctx context.Context, id string) error {
 // RoleResource wraps an IAM Role
 type RoleResource struct {
 	dao.BaseResource
-	Item             types.Role
-	AttachedPolicies []types.AttachedPolicy
-	InlinePolicies   []string
+	Item                   types.Role
+	AttachedPolicies       []types.AttachedPolicy
+	InlinePolicies         []string
+	AttachedPoliciesStatus enrichment.Status
+	InlinePoliciesStatus   enrichment.Status
 }
 
 // NewRoleResource creates a new RoleResource

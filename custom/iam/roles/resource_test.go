@@ -1,11 +1,14 @@
 package roles
 
 import (
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/iam/types"
+
+	"github.com/clawscli/claws/internal/enrichment"
 )
 
 func TestNewRoleResource(t *testing.T) {
@@ -50,6 +53,24 @@ func TestNewRoleResource(t *testing.T) {
 	tags := resource.GetTags()
 	if tags["Environment"] != "prod" {
 		t.Errorf("GetTags()[Environment] = %q, want %q", tags["Environment"], "prod")
+	}
+}
+
+func TestRoleRendererShowsUnknownForFailedPolicyEnrichment(t *testing.T) {
+	role := types.Role{RoleName: aws.String("my-role")}
+	resource := NewRoleResource(role)
+	resource.AttachedPoliciesStatus = enrichment.FetchFailed
+	resource.InlinePoliciesStatus = enrichment.AccessDenied
+
+	detail := (&RoleRenderer{}).RenderDetail(resource)
+
+	for _, want := range []string{"Unknown (fetch failed)", "Unknown (access denied)"} {
+		if !strings.Contains(detail, want) {
+			t.Fatalf("expected %q in detail, got %q", want, detail)
+		}
+	}
+	if strings.Contains(detail, "Policies: Empty") {
+		t.Fatalf("fetch failures must not render as empty policies: %q", detail)
 	}
 }
 

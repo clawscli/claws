@@ -276,9 +276,7 @@ func TestGetProjectRoot(t *testing.T) {
 			t.Fatalf("GetProjectRoot() error = %v", err)
 		}
 
-		if root != tmpDir {
-			t.Errorf("GetProjectRoot() = %q, want %q", root, tmpDir)
-		}
+		assertSamePath(t, root, tmpDir)
 	})
 
 	t.Run("goes up two levels from cmd/claws", func(t *testing.T) {
@@ -303,10 +301,27 @@ func TestGetProjectRoot(t *testing.T) {
 		}
 
 		expected := filepath.Join(cmdClawsDir, "..", "..")
-		if root != expected {
-			t.Errorf("GetProjectRoot() = %q, want %q", root, expected)
-		}
+		assertSamePath(t, root, expected)
 	})
+}
+
+func assertSamePath(t *testing.T, got, want string) {
+	t.Helper()
+
+	normalizedGot := normalizePath(got)
+	normalizedWant := normalizePath(want)
+	if normalizedGot != normalizedWant {
+		t.Errorf("path = %q (%q), want %q (%q)", got, normalizedGot, want, normalizedWant)
+	}
+}
+
+func normalizePath(path string) string {
+	cleaned := filepath.Clean(path)
+	resolved, err := filepath.EvalSymlinks(cleaned)
+	if err == nil {
+		return resolved
+	}
+	return cleaned
 }
 
 func TestReadPackageName(t *testing.T) {
