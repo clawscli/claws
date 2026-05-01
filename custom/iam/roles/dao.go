@@ -96,11 +96,17 @@ func (d *RoleDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 	// Fetch attached policies
 	if policies, err := d.client.ListAttachedRolePolicies(ctx, &iam.ListAttachedRolePoliciesInput{RoleName: &id}); err == nil {
 		res.AttachedPolicies = policies.AttachedPolicies
+		res.AttachedPoliciesStatus = EnrichmentFetched
+	} else {
+		res.AttachedPoliciesStatus = enrichmentFailureStatus(err)
 	}
 
 	// Fetch inline policy names
 	if inline, err := d.client.ListRolePolicies(ctx, &iam.ListRolePoliciesInput{RoleName: &id}); err == nil {
 		res.InlinePolicies = inline.PolicyNames
+		res.InlinePoliciesStatus = EnrichmentFetched
+	} else {
+		res.InlinePoliciesStatus = enrichmentFailureStatus(err)
 	}
 
 	return res, nil
@@ -125,9 +131,27 @@ func (d *RoleDAO) Delete(ctx context.Context, id string) error {
 // RoleResource wraps an IAM Role
 type RoleResource struct {
 	dao.BaseResource
-	Item             types.Role
-	AttachedPolicies []types.AttachedPolicy
-	InlinePolicies   []string
+	Item                   types.Role
+	AttachedPolicies       []types.AttachedPolicy
+	InlinePolicies         []string
+	AttachedPoliciesStatus EnrichmentStatus
+	InlinePoliciesStatus   EnrichmentStatus
+}
+
+type EnrichmentStatus string
+
+const (
+	EnrichmentUnknown      EnrichmentStatus = ""
+	EnrichmentFetched      EnrichmentStatus = "fetched"
+	EnrichmentAccessDenied EnrichmentStatus = "access_denied"
+	EnrichmentFetchFailed  EnrichmentStatus = "fetch_failed"
+)
+
+func enrichmentFailureStatus(err error) EnrichmentStatus {
+	if apperrors.IsAccessDenied(err) {
+		return EnrichmentAccessDenied
+	}
+	return EnrichmentFetchFailed
 }
 
 // NewRoleResource creates a new RoleResource

@@ -124,7 +124,16 @@ func (r *RoleRenderer) RenderDetail(resource dao.Resource) string {
 
 	// Attached Policies
 	d.Section("Attached Policies")
-	if len(rr.AttachedPolicies) == 0 && len(rr.InlinePolicies) == 0 {
+	managedFailed := isEnrichmentFailure(rr.AttachedPoliciesStatus)
+	inlineFailed := isEnrichmentFailure(rr.InlinePoliciesStatus)
+	if managedFailed || inlineFailed {
+		if managedFailed {
+			d.Field("Managed Policies", enrichmentStatusDisplay(rr.AttachedPoliciesStatus))
+		}
+		if inlineFailed {
+			d.Field("Inline Policies", enrichmentStatusDisplay(rr.InlinePoliciesStatus))
+		}
+	} else if len(rr.AttachedPolicies) == 0 && len(rr.InlinePolicies) == 0 {
 		d.Field("Policies", render.Empty)
 	} else {
 		if len(rr.AttachedPolicies) > 0 {
@@ -159,6 +168,21 @@ func (r *RoleRenderer) RenderDetail(resource dao.Resource) string {
 	d.Tags(appaws.TagsToMap(rr.Item.Tags))
 
 	return d.String()
+}
+
+func isEnrichmentFailure(status EnrichmentStatus) bool {
+	return status == EnrichmentAccessDenied || status == EnrichmentFetchFailed
+}
+
+func enrichmentStatusDisplay(status EnrichmentStatus) string {
+	switch status {
+	case EnrichmentAccessDenied:
+		return "Unknown (access denied)"
+	case EnrichmentFetchFailed:
+		return "Unknown (fetch failed)"
+	default:
+		return "Unknown"
+	}
 }
 
 // RenderSummary returns summary fields for the header panel
