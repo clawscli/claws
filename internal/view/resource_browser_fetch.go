@@ -130,7 +130,13 @@ func (r *ResourceBrowser) fetchMultiProfileResources(profiles []config.ProfileSe
 	var keys []profileRegionKey
 	for _, sel := range profiles {
 		for _, region := range regions {
-			keys = append(keys, profileRegionKey{Profile: sel.ID(), Region: region})
+			key := profileRegionKey{Profile: sel.ID(), Region: region}
+			if existingTokens != nil {
+				if _, ok := existingTokens[key]; !ok {
+					continue
+				}
+			}
+			keys = append(keys, key)
 		}
 	}
 

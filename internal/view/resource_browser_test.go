@@ -3,10 +3,12 @@ package view
 import (
 	"context"
 	"strings"
+	"sync"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/registry"
 )
@@ -604,6 +606,73 @@ func TestFetchParallelAllErrors(t *testing.T) {
 	if len(result.errors) != 2 {
 		t.Errorf("got %d errors, want 2", len(result.errors))
 	}
+}
+
+func TestFetchMultiProfileResourcesSkipsPairsWithoutNextToken(t *testing.T) {
+	recorder := &recordingPaginatedDAO{BaseDAO: dao.NewBaseDAO("svc", "items")}
+	reg := registry.New()
+	reg.RegisterCustom("svc", "items", registry.Entry{
+		DAOFactory: func(context.Context) (dao.DAO, error) {
+			return recorder, nil
+		},
+	})
+
+	profiles := []config.ProfileSelection{config.NamedProfile("p1"), config.NamedProfile("p2")}
+	regions := []string{"us-east-1", "us-west-2"}
+	config.Global().SetAccountIDs(map[string]string{"p1": "111111111111", "p2": "222222222222"})
+
+	browser := &ResourceBrowser{
+		ctx:          context.Background(),
+		registry:     reg,
+		service:      "svc",
+		resourceType: "items",
+		pageSize:     10,
+	}
+
+	result := browser.fetchMultiProfileResources(profiles, regions, map[profileRegionKey]string{
+		{Profile: "p1", Region: "us-east-1"}: "next-p1-r1",
+	})
+
+	if len(result.errors) != 0 {
+		t.Fatalf("unexpected errors: %v", result.errors)
+	}
+	if got := recorder.tokens(); len(got) != 1 || got[0] != "next-p1-r1" {
+		t.Fatalf("ListPage tokens = %v, want only [next-p1-r1]", got)
+	}
+	if len(result.resources) != 1 {
+		t.Fatalf("resources = %d, want 1", len(result.resources))
+	}
+}
+
+type recordingPaginatedDAO struct {
+	dao.BaseDAO
+	mu         sync.Mutex
+	pageTokens []string
+}
+
+func (d *recordingPaginatedDAO) List(context.Context) ([]dao.Resource, error) {
+	return nil, nil
+}
+
+func (d *recordingPaginatedDAO) Get(context.Context, string) (dao.Resource, error) {
+	return nil, nil
+}
+
+func (d *recordingPaginatedDAO) Delete(context.Context, string) error {
+	return nil
+}
+
+func (d *recordingPaginatedDAO) ListPage(_ context.Context, _ int, pageToken string) ([]dao.Resource, string, error) {
+	d.mu.Lock()
+	d.pageTokens = append(d.pageTokens, pageToken)
+	d.mu.Unlock()
+	return []dao.Resource{&mockResource{id: pageToken, name: pageToken}}, "", nil
+}
+
+func (d *recordingPaginatedDAO) tokens() []string {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return append([]string(nil), d.pageTokens...)
 }
 
 func TestResourceBrowserCopyID(t *testing.T) {
