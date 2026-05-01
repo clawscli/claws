@@ -88,6 +88,11 @@ func (d *PolicyDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		})
 		if err == nil && versionOutput.PolicyVersion != nil && versionOutput.PolicyVersion.Document != nil {
 			res.PolicyDocument = *versionOutput.PolicyVersion.Document
+			res.PolicyDocumentStatus = EnrichmentFetched
+		} else if err != nil {
+			res.PolicyDocumentStatus = enrichmentFailureStatus(err)
+		} else {
+			res.PolicyDocumentStatus = EnrichmentFetched
 		}
 	}
 
@@ -96,6 +101,9 @@ func (d *PolicyDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		res.AttachedUsers = entities.PolicyUsers
 		res.AttachedRoles = entities.PolicyRoles
 		res.AttachedGroups = entities.PolicyGroups
+		res.AttachedEntitiesStatus = EnrichmentFetched
+	} else {
+		res.AttachedEntitiesStatus = enrichmentFailureStatus(err)
 	}
 
 	return res, nil
@@ -120,11 +128,29 @@ func (d *PolicyDAO) Delete(ctx context.Context, id string) error {
 // PolicyResource wraps an IAM Policy
 type PolicyResource struct {
 	dao.BaseResource
-	Item           types.Policy
-	PolicyDocument string
-	AttachedUsers  []types.PolicyUser
-	AttachedRoles  []types.PolicyRole
-	AttachedGroups []types.PolicyGroup
+	Item                   types.Policy
+	PolicyDocument         string
+	PolicyDocumentStatus   EnrichmentStatus
+	AttachedUsers          []types.PolicyUser
+	AttachedRoles          []types.PolicyRole
+	AttachedGroups         []types.PolicyGroup
+	AttachedEntitiesStatus EnrichmentStatus
+}
+
+type EnrichmentStatus string
+
+const (
+	EnrichmentUnknown      EnrichmentStatus = ""
+	EnrichmentFetched      EnrichmentStatus = "fetched"
+	EnrichmentAccessDenied EnrichmentStatus = "access_denied"
+	EnrichmentFetchFailed  EnrichmentStatus = "fetch_failed"
+)
+
+func enrichmentFailureStatus(err error) EnrichmentStatus {
+	if apperrors.IsAccessDenied(err) {
+		return EnrichmentAccessDenied
+	}
+	return EnrichmentFetchFailed
 }
 
 // NewPolicyResource creates a new PolicyResource

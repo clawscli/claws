@@ -131,7 +131,10 @@ func (r *PolicyRenderer) RenderDetail(resource dao.Resource) string {
 	}
 
 	// Attached Entities
-	if len(pr.AttachedUsers) > 0 || len(pr.AttachedRoles) > 0 || len(pr.AttachedGroups) > 0 {
+	if isEnrichmentFailure(pr.AttachedEntitiesStatus) {
+		d.Section("Attached To")
+		d.Field("Entities", enrichmentStatusDisplay(pr.AttachedEntitiesStatus))
+	} else if len(pr.AttachedUsers) > 0 || len(pr.AttachedRoles) > 0 || len(pr.AttachedGroups) > 0 {
 		d.Section("Attached To")
 		if len(pr.AttachedUsers) > 0 {
 			d.Field("Users", fmt.Sprintf("%d", len(pr.AttachedUsers)))
@@ -154,7 +157,10 @@ func (r *PolicyRenderer) RenderDetail(resource dao.Resource) string {
 	}
 
 	// Policy Document
-	if pr.PolicyDocument != "" {
+	if isEnrichmentFailure(pr.PolicyDocumentStatus) {
+		d.Section("Policy Document")
+		d.Field("Document", enrichmentStatusDisplay(pr.PolicyDocumentStatus))
+	} else if pr.PolicyDocument != "" {
 		d.Section("Policy Document")
 		d.Line(formatPolicyDoc(pr.PolicyDocument))
 	}
@@ -163,6 +169,21 @@ func (r *PolicyRenderer) RenderDetail(resource dao.Resource) string {
 	d.Tags(appaws.TagsToMap(pr.Item.Tags))
 
 	return d.String()
+}
+
+func isEnrichmentFailure(status EnrichmentStatus) bool {
+	return status == EnrichmentAccessDenied || status == EnrichmentFetchFailed
+}
+
+func enrichmentStatusDisplay(status EnrichmentStatus) string {
+	switch status {
+	case EnrichmentAccessDenied:
+		return "Unknown (access denied)"
+	case EnrichmentFetchFailed:
+		return "Unknown (fetch failed)"
+	default:
+		return "Unknown"
+	}
 }
 
 // formatPolicyDoc decodes URL-encoded policy and formats it as indented JSON
