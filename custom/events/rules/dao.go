@@ -2,6 +2,7 @@ package rules
 
 import (
 	"context"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/service/eventbridge"
 	"github.com/aws/aws-sdk-go-v2/service/eventbridge/types"
@@ -61,8 +62,12 @@ func (d *RuleDAO) List(ctx context.Context) ([]dao.Resource, error) {
 }
 
 func (d *RuleDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
+	ruleName, eventBusName := parseRuleID(id)
 	input := &eventbridge.DescribeRuleInput{
-		Name: &id,
+		Name: &ruleName,
+	}
+	if eventBusName != "" {
+		input.EventBusName = &eventBusName
 	}
 
 	output, err := d.client.DescribeRule(ctx, input)
@@ -90,7 +95,7 @@ func (d *RuleDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 
 	// Fetch targets
 	targetsInput := &eventbridge.ListTargetsByRuleInput{
-		Rule:         &id,
+		Rule:         &ruleName,
 		EventBusName: output.EventBusName,
 	}
 	if targetsOutput, err := d.client.ListTargetsByRule(ctx, targetsInput); err == nil {
@@ -101,9 +106,13 @@ func (d *RuleDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 }
 
 func (d *RuleDAO) Delete(ctx context.Context, id string) error {
+	ruleName, eventBusName := parseRuleID(id)
 	// First, need to remove all targets
 	targetsInput := &eventbridge.ListTargetsByRuleInput{
-		Rule: &id,
+		Rule: &ruleName,
+	}
+	if eventBusName != "" {
+		targetsInput.EventBusName = &eventBusName
 	}
 	targetsOutput, err := d.client.ListTargetsByRule(ctx, targetsInput)
 	if err == nil && len(targetsOutput.Targets) > 0 {
@@ -114,10 +123,14 @@ func (d *RuleDAO) Delete(ctx context.Context, id string) error {
 			}
 		}
 		if len(targetIds) > 0 {
-			_, err = d.client.RemoveTargets(ctx, &eventbridge.RemoveTargetsInput{
-				Rule: &id,
+			removeInput := &eventbridge.RemoveTargetsInput{
+				Rule: &ruleName,
 				Ids:  targetIds,
-			})
+			}
+			if eventBusName != "" {
+				removeInput.EventBusName = &eventBusName
+			}
+			_, err = d.client.RemoveTargets(ctx, removeInput)
 			if err != nil {
 				return apperrors.Wrapf(err, "remove targets for rule %s", id)
 			}
@@ -125,7 +138,10 @@ func (d *RuleDAO) Delete(ctx context.Context, id string) error {
 	}
 
 	input := &eventbridge.DeleteRuleInput{
-		Name: &id,
+		Name: &ruleName,
+	}
+	if eventBusName != "" {
+		input.EventBusName = &eventBusName
 	}
 
 	_, err = d.client.DeleteRule(ctx, input)
@@ -147,10 +163,12 @@ type RuleResource struct {
 // NewRuleResource creates a new RuleResource
 func NewRuleResource(rule types.Rule) *RuleResource {
 	name := appaws.Str(rule.Name)
+	eventBusName := appaws.Str(rule.EventBusName)
+	id := ruleID(name, eventBusName)
 
 	return &RuleResource{
 		BaseResource: dao.BaseResource{
-			ID:   name,
+			ID:   id,
 			Name: name,
 			ARN:  appaws.Str(rule.Arn),
 			Tags: nil,
@@ -158,6 +176,21 @@ func NewRuleResource(rule types.Rule) *RuleResource {
 		},
 		Item: rule,
 	}
+}
+
+func ruleID(name, eventBusName string) string {
+	if eventBusName == "" {
+		return name
+	}
+	return eventBusName + "/" + name
+}
+
+func parseRuleID(id string) (name, eventBusName string) {
+	idx := strings.LastIndex(id, "/")
+	if idx < 0 {
+		return id, ""
+	}
+	return id[idx+1:], id[:idx]
 }
 
 // ARN returns the rule ARN
