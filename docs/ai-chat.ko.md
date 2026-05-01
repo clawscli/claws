@@ -144,4 +144,4 @@ ai:
   save_sessions: true  # 기본값: false
 ```
 
-세션은 `~/.config/claws/sessions/`에 저장됩니다.
+세션은 `~/.config/claws/chat/sessions/`에 저장됩니다.
