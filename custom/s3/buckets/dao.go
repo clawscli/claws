@@ -2,11 +2,13 @@ package buckets
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/smithy-go"
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
@@ -102,6 +104,39 @@ func (d *BucketDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 	return resource, nil
 }
 
+type EnrichmentStatus string
+
+const (
+	EnrichmentUnknown       EnrichmentStatus = ""
+	EnrichmentConfigured    EnrichmentStatus = "configured"
+	EnrichmentNotConfigured EnrichmentStatus = "not_configured"
+	EnrichmentAccessDenied  EnrichmentStatus = "access_denied"
+	EnrichmentFetchFailed   EnrichmentStatus = "fetch_failed"
+)
+
+func enrichmentFailureStatus(err error) EnrichmentStatus {
+	if apperrors.IsAccessDenied(err) {
+		return EnrichmentAccessDenied
+	}
+	if isNotConfiguredError(err) {
+		return EnrichmentNotConfigured
+	}
+	return EnrichmentFetchFailed
+}
+
+func isNotConfiguredError(err error) bool {
+	var apiErr smithy.APIError
+	if !errors.As(err, &apiErr) {
+		return false
+	}
+	switch apiErr.ErrorCode() {
+	case "ServerSideEncryptionConfigurationNotFoundError", "NoSuchPublicAccessBlockConfiguration":
+		return true
+	default:
+		return false
+	}
+}
+
 // getRegionClient creates an S3 client for the specified region
 func (d *BucketDAO) getRegionClient(ctx context.Context, region string) (*s3.Client, error) {
 	cfg, err := appaws.NewConfigWithRegion(ctx, region)
@@ -117,12 +152,15 @@ func (d *BucketDAO) fetchVersioning(ctx context.Context, client *s3.Client, buck
 		Bucket: &bucket,
 	})
 	if err != nil {
+		r.VersioningStatus = enrichmentFailureStatus(err)
 		return
 	}
 	if output.Status != "" {
 		r.Versioning = string(output.Status)
+		r.VersioningStatus = EnrichmentConfigured
 	} else {
 		r.Versioning = "Disabled"
+		r.VersioningStatus = EnrichmentNotConfigured
 	}
 	if output.MFADelete != "" {
 		r.MFADelete = string(output.MFADelete)
@@ -135,10 +173,12 @@ func (d *BucketDAO) fetchEncryption(ctx context.Context, client *s3.Client, buck
 		Bucket: &bucket,
 	})
 	if err != nil {
+		r.EncryptionStatus = enrichmentFailureStatus(err)
 		return
 	}
 	if output.ServerSideEncryptionConfiguration != nil && len(output.ServerSideEncryptionConfiguration.Rules) > 0 {
 		r.EncryptionEnabled = true
+		r.EncryptionStatus = EnrichmentConfigured
 		rule := output.ServerSideEncryptionConfiguration.Rules[0]
 		if rule.ApplyServerSideEncryptionByDefault != nil {
 			r.EncryptionAlgorithm = string(rule.ApplyServerSideEncryptionByDefault.SSEAlgorithm)
@@ -149,6 +189,8 @@ func (d *BucketDAO) fetchEncryption(ctx context.Context, client *s3.Client, buck
 		if rule.BucketKeyEnabled != nil {
 			r.BucketKeyEnabled = *rule.BucketKeyEnabled
 		}
+	} else {
+		r.EncryptionStatus = EnrichmentNotConfigured
 	}
 }
 
@@ -158,9 +200,11 @@ func (d *BucketDAO) fetchPublicAccessBlock(ctx context.Context, client *s3.Clien
 		Bucket: &bucket,
 	})
 	if err != nil {
+		r.PublicAccessBlockStatus = enrichmentFailureStatus(err)
 		return
 	}
 	if output.PublicAccessBlockConfiguration != nil {
+		r.PublicAccessBlockStatus = EnrichmentConfigured
 		cfg := output.PublicAccessBlockConfiguration
 		r.PublicAccessBlock = &PublicAccessBlockInfo{
 			BlockPublicAcls:       cfg.BlockPublicAcls != nil && *cfg.BlockPublicAcls,
@@ -168,6 +212,8 @@ func (d *BucketDAO) fetchPublicAccessBlock(ctx context.Context, client *s3.Clien
 			BlockPublicPolicy:     cfg.BlockPublicPolicy != nil && *cfg.BlockPublicPolicy,
 			RestrictPublicBuckets: cfg.RestrictPublicBuckets != nil && *cfg.RestrictPublicBuckets,
 		}
+	} else {
+		r.PublicAccessBlockStatus = EnrichmentNotConfigured
 	}
 }
 
@@ -245,17 +291,20 @@ type BucketResource struct {
 	CreationDate time.Time
 
 	// Extended info (fetched in Get() only)
-	Versioning          string
-	MFADelete           string
-	EncryptionEnabled   bool
-	EncryptionAlgorithm string
-	EncryptionKMSKeyID  string
-	BucketKeyEnabled    bool
-	PublicAccessBlock   *PublicAccessBlockInfo
-	LifecycleRulesCount int
-	ObjectLockEnabled   bool
-	ObjectLockMode      string
-	ObjectLockRetention string
+	Versioning              string
+	VersioningStatus        EnrichmentStatus
+	MFADelete               string
+	EncryptionEnabled       bool
+	EncryptionStatus        EnrichmentStatus
+	EncryptionAlgorithm     string
+	EncryptionKMSKeyID      string
+	BucketKeyEnabled        bool
+	PublicAccessBlock       *PublicAccessBlockInfo
+	PublicAccessBlockStatus EnrichmentStatus
+	LifecycleRulesCount     int
+	ObjectLockEnabled       bool
+	ObjectLockMode          string
+	ObjectLockRetention     string
 }
 
 // PublicAccessBlockInfo holds public access block settings
