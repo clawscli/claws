@@ -152,6 +152,7 @@ func (v *TagSearchView) fetchTaggedResources(regions []string, existingTokens ma
 	defer cancel()
 
 	results := make(chan regionResult, len(regions))
+	sem := make(chan struct{}, config.File().MaxConcurrentFetches())
 	var wg sync.WaitGroup
 
 	tagFilters := v.parseTagFilters()
@@ -160,6 +161,9 @@ func (v *TagSearchView) fetchTaggedResources(regions []string, existingTokens ma
 		wg.Add(1)
 		go func(region string) {
 			defer wg.Done()
+
+			sem <- struct{}{}
+			defer func() { <-sem }()
 
 			regionCtx := aws.WithRegionOverride(ctx, region)
 			cfg, err := aws.NewConfig(regionCtx)
