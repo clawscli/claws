@@ -759,11 +759,119 @@ func formatResourceDetail(r dao.Resource) string {
 	}
 
 	if raw := r.Raw(); raw != nil {
-		data, err := json.MarshalIndent(raw, "", "  ")
+		data, err := json.MarshalIndent(redactSensitiveRaw(raw), "", "  ")
 		if err == nil {
 			result += fmt.Sprintf("\nRaw Data:\n%s\n", string(data))
 		}
 	}
 
 	return result
+}
+
+func redactSensitiveRaw(raw any) any {
+	data, err := json.Marshal(raw)
+	if err != nil {
+		return raw
+	}
+
+	var decoded any
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return raw
+	}
+	return redactSensitiveValue(decoded)
+}
+
+func redactSensitiveValue(v any) any {
+	switch value := v.(type) {
+	case map[string]any:
+		redacted := make(map[string]any, len(value))
+		sensitiveRecord := hasSensitiveLabelField(value)
+		for key, nested := range value {
+			normalizedKey := normalizeRawKey(key)
+			if sensitiveRecord && (isSensitiveLabelField(normalizedKey) || isSensitiveValueField(normalizedKey)) {
+				redacted[key] = "[REDACTED]"
+				continue
+			}
+			if isSensitiveRawKey(key) {
+				redacted[key] = "[REDACTED]"
+				continue
+			}
+			redacted[key] = redactSensitiveValue(nested)
+		}
+		return redacted
+	case []any:
+		redacted := make([]any, len(value))
+		for i, nested := range value {
+			redacted[i] = redactSensitiveValue(nested)
+		}
+		return redacted
+	default:
+		return value
+	}
+}
+
+func hasSensitiveLabelField(value map[string]any) bool {
+	for key, nested := range value {
+		if !isSensitiveLabelField(normalizeRawKey(key)) {
+			continue
+		}
+		label, ok := nested.(string)
+		if ok && isSensitiveRawKey(label) {
+			return true
+		}
+	}
+	return false
+}
+
+func isSensitiveLabelField(normalizedKey string) bool {
+	switch normalizedKey {
+	case "name", "key", "parameterkey", "outputkey":
+		return true
+	default:
+		return false
+	}
+}
+
+func isSensitiveValueField(normalizedKey string) bool {
+	switch normalizedKey {
+	case "value", "parametervalue", "outputvalue", "resolvedvalue":
+		return true
+	default:
+		return false
+	}
+}
+
+func isSensitiveRawKey(key string) bool {
+	normalized := normalizeRawKey(key)
+	sensitiveKeys := []string{
+		"authorization",
+		"clientsecret",
+		"credential",
+		"credentials",
+		"environment",
+		"environmentvariables",
+		"privatekey",
+		"variables",
+		"secret",
+		"secrets",
+		"secretstring",
+		"secretbinary",
+		"password",
+		"token",
+		"apikey",
+		"accesskey",
+		"accesskeyid",
+		"secretaccesskey",
+		"sessiontoken",
+	}
+	for _, sensitive := range sensitiveKeys {
+		if normalized == sensitive || strings.Contains(normalized, sensitive) {
+			return true
+		}
+	}
+	return false
+}
+
+func normalizeRawKey(key string) string {
+	return strings.ToLower(strings.ReplaceAll(strings.ReplaceAll(key, "_", ""), "-", ""))
 }

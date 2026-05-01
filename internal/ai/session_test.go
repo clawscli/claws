@@ -3,6 +3,7 @@ package ai
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -154,6 +155,53 @@ func TestSessionManagerWithPersistence(t *testing.T) {
 	}
 	if loaded.Context.Service != "lambda" {
 		t.Errorf("expected service %q, got %q", "lambda", loaded.Context.Service)
+	}
+}
+
+func TestSessionPersistenceDoesNotContainRedactedSecrets(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
+
+	resource := &mockResource{
+		id:   "func-1",
+		name: "my-function",
+		raw: map[string]any{
+			"Environment": map[string]any{
+				"Variables": map[string]any{"TOKEN": "persist-me-not"},
+			},
+			"Outputs": []map[string]any{
+				{
+					"OutputKey":   "DB_PASSWORD",
+					"OutputValue": "persist-output-secret",
+				},
+			},
+		},
+	}
+	detail := formatResourceDetail(resource)
+	if strings.Contains(detail, "persist-me-not") || strings.Contains(detail, "persist-output-secret") {
+		t.Fatalf("detail output still contains secret: %q", detail)
+	}
+
+	sm := NewSessionManager(10, true)
+	session, err := sm.NewSession(&Context{Service: "lambda", ResourceType: "functions"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if err := sm.AddMessage(session, NewUserMessage(detail)); err != nil {
+		t.Fatalf("failed to add message: %v", err)
+	}
+
+	sessionFile := filepath.Join(tmpDir, ".config", "claws", "chat", "sessions", session.ID+".json")
+	data, err := os.ReadFile(sessionFile)
+	if err != nil {
+		t.Fatalf("failed to read session file: %v", err)
+	}
+	if strings.Contains(string(data), "persist-me-not") || strings.Contains(string(data), "TOKEN") ||
+		strings.Contains(string(data), "persist-output-secret") || strings.Contains(string(data), "DB_PASSWORD") {
+		t.Fatalf("session file contains secret data: %s", string(data))
+	}
+	if !strings.Contains(string(data), "[REDACTED]") {
+		t.Fatalf("session file should contain redaction marker: %s", string(data))
 	}
 }
 

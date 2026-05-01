@@ -311,6 +311,73 @@ func TestFormatResourceDetail(t *testing.T) {
 	}
 }
 
+func TestFormatResourceDetailRedactsSensitiveRawData(t *testing.T) {
+	resource := &mockResource{
+		id:   "func-1",
+		name: "my-function",
+		raw: map[string]any{
+			"FunctionName": "my-function",
+			"Environment": map[string]any{
+				"Variables": map[string]any{
+					"API_KEY": "super-secret-value",
+				},
+			},
+			"VpcConfig": map[string]any{
+				"VpcId": "vpc-123",
+			},
+		},
+	}
+
+	result := formatResourceDetail(resource)
+
+	if strings.Contains(result, "super-secret-value") || strings.Contains(result, "API_KEY") {
+		t.Fatalf("expected sensitive environment values to be redacted, got %q", result)
+	}
+	if !strings.Contains(result, "[REDACTED]") {
+		t.Fatalf("expected redaction marker, got %q", result)
+	}
+	if !strings.Contains(result, "vpc-123") {
+		t.Fatalf("expected non-sensitive raw fields to remain, got %q", result)
+	}
+}
+
+func TestFormatResourceDetailRedactsSensitiveLabelValueRecords(t *testing.T) {
+	resource := &mockResource{
+		id:   "stack-1",
+		name: "my-stack",
+		raw: map[string]any{
+			"Outputs": []map[string]any{
+				{
+					"OutputKey":   "DB_PASSWORD",
+					"OutputValue": "plain-secret-output",
+				},
+				{
+					"OutputKey":   "Endpoint",
+					"OutputValue": "https://example.com",
+				},
+			},
+			"Parameters": []map[string]any{
+				{
+					"ParameterKey":   "ApiToken",
+					"ParameterValue": "plain-secret-parameter",
+					"ResolvedValue":  "plain-secret-resolved",
+				},
+			},
+		},
+	}
+
+	result := formatResourceDetail(resource)
+
+	for _, secret := range []string{"DB_PASSWORD", "plain-secret-output", "ApiToken", "plain-secret-parameter", "plain-secret-resolved"} {
+		if strings.Contains(result, secret) {
+			t.Fatalf("expected sensitive label/value record data to be redacted, found %q in %q", secret, result)
+		}
+	}
+	if !strings.Contains(result, "https://example.com") {
+		t.Fatalf("expected non-sensitive output value to remain, got %q", result)
+	}
+}
+
 type mockResource struct {
 	id   string
 	name string
