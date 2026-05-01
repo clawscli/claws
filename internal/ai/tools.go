@@ -801,7 +801,7 @@ func redactSensitiveValue(v any) any {
 				continue
 			}
 			if isSensitiveRawKey(key) {
-				redacted["[REDACTED]"] = "[REDACTED]"
+				redacted[key] = "[REDACTED]"
 				continue
 			}
 			redacted[key] = redactSensitiveValue(nested)

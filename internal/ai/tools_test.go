@@ -330,8 +330,11 @@ func TestFormatResourceDetailRedactsSensitiveRawData(t *testing.T) {
 
 	result := formatResourceDetail(resource)
 
-	if strings.Contains(result, "super-secret-value") || strings.Contains(result, "API_KEY") {
+	if strings.Contains(result, "super-secret-value") {
 		t.Fatalf("expected sensitive environment values to be redacted, got %q", result)
+	}
+	if !strings.Contains(result, "API_KEY") {
+		t.Fatalf("expected sensitive key name to be preserved for context, got %q", result)
 	}
 	if !strings.Contains(result, "[REDACTED]") {
 		t.Fatalf("expected redaction marker, got %q", result)
@@ -410,6 +413,34 @@ func TestFormatResourceDetailKeepsNonSensitiveEnvironmentFields(t *testing.T) {
 	}
 	if strings.Contains(result, "secret-db-password") {
 		t.Fatalf("expected DBPassword value to be redacted, got %q", result)
+	}
+	if !strings.Contains(result, "DBPassword") {
+		t.Fatalf("expected sensitive key name to be preserved, got %q", result)
+	}
+}
+
+func TestFormatResourceDetailPreservesMultipleSensitiveKeyNames(t *testing.T) {
+	resource := &mockResource{
+		id:   "resource-1",
+		name: "resource",
+		raw: map[string]any{
+			"DBPassword":   "db-secret",
+			"ApiToken":     "api-secret",
+			"clientSecret": "client-secret",
+		},
+	}
+
+	result := formatResourceDetail(resource)
+
+	for _, key := range []string{"DBPassword", "ApiToken", "clientSecret"} {
+		if !strings.Contains(result, key) {
+			t.Fatalf("expected sensitive key %q to be preserved, got %q", key, result)
+		}
+	}
+	for _, secret := range []string{"db-secret", "api-secret", "client-secret"} {
+		if strings.Contains(result, secret) {
+			t.Fatalf("expected sensitive value %q to be redacted, got %q", secret, result)
+		}
 	}
 }
 
