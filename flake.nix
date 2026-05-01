@@ -14,6 +14,7 @@
           packages = with pkgs; [
             go_1_25
             go-task
+            gopls
             golangci-lint
           ];
 
