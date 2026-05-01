@@ -120,7 +120,7 @@ func (r *BucketRenderer) RenderDetail(resource dao.Resource) string {
 
 	// Encryption
 	d.Section("Server-Side Encryption")
-	if b.EncryptionStatus == enrichment.AccessDenied || b.EncryptionStatus == enrichment.FetchFailed || b.EncryptionStatus == enrichment.Unknown {
+	if enrichment.IsFailure(b.EncryptionStatus) {
 		d.Field("Status", enrichment.Display(b.EncryptionStatus))
 	} else if b.EncryptionEnabled {
 		d.Field("Status", "Enabled")
@@ -137,7 +137,7 @@ func (r *BucketRenderer) RenderDetail(resource dao.Resource) string {
 
 	// Public Access Block
 	d.Section("Block Public Access")
-	if b.PublicAccessBlockStatus == enrichment.AccessDenied || b.PublicAccessBlockStatus == enrichment.FetchFailed || b.PublicAccessBlockStatus == enrichment.Unknown {
+	if enrichment.IsFailure(b.PublicAccessBlockStatus) {
 		d.Field("Status", enrichment.Display(b.PublicAccessBlockStatus))
 	} else if b.PublicAccessBlock != nil {
 		pab := b.PublicAccessBlock
