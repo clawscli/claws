@@ -8,6 +8,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	"github.com/clawscli/claws/internal/enrichment"
 	"github.com/clawscli/claws/internal/render"
 )
 
@@ -131,9 +132,9 @@ func (r *PolicyRenderer) RenderDetail(resource dao.Resource) string {
 	}
 
 	// Attached Entities
-	if isEnrichmentFailure(pr.AttachedEntitiesStatus) {
+	if enrichment.IsFailure(pr.AttachedEntitiesStatus) {
 		d.Section("Attached To")
-		d.Field("Entities", enrichmentStatusDisplay(pr.AttachedEntitiesStatus))
+		d.Field("Entities", enrichment.Display(pr.AttachedEntitiesStatus))
 	} else if len(pr.AttachedUsers) > 0 || len(pr.AttachedRoles) > 0 || len(pr.AttachedGroups) > 0 {
 		d.Section("Attached To")
 		if len(pr.AttachedUsers) > 0 {
@@ -157,9 +158,9 @@ func (r *PolicyRenderer) RenderDetail(resource dao.Resource) string {
 	}
 
 	// Policy Document
-	if isEnrichmentFailure(pr.PolicyDocumentStatus) {
+	if enrichment.IsFailure(pr.PolicyDocumentStatus) {
 		d.Section("Policy Document")
-		d.Field("Document", enrichmentStatusDisplay(pr.PolicyDocumentStatus))
+		d.Field("Document", enrichment.Display(pr.PolicyDocumentStatus))
 	} else if pr.PolicyDocument != "" {
 		d.Section("Policy Document")
 		d.Line(formatPolicyDoc(pr.PolicyDocument))
@@ -169,21 +170,6 @@ func (r *PolicyRenderer) RenderDetail(resource dao.Resource) string {
 	d.Tags(appaws.TagsToMap(pr.Item.Tags))
 
 	return d.String()
-}
-
-func isEnrichmentFailure(status EnrichmentStatus) bool {
-	return status == EnrichmentAccessDenied || status == EnrichmentFetchFailed
-}
-
-func enrichmentStatusDisplay(status EnrichmentStatus) string {
-	switch status {
-	case EnrichmentAccessDenied:
-		return "Unknown (access denied)"
-	case EnrichmentFetchFailed:
-		return "Unknown (fetch failed)"
-	default:
-		return "Unknown"
-	}
 }
 
 // formatPolicyDoc decodes URL-encoded policy and formats it as indented JSON

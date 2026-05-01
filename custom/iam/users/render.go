@@ -6,6 +6,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	"github.com/clawscli/claws/internal/enrichment"
 	"github.com/clawscli/claws/internal/render"
 )
 
@@ -115,8 +116,8 @@ func (r *UserRenderer) RenderDetail(resource dao.Resource) string {
 
 	// Access Keys
 	d.Section("Access Keys")
-	if isEnrichmentFailure(ur.AccessKeysStatus) {
-		d.Field("Access Keys", enrichmentStatusDisplay(ur.AccessKeysStatus))
+	if enrichment.IsFailure(ur.AccessKeysStatus) {
+		d.Field("Access Keys", enrichment.Display(ur.AccessKeysStatus))
 	} else if len(ur.AccessKeys) == 0 {
 		d.Field("Access Keys", render.Empty)
 	} else {
@@ -132,8 +133,8 @@ func (r *UserRenderer) RenderDetail(resource dao.Resource) string {
 
 	// MFA Devices
 	d.Section("MFA")
-	if isEnrichmentFailure(ur.MFADevicesStatus) {
-		d.Field("MFA Status", enrichmentStatusDisplay(ur.MFADevicesStatus))
+	if enrichment.IsFailure(ur.MFADevicesStatus) {
+		d.Field("MFA Status", enrichment.Display(ur.MFADevicesStatus))
 	} else if len(ur.MFADevices) == 0 {
 		d.Field("MFA Status", "Not enabled")
 	} else {
@@ -151,8 +152,8 @@ func (r *UserRenderer) RenderDetail(resource dao.Resource) string {
 
 	// Groups
 	d.Section("Groups")
-	if isEnrichmentFailure(ur.GroupsStatus) {
-		d.Field("Groups", enrichmentStatusDisplay(ur.GroupsStatus))
+	if enrichment.IsFailure(ur.GroupsStatus) {
+		d.Field("Groups", enrichment.Display(ur.GroupsStatus))
 	} else if len(ur.Groups) == 0 {
 		d.Field("Groups", render.Empty)
 	} else {
@@ -164,14 +165,14 @@ func (r *UserRenderer) RenderDetail(resource dao.Resource) string {
 
 	// Attached Policies
 	d.Section("Attached Policies")
-	managedFailed := isEnrichmentFailure(ur.AttachedPoliciesStatus)
-	inlineFailed := isEnrichmentFailure(ur.InlinePoliciesStatus)
+	managedFailed := enrichment.IsFailure(ur.AttachedPoliciesStatus)
+	inlineFailed := enrichment.IsFailure(ur.InlinePoliciesStatus)
 	if managedFailed || inlineFailed {
 		if managedFailed {
-			d.Field("Managed Policies", enrichmentStatusDisplay(ur.AttachedPoliciesStatus))
+			d.Field("Managed Policies", enrichment.Display(ur.AttachedPoliciesStatus))
 		}
 		if inlineFailed {
-			d.Field("Inline Policies", enrichmentStatusDisplay(ur.InlinePoliciesStatus))
+			d.Field("Inline Policies", enrichment.Display(ur.InlinePoliciesStatus))
 		}
 	} else if len(ur.AttachedPolicies) == 0 && len(ur.InlinePolicies) == 0 {
 		d.Field("Policies", render.Empty)
@@ -202,21 +203,6 @@ func (r *UserRenderer) RenderDetail(resource dao.Resource) string {
 	d.Tags(appaws.TagsToMap(ur.Item.Tags))
 
 	return d.String()
-}
-
-func isEnrichmentFailure(status EnrichmentStatus) bool {
-	return status == EnrichmentAccessDenied || status == EnrichmentFetchFailed
-}
-
-func enrichmentStatusDisplay(status EnrichmentStatus) string {
-	switch status {
-	case EnrichmentAccessDenied:
-		return "Unknown (access denied)"
-	case EnrichmentFetchFailed:
-		return "Unknown (fetch failed)"
-	default:
-		return "Unknown"
-	}
 }
 
 // RenderSummary returns summary fields for the header panel

@@ -12,6 +12,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	"github.com/clawscli/claws/internal/enrichment"
 	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
@@ -104,24 +105,14 @@ func (d *BucketDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 	return resource, nil
 }
 
-type EnrichmentStatus string
-
-const (
-	EnrichmentUnknown       EnrichmentStatus = ""
-	EnrichmentConfigured    EnrichmentStatus = "configured"
-	EnrichmentNotConfigured EnrichmentStatus = "not_configured"
-	EnrichmentAccessDenied  EnrichmentStatus = "access_denied"
-	EnrichmentFetchFailed   EnrichmentStatus = "fetch_failed"
-)
-
-func enrichmentFailureStatus(err error) EnrichmentStatus {
+func enrichmentFailureStatus(err error) enrichment.Status {
 	if apperrors.IsAccessDenied(err) {
-		return EnrichmentAccessDenied
+		return enrichment.AccessDenied
 	}
 	if isNotConfiguredError(err) {
-		return EnrichmentNotConfigured
+		return enrichment.NotConfigured
 	}
-	return EnrichmentFetchFailed
+	return enrichment.FetchFailed
 }
 
 func isNotConfiguredError(err error) bool {
@@ -157,10 +148,10 @@ func (d *BucketDAO) fetchVersioning(ctx context.Context, client *s3.Client, buck
 	}
 	if output.Status != "" {
 		r.Versioning = string(output.Status)
-		r.VersioningStatus = EnrichmentConfigured
+		r.VersioningStatus = enrichment.Configured
 	} else {
 		r.Versioning = "Disabled"
-		r.VersioningStatus = EnrichmentNotConfigured
+		r.VersioningStatus = enrichment.NotConfigured
 	}
 	if output.MFADelete != "" {
 		r.MFADelete = string(output.MFADelete)
@@ -178,7 +169,7 @@ func (d *BucketDAO) fetchEncryption(ctx context.Context, client *s3.Client, buck
 	}
 	if output.ServerSideEncryptionConfiguration != nil && len(output.ServerSideEncryptionConfiguration.Rules) > 0 {
 		r.EncryptionEnabled = true
-		r.EncryptionStatus = EnrichmentConfigured
+		r.EncryptionStatus = enrichment.Configured
 		rule := output.ServerSideEncryptionConfiguration.Rules[0]
 		if rule.ApplyServerSideEncryptionByDefault != nil {
 			r.EncryptionAlgorithm = string(rule.ApplyServerSideEncryptionByDefault.SSEAlgorithm)
@@ -190,7 +181,7 @@ func (d *BucketDAO) fetchEncryption(ctx context.Context, client *s3.Client, buck
 			r.BucketKeyEnabled = *rule.BucketKeyEnabled
 		}
 	} else {
-		r.EncryptionStatus = EnrichmentNotConfigured
+		r.EncryptionStatus = enrichment.NotConfigured
 	}
 }
 
@@ -204,7 +195,7 @@ func (d *BucketDAO) fetchPublicAccessBlock(ctx context.Context, client *s3.Clien
 		return
 	}
 	if output.PublicAccessBlockConfiguration != nil {
-		r.PublicAccessBlockStatus = EnrichmentConfigured
+		r.PublicAccessBlockStatus = enrichment.Configured
 		cfg := output.PublicAccessBlockConfiguration
 		r.PublicAccessBlock = &PublicAccessBlockInfo{
 			BlockPublicAcls:       cfg.BlockPublicAcls != nil && *cfg.BlockPublicAcls,
@@ -213,7 +204,7 @@ func (d *BucketDAO) fetchPublicAccessBlock(ctx context.Context, client *s3.Clien
 			RestrictPublicBuckets: cfg.RestrictPublicBuckets != nil && *cfg.RestrictPublicBuckets,
 		}
 	} else {
-		r.PublicAccessBlockStatus = EnrichmentNotConfigured
+		r.PublicAccessBlockStatus = enrichment.NotConfigured
 	}
 }
 
@@ -292,15 +283,15 @@ type BucketResource struct {
 
 	// Extended info (fetched in Get() only)
 	Versioning              string
-	VersioningStatus        EnrichmentStatus
+	VersioningStatus        enrichment.Status
 	MFADelete               string
 	EncryptionEnabled       bool
-	EncryptionStatus        EnrichmentStatus
+	EncryptionStatus        enrichment.Status
 	EncryptionAlgorithm     string
 	EncryptionKMSKeyID      string
 	BucketKeyEnabled        bool
 	PublicAccessBlock       *PublicAccessBlockInfo
-	PublicAccessBlockStatus EnrichmentStatus
+	PublicAccessBlockStatus enrichment.Status
 	LifecycleRulesCount     int
 	ObjectLockEnabled       bool
 	ObjectLockMode          string

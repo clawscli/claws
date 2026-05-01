@@ -8,6 +8,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	"github.com/clawscli/claws/internal/enrichment"
 	"github.com/clawscli/claws/internal/render"
 )
 
@@ -124,14 +125,14 @@ func (r *RoleRenderer) RenderDetail(resource dao.Resource) string {
 
 	// Attached Policies
 	d.Section("Attached Policies")
-	managedFailed := isEnrichmentFailure(rr.AttachedPoliciesStatus)
-	inlineFailed := isEnrichmentFailure(rr.InlinePoliciesStatus)
+	managedFailed := enrichment.IsFailure(rr.AttachedPoliciesStatus)
+	inlineFailed := enrichment.IsFailure(rr.InlinePoliciesStatus)
 	if managedFailed || inlineFailed {
 		if managedFailed {
-			d.Field("Managed Policies", enrichmentStatusDisplay(rr.AttachedPoliciesStatus))
+			d.Field("Managed Policies", enrichment.Display(rr.AttachedPoliciesStatus))
 		}
 		if inlineFailed {
-			d.Field("Inline Policies", enrichmentStatusDisplay(rr.InlinePoliciesStatus))
+			d.Field("Inline Policies", enrichment.Display(rr.InlinePoliciesStatus))
 		}
 	} else if len(rr.AttachedPolicies) == 0 && len(rr.InlinePolicies) == 0 {
 		d.Field("Policies", render.Empty)
@@ -168,21 +169,6 @@ func (r *RoleRenderer) RenderDetail(resource dao.Resource) string {
 	d.Tags(appaws.TagsToMap(rr.Item.Tags))
 
 	return d.String()
-}
-
-func isEnrichmentFailure(status EnrichmentStatus) bool {
-	return status == EnrichmentAccessDenied || status == EnrichmentFetchFailed
-}
-
-func enrichmentStatusDisplay(status EnrichmentStatus) string {
-	switch status {
-	case EnrichmentAccessDenied:
-		return "Unknown (access denied)"
-	case EnrichmentFetchFailed:
-		return "Unknown (fetch failed)"
-	default:
-		return "Unknown"
-	}
 }
 
 // RenderSummary returns summary fields for the header panel

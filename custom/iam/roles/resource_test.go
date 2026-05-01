@@ -7,6 +7,8 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/iam/types"
+
+	"github.com/clawscli/claws/internal/enrichment"
 )
 
 func TestNewRoleResource(t *testing.T) {
@@ -57,8 +59,8 @@ func TestNewRoleResource(t *testing.T) {
 func TestRoleRendererShowsUnknownForFailedPolicyEnrichment(t *testing.T) {
 	role := types.Role{RoleName: aws.String("my-role")}
 	resource := NewRoleResource(role)
-	resource.AttachedPoliciesStatus = EnrichmentFetchFailed
-	resource.InlinePoliciesStatus = EnrichmentAccessDenied
+	resource.AttachedPoliciesStatus = enrichment.FetchFailed
+	resource.InlinePoliciesStatus = enrichment.AccessDenied
 
 	detail := (&RoleRenderer{}).RenderDetail(resource)
 

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
@@ -843,33 +844,76 @@ func isSensitiveValueField(normalizedKey string) bool {
 
 func isSensitiveRawKey(key string) bool {
 	normalized := normalizeRawKey(key)
-	sensitiveKeys := []string{
-		"authorization",
-		"clientsecret",
-		"credential",
-		"credentials",
-		"environment",
-		"environmentvariables",
-		"privatekey",
-		"variables",
-		"secret",
-		"secrets",
-		"secretstring",
-		"secretbinary",
-		"password",
-		"token",
-		"apikey",
-		"accesskey",
-		"accesskeyid",
-		"secretaccesskey",
-		"sessiontoken",
+	if exactSensitiveRawKeys[normalized] {
+		return true
 	}
-	for _, sensitive := range sensitiveKeys {
-		if normalized == sensitive || strings.Contains(normalized, sensitive) {
+	for _, segment := range rawKeySegments(key) {
+		if sensitiveRawKeySegments[segment] {
 			return true
 		}
 	}
 	return false
+}
+
+var exactSensitiveRawKeys = map[string]bool{
+	"authorization":        true,
+	"clientsecret":         true,
+	"credential":           true,
+	"credentials":          true,
+	"environment":          true,
+	"environmentvariables": true,
+	"privatekey":           true,
+	"variables":            true,
+	"secret":               true,
+	"secrets":              true,
+	"secretstring":         true,
+	"secretbinary":         true,
+	"password":             true,
+	"token":                true,
+	"apikey":               true,
+	"accesskey":            true,
+	"accesskeyid":          true,
+	"secretaccesskey":      true,
+	"sessiontoken":         true,
+}
+
+var sensitiveRawKeySegments = map[string]bool{
+	"authorization": true,
+	"credential":    true,
+	"credentials":   true,
+	"environment":   true,
+	"password":      true,
+	"private":       true,
+	"secret":        true,
+	"token":         true,
+}
+
+func rawKeySegments(key string) []string {
+	var segments []string
+	var current []rune
+	var previous rune
+	for _, r := range key {
+		if r == '_' || r == '-' || r == ' ' || r == '.' || r == '/' {
+			segments = appendNormalizedSegment(segments, current)
+			current = nil
+			previous = 0
+			continue
+		}
+		if len(current) > 0 && unicode.IsUpper(r) && (unicode.IsLower(previous) || unicode.IsDigit(previous)) {
+			segments = appendNormalizedSegment(segments, current)
+			current = nil
+		}
+		current = append(current, unicode.ToLower(r))
+		previous = r
+	}
+	return appendNormalizedSegment(segments, current)
+}
+
+func appendNormalizedSegment(segments []string, segment []rune) []string {
+	if len(segment) == 0 {
+		return segments
+	}
+	return append(segments, string(segment))
 }
 
 func normalizeRawKey(key string) string {

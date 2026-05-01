@@ -378,6 +378,20 @@ func TestFormatResourceDetailRedactsSensitiveLabelValueRecords(t *testing.T) {
 	}
 }
 
+func TestIsSensitiveRawKeyAvoidsSubstringFalsePositives(t *testing.T) {
+	for _, key := range []string{"tokenization", "tokencount", "accessTokens_issued", "secretsmanager_arn", "credentialsexpiry"} {
+		if isSensitiveRawKey(key) {
+			t.Fatalf("isSensitiveRawKey(%q) = true, want false", key)
+		}
+	}
+
+	for _, key := range []string{"DB_PASSWORD", "ApiToken", "clientSecret", "SecretAccessKey", "EnvironmentVariables"} {
+		if !isSensitiveRawKey(key) {
+			t.Fatalf("isSensitiveRawKey(%q) = false, want true", key)
+		}
+	}
+}
+
 type mockResource struct {
 	id   string
 	name string

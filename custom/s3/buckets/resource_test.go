@@ -8,6 +8,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
+
+	"github.com/clawscli/claws/internal/enrichment"
 )
 
 func TestNewBucketResource(t *testing.T) {
@@ -78,10 +80,10 @@ func TestBucketResource_ExtendedInfo(t *testing.T) {
 	// Set extended info (normally done by DAO.Get)
 	resource.Region = "us-west-2"
 	resource.Versioning = "Enabled"
-	resource.VersioningStatus = EnrichmentConfigured
+	resource.VersioningStatus = enrichment.Configured
 	resource.MFADelete = "Disabled"
 	resource.EncryptionEnabled = true
-	resource.EncryptionStatus = EnrichmentConfigured
+	resource.EncryptionStatus = enrichment.Configured
 	resource.EncryptionAlgorithm = "aws:kms"
 	resource.EncryptionKMSKeyID = "arn:aws:kms:us-west-2:123456789012:key/abc123"
 	resource.BucketKeyEnabled = true
@@ -95,7 +97,7 @@ func TestBucketResource_ExtendedInfo(t *testing.T) {
 		BlockPublicPolicy:     true,
 		RestrictPublicBuckets: true,
 	}
-	resource.PublicAccessBlockStatus = EnrichmentConfigured
+	resource.PublicAccessBlockStatus = enrichment.Configured
 
 	// Verify extended info
 	if resource.Region != "us-west-2" {
@@ -125,9 +127,9 @@ func TestBucketRendererShowsUnknownForFailedSecurityEnrichment(t *testing.T) {
 	resource := &BucketResource{
 		BucketName:              "test-bucket",
 		Region:                  "us-east-1",
-		VersioningStatus:        EnrichmentFetchFailed,
-		EncryptionStatus:        EnrichmentAccessDenied,
-		PublicAccessBlockStatus: EnrichmentFetchFailed,
+		VersioningStatus:        enrichment.FetchFailed,
+		EncryptionStatus:        enrichment.AccessDenied,
+		PublicAccessBlockStatus: enrichment.FetchFailed,
 	}
 
 	detail := (&BucketRenderer{}).RenderDetail(resource)
@@ -149,12 +151,12 @@ func TestS3EnrichmentFailureStatusClassifiesNotConfiguredErrors(t *testing.T) {
 	tests := []struct {
 		name string
 		code string
-		want EnrichmentStatus
+		want enrichment.Status
 	}{
-		{name: "encryption not configured", code: "ServerSideEncryptionConfigurationNotFoundError", want: EnrichmentNotConfigured},
-		{name: "public access block not configured", code: "NoSuchPublicAccessBlockConfiguration", want: EnrichmentNotConfigured},
-		{name: "access denied", code: "AccessDeniedException", want: EnrichmentAccessDenied},
-		{name: "other failure", code: "InternalError", want: EnrichmentFetchFailed},
+		{name: "encryption not configured", code: "ServerSideEncryptionConfigurationNotFoundError", want: enrichment.NotConfigured},
+		{name: "public access block not configured", code: "NoSuchPublicAccessBlockConfiguration", want: enrichment.NotConfigured},
+		{name: "access denied", code: "AccessDeniedException", want: enrichment.AccessDenied},
+		{name: "other failure", code: "InternalError", want: enrichment.FetchFailed},
 	}
 
 	for _, tt := range tests {

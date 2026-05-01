@@ -30,7 +30,7 @@ jobs:
           go-version-file: 'go.mod'
           cache: true
 
-      - uses: cachix/install-nix-action@v31
+      - uses: cachix/install-nix-action@6b2916c41eac5735ac995c58c9e8561a78c42319 # v31
 
       - name: Build
         run: go build -o claws ./cmd/claws

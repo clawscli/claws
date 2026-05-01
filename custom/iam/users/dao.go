@@ -8,6 +8,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	"github.com/clawscli/claws/internal/enrichment"
 	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
@@ -19,27 +20,11 @@ type UserDetail struct {
 	Groups                 []types.Group
 	AttachedPolicies       []types.AttachedPolicy
 	InlinePolicies         []string
-	AccessKeysStatus       EnrichmentStatus
-	MFADevicesStatus       EnrichmentStatus
-	GroupsStatus           EnrichmentStatus
-	AttachedPoliciesStatus EnrichmentStatus
-	InlinePoliciesStatus   EnrichmentStatus
-}
-
-type EnrichmentStatus string
-
-const (
-	EnrichmentUnknown      EnrichmentStatus = ""
-	EnrichmentFetched      EnrichmentStatus = "fetched"
-	EnrichmentAccessDenied EnrichmentStatus = "access_denied"
-	EnrichmentFetchFailed  EnrichmentStatus = "fetch_failed"
-)
-
-func enrichmentFailureStatus(err error) EnrichmentStatus {
-	if apperrors.IsAccessDenied(err) {
-		return EnrichmentAccessDenied
-	}
-	return EnrichmentFetchFailed
+	AccessKeysStatus       enrichment.Status
+	MFADevicesStatus       enrichment.Status
+	GroupsStatus           enrichment.Status
+	AttachedPoliciesStatus enrichment.Status
+	InlinePoliciesStatus   enrichment.Status
 }
 
 // UserDAO provides data access for IAM Users
@@ -105,41 +90,41 @@ func (d *UserDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 	// Fetch access keys
 	if keys, err := d.client.ListAccessKeys(ctx, &iam.ListAccessKeysInput{UserName: &id}); err == nil {
 		detail.AccessKeys = keys.AccessKeyMetadata
-		detail.AccessKeysStatus = EnrichmentFetched
+		detail.AccessKeysStatus = enrichment.Fetched
 	} else {
-		detail.AccessKeysStatus = enrichmentFailureStatus(err)
+		detail.AccessKeysStatus = enrichment.FailureStatus(err)
 	}
 
 	// Fetch MFA devices
 	if mfa, err := d.client.ListMFADevices(ctx, &iam.ListMFADevicesInput{UserName: &id}); err == nil {
 		detail.MFADevices = mfa.MFADevices
-		detail.MFADevicesStatus = EnrichmentFetched
+		detail.MFADevicesStatus = enrichment.Fetched
 	} else {
-		detail.MFADevicesStatus = enrichmentFailureStatus(err)
+		detail.MFADevicesStatus = enrichment.FailureStatus(err)
 	}
 
 	// Fetch groups
 	if groups, err := d.client.ListGroupsForUser(ctx, &iam.ListGroupsForUserInput{UserName: &id}); err == nil {
 		detail.Groups = groups.Groups
-		detail.GroupsStatus = EnrichmentFetched
+		detail.GroupsStatus = enrichment.Fetched
 	} else {
-		detail.GroupsStatus = enrichmentFailureStatus(err)
+		detail.GroupsStatus = enrichment.FailureStatus(err)
 	}
 
 	// Fetch attached policies
 	if policies, err := d.client.ListAttachedUserPolicies(ctx, &iam.ListAttachedUserPoliciesInput{UserName: &id}); err == nil {
 		detail.AttachedPolicies = policies.AttachedPolicies
-		detail.AttachedPoliciesStatus = EnrichmentFetched
+		detail.AttachedPoliciesStatus = enrichment.Fetched
 	} else {
-		detail.AttachedPoliciesStatus = enrichmentFailureStatus(err)
+		detail.AttachedPoliciesStatus = enrichment.FailureStatus(err)
 	}
 
 	// Fetch inline policy names
 	if inline, err := d.client.ListUserPolicies(ctx, &iam.ListUserPoliciesInput{UserName: &id}); err == nil {
 		detail.InlinePolicies = inline.PolicyNames
-		detail.InlinePoliciesStatus = EnrichmentFetched
+		detail.InlinePoliciesStatus = enrichment.Fetched
 	} else {
-		detail.InlinePoliciesStatus = enrichmentFailureStatus(err)
+		detail.InlinePoliciesStatus = enrichment.FailureStatus(err)
 	}
 
 	return NewUserResourceWithDetail(detail), nil
@@ -164,11 +149,11 @@ type UserResource struct {
 	Groups                 []types.Group
 	AttachedPolicies       []types.AttachedPolicy
 	InlinePolicies         []string
-	AccessKeysStatus       EnrichmentStatus
-	MFADevicesStatus       EnrichmentStatus
-	GroupsStatus           EnrichmentStatus
-	AttachedPoliciesStatus EnrichmentStatus
-	InlinePoliciesStatus   EnrichmentStatus
+	AccessKeysStatus       enrichment.Status
+	MFADevicesStatus       enrichment.Status
+	GroupsStatus           enrichment.Status
+	AttachedPoliciesStatus enrichment.Status
+	InlinePoliciesStatus   enrichment.Status
 }
 
 // NewUserResource creates a new UserResource

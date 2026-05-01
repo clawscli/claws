@@ -8,6 +8,7 @@ import (
 
 	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
+	"github.com/clawscli/claws/internal/enrichment"
 	apperrors "github.com/clawscli/claws/internal/errors"
 )
 
@@ -88,11 +89,11 @@ func (d *PolicyDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		})
 		if err == nil && versionOutput.PolicyVersion != nil && versionOutput.PolicyVersion.Document != nil {
 			res.PolicyDocument = *versionOutput.PolicyVersion.Document
-			res.PolicyDocumentStatus = EnrichmentFetched
+			res.PolicyDocumentStatus = enrichment.Fetched
 		} else if err != nil {
-			res.PolicyDocumentStatus = enrichmentFailureStatus(err)
+			res.PolicyDocumentStatus = enrichment.FailureStatus(err)
 		} else {
-			res.PolicyDocumentStatus = EnrichmentFetched
+			res.PolicyDocumentStatus = enrichment.Fetched
 		}
 	}
 
@@ -101,9 +102,9 @@ func (d *PolicyDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		res.AttachedUsers = entities.PolicyUsers
 		res.AttachedRoles = entities.PolicyRoles
 		res.AttachedGroups = entities.PolicyGroups
-		res.AttachedEntitiesStatus = EnrichmentFetched
+		res.AttachedEntitiesStatus = enrichment.Fetched
 	} else {
-		res.AttachedEntitiesStatus = enrichmentFailureStatus(err)
+		res.AttachedEntitiesStatus = enrichment.FailureStatus(err)
 	}
 
 	return res, nil
@@ -130,27 +131,11 @@ type PolicyResource struct {
 	dao.BaseResource
 	Item                   types.Policy
 	PolicyDocument         string
-	PolicyDocumentStatus   EnrichmentStatus
+	PolicyDocumentStatus   enrichment.Status
 	AttachedUsers          []types.PolicyUser
 	AttachedRoles          []types.PolicyRole
 	AttachedGroups         []types.PolicyGroup
-	AttachedEntitiesStatus EnrichmentStatus
-}
-
-type EnrichmentStatus string
-
-const (
-	EnrichmentUnknown      EnrichmentStatus = ""
-	EnrichmentFetched      EnrichmentStatus = "fetched"
-	EnrichmentAccessDenied EnrichmentStatus = "access_denied"
-	EnrichmentFetchFailed  EnrichmentStatus = "fetch_failed"
-)
-
-func enrichmentFailureStatus(err error) EnrichmentStatus {
-	if apperrors.IsAccessDenied(err) {
-		return EnrichmentAccessDenied
-	}
-	return EnrichmentFetchFailed
+	AttachedEntitiesStatus enrichment.Status
 }
 
 // NewPolicyResource creates a new PolicyResource
