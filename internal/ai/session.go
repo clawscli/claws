@@ -90,6 +90,14 @@ func (m *SessionManager) sessionsDir() (string, error) {
 	return filepath.Join(dir, sessionDir), nil
 }
 
+func (m *SessionManager) sessionPath(id string) (string, error) {
+	dir, err := m.sessionsDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, id+".json"), nil
+}
+
 func (m *SessionManager) currentPath() (string, error) {
 	dir, err := config.ConfigDir()
 	if err != nil {
@@ -143,12 +151,11 @@ func (m *SessionManager) CurrentSession() (*Session, error) {
 }
 
 func (m *SessionManager) LoadSession(id string) (*Session, error) {
-	dir, err := m.sessionsDir()
+	path, err := m.sessionPath(id)
 	if err != nil {
 		return nil, err
 	}
 
-	path := filepath.Join(dir, id+".json")
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -262,7 +269,10 @@ func (m *SessionManager) saveSession(session *Session) error {
 		return err
 	}
 
-	path := filepath.Join(dir, session.ID+".json")
+	path, err := m.sessionPath(session.ID)
+	if err != nil {
+		return err
+	}
 	data, err := json.MarshalIndent(session, "", "  ")
 	if err != nil {
 		return err

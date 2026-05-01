@@ -770,6 +770,13 @@ func formatResourceDetail(r dao.Resource) string {
 }
 
 func redactSensitiveRaw(raw any) any {
+	switch value := raw.(type) {
+	case map[string]any, []any:
+		return redactSensitiveValue(value)
+	}
+
+	// Some resources may expose typed SDK structs or maps with typed values.
+	// Normalize those through JSON before redacting so traversal sees map[string]any.
 	data, err := json.Marshal(raw)
 	if err != nil {
 		return raw
@@ -794,10 +801,16 @@ func redactSensitiveValue(v any) any {
 				continue
 			}
 			if isSensitiveRawKey(key) {
-				redacted[key] = "[REDACTED]"
+				redacted["[REDACTED]"] = "[REDACTED]"
 				continue
 			}
 			redacted[key] = redactSensitiveValue(nested)
+		}
+		return redacted
+	case []map[string]any:
+		redacted := make([]any, len(value))
+		for i, nested := range value {
+			redacted[i] = redactSensitiveValue(nested)
 		}
 		return redacted
 	case []any:
@@ -860,10 +873,8 @@ var exactSensitiveRawKeys = map[string]bool{
 	"clientsecret":         true,
 	"credential":           true,
 	"credentials":          true,
-	"environment":          true,
 	"environmentvariables": true,
 	"privatekey":           true,
-	"variables":            true,
 	"secret":               true,
 	"secrets":              true,
 	"secretstring":         true,
@@ -881,7 +892,6 @@ var sensitiveRawKeySegments = map[string]bool{
 	"authorization": true,
 	"credential":    true,
 	"credentials":   true,
-	"environment":   true,
 	"password":      true,
 	"private":       true,
 	"secret":        true,
@@ -891,22 +901,34 @@ var sensitiveRawKeySegments = map[string]bool{
 func rawKeySegments(key string) []string {
 	var segments []string
 	var current []rune
-	var previous rune
-	for _, r := range key {
+	runes := []rune(key)
+	for i, r := range runes {
 		if r == '_' || r == '-' || r == ' ' || r == '.' || r == '/' {
 			segments = appendNormalizedSegment(segments, current)
 			current = nil
-			previous = 0
 			continue
 		}
-		if len(current) > 0 && unicode.IsUpper(r) && (unicode.IsLower(previous) || unicode.IsDigit(previous)) {
+		if shouldSplitRawKeySegment(runes, i, current) {
 			segments = appendNormalizedSegment(segments, current)
 			current = nil
 		}
 		current = append(current, unicode.ToLower(r))
-		previous = r
 	}
 	return appendNormalizedSegment(segments, current)
+}
+
+func shouldSplitRawKeySegment(runes []rune, index int, current []rune) bool {
+	if len(current) == 0 || index == 0 || !unicode.IsUpper(runes[index]) {
+		return false
+	}
+	previous := runes[index-1]
+	if unicode.IsLower(previous) || unicode.IsDigit(previous) {
+		return true
+	}
+	if !unicode.IsUpper(previous) || index+1 >= len(runes) {
+		return false
+	}
+	return unicode.IsLower(runes[index+1])
 }
 
 func appendNormalizedSegment(segments []string, segment []rune) []string {

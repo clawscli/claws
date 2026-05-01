@@ -379,16 +379,37 @@ func TestFormatResourceDetailRedactsSensitiveLabelValueRecords(t *testing.T) {
 }
 
 func TestIsSensitiveRawKeyAvoidsSubstringFalsePositives(t *testing.T) {
-	for _, key := range []string{"tokenization", "tokencount", "accessTokens_issued", "secretsmanager_arn", "credentialsexpiry"} {
+	for _, key := range []string{"environment", "variables", "tokenization", "tokencount", "accessTokens_issued", "secretsmanager_arn", "credentialsexpiry"} {
 		if isSensitiveRawKey(key) {
 			t.Fatalf("isSensitiveRawKey(%q) = true, want false", key)
 		}
 	}
 
-	for _, key := range []string{"DB_PASSWORD", "ApiToken", "clientSecret", "SecretAccessKey", "EnvironmentVariables"} {
+	for _, key := range []string{"DB_PASSWORD", "DBPassword", "DBMasterPassword", "MasterUserPassword", "ApiToken", "clientSecret", "SecretAccessKey", "EnvironmentVariables"} {
 		if !isSensitiveRawKey(key) {
 			t.Fatalf("isSensitiveRawKey(%q) = false, want true", key)
 		}
+	}
+}
+
+func TestFormatResourceDetailKeepsNonSensitiveEnvironmentFields(t *testing.T) {
+	resource := &mockResource{
+		id:   "instance-1",
+		name: "my-instance",
+		raw: map[string]any{
+			"environment": "production",
+			"variables":   "some-list",
+			"DBPassword":  "secret-db-password",
+		},
+	}
+
+	result := formatResourceDetail(resource)
+
+	if !strings.Contains(result, "production") || !strings.Contains(result, "some-list") {
+		t.Fatalf("expected non-sensitive environment fields to remain, got %q", result)
+	}
+	if strings.Contains(result, "secret-db-password") {
+		t.Fatalf("expected DBPassword value to be redacted, got %q", result)
 	}
 }
 
