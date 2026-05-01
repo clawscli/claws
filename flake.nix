@@ -16,6 +16,7 @@
             go-task
             gopls
             golangci-lint
+            vhs
           ];
 
           env.GOROOT = "${pkgs.go_1_25}/share/go";

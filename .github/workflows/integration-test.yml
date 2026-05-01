@@ -19,6 +19,9 @@ jobs:
       AWS_SECRET_ACCESS_KEY: test
       AWS_DEFAULT_REGION: us-east-1
       AWS_EC2_METADATA_DISABLED: "true"
+      AWS_CONFIG_FILE: scripts/demo-aws-config/config
+      AWS_SHARED_CREDENTIALS_FILE: scripts/demo-aws-config/credentials
+      LOCALSTACK_IMAGE: localstack/localstack:4.12.0
     steps:
       - uses: actions/checkout@v6
 
@@ -27,12 +30,14 @@ jobs:
           go-version-file: 'go.mod'
           cache: true
 
+      - uses: cachix/install-nix-action@v31
+
       - name: Build
         run: go build -o claws ./cmd/claws
 
       - name: Start LocalStack
         run: |
-          docker run -d --name localstack -p 4566:4566 localstack/localstack:4.12.0
+          docker run -d --name localstack -p 4566:4566 "${LOCALSTACK_IMAGE}"
           echo "Waiting for LocalStack..."
           for i in $(seq 1 30); do
             if curl -s http://localhost:4566/_localstack/health | grep -qE '"s3": "(available|running)"'; then
@@ -48,12 +53,6 @@ jobs:
         timeout-minutes: 5
         run: ./scripts/localstack-demo-setup.sh
 
-      - name: Create AWS config for demo
-        run: |
-          mkdir -p ~/.aws
-          cp scripts/demo-aws-config/config ~/.aws/config
-          cp scripts/demo-aws-config/credentials ~/.aws/credentials
-
       - name: Run VHS tapes
         run: |
           set -e
@@ -61,12 +60,7 @@ jobs:
             echo "=========================================="
             echo "Running: $tape"
             echo "=========================================="
-            docker run --rm --network host \
-              -v "$(pwd)":/vhs \
-              -v ~/.aws:/root/.aws:ro \
-              -e AWS_ENDPOINT_URL=http://localhost:4566 \
-              -e AWS_EC2_METADATA_DISABLED=true \
-              ghcr.io/charmbracelet/vhs "$tape"
+            nix develop --command vhs "$tape"
           done
 
       - name: Upload screenshots on failure
