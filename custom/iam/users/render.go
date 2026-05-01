@@ -115,7 +115,9 @@ func (r *UserRenderer) RenderDetail(resource dao.Resource) string {
 
 	// Access Keys
 	d.Section("Access Keys")
-	if len(ur.AccessKeys) == 0 {
+	if isEnrichmentFailure(ur.AccessKeysStatus) {
+		d.Field("Access Keys", enrichmentStatusDisplay(ur.AccessKeysStatus))
+	} else if len(ur.AccessKeys) == 0 {
 		d.Field("Access Keys", render.Empty)
 	} else {
 		d.Field("Access Key Count", fmt.Sprintf("%d", len(ur.AccessKeys)))
@@ -130,7 +132,9 @@ func (r *UserRenderer) RenderDetail(resource dao.Resource) string {
 
 	// MFA Devices
 	d.Section("MFA")
-	if len(ur.MFADevices) == 0 {
+	if isEnrichmentFailure(ur.MFADevicesStatus) {
+		d.Field("MFA Status", enrichmentStatusDisplay(ur.MFADevicesStatus))
+	} else if len(ur.MFADevices) == 0 {
 		d.Field("MFA Status", "Not enabled")
 	} else {
 		d.Field("MFA Status", "Enabled")
@@ -147,7 +151,9 @@ func (r *UserRenderer) RenderDetail(resource dao.Resource) string {
 
 	// Groups
 	d.Section("Groups")
-	if len(ur.Groups) == 0 {
+	if isEnrichmentFailure(ur.GroupsStatus) {
+		d.Field("Groups", enrichmentStatusDisplay(ur.GroupsStatus))
+	} else if len(ur.Groups) == 0 {
 		d.Field("Groups", render.Empty)
 	} else {
 		d.Field("Group Count", fmt.Sprintf("%d", len(ur.Groups)))
@@ -158,7 +164,16 @@ func (r *UserRenderer) RenderDetail(resource dao.Resource) string {
 
 	// Attached Policies
 	d.Section("Attached Policies")
-	if len(ur.AttachedPolicies) == 0 && len(ur.InlinePolicies) == 0 {
+	managedFailed := isEnrichmentFailure(ur.AttachedPoliciesStatus)
+	inlineFailed := isEnrichmentFailure(ur.InlinePoliciesStatus)
+	if managedFailed || inlineFailed {
+		if managedFailed {
+			d.Field("Managed Policies", enrichmentStatusDisplay(ur.AttachedPoliciesStatus))
+		}
+		if inlineFailed {
+			d.Field("Inline Policies", enrichmentStatusDisplay(ur.InlinePoliciesStatus))
+		}
+	} else if len(ur.AttachedPolicies) == 0 && len(ur.InlinePolicies) == 0 {
 		d.Field("Policies", render.Empty)
 	} else {
 		if len(ur.AttachedPolicies) > 0 {
@@ -187,6 +202,21 @@ func (r *UserRenderer) RenderDetail(resource dao.Resource) string {
 	d.Tags(appaws.TagsToMap(ur.Item.Tags))
 
 	return d.String()
+}
+
+func isEnrichmentFailure(status EnrichmentStatus) bool {
+	return status == EnrichmentAccessDenied || status == EnrichmentFetchFailed
+}
+
+func enrichmentStatusDisplay(status EnrichmentStatus) string {
+	switch status {
+	case EnrichmentAccessDenied:
+		return "Unknown (access denied)"
+	case EnrichmentFetchFailed:
+		return "Unknown (fetch failed)"
+	default:
+		return "Unknown"
+	}
 }
 
 // RenderSummary returns summary fields for the header panel
