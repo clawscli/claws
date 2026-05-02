@@ -27,6 +27,7 @@ func setAWSEnv(cmd *exec.Cmd, region string) {
 // Implements tea.ExecCommand interface.
 type SimpleExec struct {
 	Command    string
+	Args       []string
 	ActionName string // Action name for read-only allowlist check
 	SkipAWSEnv bool   // If true, don't inject AWS env vars (for commands that need to write to ~/.aws)
 
@@ -50,7 +51,7 @@ func (e *SimpleExec) Run() error {
 		return ErrReadOnlyDenied
 	}
 
-	if e.Command == "" {
+	if e.Command == "" && len(e.Args) == 0 {
 		return ErrEmptyCommand
 	}
 
@@ -67,7 +68,10 @@ func (e *SimpleExec) Run() error {
 		stderr = os.Stderr
 	}
 
-	cmd := exec.CommandContext(context.Background(), "/bin/sh", "-c", e.Command)
+	cmd, err := e.command(context.Background())
+	if err != nil {
+		return err
+	}
 	cmd.Stdin = stdin
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
@@ -76,6 +80,19 @@ func (e *SimpleExec) Run() error {
 	}
 
 	return cmd.Run()
+}
+
+func (e *SimpleExec) command(ctx context.Context) (*exec.Cmd, error) {
+	if len(e.Args) > 0 {
+		if e.Args[0] == "" {
+			return nil, ErrEmptyCommand
+		}
+		return exec.CommandContext(ctx, e.Args[0], e.Args[1:]...), nil
+	}
+	if e.Command == "" {
+		return nil, ErrEmptyCommand
+	}
+	return exec.CommandContext(ctx, "/bin/sh", "-c", e.Command), nil
 }
 
 // ExecWithHeader represents an exec command that should run with a fixed header

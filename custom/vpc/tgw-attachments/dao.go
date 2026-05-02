@@ -85,7 +85,10 @@ func (d *TGWAttachmentDAO) Delete(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
-	attRes := att.(*TGWAttachmentResource)
+	attRes, ok := att.(*TGWAttachmentResource)
+	if !ok {
+		return fmt.Errorf("unexpected transit gateway attachment resource type %T", att)
+	}
 
 	switch attRes.ResourceType() {
 	case "vpc":

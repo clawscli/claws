@@ -283,10 +283,11 @@ func (p *ProfileSelector) consoleLoginCurrentProfile() (tea.Model, tea.Cmd) {
 	}
 
 	profileID := profile.id
-	execCmd := &action.SimpleExec{
-		Command:    "aws login --remote --profile " + profileID,
-		ActionName: action.ActionNameLogin,
-		SkipAWSEnv: true,
+	execCmd, err := newProfileLoginExec(profileID)
+	if err != nil {
+		p.loginResult = &loginResultMsg{profileID: profileID, success: false, err: err, isConsoleLogin: true}
+		p.updateExtraHeight()
+		return p, nil
 	}
 	return p, tea.Exec(execCmd, func(err error) tea.Msg {
 		if err != nil {
@@ -296,6 +297,17 @@ func (p *ProfileSelector) consoleLoginCurrentProfile() (tea.Model, tea.Cmd) {
 		config.Global().SetSelection(sel)
 		return loginResultMsg{profileID: profileID, success: true, isConsoleLogin: true}
 	})
+}
+
+func newProfileLoginExec(profileID string) (*action.SimpleExec, error) {
+	if !config.IsValidProfileName(profileID) {
+		return nil, fmt.Errorf("invalid profile name: %s", profileID)
+	}
+	return &action.SimpleExec{
+		Args:       []string{"aws", "login", "--remote", "--profile", profileID},
+		ActionName: action.ActionNameLogin,
+		SkipAWSEnv: true,
+	}, nil
 }
 
 func (p *ProfileSelector) ViewString() string {

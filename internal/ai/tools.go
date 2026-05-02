@@ -18,6 +18,7 @@ import (
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/log"
 	"github.com/clawscli/claws/internal/registry"
+	"github.com/clawscli/claws/internal/sanitize"
 
 	apigatewayStages "github.com/clawscli/claws/custom/apigateway/stages"
 	apigatewayStagesV2 "github.com/clawscli/claws/custom/apigateway/stages-v2"
@@ -32,12 +33,152 @@ import (
 
 type ToolExecutor struct {
 	registry *registry.Registry
+	aiCtx    *Context
 }
 
-func NewToolExecutor(_ context.Context, reg *registry.Registry) (*ToolExecutor, error) {
+func NewToolExecutor(_ context.Context, reg *registry.Registry, contexts ...*Context) (*ToolExecutor, error) {
+	var aiCtx *Context
+	if len(contexts) > 0 {
+		aiCtx = contexts[0]
+	}
 	return &ToolExecutor{
 		registry: reg,
+		aiCtx:    aiCtx,
 	}, nil
+}
+
+func (e *ToolExecutor) validateScope(service, resourceType, region, profile, id, cluster string) (string, string, error) {
+	ctx := e.aiCtx
+	if ctx == nil {
+		return profile, cluster, nil
+	}
+	if ctx.Service != "" && service != ctx.Service {
+		return "", "", fmt.Errorf("service %s is outside the current AI context", service)
+	}
+	if ctx.ResourceType != "" && resourceType != ctx.ResourceType {
+		return "", "", fmt.Errorf("resource type %s is outside the current AI context", resourceType)
+	}
+	if region != "" && !regionAllowed(ctx, region) {
+		return "", "", fmt.Errorf("region %s is outside the current AI context", region)
+	}
+	profile = defaultProfile(ctx, profile)
+	if profile != "" && !profileAllowed(ctx, profile) {
+		return "", "", fmt.Errorf("profile %s is outside the current AI context", profile)
+	}
+	if id != "" && !resourceAllowed(ctx, id) {
+		return "", "", fmt.Errorf("resource %s is outside the current AI context", id)
+	}
+	cluster = defaultCluster(ctx, cluster)
+	if cluster != "" && !clusterAllowed(ctx, cluster) {
+		return "", "", fmt.Errorf("cluster %s is outside the current AI context", cluster)
+	}
+	return profile, cluster, nil
+}
+
+func defaultProfile(ctx *Context, profile string) string {
+	if profile != "" {
+		return profile
+	}
+	if ctx.ResourceProfile != "" {
+		return ctx.ResourceProfile
+	}
+	if refsHaveSameProfile(ctx.DiffLeft, ctx.DiffRight) {
+		return ctx.DiffLeft.Profile
+	}
+	return ""
+}
+
+func defaultCluster(ctx *Context, cluster string) string {
+	if cluster != "" {
+		return cluster
+	}
+	if ctx.Cluster != "" {
+		return ctx.Cluster
+	}
+	if refsHaveSameCluster(ctx.DiffLeft, ctx.DiffRight) {
+		return ctx.DiffLeft.Cluster
+	}
+	return ""
+}
+
+func regionAllowed(ctx *Context, region string) bool {
+	if ctx.ResourceRegion != "" {
+		return region == ctx.ResourceRegion
+	}
+	if ctx.DiffLeft != nil || ctx.DiffRight != nil {
+		return resourceRefHasRegion(ctx.DiffLeft, region) || resourceRefHasRegion(ctx.DiffRight, region)
+	}
+	if len(ctx.UserRegions) == 0 {
+		return true
+	}
+	for _, allowed := range ctx.UserRegions {
+		if region == allowed {
+			return true
+		}
+	}
+	return false
+}
+
+func profileAllowed(ctx *Context, profile string) bool {
+	if ctx.ResourceProfile != "" {
+		return profile == ctx.ResourceProfile
+	}
+	if ctx.DiffLeft != nil || ctx.DiffRight != nil {
+		return resourceRefHasProfile(ctx.DiffLeft, profile) || resourceRefHasProfile(ctx.DiffRight, profile)
+	}
+	if len(ctx.UserProfiles) == 0 {
+		return true
+	}
+	for _, allowed := range ctx.UserProfiles {
+		if profile == allowed {
+			return true
+		}
+	}
+	return false
+}
+
+func clusterAllowed(ctx *Context, cluster string) bool {
+	if ctx.Cluster != "" {
+		return cluster == ctx.Cluster
+	}
+	if ctx.DiffLeft != nil || ctx.DiffRight != nil {
+		return resourceRefHasCluster(ctx.DiffLeft, cluster) || resourceRefHasCluster(ctx.DiffRight, cluster)
+	}
+	return true
+}
+
+func resourceAllowed(ctx *Context, id string) bool {
+	if ctx.ResourceID != "" {
+		return id == ctx.ResourceID
+	}
+	if ctx.DiffLeft != nil || ctx.DiffRight != nil {
+		return resourceRefHasID(ctx.DiffLeft, id) || resourceRefHasID(ctx.DiffRight, id)
+	}
+	return true
+}
+
+func resourceRefHasID(ref *ResourceRef, id string) bool {
+	return ref != nil && ref.ID == id
+}
+
+func resourceRefHasRegion(ref *ResourceRef, region string) bool {
+	return ref != nil && ref.Region == region
+}
+
+func resourceRefHasProfile(ref *ResourceRef, profile string) bool {
+	return ref != nil && ref.Profile == profile
+}
+
+func resourceRefHasCluster(ref *ResourceRef, cluster string) bool {
+	return ref != nil && ref.Cluster == cluster
+}
+
+func refsHaveSameProfile(left, right *ResourceRef) bool {
+	return left != nil && right != nil && left.Profile != "" && left.Profile == right.Profile
+}
+
+func refsHaveSameCluster(left, right *ResourceRef) bool {
+	return left != nil && right != nil && left.Cluster != "" && left.Cluster == right.Cluster
 }
 
 func (e *ToolExecutor) Tools() []Tool {
@@ -274,6 +415,11 @@ func (e *ToolExecutor) queryResources(ctx context.Context, service, resourceType
 	if region == "" {
 		return "Error: region parameter is required", true
 	}
+	var err error
+	profile, _, err = e.validateScope(service, resourceType, region, profile, "", "")
+	if err != nil {
+		return "Error: " + err.Error(), true
+	}
 
 	// Validate and apply limit
 	if limit <= 0 {
@@ -349,6 +495,11 @@ func (e *ToolExecutor) getResourceDetail(ctx context.Context, service, resourceT
 	if region == "" {
 		return "Error: region parameter is required", true
 	}
+	var err error
+	profile, cluster, err = e.validateScope(service, resourceType, region, profile, id, cluster)
+	if err != nil {
+		return "Error: " + err.Error(), true
+	}
 
 	if profile != "" {
 		ctx = appaws.WithSelectionOverride(ctx, appconfig.ProfileSelectionFromID(profile))
@@ -382,6 +533,11 @@ func (e *ToolExecutor) getResourceDetail(ctx context.Context, service, resourceT
 func (e *ToolExecutor) tailLogs(ctx context.Context, service, resourceType, region, id, cluster, profile, filter, since string, limit int) (string, bool) {
 	if region == "" {
 		return "Error: region parameter is required", true
+	}
+	var err error
+	profile, cluster, err = e.validateScope(service, resourceType, region, profile, id, cluster)
+	if err != nil {
+		return "Error: " + err.Error(), true
 	}
 	if limit <= 0 {
 		limit = 100
@@ -440,7 +596,7 @@ func (e *ToolExecutor) tailLogs(ctx context.Context, service, resourceType, regi
 	result := fmt.Sprintf("Logs from %s (%d events):\n\n", logGroup, len(output.Events))
 	for _, event := range output.Events {
 		ts := time.UnixMilli(aws.ToInt64(event.Timestamp))
-		result += fmt.Sprintf("[%s] %s\n", ts.Format("15:04:05"), aws.ToString(event.Message))
+		result += fmt.Sprintf("[%s] %s\n", ts.Format("15:04:05"), sanitize.LogText(aws.ToString(event.Message)))
 	}
 
 	return result, false
@@ -755,6 +911,9 @@ func formatResourceDetail(r dao.Resource) string {
 	if tags := r.GetTags(); len(tags) > 0 {
 		result += "\nTags:\n"
 		for k, v := range tags {
+			if isSensitiveRawKey(k) {
+				v = sanitize.Redacted
+			}
 			result += fmt.Sprintf("  %s: %s\n", k, v)
 		}
 	}

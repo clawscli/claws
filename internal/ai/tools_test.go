@@ -211,6 +211,154 @@ func TestToolExecuteTailLogsMissingRegion(t *testing.T) {
 	}
 }
 
+func TestToolExecuteRejectsOutOfScopeProfile(t *testing.T) {
+	executor := &ToolExecutor{
+		registry: nil,
+		aiCtx: &Context{
+			Mode:         ContextModeList,
+			Service:      "ec2",
+			ResourceType: "instances",
+			UserRegions:  []string{"us-east-1"},
+			UserProfiles: []string{"dev"},
+		},
+	}
+
+	result := executor.Execute(context.TODO(), &ToolUseContent{
+		ID:   "test-123",
+		Name: "query_resources",
+		Input: map[string]any{
+			"service":       "ec2",
+			"resource_type": "instances",
+			"region":        "us-east-1",
+			"profile":       "prod",
+		},
+	})
+
+	if !result.IsError {
+		t.Fatal("expected out-of-scope profile to be rejected")
+	}
+	if !strings.Contains(result.Content, "profile prod is outside the current AI context") {
+		t.Fatalf("unexpected error content: %q", result.Content)
+	}
+}
+
+func TestToolExecuteRejectsOutOfScopeResource(t *testing.T) {
+	executor := &ToolExecutor{
+		registry: nil,
+		aiCtx: &Context{
+			Mode:            ContextModeSingle,
+			Service:         "ec2",
+			ResourceType:    "instances",
+			ResourceID:      "i-allowed",
+			ResourceRegion:  "us-east-1",
+			ResourceProfile: "dev",
+		},
+	}
+
+	result := executor.Execute(context.TODO(), &ToolUseContent{
+		ID:   "test-123",
+		Name: "get_resource_detail",
+		Input: map[string]any{
+			"service":       "ec2",
+			"resource_type": "instances",
+			"region":        "us-east-1",
+			"profile":       "dev",
+			"id":            "i-other",
+		},
+	})
+
+	if !result.IsError {
+		t.Fatal("expected out-of-scope resource to be rejected")
+	}
+	if !strings.Contains(result.Content, "resource i-other is outside the current AI context") {
+		t.Fatalf("unexpected error content: %q", result.Content)
+	}
+}
+
+func TestToolExecutorDefaultsSingleResourceProfileScope(t *testing.T) {
+	executor := &ToolExecutor{
+		aiCtx: &Context{
+			Mode:            ContextModeSingle,
+			Service:         "ec2",
+			ResourceType:    "instances",
+			ResourceID:      "i-allowed",
+			ResourceRegion:  "us-east-1",
+			ResourceProfile: "dev",
+		},
+	}
+
+	profile, cluster, err := executor.validateScope("ec2", "instances", "us-east-1", "", "i-allowed", "")
+	if err != nil {
+		t.Fatalf("validateScope() returned error: %v", err)
+	}
+	if profile != "dev" {
+		t.Fatalf("profile = %q, want context resource profile", profile)
+	}
+	if cluster != "" {
+		t.Fatalf("cluster = %q, want empty", cluster)
+	}
+}
+
+func TestToolExecuteRejectsOutOfScopeCluster(t *testing.T) {
+	executor := &ToolExecutor{
+		registry: nil,
+		aiCtx: &Context{
+			Mode:            ContextModeSingle,
+			Service:         "ecs",
+			ResourceType:    "services",
+			ResourceID:      "svc-allowed",
+			ResourceRegion:  "us-east-1",
+			ResourceProfile: "dev",
+			Cluster:         "cluster-a",
+		},
+	}
+
+	result := executor.Execute(context.TODO(), &ToolUseContent{
+		ID:   "test-123",
+		Name: "get_resource_detail",
+		Input: map[string]any{
+			"service":       "ecs",
+			"resource_type": "services",
+			"region":        "us-east-1",
+			"profile":       "dev",
+			"id":            "svc-allowed",
+			"cluster":       "cluster-b",
+		},
+	})
+
+	if !result.IsError {
+		t.Fatal("expected out-of-scope cluster to be rejected")
+	}
+	if !strings.Contains(result.Content, "cluster cluster-b is outside the current AI context") {
+		t.Fatalf("unexpected error content: %q", result.Content)
+	}
+}
+
+func TestToolExecutorDefaultsSingleResourceClusterScope(t *testing.T) {
+	executor := &ToolExecutor{
+		aiCtx: &Context{
+			Mode:            ContextModeSingle,
+			Service:         "ecs",
+			ResourceType:    "services",
+			ResourceID:      "svc-allowed",
+			ResourceRegion:  "us-east-1",
+			ResourceProfile: "dev",
+			Cluster:         "cluster-a",
+		},
+	}
+
+	profile, cluster, err := executor.validateScope("ecs", "services", "us-east-1", "", "svc-allowed", "")
+	if err != nil {
+		t.Fatalf("validateScope() returned error: %v", err)
+	}
+	if profile != "dev" {
+		t.Fatalf("profile = %q, want context resource profile", profile)
+	}
+	if cluster != "cluster-a" {
+		t.Fatalf("cluster = %q, want context cluster", cluster)
+	}
+}
+
 func TestToolExecuteSearchDocsEmptyQuery(t *testing.T) {
 	executor := &ToolExecutor{registry: nil}
 
@@ -341,6 +489,29 @@ func TestFormatResourceDetailRedactsSensitiveRawData(t *testing.T) {
 	}
 	if !strings.Contains(result, "vpc-123") {
 		t.Fatalf("expected non-sensitive raw fields to remain, got %q", result)
+	}
+}
+
+func TestFormatResourceDetailRedactsSensitiveTags(t *testing.T) {
+	resource := &mockResource{
+		id:   "resource-1",
+		name: "resource",
+		tags: map[string]string{
+			"Environment": "prod",
+			"ApiToken":    "plain-secret-token",
+		},
+	}
+
+	result := formatResourceDetail(resource)
+
+	if strings.Contains(result, "plain-secret-token") {
+		t.Fatalf("expected sensitive tag value to be redacted, got %q", result)
+	}
+	if !strings.Contains(result, "ApiToken") || !strings.Contains(result, "[REDACTED]") {
+		t.Fatalf("expected sensitive tag key with redaction marker, got %q", result)
+	}
+	if !strings.Contains(result, "Environment: prod") {
+		t.Fatalf("expected non-sensitive tag to remain, got %q", result)
 	}
 }
 

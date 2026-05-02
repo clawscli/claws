@@ -2,15 +2,19 @@ package webacls
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/wafv2"
 	"github.com/aws/aws-sdk-go-v2/service/wafv2/types"
 
 	appaws "github.com/clawscli/claws/internal/aws"
+	appconfig "github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/dao"
 	apperrors "github.com/clawscli/claws/internal/errors"
 )
+
+const cloudFrontWebACLRegion = "us-east-1"
 
 // WebACLDAO provides data access for WAFv2 Web ACLs
 type WebACLDAO struct {
@@ -41,17 +45,24 @@ func (d *WebACLDAO) List(ctx context.Context) ([]dao.Resource, error) {
 	}
 	resources = append(resources, regionalResources...)
 
-	// List CLOUDFRONT Web ACLs (only available in us-east-1)
-	// We'll try to list CloudFront scope but it may fail if not in us-east-1
+	// List CLOUDFRONT Web ACLs only from us-east-1, where WAFv2 exposes CloudFront scope.
+	if currentRegion(ctx) != cloudFrontWebACLRegion {
+		return resources, nil
+	}
 	cloudfrontResources, err := d.listByScope(ctx, types.ScopeCloudfront)
 	if err != nil {
-		// CloudFront scope may fail if not in us-east-1, ignore this error
-		// and just return regional resources
-		return resources, nil
+		return resources, fmt.Errorf("list cloudfront web acls: %w", err)
 	}
 	resources = append(resources, cloudfrontResources...)
 
 	return resources, nil
+}
+
+func currentRegion(ctx context.Context) string {
+	if region := appaws.GetRegionFromContext(ctx); region != "" {
+		return region
+	}
+	return appconfig.Global().Region()
 }
 
 func (d *WebACLDAO) listByScope(ctx context.Context, scope types.Scope) ([]dao.Resource, error) {
@@ -82,9 +93,11 @@ func (d *WebACLDAO) listByScope(ctx context.Context, scope types.Scope) ([]dao.R
 func (d *WebACLDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 	// Parse the composite ID (scope/name/id)
 	// For simplicity, we'll search through both scopes
-	for _, scope := range []types.Scope{types.ScopeRegional, types.ScopeCloudfront} {
+	var scopeErrs []error
+	for _, scope := range d.scopes(ctx) {
 		resources, err := d.listByScope(ctx, scope)
 		if err != nil {
+			scopeErrs = append(scopeErrs, fmt.Errorf("list %s web acls: %w", scope, err))
 			continue
 		}
 
@@ -98,7 +111,17 @@ func (d *WebACLDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 		}
 	}
 
+	if len(scopeErrs) > 0 {
+		return nil, errors.Join(append([]error{fmt.Errorf("web acl %s not found", id)}, scopeErrs...)...)
+	}
 	return nil, fmt.Errorf("web acl %s not found", id)
+}
+
+func (d *WebACLDAO) scopes(ctx context.Context) []types.Scope {
+	if currentRegion(ctx) == cloudFrontWebACLRegion {
+		return []types.Scope{types.ScopeRegional, types.ScopeCloudfront}
+	}
+	return []types.Scope{types.ScopeRegional}
 }
 
 func (d *WebACLDAO) getWebACLDetail(ctx context.Context, summary *WebACLResource) (*WebACLResource, error) {

@@ -6,6 +6,11 @@ import (
 	"context"
 	"os"
 	"testing"
+
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 // Integration tests require LocalStack to be running
@@ -19,10 +24,11 @@ func TestIntegration_EC2Client(t *testing.T) {
 
 	ctx := context.Background()
 
-	client, err := Global().EC2(ctx)
+	cfg, err := NewConfig(ctx)
 	if err != nil {
-		t.Fatalf("Failed to get EC2 client: %v", err)
+		t.Fatalf("Failed to create config: %v", err)
 	}
+	client := ec2.NewFromConfig(cfg)
 
 	if client == nil {
 		t.Fatal("EC2 client should not be nil")
@@ -36,10 +42,11 @@ func TestIntegration_S3Client(t *testing.T) {
 
 	ctx := context.Background()
 
-	client, err := Global().S3(ctx)
+	cfg, err := NewConfig(ctx)
 	if err != nil {
-		t.Fatalf("Failed to get S3 client: %v", err)
+		t.Fatalf("Failed to create config: %v", err)
 	}
+	client := s3.NewFromConfig(cfg)
 
 	if client == nil {
 		t.Fatal("S3 client should not be nil")
@@ -53,10 +60,11 @@ func TestIntegration_IAMClient(t *testing.T) {
 
 	ctx := context.Background()
 
-	client, err := Global().IAM(ctx)
+	cfg, err := NewConfig(ctx)
 	if err != nil {
-		t.Fatalf("Failed to get IAM client: %v", err)
+		t.Fatalf("Failed to create config: %v", err)
 	}
+	client := iam.NewFromConfig(cfg)
 
 	if client == nil {
 		t.Fatal("IAM client should not be nil")
@@ -70,10 +78,11 @@ func TestIntegration_CloudFormationClient(t *testing.T) {
 
 	ctx := context.Background()
 
-	client, err := Global().CloudFormation(ctx)
+	cfg, err := NewConfig(ctx)
 	if err != nil {
-		t.Fatalf("Failed to get CloudFormation client: %v", err)
+		t.Fatalf("Failed to create config: %v", err)
 	}
+	client := cloudformation.NewFromConfig(cfg)
 
 	if client == nil {
 		t.Fatal("CloudFormation client should not be nil")

@@ -160,7 +160,7 @@ func (c *ChatOverlay) Init() tea.Cmd {
 }
 
 func (c *ChatOverlay) initClient() tea.Msg {
-	executor, err := ai.NewToolExecutor(c.ctx, c.registry)
+	executor, err := ai.NewToolExecutor(c.ctx, c.registry, c.aiCtx)
 	if err != nil {
 		return chatInitMsg{err: apperrors.Wrap(err, "init tool executor")}
 	}

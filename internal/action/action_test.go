@@ -1,6 +1,7 @@
 package action
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"os/exec"
@@ -17,6 +18,23 @@ type mockResource struct {
 	name string
 	arn  string
 	tags map[string]string
+}
+
+func TestSimpleExecArgsTreatShellMetacharactersAsLiteral(t *testing.T) {
+	var stdout bytes.Buffer
+	execCmd := &SimpleExec{
+		Args:       []string{"/bin/echo", "profile; echo injected"},
+		SkipAWSEnv: true,
+		stdout:     &stdout,
+	}
+
+	if err := execCmd.Run(); err != nil {
+		t.Fatalf("Run() returned error: %v", err)
+	}
+
+	if got, want := stdout.String(), "profile; echo injected\n"; got != want {
+		t.Fatalf("stdout = %q, want %q", got, want)
+	}
 }
 
 func (m *mockResource) GetID() string              { return m.id }
