@@ -92,8 +92,6 @@ func (d *PolicyDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
 			res.PolicyDocumentStatus = enrichment.Fetched
 		} else if err != nil {
 			res.PolicyDocumentStatus = enrichment.FailureStatus(err)
-		} else {
-			res.PolicyDocumentStatus = enrichment.Fetched
 		}
 	}
 

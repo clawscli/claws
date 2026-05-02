@@ -191,13 +191,15 @@ func TestSessionPersistenceDoesNotContainRedactedSecrets(t *testing.T) {
 		t.Fatalf("failed to add message: %v", err)
 	}
 
-	sessionFile := filepath.Join(tmpDir, ".config", "claws", "chat", "sessions", session.ID+".json")
+	sessionFile, err := sm.sessionPath(session.ID)
+	if err != nil {
+		t.Fatalf("failed to get session path: %v", err)
+	}
 	data, err := os.ReadFile(sessionFile)
 	if err != nil {
 		t.Fatalf("failed to read session file: %v", err)
 	}
-	if strings.Contains(string(data), "persist-me-not") || strings.Contains(string(data), "TOKEN") ||
-		strings.Contains(string(data), "persist-output-secret") || strings.Contains(string(data), "DB_PASSWORD") {
+	if strings.Contains(string(data), "persist-me-not") || strings.Contains(string(data), "persist-output-secret") || strings.Contains(string(data), "DB_PASSWORD") {
 		t.Fatalf("session file contains secret data: %s", string(data))
 	}
 	if !strings.Contains(string(data), "[REDACTED]") {

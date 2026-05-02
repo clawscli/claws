@@ -131,10 +131,8 @@ func (r *ResourceBrowser) fetchMultiProfileResources(profiles []config.ProfileSe
 	for _, sel := range profiles {
 		for _, region := range regions {
 			key := profileRegionKey{Profile: sel.ID(), Region: region}
-			if existingTokens != nil {
-				if _, ok := existingTokens[key]; !ok {
-					continue
-				}
+			if existingTokens != nil && !hasProfileRegionToken(existingTokens, key) {
+				continue
 			}
 			keys = append(keys, key)
 		}
@@ -176,6 +174,11 @@ func (r *ResourceBrowser) fetchMultiProfileResources(profiles []config.ProfileSe
 	}
 
 	return fetchParallel(r.ctx, keys, fetch, formatError)
+}
+
+func hasProfileRegionToken(tokens map[profileRegionKey]string, key profileRegionKey) bool {
+	_, ok := tokens[key]
+	return ok
 }
 
 func (r *ResourceBrowser) fetchMultiRegionResources(regions []string, existingTokens map[string]string) parallelFetchResult[string] {
