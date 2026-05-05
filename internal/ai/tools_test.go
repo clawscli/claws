@@ -2,8 +2,12 @@ package ai
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
+
+	"github.com/clawscli/claws/internal/dao"
+	"github.com/clawscli/claws/internal/registry"
 )
 
 func TestToolExecutorTools(t *testing.T) {
@@ -373,6 +377,299 @@ func TestToolExecuteSearchDocsEmptyQuery(t *testing.T) {
 	}
 }
 
+func TestPrepareDocsSearchQueryAllowsGeneralQueryBeforeAWSData(t *testing.T) {
+	executor := &ToolExecutor{
+		aiCtx: &Context{
+			Mode:            ContextModeSingle,
+			Service:         "ec2",
+			ResourceType:    "instances",
+			ResourceID:      "i-private123",
+			ResourceProfile: "production-profile",
+		},
+	}
+
+	query, err := executor.prepareDocsSearchQuery("EC2 instance metadata options")
+	if err != nil {
+		t.Fatalf("prepareDocsSearchQuery returned error: %v", err)
+	}
+	if query != "EC2 instance metadata options" {
+		t.Fatalf("query = %q, want unchanged general query", query)
+	}
+}
+
+func TestToolExecuteRejectsSensitiveDocsSearchQuery(t *testing.T) {
+	executor := &ToolExecutor{
+		aiCtx: &Context{
+			Mode:            ContextModeSingle,
+			Service:         "ec2",
+			ResourceType:    "instances",
+			ResourceID:      "i-private123",
+			ResourceProfile: "production-profile",
+		},
+	}
+
+	result := executor.Execute(context.TODO(), &ToolUseContent{
+		ID:   "test-123",
+		Name: "search_aws_docs",
+		Input: map[string]any{
+			"query": "why is i-private123 in production-profile failing with token=plain-secret",
+		},
+	})
+
+	if !result.IsError {
+		t.Fatal("expected sensitive documentation query to be rejected")
+	}
+	if !strings.Contains(result.Content, "private or sensitive context") {
+		t.Fatalf("unexpected rejection message: %q", result.Content)
+	}
+	for _, leaked := range []string{"i-private123", "production-profile", "plain-secret"} {
+		if strings.Contains(result.Content, leaked) {
+			t.Fatalf("rejection message leaked %q: %q", leaked, result.Content)
+		}
+	}
+}
+
+func TestPrepareDocsSearchQueryRejectsAWSIdentifiers(t *testing.T) {
+	executor := &ToolExecutor{}
+
+	for _, query := range []string{
+		"explain arn:aws:lambda:us-east-1:123456789012:function:prod-handler timeout",
+		"why does account 123456789012 see access denied",
+	} {
+		t.Run(query, func(t *testing.T) {
+			if _, err := executor.prepareDocsSearchQuery(query); err == nil {
+				t.Fatal("expected AWS identifier query to be rejected")
+			}
+		})
+	}
+}
+
+func TestToolExecuteAllowsDocsSearchAfterAWSDataTool(t *testing.T) {
+	reg := registry.New()
+	reg.RegisterCustom("ec2", "instances", registry.Entry{
+		DAOFactory: func(ctx context.Context) (dao.DAO, error) {
+			return &mockDAO{
+				BaseDAO: dao.NewBaseDAO("ec2", "instances"),
+				resources: []dao.Resource{
+					&mockResource{id: "i-123", name: "app-server"},
+				},
+			}, nil
+		},
+	})
+	executor := &ToolExecutor{
+		registry: reg,
+		docsSearcher: func(ctx context.Context, query string) string {
+			return "docs: " + query
+		},
+	}
+
+	queryResult := executor.Execute(context.TODO(), &ToolUseContent{
+		ID:   "query-123",
+		Name: "query_resources",
+		Input: map[string]any{
+			"service":       "ec2",
+			"resource_type": "instances",
+			"region":        "us-east-1",
+		},
+	})
+	if queryResult.IsError {
+		t.Fatalf("expected query_resources to succeed, got %q", queryResult.Content)
+	}
+
+	result := executor.Execute(context.TODO(), &ToolUseContent{
+		ID:   "test-123",
+		Name: "search_aws_docs",
+		Input: map[string]any{
+			"query": "how to rotate access keys",
+		},
+	})
+
+	if result.IsError {
+		t.Fatalf("expected documentation search to remain allowed after AWS data tools, got %q", result.Content)
+	}
+	if result.Content != "docs: how to rotate access keys" {
+		t.Fatalf("unexpected documentation search result: %q", result.Content)
+	}
+}
+
+func TestToolExecuteAllowsDocsSearchAfterResourceDetailTool(t *testing.T) {
+	reg := registry.New()
+	reg.RegisterCustom("ec2", "instances", registry.Entry{
+		DAOFactory: func(ctx context.Context) (dao.DAO, error) {
+			return &mockDAO{
+				BaseDAO: dao.NewBaseDAO("ec2", "instances"),
+				resources: []dao.Resource{
+					&mockResource{id: "i-123", name: "app-server"},
+				},
+			}, nil
+		},
+	})
+	executor := &ToolExecutor{
+		registry: reg,
+		docsSearcher: func(ctx context.Context, query string) string {
+			return "docs: " + query
+		},
+	}
+
+	detailResult := executor.Execute(context.TODO(), &ToolUseContent{
+		ID:   "detail-123",
+		Name: "get_resource_detail",
+		Input: map[string]any{
+			"service":       "ec2",
+			"resource_type": "instances",
+			"region":        "us-east-1",
+			"id":            "i-123",
+		},
+	})
+	if detailResult.IsError {
+		t.Fatalf("expected get_resource_detail to succeed, got %q", detailResult.Content)
+	}
+
+	result := executor.Execute(context.TODO(), &ToolUseContent{
+		ID:   "test-123",
+		Name: "search_aws_docs",
+		Input: map[string]any{
+			"query": "EC2 instance metadata options",
+		},
+	})
+	if result.IsError {
+		t.Fatalf("expected documentation search to remain allowed after get_resource_detail, got %q", result.Content)
+	}
+	if result.Content != "docs: EC2 instance metadata options" {
+		t.Fatalf("unexpected documentation search result: %q", result.Content)
+	}
+}
+
+func TestToolExecuteAllowsDocsSearchAfterFailedAWSDataTool(t *testing.T) {
+	reg := registry.New()
+	reg.RegisterCustom("ec2", "instances", registry.Entry{
+		DAOFactory: func(ctx context.Context) (dao.DAO, error) {
+			return &mockDAO{
+				BaseDAO: dao.NewBaseDAO("ec2", "instances"),
+				listErr: errors.New("operation failed for arn:aws:ec2:us-east-1:123456789012:instance/i-private token=plain-secret"),
+			}, nil
+		},
+	})
+	executor := &ToolExecutor{
+		registry: reg,
+		docsSearcher: func(ctx context.Context, query string) string {
+			return "docs: " + query
+		},
+	}
+
+	queryResult := executor.Execute(context.TODO(), &ToolUseContent{
+		ID:   "query-123",
+		Name: "query_resources",
+		Input: map[string]any{
+			"service":       "ec2",
+			"resource_type": "instances",
+			"region":        "us-east-1",
+		},
+	})
+	if !queryResult.IsError {
+		t.Fatal("expected query_resources to fail")
+	}
+	for _, leaked := range []string{"arn:aws:ec2", "123456789012", "plain-secret"} {
+		if strings.Contains(queryResult.Content, leaked) {
+			t.Fatalf("expected failed data tool output to redact %q, got %q", leaked, queryResult.Content)
+		}
+	}
+
+	result := executor.Execute(context.TODO(), &ToolUseContent{
+		ID:   "test-123",
+		Name: "search_aws_docs",
+		Input: map[string]any{
+			"query": "EC2 instance metadata options",
+		},
+	})
+	if result.IsError {
+		t.Fatalf("expected documentation search to remain allowed after failed AWS data tool, got %q", result.Content)
+	}
+	if result.Content != "docs: EC2 instance metadata options" {
+		t.Fatalf("unexpected documentation search result: %q", result.Content)
+	}
+}
+
+func TestToolExecuteRedactsFailedResourceDetailOutput(t *testing.T) {
+	reg := registry.New()
+	reg.RegisterCustom("ec2", "instances", registry.Entry{
+		DAOFactory: func(ctx context.Context) (dao.DAO, error) {
+			return &mockDAO{
+				BaseDAO: dao.NewBaseDAO("ec2", "instances"),
+				getErr:  errors.New("lookup failed for arn:aws:ec2:us-east-1:123456789012:instance/i-private password=plain-secret"),
+			}, nil
+		},
+	})
+	executor := &ToolExecutor{registry: reg}
+
+	result := executor.Execute(context.TODO(), &ToolUseContent{
+		ID:   "detail-123",
+		Name: "get_resource_detail",
+		Input: map[string]any{
+			"service":       "ec2",
+			"resource_type": "instances",
+			"region":        "us-east-1",
+			"id":            "i-private",
+		},
+	})
+	if !result.IsError {
+		t.Fatal("expected get_resource_detail to fail")
+	}
+	for _, leaked := range []string{"arn:aws:ec2", "123456789012", "plain-secret"} {
+		if strings.Contains(result.Content, leaked) {
+			t.Fatalf("expected failed detail output to redact %q, got %q", leaked, result.Content)
+		}
+	}
+}
+
+func TestToolExecuteAllowsDocsSearchAfterMissingDataToolParam(t *testing.T) {
+	executor := &ToolExecutor{
+		docsSearcher: func(ctx context.Context, query string) string {
+			return "docs: " + query
+		},
+	}
+
+	missingParamResult := executor.Execute(context.TODO(), &ToolUseContent{
+		ID:    "query-123",
+		Name:  "query_resources",
+		Input: map[string]any{"service": "ec2", "resource_type": "instances"},
+	})
+	if !missingParamResult.IsError {
+		t.Fatal("expected missing parameter to fail")
+	}
+
+	result := executor.Execute(context.TODO(), &ToolUseContent{
+		ID:   "test-123",
+		Name: "search_aws_docs",
+		Input: map[string]any{
+			"query": "EC2 instance metadata options",
+		},
+	})
+	if result.IsError {
+		t.Fatalf("expected documentation search to remain allowed after failed AWS data tool attempt, got %q", result.Content)
+	}
+	if result.Content != "docs: EC2 instance metadata options" {
+		t.Fatalf("unexpected documentation search result: %q", result.Content)
+	}
+}
+
+func TestIsPrivateDataToolIncludesDataTools(t *testing.T) {
+	for _, toolName := range []string{"query_resources", "get_resource_detail", "tail_logs"} {
+		t.Run(toolName, func(t *testing.T) {
+			if !isPrivateDataTool(toolName) {
+				t.Fatalf("expected %s to be treated as private data tool", toolName)
+			}
+		})
+	}
+	for _, toolName := range []string{"list_resources", "search_aws_docs", "unknown"} {
+		t.Run(toolName, func(t *testing.T) {
+			if isPrivateDataTool(toolName) {
+				t.Fatalf("expected %s not to be treated as private data tool", toolName)
+			}
+		})
+	}
+}
+
 func TestExtractLogGroupNameFromArn(t *testing.T) {
 	tests := []struct {
 		arn      string
@@ -515,6 +812,26 @@ func TestFormatResourceDetailRedactsSensitiveTags(t *testing.T) {
 	}
 }
 
+func TestFormatResourceDetailRedactsSensitiveTagValuePatterns(t *testing.T) {
+	resource := &mockResource{
+		id:   "resource-1",
+		name: "resource",
+		tags: map[string]string{
+			"Environment": "prod",
+			"Endpoint":    "postgres://app:super-secret-password@db.example.com:5432/app",
+		},
+	}
+
+	result := formatResourceDetail(resource)
+
+	if strings.Contains(result, "super-secret-password") {
+		t.Fatalf("expected sensitive tag value pattern to be redacted, got %q", result)
+	}
+	if !strings.Contains(result, "Environment: prod") {
+		t.Fatalf("expected non-sensitive tag to remain, got %q", result)
+	}
+}
+
 func TestFormatResourceDetailRedactsSensitiveLabelValueRecords(t *testing.T) {
 	resource := &mockResource{
 		id:   "stack-1",
@@ -615,6 +932,33 @@ func TestFormatResourceDetailPreservesMultipleSensitiveKeyNames(t *testing.T) {
 	}
 }
 
+func TestFormatResourceDetailRedactsSensitiveValuePatterns(t *testing.T) {
+	resource := &mockResource{
+		id:   "resource-1",
+		name: "resource",
+		raw: map[string]any{
+			"DatabaseURL": "postgres://app:super-secret-password@db.example.com:5432/app",
+			"Header":      "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.payload.signature",
+			"Certificate": "-----BEGIN PRIVATE KEY-----\nplain-private-key\n-----END PRIVATE KEY-----",
+			"PublicURL":   "https://example.com/health",
+		},
+	}
+
+	result := formatResourceDetail(resource)
+
+	for _, secret := range []string{"super-secret-password", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.payload.signature", "plain-private-key"} {
+		if strings.Contains(result, secret) {
+			t.Fatalf("expected value-only secret %q to be redacted, got %q", secret, result)
+		}
+	}
+	if !strings.Contains(result, "https://example.com/health") {
+		t.Fatalf("expected non-sensitive URL to remain, got %q", result)
+	}
+	if !strings.Contains(result, "[REDACTED]") {
+		t.Fatalf("expected redaction marker, got %q", result)
+	}
+}
+
 type mockResource struct {
 	id   string
 	name string
@@ -628,3 +972,33 @@ func (m *mockResource) GetName() string            { return m.name }
 func (m *mockResource) GetARN() string             { return m.arn }
 func (m *mockResource) GetTags() map[string]string { return m.tags }
 func (m *mockResource) Raw() any                   { return m.raw }
+
+type mockDAO struct {
+	dao.BaseDAO
+	resources []dao.Resource
+	listErr   error
+	getErr    error
+}
+
+func (d *mockDAO) List(ctx context.Context) ([]dao.Resource, error) {
+	if d.listErr != nil {
+		return nil, d.listErr
+	}
+	return d.resources, nil
+}
+
+func (d *mockDAO) Get(ctx context.Context, id string) (dao.Resource, error) {
+	if d.getErr != nil {
+		return nil, d.getErr
+	}
+	for _, resource := range d.resources {
+		if resource.GetID() == id {
+			return resource, nil
+		}
+	}
+	return nil, nil
+}
+
+func (d *mockDAO) Delete(ctx context.Context, id string) error {
+	return nil
+}

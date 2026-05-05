@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 	"unicode"
@@ -32,9 +33,15 @@ import (
 )
 
 type ToolExecutor struct {
-	registry *registry.Registry
-	aiCtx    *Context
+	registry     *registry.Registry
+	aiCtx        *Context
+	docsSearcher func(context.Context, string) string
 }
+
+var (
+	docsSearchARNPattern       = regexp.MustCompile(`\barn:[^\s]+`)
+	docsSearchAccountIDPattern = regexp.MustCompile(`\b\d{12}\b`)
+)
 
 func NewToolExecutor(_ context.Context, reg *registry.Registry, contexts ...*Context) (*ToolExecutor, error) {
 	var aiCtx *Context
@@ -317,7 +324,7 @@ func (e *ToolExecutor) Tools() []Tool {
 		},
 		{
 			Name:        "search_aws_docs",
-			Description: "Search AWS documentation for information",
+			Description: "Search AWS documentation for information. Queries containing private or sensitive context are rejected before external search.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -378,10 +385,21 @@ func (e *ToolExecutor) Execute(ctx context.Context, call *ToolUseContent) ToolRe
 		content, isError = e.tailLogs(ctx, service, resourceType, region, id, cluster, profile, filter, since, int(limit))
 	case "search_aws_docs":
 		query, _ := call.Input["query"].(string)
-		content = e.searchDocs(ctx, query)
+		var err error
+		query, err = e.prepareDocsSearchQuery(query)
+		if err != nil {
+			content = "Error: " + err.Error()
+			isError = true
+		} else {
+			content = e.runDocsSearch(ctx, query)
+		}
 	default:
 		content = fmt.Sprintf("Unknown tool: %s", call.Name)
 		isError = true
+	}
+
+	if isPrivateDataTool(call.Name) && isError {
+		content = e.redactPrivateToolOutput(content)
 	}
 
 	return ToolResultContent{
@@ -389,6 +407,73 @@ func (e *ToolExecutor) Execute(ctx context.Context, call *ToolUseContent) ToolRe
 		Content:   content,
 		IsError:   isError,
 	}
+}
+
+func isPrivateDataTool(toolName string) bool {
+	switch toolName {
+	case "query_resources", "get_resource_detail", "tail_logs":
+		return true
+	default:
+		return false
+	}
+}
+
+func (e *ToolExecutor) runDocsSearch(ctx context.Context, query string) string {
+	if e.docsSearcher != nil {
+		return e.docsSearcher(ctx, query)
+	}
+	return e.searchDocs(ctx, query)
+}
+
+func (e *ToolExecutor) prepareDocsSearchQuery(query string) (string, error) {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return "", fmt.Errorf("query parameter is required")
+	}
+	if sanitized := e.redactPrivateDocsSearchQuery(query); sanitized != query {
+		return "", fmt.Errorf("AWS documentation search query contains private or sensitive context; ask a general AWS documentation question without resource IDs, account IDs, ARNs, profile names, logs, tags, or secrets")
+	}
+	return query, nil
+}
+
+func (e *ToolExecutor) redactPrivateDocsSearchQuery(query string) string {
+	redacted := sanitize.SensitiveText(query)
+	redacted = docsSearchARNPattern.ReplaceAllString(redacted, sanitize.Redacted)
+	redacted = docsSearchAccountIDPattern.ReplaceAllString(redacted, sanitize.Redacted)
+	return redactDocsSearchContextValues(redacted, e.aiCtx)
+}
+
+func (e *ToolExecutor) redactPrivateToolOutput(output string) string {
+	return e.redactPrivateDocsSearchQuery(output)
+}
+
+func redactDocsSearchContextValues(query string, ctx *Context) string {
+	if ctx == nil {
+		return query
+	}
+	values := []string{
+		ctx.ResourceID,
+		ctx.ResourceProfile,
+		ctx.Cluster,
+		ctx.FilterText,
+	}
+	values = append(values, ctx.UserProfiles...)
+	values = append(values, resourceRefPrivateValues(ctx.DiffLeft)...)
+	values = append(values, resourceRefPrivateValues(ctx.DiffRight)...)
+	for _, value := range values {
+		if value == "" {
+			continue
+		}
+		query = strings.ReplaceAll(query, value, sanitize.Redacted)
+	}
+	return query
+}
+
+func resourceRefPrivateValues(ref *ResourceRef) []string {
+	if ref == nil {
+		return nil
+	}
+	return []string{ref.ID, ref.Name, ref.Profile, ref.Cluster}
 }
 
 func (e *ToolExecutor) listResources(service string) string {
@@ -913,6 +998,8 @@ func formatResourceDetail(r dao.Resource) string {
 		for k, v := range tags {
 			if isSensitiveRawKey(k) {
 				v = sanitize.Redacted
+			} else {
+				v = sanitize.SensitiveText(v)
 			}
 			result += fmt.Sprintf("  %s: %s\n", k, v)
 		}
@@ -978,6 +1065,8 @@ func redactSensitiveValue(v any) any {
 			redacted[i] = redactSensitiveValue(nested)
 		}
 		return redacted
+	case string:
+		return sanitize.SensitiveText(value)
 	default:
 		return value
 	}
