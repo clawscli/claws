@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 	"unicode"
@@ -18,6 +19,7 @@ import (
 	"github.com/clawscli/claws/internal/dao"
 	"github.com/clawscli/claws/internal/log"
 	"github.com/clawscli/claws/internal/registry"
+	"github.com/clawscli/claws/internal/sanitize"
 
 	apigatewayStages "github.com/clawscli/claws/custom/apigateway/stages"
 	apigatewayStagesV2 "github.com/clawscli/claws/custom/apigateway/stages-v2"
@@ -31,13 +33,159 @@ import (
 )
 
 type ToolExecutor struct {
-	registry *registry.Registry
+	registry     *registry.Registry
+	aiCtx        *Context
+	docsSearcher func(context.Context, string) string
 }
 
-func NewToolExecutor(_ context.Context, reg *registry.Registry) (*ToolExecutor, error) {
+var (
+	docsSearchARNPattern       = regexp.MustCompile(`\barn:[^\s]+`)
+	docsSearchAccountIDPattern = regexp.MustCompile(`\b\d{12}\b`)
+)
+
+func NewToolExecutor(_ context.Context, reg *registry.Registry, contexts ...*Context) (*ToolExecutor, error) {
+	var aiCtx *Context
+	if len(contexts) > 0 {
+		aiCtx = contexts[0]
+	}
 	return &ToolExecutor{
 		registry: reg,
+		aiCtx:    aiCtx,
 	}, nil
+}
+
+func (e *ToolExecutor) validateScope(service, resourceType, region, profile, id, cluster string) (string, string, error) {
+	ctx := e.aiCtx
+	if ctx == nil {
+		return profile, cluster, nil
+	}
+	if ctx.Service != "" && service != ctx.Service {
+		return "", "", fmt.Errorf("service %s is outside the current AI context", service)
+	}
+	if ctx.ResourceType != "" && resourceType != ctx.ResourceType {
+		return "", "", fmt.Errorf("resource type %s is outside the current AI context", resourceType)
+	}
+	if region != "" && !regionAllowed(ctx, region) {
+		return "", "", fmt.Errorf("region %s is outside the current AI context", region)
+	}
+	profile = defaultProfile(ctx, profile)
+	if profile != "" && !profileAllowed(ctx, profile) {
+		return "", "", fmt.Errorf("profile %s is outside the current AI context", profile)
+	}
+	if id != "" && !resourceAllowed(ctx, id) {
+		return "", "", fmt.Errorf("resource %s is outside the current AI context", id)
+	}
+	cluster = defaultCluster(ctx, cluster)
+	if cluster != "" && !clusterAllowed(ctx, cluster) {
+		return "", "", fmt.Errorf("cluster %s is outside the current AI context", cluster)
+	}
+	return profile, cluster, nil
+}
+
+func defaultProfile(ctx *Context, profile string) string {
+	if profile != "" {
+		return profile
+	}
+	if ctx.ResourceProfile != "" {
+		return ctx.ResourceProfile
+	}
+	if refsHaveSameProfile(ctx.DiffLeft, ctx.DiffRight) {
+		return ctx.DiffLeft.Profile
+	}
+	return ""
+}
+
+func defaultCluster(ctx *Context, cluster string) string {
+	if cluster != "" {
+		return cluster
+	}
+	if ctx.Cluster != "" {
+		return ctx.Cluster
+	}
+	if refsHaveSameCluster(ctx.DiffLeft, ctx.DiffRight) {
+		return ctx.DiffLeft.Cluster
+	}
+	return ""
+}
+
+func regionAllowed(ctx *Context, region string) bool {
+	if ctx.ResourceRegion != "" {
+		return region == ctx.ResourceRegion
+	}
+	if ctx.DiffLeft != nil || ctx.DiffRight != nil {
+		return resourceRefHasRegion(ctx.DiffLeft, region) || resourceRefHasRegion(ctx.DiffRight, region)
+	}
+	if len(ctx.UserRegions) == 0 {
+		return true
+	}
+	for _, allowed := range ctx.UserRegions {
+		if region == allowed {
+			return true
+		}
+	}
+	return false
+}
+
+func profileAllowed(ctx *Context, profile string) bool {
+	if ctx.ResourceProfile != "" {
+		return profile == ctx.ResourceProfile
+	}
+	if ctx.DiffLeft != nil || ctx.DiffRight != nil {
+		return resourceRefHasProfile(ctx.DiffLeft, profile) || resourceRefHasProfile(ctx.DiffRight, profile)
+	}
+	if len(ctx.UserProfiles) == 0 {
+		return true
+	}
+	for _, allowed := range ctx.UserProfiles {
+		if profile == allowed {
+			return true
+		}
+	}
+	return false
+}
+
+func clusterAllowed(ctx *Context, cluster string) bool {
+	if ctx.Cluster != "" {
+		return cluster == ctx.Cluster
+	}
+	if ctx.DiffLeft != nil || ctx.DiffRight != nil {
+		return resourceRefHasCluster(ctx.DiffLeft, cluster) || resourceRefHasCluster(ctx.DiffRight, cluster)
+	}
+	return true
+}
+
+func resourceAllowed(ctx *Context, id string) bool {
+	if ctx.ResourceID != "" {
+		return id == ctx.ResourceID
+	}
+	if ctx.DiffLeft != nil || ctx.DiffRight != nil {
+		return resourceRefHasID(ctx.DiffLeft, id) || resourceRefHasID(ctx.DiffRight, id)
+	}
+	return true
+}
+
+func resourceRefHasID(ref *ResourceRef, id string) bool {
+	return ref != nil && ref.ID == id
+}
+
+func resourceRefHasRegion(ref *ResourceRef, region string) bool {
+	return ref != nil && ref.Region == region
+}
+
+func resourceRefHasProfile(ref *ResourceRef, profile string) bool {
+	return ref != nil && ref.Profile == profile
+}
+
+func resourceRefHasCluster(ref *ResourceRef, cluster string) bool {
+	return ref != nil && ref.Cluster == cluster
+}
+
+func refsHaveSameProfile(left, right *ResourceRef) bool {
+	return left != nil && right != nil && left.Profile != "" && left.Profile == right.Profile
+}
+
+func refsHaveSameCluster(left, right *ResourceRef) bool {
+	return left != nil && right != nil && left.Cluster != "" && left.Cluster == right.Cluster
 }
 
 func (e *ToolExecutor) Tools() []Tool {
@@ -176,7 +324,7 @@ func (e *ToolExecutor) Tools() []Tool {
 		},
 		{
 			Name:        "search_aws_docs",
-			Description: "Search AWS documentation for information",
+			Description: "Search AWS documentation for information. Queries containing private or sensitive context are rejected before external search.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -237,10 +385,21 @@ func (e *ToolExecutor) Execute(ctx context.Context, call *ToolUseContent) ToolRe
 		content, isError = e.tailLogs(ctx, service, resourceType, region, id, cluster, profile, filter, since, int(limit))
 	case "search_aws_docs":
 		query, _ := call.Input["query"].(string)
-		content = e.searchDocs(ctx, query)
+		var err error
+		query, err = e.prepareDocsSearchQuery(query)
+		if err != nil {
+			content = "Error: " + err.Error()
+			isError = true
+		} else {
+			content = e.runDocsSearch(ctx, query)
+		}
 	default:
 		content = fmt.Sprintf("Unknown tool: %s", call.Name)
 		isError = true
+	}
+
+	if isPrivateDataTool(call.Name) && isError {
+		content = e.redactPrivateToolOutput(content)
 	}
 
 	return ToolResultContent{
@@ -248,6 +407,73 @@ func (e *ToolExecutor) Execute(ctx context.Context, call *ToolUseContent) ToolRe
 		Content:   content,
 		IsError:   isError,
 	}
+}
+
+func isPrivateDataTool(toolName string) bool {
+	switch toolName {
+	case "query_resources", "get_resource_detail", "tail_logs":
+		return true
+	default:
+		return false
+	}
+}
+
+func (e *ToolExecutor) runDocsSearch(ctx context.Context, query string) string {
+	if e.docsSearcher != nil {
+		return e.docsSearcher(ctx, query)
+	}
+	return e.searchDocs(ctx, query)
+}
+
+func (e *ToolExecutor) prepareDocsSearchQuery(query string) (string, error) {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return "", fmt.Errorf("query parameter is required")
+	}
+	if sanitized := e.redactPrivateDocsSearchQuery(query); sanitized != query {
+		return "", fmt.Errorf("AWS documentation search query contains private or sensitive context; ask a general AWS documentation question without resource IDs, account IDs, ARNs, profile names, logs, tags, or secrets")
+	}
+	return query, nil
+}
+
+func (e *ToolExecutor) redactPrivateDocsSearchQuery(query string) string {
+	redacted := sanitize.SensitiveText(query)
+	redacted = docsSearchARNPattern.ReplaceAllString(redacted, sanitize.Redacted)
+	redacted = docsSearchAccountIDPattern.ReplaceAllString(redacted, sanitize.Redacted)
+	return redactDocsSearchContextValues(redacted, e.aiCtx)
+}
+
+func (e *ToolExecutor) redactPrivateToolOutput(output string) string {
+	return e.redactPrivateDocsSearchQuery(output)
+}
+
+func redactDocsSearchContextValues(query string, ctx *Context) string {
+	if ctx == nil {
+		return query
+	}
+	values := []string{
+		ctx.ResourceID,
+		ctx.ResourceProfile,
+		ctx.Cluster,
+		ctx.FilterText,
+	}
+	values = append(values, ctx.UserProfiles...)
+	values = append(values, resourceRefPrivateValues(ctx.DiffLeft)...)
+	values = append(values, resourceRefPrivateValues(ctx.DiffRight)...)
+	for _, value := range values {
+		if value == "" {
+			continue
+		}
+		query = strings.ReplaceAll(query, value, sanitize.Redacted)
+	}
+	return query
+}
+
+func resourceRefPrivateValues(ref *ResourceRef) []string {
+	if ref == nil {
+		return nil
+	}
+	return []string{ref.ID, ref.Name, ref.Profile, ref.Cluster}
 }
 
 func (e *ToolExecutor) listResources(service string) string {
@@ -273,6 +499,11 @@ func (e *ToolExecutor) queryResources(ctx context.Context, service, resourceType
 	}
 	if region == "" {
 		return "Error: region parameter is required", true
+	}
+	var err error
+	profile, _, err = e.validateScope(service, resourceType, region, profile, "", "")
+	if err != nil {
+		return "Error: " + err.Error(), true
 	}
 
 	// Validate and apply limit
@@ -349,6 +580,11 @@ func (e *ToolExecutor) getResourceDetail(ctx context.Context, service, resourceT
 	if region == "" {
 		return "Error: region parameter is required", true
 	}
+	var err error
+	profile, cluster, err = e.validateScope(service, resourceType, region, profile, id, cluster)
+	if err != nil {
+		return "Error: " + err.Error(), true
+	}
 
 	if profile != "" {
 		ctx = appaws.WithSelectionOverride(ctx, appconfig.ProfileSelectionFromID(profile))
@@ -382,6 +618,11 @@ func (e *ToolExecutor) getResourceDetail(ctx context.Context, service, resourceT
 func (e *ToolExecutor) tailLogs(ctx context.Context, service, resourceType, region, id, cluster, profile, filter, since string, limit int) (string, bool) {
 	if region == "" {
 		return "Error: region parameter is required", true
+	}
+	var err error
+	profile, cluster, err = e.validateScope(service, resourceType, region, profile, id, cluster)
+	if err != nil {
+		return "Error: " + err.Error(), true
 	}
 	if limit <= 0 {
 		limit = 100
@@ -440,7 +681,7 @@ func (e *ToolExecutor) tailLogs(ctx context.Context, service, resourceType, regi
 	result := fmt.Sprintf("Logs from %s (%d events):\n\n", logGroup, len(output.Events))
 	for _, event := range output.Events {
 		ts := time.UnixMilli(aws.ToInt64(event.Timestamp))
-		result += fmt.Sprintf("[%s] %s\n", ts.Format("15:04:05"), aws.ToString(event.Message))
+		result += fmt.Sprintf("[%s] %s\n", ts.Format("15:04:05"), sanitize.LogText(aws.ToString(event.Message)))
 	}
 
 	return result, false
@@ -755,6 +996,11 @@ func formatResourceDetail(r dao.Resource) string {
 	if tags := r.GetTags(); len(tags) > 0 {
 		result += "\nTags:\n"
 		for k, v := range tags {
+			if isSensitiveRawKey(k) {
+				v = sanitize.Redacted
+			} else {
+				v = sanitize.SensitiveText(v)
+			}
 			result += fmt.Sprintf("  %s: %s\n", k, v)
 		}
 	}
@@ -819,6 +1065,8 @@ func redactSensitiveValue(v any) any {
 			redacted[i] = redactSensitiveValue(nested)
 		}
 		return redacted
+	case string:
+		return sanitize.SensitiveText(value)
 	default:
 		return value
 	}

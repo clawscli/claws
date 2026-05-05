@@ -221,7 +221,7 @@ func (r *ResourceBrowser) handleNumberKey(key string) (tea.Model, tea.Cmd) {
 }
 
 func (r *ResourceBrowser) handleLoadNextPage() (tea.Model, tea.Cmd) {
-	if r.hasMorePages && !r.isLoadingMore && (r.nextPageToken != "" || len(r.nextPageTokens) > 0) {
+	if r.hasLoadableNextPage() {
 		r.isLoadingMore = true
 		return r, r.loadNextPage
 	}

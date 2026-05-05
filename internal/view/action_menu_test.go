@@ -36,18 +36,18 @@ func TestActionMenuConfirmDangerousCorrectToken(t *testing.T) {
 	menu.dangerous.token = "i-12345" // Default: uses GetID()
 	menu.dangerous.input = ""
 
-	// Type the correct suffix (last 6 chars of "i-12345" = "-12345")
-	suffix := action.ConfirmSuffix("i-12345")
-	for _, r := range suffix {
+	// Type the full confirmation token.
+	confirmText := action.ConfirmSuffix("i-12345")
+	for _, r := range confirmText {
 		msg := tea.KeyPressMsg{Text: string(r), Code: r}
 		menu.Update(msg)
 	}
 
-	if menu.dangerous.input != suffix {
-		t.Errorf("dangerousInput = %q, want %q", menu.dangerous.input, suffix)
+	if menu.dangerous.input != confirmText {
+		t.Errorf("dangerousInput = %q, want %q", menu.dangerous.input, confirmText)
 	}
 
-	// Press enter - should accept since input matches suffix
+	// Press enter - should accept since input matches the full token.
 	enterMsg := tea.KeyPressMsg{Code: tea.KeyEnter}
 	menu.Update(enterMsg)
 
@@ -60,6 +60,26 @@ func TestActionMenuConfirmDangerousCorrectToken(t *testing.T) {
 	}
 	if menu.dangerous.token != "" {
 		t.Errorf("Expected confirmToken to be cleared, got %q", menu.dangerous.token)
+	}
+}
+
+func TestActionMenuConfirmDangerousSuffixOnlyRejected(t *testing.T) {
+	ctx := context.Background()
+	resource := &mockResource{id: "i-1234567890abcdef0", name: "test-instance"}
+
+	menu := NewActionMenu(ctx, resource, "test", "items")
+	menu.dangerous.active = true
+	menu.confirmIdx = 0
+	menu.dangerous.token = "i-1234567890abcdef0"
+	menu.dangerous.input = "bcdef0"
+
+	menu.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+
+	if !menu.dangerous.active {
+		t.Error("Expected dangerousConfirm to remain true after suffix-only token + enter")
+	}
+	if menu.dangerous.input != "bcdef0" {
+		t.Errorf("Expected dangerousInput to remain %q, got %q", "bcdef0", menu.dangerous.input)
 	}
 }
 
@@ -216,5 +236,18 @@ func TestActionMenuConfirmDangerousHasActiveInput(t *testing.T) {
 	// Now should have active input
 	if !menu.HasActiveInput() {
 		t.Error("Expected HasActiveInput() to be true when dangerousConfirm is active")
+	}
+}
+
+func TestActionMenuDangerousStatusLineFullToken(t *testing.T) {
+	ctx := context.Background()
+	resource := &mockResource{id: "i-12345", name: "test-instance"}
+
+	menu := NewActionMenu(ctx, resource, "test", "items")
+	menu.dangerous.active = true
+	menu.dangerous.token = resource.GetID()
+
+	if got, want := menu.StatusLine(), "Type full confirmation token"; got != want {
+		t.Errorf("StatusLine() = %q, want %q", got, want)
 	}
 }

@@ -11,6 +11,7 @@ import (
 
 	"gopkg.in/ini.v1"
 
+	appconfig "github.com/clawscli/claws/internal/config"
 	"github.com/clawscli/claws/internal/log"
 )
 
@@ -65,6 +66,10 @@ func LoadProfiles() ([]ProfileInfo, error) {
 			} else {
 				continue
 			}
+			if !appconfig.IsValidProfileName(profileName) {
+				log.Debug("skipping invalid aws profile name", "profile", profileName)
+				continue
+			}
 
 			ssoStartURL := section.Key("sso_start_url").String()
 			ssoSession := section.Key("sso_session").String()
@@ -104,6 +109,10 @@ func LoadProfiles() ([]ProfileInfo, error) {
 		for _, section := range creds.Sections() {
 			name := section.Name()
 			if name == "DEFAULT" {
+				continue
+			}
+			if !appconfig.IsValidProfileName(name) {
+				log.Debug("skipping invalid aws credentials profile name", "profile", name)
 				continue
 			}
 

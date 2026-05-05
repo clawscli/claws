@@ -64,6 +64,7 @@ type Action struct {
 	Shortcut  string
 	Type      ActionType
 	Command   string
+	Args      []string
 	Operation string
 	Confirm   ConfirmLevel
 
@@ -191,26 +192,17 @@ func ConfirmTokenName(r dao.Resource) string {
 	return r.GetName()
 }
 
-// MinConfirmChars is the minimum number of characters required for dangerous confirmation.
-// For tokens longer than this, only the last MinConfirmChars characters need to be typed.
-const MinConfirmChars = 6
-
-// ConfirmSuffix returns the suffix of the token that the user must type.
+// ConfirmSuffix returns the token that the user must type.
 // For empty tokens, returns "CONFIRM" as a fallback to prevent accidental confirmation.
-// For tokens <= MinConfirmChars, returns the full token.
-// For longer tokens, returns the last MinConfirmChars characters.
 func ConfirmSuffix(token string) string {
 	if token == "" {
 		return "CONFIRM"
 	}
-	if len(token) <= MinConfirmChars {
-		return token
-	}
-	return token[len(token)-MinConfirmChars:]
+	return token
 }
 
 // ConfirmMatches checks if the user input matches the required confirmation.
-// Returns true if input equals the suffix returned by ConfirmSuffix.
+// Returns true if input equals the token returned by ConfirmSuffix.
 func ConfirmMatches(token, input string) bool {
 	return input == ConfirmSuffix(token)
 }
@@ -299,6 +291,32 @@ func ExecuteWithDAO(ctx context.Context, action Action, resource dao.Resource, s
 }
 
 func executeExec(ctx context.Context, action Action, resource dao.Resource) ActionResult {
+	if len(action.Args) > 0 {
+		args, err := ExpandArgs(action.Args, resource)
+		if err != nil {
+			return ActionResult{Success: false, Error: err}
+		}
+		if len(args) == 0 || args[0] == "" {
+			return ActionResult{Success: false, Error: ErrEmptyCommand}
+		}
+		args, err = ResolveArgsExecutable(args)
+		if err != nil {
+			return ActionResult{Success: false, Error: err}
+		}
+
+		execCmd := exec.CommandContext(ctx, args[0], args[1:]...)
+		execCmd.Stdin = os.Stdin
+		execCmd.Stdout = os.Stdout
+		execCmd.Stderr = os.Stderr
+		if !action.SkipAWSEnv {
+			setAWSEnv(execCmd, aws.GetRegionFromContext(ctx))
+		}
+		if err := execCmd.Run(); err != nil {
+			return ActionResult{Success: false, Error: err}
+		}
+		return ActionResult{Success: true, Message: "Command executed successfully"}
+	}
+
 	cmd, err := ExpandVariables(action.Command, resource)
 	if err != nil {
 		return ActionResult{Success: false, Error: err}
@@ -323,6 +341,41 @@ func executeExec(ctx context.Context, action Action, resource dao.Resource) Acti
 	}
 
 	return ActionResult{Success: true, Message: "Command executed successfully"}
+}
+
+// ExpandArgs replaces variables in command arguments with resource values.
+// Arguments are executed without a shell, so shell metacharacters are preserved as literals.
+func ExpandArgs(args []string, resource dao.Resource) ([]string, error) {
+	expanded := make([]string, len(args))
+	for i, arg := range args {
+		replacements := map[string]string{
+			"${ID}":          resource.GetID(),
+			"${NAME}":        resource.GetName(),
+			"${ARN}":         resource.GetARN(),
+			"${INSTANCE_ID}": resource.GetID(),
+			"${BUCKET}":      resource.GetID(),
+		}
+
+		if p, ok := resource.(PrivateIPProvider); ok {
+			replacements["${PRIVATE_IP}"] = p.PrivateIP()
+		}
+		if p, ok := resource.(ClusterArnProvider); ok {
+			replacements["${CLUSTER}"] = p.ClusterArn()
+		}
+		if p, ok := resource.(ContainerNameProvider); ok {
+			replacements["${CONTAINER}"] = p.FirstContainerName()
+		}
+		if p, ok := resource.(LogGroupNameProvider); ok {
+			replacements["${LOG_GROUP}"] = p.LogGroupName()
+		}
+
+		expandedArg := arg
+		for k, v := range replacements {
+			expandedArg = strings.ReplaceAll(expandedArg, k, v)
+		}
+		expanded[i] = expandedArg
+	}
+	return expanded, nil
 }
 
 // Optional interfaces for variable expansion in action commands.

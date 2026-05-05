@@ -250,14 +250,21 @@ func (m *ActionMenu) getConfirmToken(act action.Action) string {
 func (m *ActionMenu) executeAction(act action.Action) (tea.Model, tea.Cmd) {
 	if act.Type == action.ActionTypeExec {
 		m.lastExecAction = &act
-		execCmd, err := action.ExpandVariables(act.Command, m.resource)
+		var execCommand string
+		var execArgs []string
+		var err error
+		if len(act.Args) > 0 {
+			execArgs, err = action.ExpandArgs(act.Args, m.resource)
+		} else {
+			execCommand, err = action.ExpandVariables(act.Command, m.resource)
+		}
 		if err != nil {
-			return m, func() tea.Msg {
-				return execResultMsg{success: false, err: err}
-			}
+			return m, func() tea.Msg { return execResultMsg{success: false, err: err} }
 		}
 		exec := &action.ExecWithHeader{
-			Command:    execCmd,
+			Context:    m.ctx,
+			Command:    execCommand,
+			Args:       execArgs,
 			ActionName: act.Name,
 			Resource:   m.resource,
 			Service:    m.service,
@@ -350,18 +357,14 @@ func (m *ActionMenu) renderDangerousConfirm(act action.Action) string {
 	content += fmt.Sprintf("You are about to %s:\n", s.no.Render(act.Name))
 	content += s.bold.Render(m.dangerous.token) + "\n\n"
 
-	suffix := action.ConfirmSuffix(m.dangerous.token)
-	if len(suffix) < len(m.dangerous.token) {
-		content += fmt.Sprintf("Type last %d chars: ...%s\n", len(suffix), suffix)
-	} else {
-		content += "Type to confirm:\n"
-	}
+	confirmText := action.ConfirmSuffix(m.dangerous.token)
+	content += "Type the full confirmation token:\n"
 
 	inputStyle := s.input
 	matched := action.ConfirmMatches(m.dangerous.token, m.dangerous.input)
 	if matched {
 		inputStyle = inputStyle.BorderForeground(t.Success)
-	} else if len(m.dangerous.input) > 0 && strings.HasPrefix(suffix, m.dangerous.input) {
+	} else if len(m.dangerous.input) > 0 && strings.HasPrefix(confirmText, m.dangerous.input) {
 		inputStyle = inputStyle.BorderForeground(t.Warning)
 	}
 	content += inputStyle.Render(m.dangerous.input+"▌") + "\n\n"
@@ -390,14 +393,11 @@ func (m *ActionMenu) SetSize(_, _ int) tea.Cmd {
 
 func (m *ActionMenu) StatusLine() string {
 	if m.dangerous.active {
-		suffix := action.ConfirmSuffix(m.dangerous.token)
-		if m.dangerous.input != "" && !strings.HasPrefix(suffix, m.dangerous.input) {
+		confirmText := action.ConfirmSuffix(m.dangerous.token)
+		if m.dangerous.input != "" && !strings.HasPrefix(confirmText, m.dangerous.input) {
 			return "Token does not match"
 		}
-		if len(suffix) < len(m.dangerous.token) {
-			return fmt.Sprintf("Type last %d chars to confirm", len(suffix))
-		}
-		return "Type resource ID to confirm"
+		return "Type full confirmation token"
 	}
 	if m.confirming {
 		return "Confirm: Y/N"

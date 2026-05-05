@@ -1,10 +1,7 @@
 package view
 
 import (
-	"context"
 	"fmt"
-	"io"
-	"os/exec"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -205,43 +202,30 @@ func (p *ProfileSelector) ssoLoginCurrentProfile() (tea.Model, tea.Cmd) {
 		return p, nil
 	}
 
-	if _, err := exec.LookPath("aws"); err != nil {
+	awsPath, err := action.ResolveExecutable("aws")
+	if err != nil {
 		p.loginResult = &loginResultMsg{
 			profileID: profile.id,
 			success:   false,
-			err:       fmt.Errorf("aws CLI not found in PATH"),
+			err:       fmt.Errorf("aws CLI not found in PATH: %w", err),
 		}
 		p.updateExtraHeight()
 		return p, nil
 	}
 
 	profileID := profile.id
-	return p, tea.Exec(&ssoLoginCmd{profileName: profileID}, func(err error) tea.Msg {
+	execCmd := &action.SimpleExec{
+		Args:       []string{awsPath, "sso", "login", "--profile", profileID},
+		ActionName: action.ActionNameSSOLogin,
+		SkipAWSEnv: true,
+	}
+	return p, tea.Exec(execCmd, func(err error) tea.Msg {
 		if err != nil {
 			return loginResultMsg{profileID: profileID, success: false, err: err}
 		}
 		return loginResultMsg{profileID: profileID, success: true}
 	})
 }
-
-type ssoLoginCmd struct {
-	profileName string
-	stdin       io.Reader
-	stdout      io.Writer
-	stderr      io.Writer
-}
-
-func (s *ssoLoginCmd) Run() error {
-	cmd := exec.CommandContext(context.Background(), "aws", "sso", "login", "--profile", s.profileName)
-	cmd.Stdin = s.stdin
-	cmd.Stdout = s.stdout
-	cmd.Stderr = s.stderr
-	return cmd.Run()
-}
-
-func (s *ssoLoginCmd) SetStdin(r io.Reader)  { s.stdin = r }
-func (s *ssoLoginCmd) SetStdout(w io.Writer) { s.stdout = w }
-func (s *ssoLoginCmd) SetStderr(w io.Writer) { s.stderr = w }
 
 func (p *ProfileSelector) consoleLoginCurrentProfile() (tea.Model, tea.Cmd) {
 	profile, ok := p.selector.CurrentItem()
@@ -271,11 +255,11 @@ func (p *ProfileSelector) consoleLoginCurrentProfile() (tea.Model, tea.Cmd) {
 		return p, nil
 	}
 
-	if _, err := exec.LookPath("aws"); err != nil {
+	if _, err := action.ResolveExecutable("aws"); err != nil {
 		p.loginResult = &loginResultMsg{
 			profileID:      profile.id,
 			success:        false,
-			err:            fmt.Errorf("aws CLI not found in PATH"),
+			err:            fmt.Errorf("aws CLI not found in PATH: %w", err),
 			isConsoleLogin: true,
 		}
 		p.updateExtraHeight()
@@ -283,10 +267,11 @@ func (p *ProfileSelector) consoleLoginCurrentProfile() (tea.Model, tea.Cmd) {
 	}
 
 	profileID := profile.id
-	execCmd := &action.SimpleExec{
-		Command:    "aws login --remote --profile " + profileID,
-		ActionName: action.ActionNameLogin,
-		SkipAWSEnv: true,
+	execCmd, err := newProfileLoginExec(profileID)
+	if err != nil {
+		p.loginResult = &loginResultMsg{profileID: profileID, success: false, err: err, isConsoleLogin: true}
+		p.updateExtraHeight()
+		return p, nil
 	}
 	return p, tea.Exec(execCmd, func(err error) tea.Msg {
 		if err != nil {
@@ -296,6 +281,21 @@ func (p *ProfileSelector) consoleLoginCurrentProfile() (tea.Model, tea.Cmd) {
 		config.Global().SetSelection(sel)
 		return loginResultMsg{profileID: profileID, success: true, isConsoleLogin: true}
 	})
+}
+
+func newProfileLoginExec(profileID string) (*action.SimpleExec, error) {
+	if !config.IsValidProfileName(profileID) {
+		return nil, fmt.Errorf("invalid profile name: %s", profileID)
+	}
+	awsPath, err := action.ResolveExecutable("aws")
+	if err != nil {
+		return nil, fmt.Errorf("aws CLI not found in PATH: %w", err)
+	}
+	return &action.SimpleExec{
+		Args:       []string{awsPath, "login", "--remote", "--profile", profileID},
+		ActionName: action.ActionNameLogin,
+		SkipAWSEnv: true,
+	}, nil
 }
 
 func (p *ProfileSelector) ViewString() string {

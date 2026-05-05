@@ -18,6 +18,7 @@ import (
 	"github.com/clawscli/claws/internal/config"
 	apperrors "github.com/clawscli/claws/internal/errors"
 	"github.com/clawscli/claws/internal/log"
+	"github.com/clawscli/claws/internal/sanitize"
 	"github.com/clawscli/claws/internal/ui"
 )
 
@@ -228,7 +229,7 @@ func (v *LogView) processLogEvents(events []types.FilteredLogEvent, older bool) 
 
 	for _, event := range events {
 		ts := time.UnixMilli(appaws.Int64(event.Timestamp))
-		msg := appaws.Str(event.Message)
+		msg := sanitize.LogText(appaws.Str(event.Message))
 		entries = append(entries, logEntry{
 			timestamp: ts,
 			message:   strings.TrimSuffix(msg, "\n"),
@@ -275,7 +276,7 @@ func (v *LogView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		v.err = nil
 		if msg.older {
 			if len(msg.entries) > 0 {
-				v.logs = append(msg.entries, v.logs...)
+				v.logs = append(sanitizeLogEntries(msg.entries), v.logs...)
 				if len(v.logs) > maxLogBufferSize {
 					v.logs = v.logs[:maxLogBufferSize]
 				}
@@ -295,7 +296,7 @@ func (v *LogView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if v.oldestEventTime == 0 && len(msg.entries) > 0 {
 				v.oldestEventTime = msg.entries[0].timestamp.UnixMilli()
 			}
-			v.logs = append(v.logs, msg.entries...)
+			v.logs = append(v.logs, sanitizeLogEntries(msg.entries)...)
 			if len(v.logs) > maxLogBufferSize {
 				v.logs = v.logs[len(v.logs)-maxLogBufferSize:]
 			}
@@ -411,6 +412,15 @@ func (v *LogView) updateViewportContent() {
 		sb.WriteString(fmt.Sprintf("%s %s\n", ts, msg))
 	}
 	v.vp.Model.SetContent(sb.String())
+}
+
+func sanitizeLogEntries(entries []logEntry) []logEntry {
+	sanitized := make([]logEntry, len(entries))
+	for i, entry := range entries {
+		sanitized[i] = entry
+		sanitized[i].message = sanitize.LogText(entry.message)
+	}
+	return sanitized
 }
 
 func (v *LogView) handleFilterInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {

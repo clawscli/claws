@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"golang.org/x/term"
@@ -26,7 +27,9 @@ func setAWSEnv(cmd *exec.Cmd, region string) {
 // SimpleExec represents a simple exec command without header.
 // Implements tea.ExecCommand interface.
 type SimpleExec struct {
+	Context    context.Context
 	Command    string
+	Args       []string
 	ActionName string // Action name for read-only allowlist check
 	SkipAWSEnv bool   // If true, don't inject AWS env vars (for commands that need to write to ~/.aws)
 
@@ -50,7 +53,7 @@ func (e *SimpleExec) Run() error {
 		return ErrReadOnlyDenied
 	}
 
-	if e.Command == "" {
+	if e.Command == "" && len(e.Args) == 0 {
 		return ErrEmptyCommand
 	}
 
@@ -67,7 +70,14 @@ func (e *SimpleExec) Run() error {
 		stderr = os.Stderr
 	}
 
-	cmd := exec.CommandContext(context.Background(), "/bin/sh", "-c", e.Command)
+	cmdCtx := e.Context
+	if cmdCtx == nil {
+		cmdCtx = context.Background()
+	}
+	cmd, err := e.command(cmdCtx)
+	if err != nil {
+		return err
+	}
 	cmd.Stdin = stdin
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
@@ -78,10 +88,59 @@ func (e *SimpleExec) Run() error {
 	return cmd.Run()
 }
 
+func (e *SimpleExec) command(ctx context.Context) (*exec.Cmd, error) {
+	if len(e.Args) > 0 {
+		if e.Args[0] == "" {
+			return nil, ErrEmptyCommand
+		}
+		args, err := ResolveArgsExecutable(e.Args)
+		if err != nil {
+			return nil, err
+		}
+		return exec.CommandContext(ctx, args[0], args[1:]...), nil
+	}
+	if e.Command == "" {
+		return nil, ErrEmptyCommand
+	}
+	return exec.CommandContext(ctx, "/bin/sh", "-c", e.Command), nil
+}
+
+// ResolveExecutable resolves name to the executable path that will be invoked.
+// Absolute or relative paths containing a path separator are returned unchanged.
+func ResolveExecutable(name string) (string, error) {
+	if name == "" {
+		return "", ErrEmptyCommand
+	}
+	if filepath.IsAbs(name) || strings.ContainsRune(name, os.PathSeparator) {
+		return name, nil
+	}
+	path, err := exec.LookPath(name)
+	if err != nil {
+		return "", fmt.Errorf("resolve executable %q: %w", name, err)
+	}
+	return path, nil
+}
+
+// ResolveArgsExecutable returns a copy of args with args[0] resolved to the executable path.
+func ResolveArgsExecutable(args []string) ([]string, error) {
+	if len(args) == 0 || args[0] == "" {
+		return nil, ErrEmptyCommand
+	}
+	resolved, err := ResolveExecutable(args[0])
+	if err != nil {
+		return nil, err
+	}
+	out := append([]string(nil), args...)
+	out[0] = resolved
+	return out, nil
+}
+
 // ExecWithHeader represents an exec command that should run with a fixed header
 // Implements tea.ExecCommand interface
 type ExecWithHeader struct {
+	Context    context.Context
 	Command    string
+	Args       []string
 	ActionName string
 	Resource   dao.Resource
 	Service    string
@@ -160,12 +219,15 @@ func (e *ExecWithHeader) Run() error {
 	// Move cursor to scroll region
 	_, _ = fmt.Fprintf(stdout, "\x1b[%d;1H", scrollTop)
 
-	// Prepare command - run through shell to support quoting and pipes
-	if e.Command == "" {
-		return ErrEmptyCommand
+	cmdCtx := e.Context
+	if cmdCtx == nil {
+		cmdCtx = context.Background()
 	}
 
-	cmd := exec.CommandContext(context.Background(), "/bin/sh", "-c", e.Command)
+	cmd, err := e.command(cmdCtx)
+	if err != nil {
+		return err
+	}
 	cmd.Stdin = stdin
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
@@ -174,7 +236,7 @@ func (e *ExecWithHeader) Run() error {
 	}
 
 	// Run the command
-	err := cmd.Run()
+	err = cmd.Run()
 
 	// Reset scroll region
 	_, _ = fmt.Fprint(stdout, "\x1b[r")
@@ -198,6 +260,20 @@ func (e *ExecWithHeader) Run() error {
 	}
 
 	return err
+}
+
+func (e *ExecWithHeader) command(ctx context.Context) (*exec.Cmd, error) {
+	if len(e.Args) > 0 {
+		args, err := ResolveArgsExecutable(e.Args)
+		if err != nil {
+			return nil, err
+		}
+		return exec.CommandContext(ctx, args[0], args[1:]...), nil
+	}
+	if e.Command == "" {
+		return nil, ErrEmptyCommand
+	}
+	return exec.CommandContext(ctx, "/bin/sh", "-c", e.Command), nil
 }
 
 func (e *ExecWithHeader) buildHeader(_ int) string {

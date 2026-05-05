@@ -39,6 +39,7 @@ Thumbs.db
 # AI assistant
 CLAUDE.md
 AGENTS.md
+.opencode/
 .serena/
 .sisyphus/
 

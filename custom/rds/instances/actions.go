@@ -8,7 +8,6 @@ import (
 
 	rdsClient "github.com/clawscli/claws/custom/rds"
 	"github.com/clawscli/claws/internal/action"
-	appaws "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/dao"
 )
 
@@ -152,22 +151,14 @@ func executeDeleteInstance(ctx context.Context, resource dao.Resource) action.Ac
 		return action.InvalidResourceResult()
 	}
 
-	client, err := rdsClient.GetClient(ctx)
+	d, err := NewInstanceDAO(ctx)
 	if err != nil {
 		return action.ActionResult{Success: false, Error: err}
 	}
 
 	identifier := instance.GetID()
-	skipFinalSnapshot := true
-	input := &rds.DeleteDBInstanceInput{
-		DBInstanceIdentifier:   &identifier,
-		SkipFinalSnapshot:      &skipFinalSnapshot,
-		DeleteAutomatedBackups: appaws.BoolPtr(true),
-	}
-
-	_, err = client.DeleteDBInstance(ctx, input)
-	if err != nil {
-		return action.ActionResult{Success: false, Error: fmt.Errorf("delete db instance: %w", err)}
+	if err := d.Delete(ctx, identifier); err != nil {
+		return action.ActionResult{Success: false, Error: err}
 	}
 
 	return action.ActionResult{
