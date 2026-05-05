@@ -523,6 +523,75 @@ func TestFetchParallelWithPageTokens(t *testing.T) {
 	}
 }
 
+func TestHandleLoadNextPageWithMultiProfileTokens(t *testing.T) {
+	browser := NewResourceBrowser(context.Background(), registry.New(), "ec2")
+	browser.loading = false
+	browser.hasMorePages = true
+	browser.nextMultiPageTokens = map[profileRegionKey]string{
+		{Profile: "dev", Region: "us-east-1"}: "token-1",
+	}
+
+	_, cmd := browser.handleLoadNextPage()
+
+	if cmd == nil {
+		t.Fatal("handleLoadNextPage() returned nil cmd, want loadNextPage cmd")
+	}
+	if !browser.isLoadingMore {
+		t.Fatal("handleLoadNextPage() did not set isLoadingMore")
+	}
+}
+
+func TestShouldLoadNextPageWithMultiProfileTokens(t *testing.T) {
+	browser := NewResourceBrowser(context.Background(), registry.New(), "ec2")
+	browser.loading = false
+	browser.hasMorePages = true
+	browser.nextMultiPageTokens = map[profileRegionKey]string{
+		{Profile: "dev", Region: "us-east-1"}: "token-1",
+	}
+	for i := 0; i < 20; i++ {
+		browser.filtered = append(browser.filtered, &mockResource{id: "item"})
+	}
+	browser.tc.SetCursor(10, len(browser.filtered))
+
+	if !browser.shouldLoadNextPage() {
+		t.Fatal("shouldLoadNextPage() = false, want true near bottom with nextMultiPageTokens")
+	}
+
+	browser.isLoadingMore = true
+	if browser.shouldLoadNextPage() {
+		t.Fatal("shouldLoadNextPage() = true while isLoadingMore, want false")
+	}
+}
+
+func TestHandleNextPageLoadedUpdatesMultiProfileTokens(t *testing.T) {
+	browser := NewResourceBrowser(context.Background(), registry.New(), "ec2")
+	browser.isLoadingMore = true
+	browser.resources = []dao.Resource{&mockResource{id: "existing"}}
+	browser.filtered = browser.resources
+	remaining := map[profileRegionKey]string{
+		{Profile: "prod", Region: "ap-northeast-1"}: "token-2",
+	}
+
+	browser.handleNextPageLoaded(nextPageLoadedMsg{
+		resources:           []dao.Resource{&mockResource{id: "next"}},
+		nextMultiPageTokens: remaining,
+		hasMorePages:        true,
+	})
+
+	if browser.isLoadingMore {
+		t.Fatal("handleNextPageLoaded() left isLoadingMore true")
+	}
+	if len(browser.resources) != 2 {
+		t.Fatalf("resources len = %d, want 2", len(browser.resources))
+	}
+	if browser.nextMultiPageTokens[profileRegionKey{Profile: "prod", Region: "ap-northeast-1"}] != "token-2" {
+		t.Fatalf("nextMultiPageTokens not updated: %#v", browser.nextMultiPageTokens)
+	}
+	if !browser.hasMorePages {
+		t.Fatal("hasMorePages = false, want true")
+	}
+}
+
 func TestFetchParallelPartialErrors(t *testing.T) {
 	ctx := context.Background()
 	keys := []string{"ok", "fail", "ok2"}

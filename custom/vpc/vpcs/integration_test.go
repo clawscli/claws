@@ -98,8 +98,8 @@ func TestIntegration_VPCDAO_ServiceInfo(t *testing.T) {
 		t.Fatalf("Failed to create VPCDAO: %v", err)
 	}
 
-	if dao.ServiceName() != "ec2" {
-		t.Errorf("ServiceName() = %q, want %q", dao.ServiceName(), "ec2")
+	if dao.ServiceName() != "vpc" {
+		t.Errorf("ServiceName() = %q, want %q", dao.ServiceName(), "vpc")
 	}
 	if dao.ResourceType() != "vpcs" {
 		t.Errorf("ResourceType() = %q, want %q", dao.ResourceType(), "vpcs")

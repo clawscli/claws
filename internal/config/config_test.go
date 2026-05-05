@@ -134,6 +134,27 @@ func TestConfig_Warnings(t *testing.T) {
 	}
 }
 
+func TestConfig_WarningsReturnsDefensiveCopy(t *testing.T) {
+	cfg := &Config{}
+	cfg.AddWarning("warning 1")
+	cfg.AddWarning("warning 2")
+
+	warnings := cfg.Warnings()
+	warnings[0] = "mutated"
+	mutated := append(warnings, "injected")
+	if len(mutated) != 3 {
+		t.Fatalf("mutated copy length = %d, want 3", len(mutated))
+	}
+
+	got := cfg.Warnings()
+	if len(got) != 2 {
+		t.Fatalf("Warnings() length = %d, want 2", len(got))
+	}
+	if got[0] != "warning 1" {
+		t.Fatalf("Warnings()[0] = %q, want original warning", got[0])
+	}
+}
+
 func TestGlobal(t *testing.T) {
 	// Should return non-nil config
 	cfg := Global()

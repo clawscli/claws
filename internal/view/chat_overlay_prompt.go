@@ -39,7 +39,7 @@ Available tools:
 - tail_logs(service, resource_type, region, id, cluster?, profile?): Fetches CloudWatch logs for a resource
   - Supported: lambda/functions, ecs/services, ecs/tasks, ecs/task-definitions, codebuild/projects, codebuild/builds, cloudtrail/trails, apigateway/stages, apigateway/stages-v2, stepfunctions/state-machines
   - cluster parameter required for ecs/services and ecs/tasks
-- search_aws_docs(query): Search AWS documentation
+- search_aws_docs(query): Search AWS documentation using only general, public AWS terms. This sends the query to an external AWS documentation search endpoint; never include resource IDs, account IDs, ARNs, profile names, log lines, tag values, or secrets. Queries containing private or sensitive context are rejected before external search.
 </tool_usage>
 
 <response_format>

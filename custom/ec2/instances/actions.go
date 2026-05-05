@@ -45,7 +45,7 @@ func init() {
 			Name:     "SSM Session",
 			Shortcut: "x",
 			Type:     action.ActionTypeExec,
-			Command:  "aws ssm start-session --target ${ID}",
+			Args:     []string{"aws", "ssm", "start-session", "--target", "${ID}"},
 		},
 	})
 

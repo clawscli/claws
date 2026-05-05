@@ -174,6 +174,13 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	// Lifecycle messages must run before modal/command-mode focus, otherwise
+	// async results (e.g. awsContextReadyMsg) get swallowed while a modal is open
+	// and state flags like awsInitializing never clear.
+	if model, cmd, handled := a.handleAppLifecycleMsg(msg); handled {
+		return model, cmd
+	}
+
 	if a.modal != nil {
 		return a.handleModalUpdate(msg)
 	}
@@ -410,47 +417,6 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.clipboardFlash = ""
 		return a, nil
 
-	case awsContextReadyMsg:
-		a.awsInitializing = false
-		if msg.err != nil {
-			errStr := msg.err.Error()
-			// IMDS errors are expected on non-EC2 environments - log only, no warning
-			if strings.Contains(errStr, "ec2imds") {
-				log.Debug("IMDS region detection failed (expected on non-EC2)", "error", msg.err)
-			} else {
-				log.Debug("AWS context initialization failed", "error", msg.err)
-				config.Global().AddWarning("AWS init failed: " + errStr)
-				a.showWarnings = true
-			}
-		}
-		return a, nil
-
-	case profileRefreshDoneMsg:
-		if msg.refreshID != a.profileRefreshID {
-			log.Debug("ignoring stale profile refresh", "got", msg.refreshID, "want", a.profileRefreshID)
-			return a, nil
-		}
-		a.profileRefreshing = false
-		a.profileRefreshError = msg.err
-		if msg.err != nil {
-			log.Warn("profile refresh failed", "error", msg.err)
-			return a, nil
-		}
-		if msg.region != "" {
-			config.Global().AddRegion(msg.region)
-		}
-		if config.File().PersistenceEnabled() {
-			if err := config.File().SaveRegions(config.Global().Regions()); err != nil {
-				log.Warn("failed to persist regions", "error", err)
-			}
-		}
-		if len(msg.accountIDs) > 0 {
-			for profileID, accountID := range msg.accountIDs {
-				config.Global().SetAccountIDForProfile(profileID, accountID)
-			}
-		}
-		return a, nil
-
 	case startupResourceMsg:
 		if a.startupPath == nil {
 			return a, nil
@@ -603,6 +569,52 @@ func (a *App) renderWarnings() string {
 		lipgloss.Center,
 		box,
 	)
+}
+
+func (a *App) handleAppLifecycleMsg(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
+	switch msg := msg.(type) {
+	case awsContextReadyMsg:
+		a.awsInitializing = false
+		if msg.err != nil {
+			errStr := msg.err.Error()
+			// IMDS errors are expected on non-EC2 environments - log only, no warning
+			if strings.Contains(errStr, "ec2imds") {
+				log.Debug("IMDS region detection failed (expected on non-EC2)", "error", msg.err)
+			} else {
+				log.Debug("AWS context initialization failed", "error", msg.err)
+				config.Global().AddWarning("AWS init failed: " + errStr)
+				a.showWarnings = true
+			}
+		}
+		return a, nil, true
+
+	case profileRefreshDoneMsg:
+		if msg.refreshID != a.profileRefreshID {
+			log.Debug("ignoring stale profile refresh", "got", msg.refreshID, "want", a.profileRefreshID)
+			return a, nil, true
+		}
+		a.profileRefreshing = false
+		a.profileRefreshError = msg.err
+		if msg.err != nil {
+			log.Warn("profile refresh failed", "error", msg.err)
+			return a, nil, true
+		}
+		if msg.region != "" {
+			config.Global().AddRegion(msg.region)
+		}
+		if config.File().PersistenceEnabled() {
+			if err := config.File().SaveRegions(config.Global().Regions()); err != nil {
+				log.Warn("failed to persist regions", "error", err)
+			}
+		}
+		if len(msg.accountIDs) > 0 {
+			for profileID, accountID := range msg.accountIDs {
+				config.Global().SetAccountIDForProfile(profileID, accountID)
+			}
+		}
+		return a, nil, true
+	}
+	return a, nil, false
 }
 
 func (a *App) handleModalUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {

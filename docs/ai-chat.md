@@ -60,9 +60,11 @@ Press `A` in list/detail/diff views to open the AI Chat overlay.
 - List and query AWS resources across services and regions
 - Get detailed information about specific resources
 - Fetch CloudWatch logs for supported resources (Lambda, ECS, CodeBuild, etc.)
-- Search AWS documentation
+- Search AWS documentation with general, public AWS terms
 
 The AI automatically uses the current profile, region, and resource context from your view.
+
+AWS documentation search sends the search query to AWS's public documentation search endpoint. To avoid leaking private AWS context, claws rejects documentation queries that contain resource IDs, account IDs, ARNs, profile names, logs, tag values, or secrets.
 
 ### Context Awareness
 

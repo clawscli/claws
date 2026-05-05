@@ -336,7 +336,7 @@ func (c *Config) GetAccountIDForProfile(profileID string) string {
 }
 
 func (c *Config) Warnings() []string {
-	return withRLock(&c.mu, func() []string { return c.warnings })
+	return withRLock(&c.mu, func() []string { return append([]string(nil), c.warnings...) })
 }
 
 func (c *Config) ReadOnly() bool {

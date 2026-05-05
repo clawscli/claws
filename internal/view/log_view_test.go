@@ -70,6 +70,28 @@ func TestLogViewLogsLoadedSuccess(t *testing.T) {
 	}
 }
 
+func TestLogViewSanitizesAndRedactsLogMessages(t *testing.T) {
+	ctx := context.Background()
+	lv := NewLogView(ctx, "/aws/test")
+	lv.SetSize(80, 24)
+
+	entries := []logEntry{
+		{timestamp: time.Now(), message: "token=plain-secret \x1b[31mred"},
+	}
+	lv.Update(logsLoadedMsg{entries: entries, lastEventTime: 1})
+
+	if strings.Contains(lv.logs[0].message, "plain-secret") {
+		t.Fatalf("stored log message should redact sensitive values, got %q", lv.logs[0].message)
+	}
+	if strings.Contains(lv.logs[0].message, "\x1b") || strings.Contains(lv.logs[0].message, "[31m") {
+		t.Fatalf("stored log message should remove terminal escape sequences, got %q", lv.logs[0].message)
+	}
+	view := lv.ViewString()
+	if strings.Contains(view, "plain-secret") || strings.Contains(view, "[31m") {
+		t.Fatalf("rendered view leaked unsafe log message: %q", view)
+	}
+}
+
 func TestLogViewLogsLoadedError(t *testing.T) {
 	ctx := context.Background()
 	lv := NewLogView(ctx, "/aws/test")
