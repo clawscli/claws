@@ -37,6 +37,39 @@ func TestSimpleExecArgsTreatShellMetacharactersAsLiteral(t *testing.T) {
 	}
 }
 
+func TestResolveArgsExecutableReturnsCopy(t *testing.T) {
+	original := []string{"/bin/echo", "hello"}
+	resolved, err := ResolveArgsExecutable(original)
+	if err != nil {
+		t.Fatalf("ResolveArgsExecutable() returned error: %v", err)
+	}
+
+	if resolved[0] != "/bin/echo" {
+		t.Fatalf("resolved executable = %q, want /bin/echo", resolved[0])
+	}
+	resolved[0] = "/tmp/changed"
+	if original[0] != "/bin/echo" {
+		t.Fatalf("original args mutated: %q", original[0])
+	}
+}
+
+func TestExpandArgsTreatsMetacharactersAsLiteralValues(t *testing.T) {
+	resource := &mockResource{id: "i-123; echo injected", name: "test"}
+	got, err := ExpandArgs([]string{"/bin/echo", "${ID}"}, resource)
+	if err != nil {
+		t.Fatalf("ExpandArgs() returned error: %v", err)
+	}
+	want := []string{"/bin/echo", "i-123; echo injected"}
+	if len(got) != len(want) {
+		t.Fatalf("ExpandArgs() len = %d, want %d", len(got), len(want))
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("ExpandArgs()[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
 func (m *mockResource) GetID() string              { return m.id }
 func (m *mockResource) GetName() string            { return m.name }
 func (m *mockResource) GetARN() string             { return m.arn }
@@ -509,6 +542,19 @@ func TestExecuteWithDAO_ExecType(t *testing.T) {
 		action := Action{
 			Type:    ActionTypeExec,
 			Command: "echo ${ID}",
+		}
+
+		result := ExecuteWithDAO(context.Background(), action, &mockResource{id: "test-id"}, "test", "resource")
+
+		if !result.Success {
+			t.Errorf("ExecuteWithDAO should succeed, got error: %v", result.Error)
+		}
+	})
+
+	t.Run("args with variable expansion", func(t *testing.T) {
+		action := Action{
+			Type: ActionTypeExec,
+			Args: []string{"/bin/echo", "${ID}"},
 		}
 
 		result := ExecuteWithDAO(context.Background(), action, &mockResource{id: "test-id"}, "test", "resource")
@@ -1053,9 +1099,9 @@ func TestConfirmSuffix(t *testing.T) {
 	}{
 		{"abc", "abc"},
 		{"abcdef", "abcdef"},
-		{"abcdefg", "bcdefg"},
-		{"i-1234567890abcdef0", "bcdef0"},
-		{"arn:aws:iam::123456789012:policy/MyPolicy", "Policy"},
+		{"abcdefg", "abcdefg"},
+		{"i-1234567890abcdef0", "i-1234567890abcdef0"},
+		{"arn:aws:iam::123456789012:policy/MyPolicy", "arn:aws:iam::123456789012:policy/MyPolicy"},
 		{"", "CONFIRM"},
 	}
 
@@ -1078,14 +1124,14 @@ func TestConfirmMatches(t *testing.T) {
 	}{
 		{"exact match short", "abc", "abc", true},
 		{"exact match 6 chars", "abcdef", "abcdef", true},
-		{"suffix match long token", "i-1234567890abcdef0", "bcdef0", true},
-		{"suffix match ARN", "arn:aws:iam::123456789012:policy/MyPolicy", "Policy", true},
+		{"suffix rejected for long token", "i-1234567890abcdef0", "bcdef0", false},
+		{"suffix rejected for ARN", "arn:aws:iam::123456789012:policy/MyPolicy", "Policy", false},
 		{"wrong suffix", "i-1234567890abcdef0", "wrong", false},
 		{"partial suffix", "i-1234567890abcdef0", "def0", false},
 		{"empty input", "abcdef", "", false},
 		{"empty token requires CONFIRM", "", "CONFIRM", true},
 		{"empty token rejects empty input", "", "", false},
-		{"full token when suffix expected", "i-1234567890abcdef0", "i-1234567890abcdef0", false},
+		{"full token required", "i-1234567890abcdef0", "i-1234567890abcdef0", true},
 	}
 
 	for _, tt := range tests {

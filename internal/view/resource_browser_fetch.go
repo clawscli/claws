@@ -391,10 +391,7 @@ type resourcesErrorMsg struct {
 }
 
 func (r *ResourceBrowser) shouldLoadNextPage() bool {
-	if !r.hasMorePages || r.isLoadingMore || r.loading {
-		return false
-	}
-	if r.nextPageToken == "" && len(r.nextPageTokens) == 0 && len(r.nextMultiPageTokens) == 0 {
+	if !r.hasLoadableNextPage() {
 		return false
 	}
 	if r.filterText != "" && len(r.filtered) < 10 {
@@ -405,6 +402,13 @@ func (r *ResourceBrowser) shouldLoadNextPage() bool {
 	}
 	buffer := 10
 	return r.tc.Cursor() >= len(r.filtered)-buffer
+}
+
+func (r *ResourceBrowser) hasLoadableNextPage() bool {
+	if !r.hasMorePages || r.isLoadingMore || r.loading {
+		return false
+	}
+	return r.nextPageToken != "" || len(r.nextPageTokens) > 0 || len(r.nextMultiPageTokens) > 0
 }
 
 func (r *ResourceBrowser) loadNextPage() tea.Msg {

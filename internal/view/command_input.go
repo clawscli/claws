@@ -612,7 +612,8 @@ func (c *CommandInput) parseSortArgs(args string) tea.Cmd {
 
 func (c *CommandInput) executeLogin(profileName string) tea.Cmd {
 	exec := &action.SimpleExec{
-		Command:    fmt.Sprintf("aws login --remote --profile %s", profileName),
+		Context:    c.ctx,
+		Args:       []string{"aws", "login", "--remote", "--profile", profileName},
 		ActionName: action.ActionNameLogin,
 		SkipAWSEnv: true,
 	}
