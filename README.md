@@ -17,6 +17,7 @@ A terminal UI for AWS resource management
 - **Interactive TUI** - Navigate AWS resources with vim-style keybindings
 - **70 services, 175 resources** - EC2, S3, Lambda, RDS, ECS, EKS, and more
 - **Multi-profile & Multi-region** - Query multiple accounts/regions in parallel
+- **Profile login helpers** - Run AWS SSO login or open console login from the profile selector
 - **Resource actions** - Start/stop instances, delete resources, tail logs
 - **Cross-resource navigation** - Jump from VPC to subnets, Lambda to CloudWatch
 - **Filtering & sorting** - Fuzzy search, tag filtering, column sorting
@@ -109,6 +110,8 @@ claws --read-only
 | `A` | AI Chat (in list/detail/diff views) |
 | `R` | Select region(s) |
 | `P` | Select profile(s) |
+| `l` | SSO login for selected profile (in profile selector) |
+| `L` | Console login for selected profile (in profile selector) |
 | `?` | Show help |
 | `q` | Quit |
 
