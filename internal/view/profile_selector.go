@@ -118,6 +118,22 @@ func (p *ProfileSelector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case loginResultMsg:
 		p.loginResult = &msg
 		if msg.success {
+			if msg.isConsoleLogin {
+				selected := p.selector.Selected()
+				for id := range selected {
+					delete(selected, id)
+				}
+				selected[msg.profileID] = true
+
+				sel := config.NamedProfile(msg.profileID)
+				selections := []config.ProfileSelection{sel}
+				config.Global().SetSelections(selections)
+				p.selector.ClearResult()
+				p.updateExtraHeight()
+				return p, func() tea.Msg {
+					return navmsg.ProfilesChangedMsg{Selections: selections}
+				}
+			}
 			p.selector.Selected()[msg.profileID] = true
 			p.selector.ClearResult()
 		}
@@ -277,8 +293,6 @@ func (p *ProfileSelector) consoleLoginCurrentProfile() (tea.Model, tea.Cmd) {
 		if err != nil {
 			return loginResultMsg{profileID: profileID, success: false, err: err, isConsoleLogin: true}
 		}
-		sel := config.NamedProfile(profileID)
-		config.Global().SetSelection(sel)
 		return loginResultMsg{profileID: profileID, success: true, isConsoleLogin: true}
 	})
 }

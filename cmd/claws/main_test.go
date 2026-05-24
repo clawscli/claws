@@ -3,6 +3,8 @@ package main
 import (
 	"slices"
 	"testing"
+
+	"github.com/clawscli/claws/internal/config"
 )
 
 func TestParseFlags_Profiles(t *testing.T) {
@@ -145,4 +147,94 @@ func TestParseFlags_ConfigFile(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestParseFlags_EnvCreds(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{name: "short flag", args: []string{"-e"}},
+		{name: "long flag", args: []string{"--env"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := parseFlagsFromArgs(tt.args)
+			if !opts.envCreds {
+				t.Error("envCreds should be true")
+			}
+		})
+	}
+}
+
+func TestApplyStartupConfig_ProfilePrecedence(t *testing.T) {
+	tests := []struct {
+		name        string
+		opts        cliOptions
+		startup     []string
+		wantProfile []string
+	}{
+		{
+			name:        "saved startup profiles used when no CLI override",
+			opts:        cliOptions{},
+			startup:     []string{"saved"},
+			wantProfile: []string{"saved"},
+		},
+		{
+			name:        "profile flag overrides saved startup profiles",
+			opts:        cliOptions{profiles: []string{"cli"}},
+			startup:     []string{"saved"},
+			wantProfile: []string{"cli"},
+		},
+		{
+			name:        "env flag overrides profile flag and saved startup profiles",
+			opts:        cliOptions{envCreds: true, profiles: []string{"cli"}},
+			startup:     []string{"saved"},
+			wantProfile: []string{config.ProfileIDEnvOnly},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fileCfg := &config.FileConfig{Startup: config.StartupConfig{Profiles: tt.startup}}
+			cfg := &config.Config{}
+
+			applyStartupConfig(tt.opts, fileCfg, cfg)
+
+			if got := selectionIDs(cfg.Selections()); !slices.Equal(got, tt.wantProfile) {
+				t.Errorf("selections = %v, want %v", got, tt.wantProfile)
+			}
+		})
+	}
+}
+
+func TestApplyStartupConfig_EnvOverrideDoesNotMutateSavedProfiles(t *testing.T) {
+	fileCfg := &config.FileConfig{Startup: config.StartupConfig{Profiles: []string{"personal"}}}
+	cfg := &config.Config{}
+
+	applyStartupConfig(cliOptions{envCreds: true}, fileCfg, cfg)
+
+	if got := cfg.Selection().ID(); got != config.ProfileIDEnvOnly {
+		t.Fatalf("selection = %q, want env-only", got)
+	}
+	_, savedProfiles := fileCfg.GetStartup()
+	if !slices.Equal(savedProfiles, []string{"personal"}) {
+		t.Fatalf("saved profiles = %v, want [personal]", savedProfiles)
+	}
+
+	nextCfg := &config.Config{}
+	applyStartupConfig(cliOptions{}, fileCfg, nextCfg)
+
+	if got := nextCfg.Selection().ID(); got != "personal" {
+		t.Errorf("next launch selection = %q, want personal", got)
+	}
+}
+
+func selectionIDs(selections []config.ProfileSelection) []string {
+	ids := make([]string, len(selections))
+	for i, sel := range selections {
+		ids[i] = sel.ID()
+	}
+	return ids
 }
