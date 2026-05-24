@@ -1,10 +1,14 @@
 package view
 
 import (
+	"context"
+	"io"
 	"testing"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
+	awsui "github.com/clawscli/claws/internal/aws"
 	"github.com/clawscli/claws/internal/config"
 	navmsg "github.com/clawscli/claws/internal/msg"
 )
@@ -117,30 +121,34 @@ func TestProfileSelectorSSODetection(t *testing.T) {
 	}
 	selector.Update(profilesLoadedMsg{profiles: profiles})
 
-	var ssoProfile *profileItem
+	var ssoProfile profileItem
+	foundSSOProfile := false
 	for i := range selector.profiles {
 		if selector.profiles[i].isSSO {
-			ssoProfile = &selector.profiles[i]
+			ssoProfile = selector.profiles[i]
+			foundSSOProfile = true
 			break
 		}
 	}
 
-	if ssoProfile == nil {
+	if !foundSSOProfile {
 		t.Fatal("Expected to find SSO profile")
 	}
 	if ssoProfile.id != "prod-sso" {
 		t.Errorf("Expected SSO profile 'prod-sso', got %q", ssoProfile.id)
 	}
 
-	var nonSSOProfile *profileItem
+	var nonSSOProfile profileItem
+	foundNonSSOProfile := false
 	for i := range selector.profiles {
 		if !selector.profiles[i].isSSO {
-			nonSSOProfile = &selector.profiles[i]
+			nonSSOProfile = selector.profiles[i]
+			foundNonSSOProfile = true
 			break
 		}
 	}
 
-	if nonSSOProfile == nil {
+	if !foundNonSSOProfile {
 		t.Fatal("Expected to find non-SSO profile")
 	}
 	if nonSSOProfile.isSSO {
@@ -210,5 +218,48 @@ func TestProfileSelectorConsoleLoginSuccessSwitchesAndEmitsProfileChange(t *test
 	}
 	if !selector.selector.Selected()["dev"] {
 		t.Error("dev profile should be selected after console login")
+	}
+}
+
+func TestProfileSelectorSSOLoginUsesSDKRunner(t *testing.T) {
+	selector := NewProfileSelector()
+	selector.SetSize(100, 50)
+	selector.Update(profilesLoadedMsg{
+		profiles: []profileItem{{id: "prod-sso", display: "prod-sso", isSSO: true}},
+		infoMap: map[string]awsui.ProfileInfo{
+			"prod-sso": {
+				Name:         "prod-sso",
+				SSOSession:   "prod-session",
+				SSOStartURL:  "https://example.awsapps.com/start",
+				SSORegion:    "us-east-1",
+				SSOAccountID: "123456789012",
+				SSORoleName:  "ReadOnly",
+			},
+		},
+	})
+
+	called := false
+	selector.ssoLogin = func(_ context.Context, profile awsui.ProfileInfo, _ io.Writer) (awsui.SSOLoginResult, error) {
+		called = true
+		if profile.Name != "prod-sso" {
+			t.Fatalf("profile.Name = %q, want prod-sso", profile.Name)
+		}
+		return awsui.SSOLoginResult{Message: "SSO session ready", ExpiresAt: time.Now().Add(time.Hour)}, nil
+	}
+
+	_, cmd := selector.Update(tea.KeyPressMsg{Code: 'l', Text: "l"})
+	if cmd == nil {
+		t.Fatal("expected SSO login command")
+	}
+
+	execCmd := &ssoLoginExec{profile: selector.profileInfo["prod-sso"], run: selector.ssoLogin}
+	if err := execCmd.Run(); err != nil {
+		t.Fatalf("ssoLoginExec.Run() error = %v", err)
+	}
+	if !called {
+		t.Fatal("expected SSO login runner to be called")
+	}
+	if execCmd.result.Message != "SSO session ready" {
+		t.Fatalf("result.Message = %q, want SSO session ready", execCmd.result.Message)
 	}
 }

@@ -1,7 +1,10 @@
 package view
 
 import (
+	"context"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -30,11 +33,14 @@ type ProfileSelector struct {
 	selector    *MultiSelector[profileItem]
 	profiles    []profileItem
 	profileInfo map[string]aws.ProfileInfo
+	ssoLogin    ssoLoginRunner
 
 	loginResult *loginResultMsg
 	typeStyle   lipgloss.Style
 	regionStyle lipgloss.Style
 }
+
+type ssoLoginRunner func(context.Context, aws.ProfileInfo, io.Writer) (aws.SSOLoginResult, error)
 
 func NewProfileSelector() *ProfileSelector {
 	initialSelected := make([]string, 0)
@@ -45,6 +51,7 @@ func NewProfileSelector() *ProfileSelector {
 	p := &ProfileSelector{
 		selector:    NewMultiSelector[profileItem]("Select Profiles", initialSelected),
 		profileInfo: make(map[string]aws.ProfileInfo),
+		ssoLogin:    aws.RunSSOLogin,
 		typeStyle:   ui.DimStyle(),
 		regionStyle: ui.DimStyle(),
 	}
@@ -77,6 +84,7 @@ type loginResultMsg struct {
 	success        bool
 	err            error
 	isConsoleLogin bool
+	message        string
 }
 
 func (p *ProfileSelector) loadProfiles() tea.Msg {
@@ -218,29 +226,55 @@ func (p *ProfileSelector) ssoLoginCurrentProfile() (tea.Model, tea.Cmd) {
 		return p, nil
 	}
 
-	awsPath, err := action.ResolveExecutable("aws")
-	if err != nil {
+	profileInfo, ok := p.profileInfo[profile.id]
+	if !ok {
 		p.loginResult = &loginResultMsg{
 			profileID: profile.id,
 			success:   false,
-			err:       fmt.Errorf("aws CLI not found in PATH: %w", err),
+			err:       fmt.Errorf("SSO profile metadata not loaded for %q", profile.id),
 		}
 		p.updateExtraHeight()
 		return p, nil
 	}
 
 	profileID := profile.id
-	execCmd := &action.SimpleExec{
-		Args:       []string{awsPath, "sso", "login", "--profile", profileID},
-		ActionName: action.ActionNameSSOLogin,
-		SkipAWSEnv: true,
+	execCmd := &ssoLoginExec{
+		profile: profileInfo,
+		run:     p.ssoLogin,
 	}
 	return p, tea.Exec(execCmd, func(err error) tea.Msg {
 		if err != nil {
 			return loginResultMsg{profileID: profileID, success: false, err: err}
 		}
-		return loginResultMsg{profileID: profileID, success: true}
+		return loginResultMsg{profileID: profileID, success: true, message: execCmd.result.Message}
 	})
+}
+
+type ssoLoginExec struct {
+	profile aws.ProfileInfo
+	run     ssoLoginRunner
+	result  aws.SSOLoginResult
+
+	stdin  io.Reader
+	stdout io.Writer
+	stderr io.Writer
+}
+
+func (e *ssoLoginExec) SetStdin(r io.Reader)  { e.stdin = r }
+func (e *ssoLoginExec) SetStdout(w io.Writer) { e.stdout = w }
+func (e *ssoLoginExec) SetStderr(w io.Writer) { e.stderr = w }
+
+func (e *ssoLoginExec) Run() error {
+	stdout := e.stdout
+	if stdout == nil {
+		stdout = os.Stdout
+	}
+	result, err := e.run(context.Background(), e.profile, stdout)
+	if err != nil {
+		return err
+	}
+	e.result = result
+	return nil
 }
 
 func (p *ProfileSelector) consoleLoginCurrentProfile() (tea.Model, tea.Cmd) {
@@ -322,7 +356,11 @@ func (p *ProfileSelector) ViewString() string {
 			loginType = "Console"
 		}
 		if p.loginResult.success {
-			content += ui.SuccessStyle().Render(loginType + " login successful")
+			message := p.loginResult.message
+			if message == "" {
+				message = loginType + " login successful"
+			}
+			content += ui.SuccessStyle().Render(message)
 		} else {
 			content += ui.DangerStyle().Render(loginType + " login failed: " + p.loginResult.err.Error())
 		}
