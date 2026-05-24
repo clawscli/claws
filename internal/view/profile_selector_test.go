@@ -4,6 +4,9 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/clawscli/claws/internal/config"
+	navmsg "github.com/clawscli/claws/internal/msg"
 )
 
 func testProfiles() []profileItem {
@@ -171,5 +174,41 @@ func TestProfileSelectorToggle(t *testing.T) {
 
 	if !selector.selector.Selected()["default"] || !selector.selector.Selected()["dev"] {
 		t.Error("Expected both profiles to be selected")
+	}
+}
+
+func TestProfileSelectorConsoleLoginSuccessSwitchesAndEmitsProfileChange(t *testing.T) {
+	config.Global().UseEnvOnly()
+	t.Cleanup(func() { config.Global().UseSDKDefault() })
+
+	selector := NewProfileSelector()
+	selector.SetSize(100, 50)
+	selector.Update(profilesLoadedMsg{profiles: []profileItem{
+		{id: config.ProfileIDEnvOnly, display: "Env/IMDS Only", isSSO: false},
+		{id: "dev", display: "dev", isSSO: false},
+	}})
+
+	_, cmd := selector.Update(loginResultMsg{profileID: "dev", success: true, isConsoleLogin: true})
+	if cmd == nil {
+		t.Fatal("Expected console login success to emit profile change command")
+	}
+
+	msg := cmd()
+	profileMsg, ok := msg.(navmsg.ProfilesChangedMsg)
+	if !ok {
+		t.Fatalf("command message = %T, want ProfilesChangedMsg", msg)
+	}
+	if len(profileMsg.Selections) != 1 || profileMsg.Selections[0].ID() != "dev" {
+		t.Fatalf("ProfilesChangedMsg selections = %v, want [dev]", profileMsg.Selections)
+	}
+
+	if got := config.Global().Selection().ID(); got != "dev" {
+		t.Errorf("global selection = %q, want dev", got)
+	}
+	if selector.selector.Selected()[config.ProfileIDEnvOnly] {
+		t.Error("env-only selection should be cleared after console login switches profile")
+	}
+	if !selector.selector.Selected()["dev"] {
+		t.Error("dev profile should be selected after console login")
 	}
 }
