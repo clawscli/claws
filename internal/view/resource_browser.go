@@ -305,12 +305,23 @@ func (r *ResourceBrowser) ViewString() string {
 
 	tabsView := r.renderTabs() + r.styles.count.Render(countText)
 
-	// Filter view (use cached styles)
+	// Filter view (use cached styles). Shows the active fuzzy filter and/or
+	// tag filter so the user can see why the list is narrowed (e.g. when set
+	// via the --filter/--tag flags or the `:tag` command).
 	var filterView string
 	if r.filterActive {
 		filterView = r.styles.filterBg.Render(r.filterInput.View()) + "\n"
-	} else if r.filterText != "" {
-		filterView = r.styles.filterActive.Render(fmt.Sprintf("filter: %s", r.filterText)) + "\n"
+	} else {
+		var indicators []string
+		if r.filterText != "" {
+			indicators = append(indicators, fmt.Sprintf("filter: %s", r.filterText))
+		}
+		if r.tagFilterText != "" {
+			indicators = append(indicators, fmt.Sprintf("tag: %s", r.tagFilterText))
+		}
+		if len(indicators) > 0 {
+			filterView = r.styles.filterActive.Render(strings.Join(indicators, " · ")) + "\n"
+		}
 	}
 
 	// Handle empty states

@@ -33,6 +33,8 @@ type StartupPath struct {
 	Service      string
 	ResourceType string
 	ResourceID   string
+	Filter       string // Fuzzy filter to apply on the startup resource list (equivalent to `/`)
+	Tag          string // Tag filter to apply on the startup resource list (equivalent to `:tag`)
 }
 
 const flashDuration = 2 * time.Second
@@ -133,6 +135,7 @@ func New(ctx context.Context, reg *registry.Registry, startupPath *StartupPath) 
 func (a *App) Init() tea.Cmd {
 	a.awsInitializing = true
 
+	var startupFilter, startupTag string
 	if a.startupPath != nil {
 		// CLI `-s` option takes precedence
 		viewName := a.startupPath.Service
@@ -140,10 +143,25 @@ func (a *App) Init() tea.Cmd {
 			viewName = fmt.Sprintf("%s/%s", a.startupPath.Service, a.startupPath.ResourceType)
 		}
 		a.currentView = a.resolveStartupView(viewName)
+		startupFilter = a.startupPath.Filter
+		startupTag = a.startupPath.Tag
 	} else {
 		// Check config startup.view
 		startupView := config.File().GetStartupView()
 		a.currentView = a.resolveStartupView(startupView)
+		startupFilter = config.File().GetStartupFilter()
+		startupTag = config.File().GetStartupTag()
+	}
+
+	// Seed startup filters so the resource list opens pre-filtered. Only applies
+	// to the resource browser; ignored for dashboard/service-browser views.
+	if rb, ok := a.currentView.(*view.ResourceBrowser); ok {
+		if startupFilter != "" {
+			rb.SetInitialFilter(startupFilter)
+		}
+		if startupTag != "" {
+			rb.SetInitialTagFilter(startupTag)
+		}
 	}
 
 	initAWSCmd := func() tea.Msg {

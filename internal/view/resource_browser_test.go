@@ -145,6 +145,160 @@ func TestResourceBrowserTagFilter(t *testing.T) {
 	}
 }
 
+func TestResourceBrowserSetInitialFilter(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	browser := NewResourceBrowser(ctx, reg, "ec2")
+	browser.SetInitialFilter("bastion")
+
+	if browser.FilterText() != "bastion" {
+		t.Errorf("FilterText() = %q, want %q", browser.FilterText(), "bastion")
+	}
+	if browser.filterInput.Value() != "bastion" {
+		t.Errorf("filterInput.Value() = %q, want %q", browser.filterInput.Value(), "bastion")
+	}
+
+	browser.resources = []dao.Resource{
+		&mockResource{id: "i-1", name: "prod-bastion"},
+		&mockResource{id: "i-2", name: "web-server"},
+		&mockResource{id: "i-3", name: "dev-bastion"},
+	}
+	browser.applyFilter()
+
+	if len(browser.filtered) != 2 {
+		t.Fatalf("got %d resources, want 2", len(browser.filtered))
+	}
+	for _, want := range []string{"i-1", "i-3"} {
+		found := false
+		for _, res := range browser.filtered {
+			if res.GetID() == want {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("expected %q in filtered results", want)
+		}
+	}
+}
+
+func TestResourceBrowserSetInitialTagFilter(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	browser := NewResourceBrowser(ctx, reg, "ec2")
+	browser.SetInitialTagFilter("Role=bastion")
+
+	browser.resources = []dao.Resource{
+		&mockResource{id: "i-1", name: "host-1", tags: map[string]string{"Role": "bastion"}},
+		&mockResource{id: "i-2", name: "host-2", tags: map[string]string{"Role": "web"}},
+		&mockResource{id: "i-3", name: "host-3", tags: map[string]string{"Role": "bastion"}},
+	}
+	browser.applyFilter()
+
+	if len(browser.filtered) != 2 {
+		t.Fatalf("got %d resources, want 2", len(browser.filtered))
+	}
+	for i, want := range []string{"i-1", "i-3"} {
+		if browser.filtered[i].GetID() != want {
+			t.Errorf("filtered[%d].GetID() = %q, want %q", i, browser.filtered[i].GetID(), want)
+		}
+	}
+}
+
+func TestResourceBrowserFilterIndicators(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	tests := []struct {
+		name        string
+		filterText  string
+		tagFilter   string
+		wantContain []string
+		wantAbsent  []string
+	}{
+		{
+			name:       "no filters shows nothing",
+			wantAbsent: []string{"filter:", "tag:"},
+		},
+		{
+			name:        "fuzzy filter only",
+			filterText:  "web",
+			wantContain: []string{"filter: web"},
+			wantAbsent:  []string{"tag:"},
+		},
+		{
+			name:        "tag filter only",
+			tagFilter:   "Role=bastion",
+			wantContain: []string{"tag: Role=bastion"},
+			wantAbsent:  []string{"filter:"},
+		},
+		{
+			name:        "both filters",
+			filterText:  "web",
+			tagFilter:   "Env=prod",
+			wantContain: []string{"filter: web", "tag: Env=prod", "·"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			browser := NewResourceBrowser(ctx, reg, "ec2")
+			browser.SetSize(100, 50)
+			browser.loading = false
+			browser.resources = []dao.Resource{
+				&mockResource{id: "i-1", name: "web-prod", tags: map[string]string{"Role": "bastion", "Env": "prod"}},
+			}
+			browser.filterText = tt.filterText
+			browser.tagFilterText = tt.tagFilter
+			browser.applyFilter()
+			browser.buildTable()
+
+			out := browser.ViewString()
+			for _, want := range tt.wantContain {
+				if !strings.Contains(out, want) {
+					t.Errorf("view should contain %q, got:\n%s", want, out)
+				}
+			}
+			for _, absent := range tt.wantAbsent {
+				if strings.Contains(out, absent) {
+					t.Errorf("view should not contain %q, got:\n%s", absent, out)
+				}
+			}
+		})
+	}
+}
+
+func TestResourceBrowserClearFilterClearsAll(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	browser := NewResourceBrowser(ctx, reg, "ec2")
+	browser.filterText = "web"
+	browser.filterInput.SetValue("web")
+	browser.tagFilterText = "Role=bastion"
+	browser.fieldFilter = "VpcId"
+	browser.fieldFilterValue = "vpc-123"
+
+	browser.handleClearFilter()
+
+	if browser.filterText != "" {
+		t.Errorf("filterText = %q, want empty", browser.filterText)
+	}
+	if browser.filterInput.Value() != "" {
+		t.Errorf("filterInput.Value() = %q, want empty", browser.filterInput.Value())
+	}
+	if browser.tagFilterText != "" {
+		t.Errorf("tagFilterText = %q, want empty", browser.tagFilterText)
+	}
+	if browser.fieldFilter != "" {
+		t.Errorf("fieldFilter = %q, want empty", browser.fieldFilter)
+	}
+	if browser.fieldFilterValue != "" {
+		t.Errorf("fieldFilterValue = %q, want empty", browser.fieldFilterValue)
+	}
+}
+
 func TestResourceBrowserMouseHover(t *testing.T) {
 	ctx := context.Background()
 	reg := registry.New()

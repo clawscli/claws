@@ -168,6 +168,69 @@ func TestParseFlags_EnvCreds(t *testing.T) {
 	}
 }
 
+func TestParseFlags_Filter(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     []string
+		expected string
+	}{
+		{"short flag", []string{"-f", "bastion"}, "bastion"},
+		{"long flag", []string{"--filter", "bastion"}, "bastion"},
+		{"with service", []string{"-s", "ec2", "-f", "bastion"}, "bastion"},
+		{"whitespace trimmed", []string{"-f", "  bastion  "}, "bastion"},
+		{"no filter", []string{"-s", "ec2"}, ""},
+		{"missing value", []string{"-f"}, ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := parseFlagsFromArgs(tt.args)
+			if opts.filter != tt.expected {
+				t.Errorf("filter = %q, want %q", opts.filter, tt.expected)
+			}
+		})
+	}
+}
+
+func TestParseFlags_Tag(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     []string
+		expected string
+	}{
+		{"key=value", []string{"--tag", "Role=bastion"}, "Role=bastion"},
+		{"key only", []string{"--tag", "Role"}, "Role"},
+		{"partial match", []string{"--tag", "Name~web"}, "Name~web"},
+		{"with service", []string{"-s", "ec2", "--tag", "Env=prod"}, "Env=prod"},
+		{"whitespace trimmed", []string{"--tag", "  Env=prod  "}, "Env=prod"},
+		{"no tag", []string{"-s", "ec2"}, ""},
+		{"missing value", []string{"--tag"}, ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := parseFlagsFromArgs(tt.args)
+			if opts.tag != tt.expected {
+				t.Errorf("tag = %q, want %q", opts.tag, tt.expected)
+			}
+		})
+	}
+}
+
+func TestParseFlags_FilterAndTagCombined(t *testing.T) {
+	opts := parseFlagsFromArgs([]string{"-s", "ec2", "-f", "bastion", "--tag", "Role=bastion"})
+
+	if opts.service != "ec2" {
+		t.Errorf("service = %q, want %q", opts.service, "ec2")
+	}
+	if opts.filter != "bastion" {
+		t.Errorf("filter = %q, want %q", opts.filter, "bastion")
+	}
+	if opts.tag != "Role=bastion" {
+		t.Errorf("tag = %q, want %q", opts.tag, "Role=bastion")
+	}
+}
+
 func TestApplyStartupConfig_ProfilePrecedence(t *testing.T) {
 	tests := []struct {
 		name        string

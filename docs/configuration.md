@@ -55,6 +55,8 @@ compact_header: false     # Use single-line compact header (default: false)
 
 startup:                  # Applied on launch if present
   view: services          # Startup view: "dashboard", "services", or "service/resource" (e.g., "ec2", "rds/snapshots")
+  filter: bastion         # Fuzzy filter applied on launch (like pressing `/`); CLI -f/--filter overrides
+  tag: Role=bastion       # Tag filter applied on launch (like `:tag`); CLI --tag overrides
   profiles:               # Multiple profiles supported
     - production
   regions:
