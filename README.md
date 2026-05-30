@@ -91,6 +91,10 @@ claws -s services         # Start with service browser (default)
 claws -s ec2              # EC2 instances
 claws -s rds/snapshots    # RDS snapshots
 
+# Launch into a pre-filtered list (requires -s)
+claws -s ec2 -f bastion           # Fuzzy filter (like pressing `/`)
+claws -s ec2 --tag Role=bastion   # Tag filter (like `:tag`)
+
 # Multiple profiles/regions (comma-separated or repeated)
 claws -p dev,prod -r us-east-1,ap-northeast-1
 

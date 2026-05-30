@@ -187,6 +187,20 @@ func (r *ResourceBrowser) ResourceCount() int            { return len(r.filtered
 func (r *ResourceBrowser) FilterText() string            { return r.filterText }
 func (r *ResourceBrowser) ToggleStates() map[string]bool { return r.toggleStates }
 
+// SetInitialFilter seeds the fuzzy filter before the first load so the list
+// opens pre-filtered (equivalent to typing `/<filter>` after launch). The
+// filter input is kept in sync so the user can edit or clear it normally.
+func (r *ResourceBrowser) SetInitialFilter(filter string) {
+	r.filterText = filter
+	r.filterInput.SetValue(filter)
+}
+
+// SetInitialTagFilter seeds the tag filter before the first load so the list
+// opens pre-filtered (equivalent to the `:tag <filter>` command).
+func (r *ResourceBrowser) SetInitialTagFilter(tag string) {
+	r.tagFilterText = tag
+}
+
 func (r *ResourceBrowser) getNavigationShortcuts() string {
 	if r.renderer == nil || len(r.filtered) == 0 {
 		return ""

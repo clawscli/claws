@@ -127,6 +127,8 @@ type StartupConfig struct {
 	Regions  []string `yaml:"regions,omitempty"`
 	Profile  string   `yaml:"profile,omitempty"`  // Deprecated: for backward compat (read-only)
 	Profiles []string `yaml:"profiles,omitempty"` // New format: multiple profile IDs
+	Filter   string   `yaml:"filter,omitempty"`   // Fuzzy filter applied at startup (equivalent to `/` command)
+	Tag      string   `yaml:"tag,omitempty"`      // Tag filter applied at startup (equivalent to `:tag` command, e.g. "Env=prod")
 }
 
 // GetProfiles returns profile IDs (new format preferred, fallback to old).
@@ -444,6 +446,20 @@ func (c *FileConfig) GetStartup() ([]string, []string) {
 func (c *FileConfig) GetStartupView() string {
 	return withRLock(&c.mu, func() string {
 		return c.Startup.View
+	})
+}
+
+// GetStartupFilter returns the configured startup fuzzy filter (equivalent to the `/` command).
+func (c *FileConfig) GetStartupFilter() string {
+	return withRLock(&c.mu, func() string {
+		return c.Startup.Filter
+	})
+}
+
+// GetStartupTag returns the configured startup tag filter (equivalent to the `:tag` command).
+func (c *FileConfig) GetStartupTag() string {
+	return withRLock(&c.mu, func() string {
+		return c.Startup.Tag
 	})
 }
 
