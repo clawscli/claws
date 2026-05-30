@@ -35,7 +35,7 @@ Complete reference for all keyboard shortcuts in claws.
 | `a` | Open actions menu |
 | `m` | Mark resource for comparison |
 | `d` | Describe (or diff if marked) |
-| `c` | Clear filter and mark |
+| `c` | Clear filters (fuzzy + tag) and mark |
 | `N` | Load next page (pagination) |
 | `M` | Toggle inline metrics (EC2, RDS, Lambda) |
 | `y` | Copy resource ID to clipboard |

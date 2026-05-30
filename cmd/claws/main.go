@@ -88,14 +88,29 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
+		// Startup filters: CLI flags take precedence over config file.
+		startupFilter := opts.filter
+		if startupFilter == "" {
+			startupFilter = fileCfg.GetStartupFilter()
+		}
+		startupTag := opts.tag
+		if startupTag == "" {
+			startupTag = fileCfg.GetStartupTag()
+		}
 		startupPath = &app.StartupPath{
 			Service:      service,
 			ResourceType: resourceType,
 			ResourceID:   strings.TrimSpace(opts.resourceID),
+			Filter:       startupFilter,
+			Tag:          startupTag,
 		}
 	} else if opts.resourceID != "" {
 		fmt.Fprintln(os.Stderr, "Error: --resource-id requires --service")
 		fmt.Fprintln(os.Stderr, "Example: claws -s ec2 -i i-1234567890abcdef0")
+		os.Exit(1)
+	} else if opts.filter != "" || opts.tag != "" {
+		fmt.Fprintln(os.Stderr, "Error: --filter and --tag require --service")
+		fmt.Fprintln(os.Stderr, "Example: claws -s ec2 --filter bastion")
 		os.Exit(1)
 	}
 
@@ -133,6 +148,8 @@ type cliOptions struct {
 	configFile    string
 	service       string
 	resourceID    string
+	filter        string
+	tag           string
 	theme         string
 	compactHeader *bool
 }
@@ -198,6 +215,16 @@ func parseFlagsFromArgs(args []string) cliOptions {
 				i++
 				opts.resourceID = args[i]
 			}
+		case "-f", "--filter":
+			if i+1 < len(args) {
+				i++
+				opts.filter = strings.TrimSpace(args[i])
+			}
+		case "--tag":
+			if i+1 < len(args) {
+				i++
+				opts.tag = strings.TrimSpace(args[i])
+			}
 		case "-t", "--theme":
 			if i+1 < len(args) {
 				i++
@@ -245,6 +272,10 @@ func printUsage() {
 	fmt.Println("        Supports aliases: cfn, sg, logs, ddb, etc.")
 	fmt.Println("  -i, --resource-id <id>")
 	fmt.Println("        Open detail view for a specific resource (requires --service)")
+	fmt.Println("  -f, --filter <text>")
+	fmt.Println("        Apply a fuzzy filter on startup (like pressing `/`, requires --service)")
+	fmt.Println("  --tag <key>[=value]")
+	fmt.Println("        Apply a tag filter on startup (like `:tag`, e.g. Role=bastion, requires --service)")
 	fmt.Println("  -e, --env")
 	fmt.Println("        Use environment credentials (ignore ~/.aws config)")
 	fmt.Println("        Useful for instance profiles, ECS task roles, Lambda, etc.")
@@ -277,6 +308,8 @@ func printUsage() {
 	fmt.Println("  claws -s rds/snapshots            Open RDS snapshots browser")
 	fmt.Println("  claws -s cfn                      Open CloudFormation stacks (alias)")
 	fmt.Println("  claws -s ec2 -i i-12345           Open detail view for instance i-12345")
+	fmt.Println("  claws -s ec2 -f bastion           Open EC2 instances pre-filtered by 'bastion'")
+	fmt.Println("  claws -s ec2 --tag Role=bastion   Open EC2 instances filtered by tag Role=bastion")
 	fmt.Println("  claws -p dev,prod                 Query multiple profiles")
 	fmt.Println("  claws -r us-east-1,ap-northeast-1 Query multiple regions")
 	fmt.Println()
