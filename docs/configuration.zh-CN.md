@@ -55,6 +55,8 @@ compact_header: false     # 使用单行紧凑标题栏（默认：false）
 
 startup:                  # 启动时应用（如已配置）
   view: services          # 启动视图："dashboard"、"services" 或 "service/resource"（如 "ec2"、"rds/snapshots"）
+  filter: bastion         # 启动时应用的模糊筛选（相当于按 `/`）；CLI -f/--filter 优先
+  tag: Role=bastion       # 启动时应用的标签筛选（相当于 `:tag`）；CLI --tag 优先
   profiles:               # 支持多个配置文件
     - production
   regions:

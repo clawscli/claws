@@ -68,9 +68,7 @@ go install github.com/clawscli/claws/cmd/claws@latest
 ### Docker
 
 ```bash
-docker run -it --rm \
-  -v ~/.aws:/home/claws/.aws:ro \
-  ghcr.io/clawscli/claws
+docker run -it --rm -v ~/.aws:/home/claws/.aws:ro ghcr.io/clawscli/claws
 ```
 
 ## 快速开始
@@ -90,6 +88,10 @@ claws -s dashboard        # 从仪表板开始
 claws -s services         # 从服务浏览器开始（默认）
 claws -s ec2              # EC2 实例
 claws -s rds/snapshots    # RDS 快照
+
+# 启动时打开预筛选列表（需要 -s）
+claws -s ec2 -f bastion           # 模糊筛选（相当于按 `/`）
+claws -s ec2 --tag Role=bastion   # 标签筛选（相当于 `:tag`）
 
 # 多个配置文件/区域（逗号分隔或重复指定）
 claws -p dev,prod -r us-east-1,ap-northeast-1

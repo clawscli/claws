@@ -68,9 +68,7 @@ go install github.com/clawscli/claws/cmd/claws@latest
 ### Docker
 
 ```bash
-docker run -it --rm \
-  -v ~/.aws:/home/claws/.aws:ro \
-  ghcr.io/clawscli/claws
+docker run -it --rm -v ~/.aws:/home/claws/.aws:ro ghcr.io/clawscli/claws
 ```
 
 ## 빠른 시작
@@ -90,6 +88,10 @@ claws -s dashboard        # 대시보드에서 시작
 claws -s services         # 서비스 브라우저에서 시작 (기본값)
 claws -s ec2              # EC2 인스턴스
 claws -s rds/snapshots    # RDS 스냅샷
+
+# 필터가 적용된 목록으로 시작 (-s 필요)
+claws -s ec2 -f bastion           # 퍼지 필터 (`/`와 동일)
+claws -s ec2 --tag Role=bastion   # 태그 필터 (`:tag`와 동일)
 
 # 여러 프로필/리전 (쉼표 구분 또는 반복 지정)
 claws -p dev,prod -r us-east-1,ap-northeast-1
