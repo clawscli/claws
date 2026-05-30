@@ -68,9 +68,7 @@ go install github.com/clawscli/claws/cmd/claws@latest
 ### Docker
 
 ```bash
-docker run -it --rm \
-  -v ~/.aws:/home/claws/.aws:ro \
-  ghcr.io/clawscli/claws
+docker run -it --rm -v ~/.aws:/home/claws/.aws:ro ghcr.io/clawscli/claws
 ```
 
 ## クイックスタート
@@ -90,6 +88,10 @@ claws -s dashboard        # ダッシュボードから開始
 claws -s services         # サービスブラウザから開始（デフォルト）
 claws -s ec2              # EC2インスタンス
 claws -s rds/snapshots    # RDSスナップショット
+
+# 絞り込み済みの一覧を開く（-s が必要）
+claws -s ec2 -f bastion           # ファジーフィルター（`/` と同等）
+claws -s ec2 --tag Role=bastion   # タグフィルター（`:tag` と同等）
 
 # 複数のプロファイル/リージョン（カンマ区切りまたは繰り返し指定）
 claws -p dev,prod -r us-east-1,ap-northeast-1

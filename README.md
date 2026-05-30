@@ -68,9 +68,7 @@ go install github.com/clawscli/claws/cmd/claws@latest
 ### Docker
 
 ```bash
-docker run -it --rm \
-  -v ~/.aws:/home/claws/.aws:ro \
-  ghcr.io/clawscli/claws
+docker run -it --rm -v ~/.aws:/home/claws/.aws:ro ghcr.io/clawscli/claws
 ```
 
 ## Quick Start

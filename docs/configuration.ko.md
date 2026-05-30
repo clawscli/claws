@@ -55,6 +55,8 @@ compact_header: false     # 단일 행 컴팩트 헤더 사용 (기본값: false
 
 startup:                  # 시작 시 적용 (설정이 있는 경우)
   view: services          # 시작 뷰: "dashboard", "services" 또는 "service/resource" (예: "ec2", "rds/snapshots")
+  filter: bastion         # 시작 시 적용할 퍼지 필터 (`/`와 동일). CLI -f/--filter가 우선
+  tag: Role=bastion       # 시작 시 적용할 태그 필터 (`:tag`와 동일). CLI --tag가 우선
   profiles:               # 다중 프로필 지원
     - production
   regions:
