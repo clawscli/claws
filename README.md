@@ -91,7 +91,7 @@ claws -s rds/snapshots    # RDS snapshots
 
 # Launch into a pre-filtered list (requires -s)
 claws -s ec2 -f bastion           # Fuzzy filter (like pressing `/`)
-claws -s ec2 --tag Role=bastion   # Tag filter (like `:tag`)
+claws -s ec2 --tag Env=prod --tag Role=bastion   # Repeated tags act as AND filters. Each tag filter must be a single, literal value (comma-separated values are not supported).
 
 # Multiple profiles/regions (comma-separated or repeated)
 claws -p dev,prod -r us-east-1,ap-northeast-1

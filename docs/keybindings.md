@@ -58,7 +58,9 @@ Complete reference for all keyboard shortcuts in claws.
 | `:ec2/instances` | Navigate to EC2 instances |
 | `:sort <col>` | Sort by column (ascending) |
 | `:sort desc <col>` | Sort by column (descending) |
-| `:tag <filter>` | Filter by tag (e.g., `:tag Env=prod`) |
+| `:tag <filter>` | Replace active tag filters (e.g., `:tag Env=prod`) |
+| `:tag` | Clear all tag filters |
+| `:tagadd <filter>` | Append a new tag filter (e.g., `:tagadd Role=bastion`) |
 | `:tags` | Browse all tagged resources |
 | `:diff <name>` | Compare current row with named resource |
 | `:diff <n1> <n2>` | Compare two named resources |

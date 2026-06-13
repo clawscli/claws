@@ -56,7 +56,10 @@ compact_header: false     # Use single-line compact header (default: false)
 startup:                  # Applied on launch if present
   view: services          # Startup view: "dashboard", "services", or "service/resource" (e.g., "ec2", "rds/snapshots")
   filter: bastion         # Fuzzy filter applied on launch (like pressing `/`); CLI -f/--filter overrides
-  tag: Role=bastion       # Tag filter applied on launch (like `:tag`); CLI --tag overrides
+  tags:                   # Multiple tag filters applied on launch (takes precedence over singular tag; CLI --tag overrides)
+    - Env=prod
+    - Role=bastion
+  tag: Role=bastion       # Legacy singular tag filter (for backward compatibility, used if tags list is empty)
   profiles:               # Multiple profiles supported
     - production
   regions:
@@ -87,6 +90,14 @@ theme: nord               # Preset: dark, light, nord, dracula, gruvbox, catppuc
 ```
 
 The config file is **not created automatically**. Create it manually if needed.
+
+### Startup Tag Filters
+
+The configuration file supports two keys for launching claws with pre-set tag filters:
+- `startup.tags`: A list of tag filters (for example, `Env=prod`). This plural list takes priority over the legacy singular option when it contains any items.
+- `startup.tag`: A single tag filter string. This option is kept for backward compatibility and is only used when the plural `tags` list is empty.
+
+If you specify any tag filters via the CLI using the `--tag` flag, they will completely override both the `startup.tags` and `startup.tag` configuration settings. Comma-separated tag filters are not supported.
 
 CLI flags (`-p`, `-r`, `-t`, `--compact`, `--no-compact`, `--autosave`, `--no-autosave`) override config file settings.
 Multiple values supported: `-p dev,prod` or `-p dev -p prod`.
