@@ -88,27 +88,12 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		// Startup filters: CLI flags take precedence over config file.
-		startupFilter := opts.filter
-		if startupFilter == "" {
-			startupFilter = fileCfg.GetStartupFilter()
-		}
-		startupTag := opts.tag
-		if startupTag == "" {
-			startupTag = fileCfg.GetStartupTag()
-		}
-		startupPath = &app.StartupPath{
-			Service:      service,
-			ResourceType: resourceType,
-			ResourceID:   strings.TrimSpace(opts.resourceID),
-			Filter:       startupFilter,
-			Tag:          startupTag,
-		}
+		startupPath = buildStartupPath(service, resourceType, opts, fileCfg)
 	} else if opts.resourceID != "" {
 		fmt.Fprintln(os.Stderr, "Error: --resource-id requires --service")
 		fmt.Fprintln(os.Stderr, "Example: claws -s ec2 -i i-1234567890abcdef0")
 		os.Exit(1)
-	} else if opts.filter != "" || opts.tag != "" {
+	} else if opts.filter != "" || len(opts.tags) > 0 {
 		fmt.Fprintln(os.Stderr, "Error: --filter and --tag require --service")
 		fmt.Fprintln(os.Stderr, "Example: claws -s ec2 --filter bastion")
 		os.Exit(1)
@@ -149,7 +134,7 @@ type cliOptions struct {
 	service       string
 	resourceID    string
 	filter        string
-	tag           string
+	tags          []string
 	theme         string
 	compactHeader *bool
 }
@@ -223,7 +208,19 @@ func parseFlagsFromArgs(args []string) cliOptions {
 		case "--tag":
 			if i+1 < len(args) {
 				i++
-				opts.tag = strings.TrimSpace(args[i])
+				tag := strings.TrimSpace(args[i])
+				if tag != "" {
+					duplicate := false
+					for _, existing := range opts.tags {
+						if strings.EqualFold(existing, tag) {
+							duplicate = true
+							break
+						}
+					}
+					if !duplicate {
+						opts.tags = append(opts.tags, tag)
+					}
+				}
 			}
 		case "-t", "--theme":
 			if i+1 < len(args) {
@@ -274,8 +271,8 @@ func printUsage() {
 	fmt.Println("        Open detail view for a specific resource (requires --service)")
 	fmt.Println("  -f, --filter <text>")
 	fmt.Println("        Apply a fuzzy filter on startup (like pressing `/`, requires --service)")
-	fmt.Println("  --tag <key>[=value]")
-	fmt.Println("        Apply a tag filter on startup (like `:tag`, e.g. Role=bastion, requires --service)")
+	fmt.Println("  --tag <filter>")
+	fmt.Println("        Apply a tag filter on startup (repeat for multiple literal filters, requires --service)")
 	fmt.Println("  -e, --env")
 	fmt.Println("        Use environment credentials (ignore ~/.aws config)")
 	fmt.Println("        Useful for instance profiles, ECS task roles, Lambda, etc.")
@@ -309,7 +306,7 @@ func printUsage() {
 	fmt.Println("  claws -s cfn                      Open CloudFormation stacks (alias)")
 	fmt.Println("  claws -s ec2 -i i-12345           Open detail view for instance i-12345")
 	fmt.Println("  claws -s ec2 -f bastion           Open EC2 instances pre-filtered by 'bastion'")
-	fmt.Println("  claws -s ec2 --tag Role=bastion   Open EC2 instances filtered by tag Role=bastion")
+	fmt.Println("  claws -s ec2 --tag Role=bastion --tag Env=prod Open EC2 instances filtered by repeated tag filters")
 	fmt.Println("  claws -p dev,prod                 Query multiple profiles")
 	fmt.Println("  claws -r us-east-1,ap-northeast-1 Query multiple regions")
 	fmt.Println()
@@ -355,6 +352,26 @@ func resolveStartupService(input string) (service, resourceType string, err erro
 	}
 
 	return registry.Global.ParseServiceResource(input)
+}
+
+func buildStartupPath(service, resourceType string, opts cliOptions, fileCfg *config.FileConfig) *app.StartupPath {
+	// Startup filters: CLI flags take precedence over config file.
+	startupFilter := opts.filter
+	if startupFilter == "" {
+		startupFilter = fileCfg.GetStartupFilter()
+	}
+	startupTags := opts.tags
+	if len(startupTags) == 0 {
+		startupTags = fileCfg.GetStartupTags()
+	}
+
+	return &app.StartupPath{
+		Service:      service,
+		ResourceType: resourceType,
+		ResourceID:   strings.TrimSpace(opts.resourceID),
+		Filter:       startupFilter,
+		Tags:         startupTags,
+	}
 }
 
 // propagateAllProxy copies ALL_PROXY to HTTP_PROXY/HTTPS_PROXY if not set.

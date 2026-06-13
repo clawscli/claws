@@ -196,22 +196,25 @@ func TestParseFlags_Tag(t *testing.T) {
 	tests := []struct {
 		name     string
 		args     []string
-		expected string
+		expected []string
 	}{
-		{"key=value", []string{"--tag", "Role=bastion"}, "Role=bastion"},
-		{"key only", []string{"--tag", "Role"}, "Role"},
-		{"partial match", []string{"--tag", "Name~web"}, "Name~web"},
-		{"with service", []string{"-s", "ec2", "--tag", "Env=prod"}, "Env=prod"},
-		{"whitespace trimmed", []string{"--tag", "  Env=prod  "}, "Env=prod"},
-		{"no tag", []string{"-s", "ec2"}, ""},
-		{"missing value", []string{"--tag"}, ""},
+		{"key=value", []string{"--tag", "Role=bastion"}, []string{"Role=bastion"}},
+		{"key only", []string{"--tag", "Role"}, []string{"Role"}},
+		{"partial match", []string{"--tag", "Name~web"}, []string{"Name~web"}},
+		{"with service", []string{"-s", "ec2", "--tag", "Env=prod"}, []string{"Env=prod"}},
+		{"whitespace trimmed", []string{"--tag", "  Env=prod  "}, []string{"Env=prod"}},
+		{"comma literal", []string{"--tag", "Name=api,primary"}, []string{"Name=api,primary"}},
+		{"space literal", []string{"--tag", "Owner=Team A"}, []string{"Owner=Team A"}},
+		{"duplicates removed case-insensitively", []string{"--tag", "Env=prod", "--tag", "env=prod", "--tag", "ENV=PROD"}, []string{"Env=prod"}},
+		{"no tag", []string{"-s", "ec2"}, nil},
+		{"missing value", []string{"--tag"}, nil},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			opts := parseFlagsFromArgs(tt.args)
-			if opts.tag != tt.expected {
-				t.Errorf("tag = %q, want %q", opts.tag, tt.expected)
+			if !slices.Equal(opts.tags, tt.expected) {
+				t.Errorf("tags = %v, want %v", opts.tags, tt.expected)
 			}
 		})
 	}
@@ -226,8 +229,63 @@ func TestParseFlags_FilterAndTagCombined(t *testing.T) {
 	if opts.filter != "bastion" {
 		t.Errorf("filter = %q, want %q", opts.filter, "bastion")
 	}
-	if opts.tag != "Role=bastion" {
-		t.Errorf("tag = %q, want %q", opts.tag, "Role=bastion")
+	if !slices.Equal(opts.tags, []string{"Role=bastion"}) {
+		t.Errorf("tags = %v, want %v", opts.tags, []string{"Role=bastion"})
+	}
+}
+
+func TestBuildStartupPath_Tags(t *testing.T) {
+	tests := []struct {
+		name           string
+		opts           cliOptions
+		startup        config.StartupConfig
+		wantTags       []string
+		wantFilter     string
+		wantResourceID string
+	}{
+		{
+			name:     "cli tags override config tags",
+			opts:     cliOptions{service: "ec2", tags: []string{"Role=bastion", "Env=prod"}},
+			startup:  config.StartupConfig{Tags: []string{"saved=tag"}},
+			wantTags: []string{"Role=bastion", "Env=prod"},
+		},
+		{
+			name:     "config tags used when cli tags absent",
+			opts:     cliOptions{service: "ec2"},
+			startup:  config.StartupConfig{Tags: []string{"saved=tag"}},
+			wantTags: []string{"saved=tag"},
+		},
+		{
+			name:           "cli filter and tags override config values",
+			opts:           cliOptions{service: "ec2", filter: "bastion", tags: []string{"Role=bastion"}, resourceID: " i-123 "},
+			startup:        config.StartupConfig{Filter: "saved-filter", Tags: []string{"saved=tag"}},
+			wantTags:       []string{"Role=bastion"},
+			wantFilter:     "bastion",
+			wantResourceID: "i-123",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fileCfg := &config.FileConfig{Startup: tt.startup}
+			path := buildStartupPath("ec2", "", tt.opts, fileCfg)
+
+			if got := path.Tags; !slices.Equal(got, tt.wantTags) {
+				t.Fatalf("tags = %v, want %v", got, tt.wantTags)
+			}
+			if tt.wantFilter != "" && path.Filter != tt.wantFilter {
+				t.Fatalf("filter = %q, want %q", path.Filter, tt.wantFilter)
+			}
+			if tt.wantResourceID != "" && path.ResourceID != tt.wantResourceID {
+				t.Fatalf("resourceID = %q, want %q", path.ResourceID, tt.wantResourceID)
+			}
+			if path.Service != "ec2" {
+				t.Fatalf("service = %q, want %q", path.Service, "ec2")
+			}
+			if path.ResourceType != "" {
+				t.Fatalf("resourceType = %q, want empty", path.ResourceType)
+			}
+		})
 	}
 }
 
