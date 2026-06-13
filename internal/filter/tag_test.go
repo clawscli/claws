@@ -137,6 +137,73 @@ func TestMatchesTagFilter(t *testing.T) {
 	}
 }
 
+func TestMatchesTagFilters(t *testing.T) {
+	tests := []struct {
+		name       string
+		tags       map[string]string
+		tagFilters []string
+		want       bool
+	}{
+		{
+			name:       "all filters match",
+			tags:       map[string]string{"env": "prod", "app": "claws"},
+			tagFilters: []string{"env=prod", "app"},
+			want:       true,
+		},
+		{
+			name:       "one missing filter fails",
+			tags:       map[string]string{"env": "prod", "app": "claws"},
+			tagFilters: []string{"env=prod", "tier"},
+			want:       false,
+		},
+		{
+			name:       "key only plus exact match",
+			tags:       map[string]string{"environment": "production"},
+			tagFilters: []string{"environment", "environment=production"},
+			want:       true,
+		},
+		{
+			name:       "partial plus exact match",
+			tags:       map[string]string{"name": "claws-production"},
+			tagFilters: []string{"name~prod", "name=claws-production"},
+			want:       true,
+		},
+		{
+			name:       "empty slice matches nil tags",
+			tags:       nil,
+			tagFilters: nil,
+			want:       true,
+		},
+		{
+			name:       "nil tags with non-empty filters fails",
+			tags:       nil,
+			tagFilters: []string{"env=prod"},
+			want:       false,
+		},
+		{
+			name:       "comma in value is literal",
+			tags:       map[string]string{"description": "alpha,beta"},
+			tagFilters: []string{"description=alpha,beta"},
+			want:       true,
+		},
+		{
+			name:       "space in value is literal",
+			tags:       map[string]string{"description": "alpha beta"},
+			tagFilters: []string{"description=alpha beta"},
+			want:       true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := MatchesTagFilters(tt.tags, tt.tagFilters)
+			if got != tt.want {
+				t.Errorf("MatchesTagFilters() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestCycleIndex(t *testing.T) {
 	tests := []struct {
 		name    string

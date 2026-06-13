@@ -62,6 +62,22 @@ func MatchesTagFilter(tags map[string]string, tagFilter string) bool {
 	return false
 }
 
+// MatchesTagFilters checks whether all tag filters match the given tags map.
+// An empty filter slice matches everything, including nil tags.
+func MatchesTagFilters(tags map[string]string, tagFilters []string) bool {
+	if len(tagFilters) == 0 {
+		return true
+	}
+
+	for _, tagFilter := range tagFilters {
+		if !MatchesTagFilter(tags, tagFilter) {
+			return false
+		}
+	}
+
+	return true
+}
+
 // CycleIndex cycles an index through a range [0, length) in either direction.
 // If reverse is true, decrements (wrapping from 0 to length-1).
 // If reverse is false, increments (wrapping from length-1 to 0).
