@@ -535,10 +535,23 @@ func (c *CommandInput) executeLoginCommand(input string) (tea.Cmd, bool) {
 
 func (c *CommandInput) executeFilterCommand(input string) (tea.Cmd, *NavigateMsg, bool) {
 	if input == "tag" {
-		return func() tea.Msg { return TagFilterMsg{Filter: ""} }, nil, true
+		return func() tea.Msg { return TagFilterMsg{Filter: "", Append: false} }, nil, true
 	}
 	if tagFilter, ok := strings.CutPrefix(input, "tag "); ok {
-		return func() tea.Msg { return TagFilterMsg{Filter: tagFilter} }, nil, true
+		return func() tea.Msg { return TagFilterMsg{Filter: tagFilter, Append: false} }, nil, true
+	}
+	if input == "tagadd" {
+		return func() tea.Msg {
+			return ErrorMsg{Err: fmt.Errorf("tagadd requires a non-empty tag filter")}
+		}, nil, true
+	}
+	if tagFilter, ok := strings.CutPrefix(input, "tagadd "); ok {
+		if strings.TrimSpace(tagFilter) == "" {
+			return func() tea.Msg {
+				return ErrorMsg{Err: fmt.Errorf("tagadd requires a non-empty tag filter")}
+			}, nil, true
+		}
+		return func() tea.Msg { return TagFilterMsg{Filter: tagFilter, Append: true} }, nil, true
 	}
 	if input == "tags" {
 		return nil, &NavigateMsg{View: NewTagSearchView(c.ctx, c.registry, "")}, true

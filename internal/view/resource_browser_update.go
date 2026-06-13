@@ -1,6 +1,8 @@
 package view
 
 import (
+	"strings"
+
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/clawscli/claws/internal/dao"
@@ -106,10 +108,30 @@ func (r *ResourceBrowser) handleSortMsg(msg SortMsg) (tea.Model, tea.Cmd) {
 }
 
 func (r *ResourceBrowser) handleTagFilterMsg(msg TagFilterMsg) (tea.Model, tea.Cmd) {
-	r.SetInitialTagFilter(msg.Filter)
+	if msg.Append {
+		r.appendTagFilter(msg.Filter)
+	} else {
+		r.SetInitialTagFilter(msg.Filter)
+	}
 	r.applyFilter()
 	r.buildTable()
 	return r, nil
+}
+
+func (r *ResourceBrowser) appendTagFilter(tag string) {
+	tag = strings.TrimSpace(tag)
+	if tag == "" {
+		return
+	}
+
+	normalized := strings.ToLower(tag)
+	for _, existing := range r.tagFilters {
+		if strings.ToLower(strings.TrimSpace(existing)) == normalized {
+			return
+		}
+	}
+
+	r.tagFilters = append(r.tagFilters, tag)
 }
 
 func (r *ResourceBrowser) handleDiffMsg(msg DiffMsg) (tea.Model, tea.Cmd) {

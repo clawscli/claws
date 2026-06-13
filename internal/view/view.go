@@ -87,6 +87,7 @@ type SortMsg struct {
 // TagFilterMsg tells the current view to filter by tags
 type TagFilterMsg struct {
 	Filter string // Tag filter (e.g., "Env=prod", "Env", "Env~prod")
+	Append bool   // Append to existing tag filters instead of replacing them
 }
 
 // DiffMsg tells the current view to show diff between resources

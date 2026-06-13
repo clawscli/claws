@@ -231,6 +231,47 @@ func TestResourceBrowserSetInitialTagFilter(t *testing.T) {
 	}
 }
 
+func TestResourceBrowserHandleTagFilterMsgReplaceAndAppend(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	browser := NewResourceBrowser(ctx, reg, "ec2")
+	browser.resources = []dao.Resource{
+		&mockResource{id: "i-1", name: "host-1", tags: map[string]string{"Env": "prod", "Role": "bastion"}},
+		&mockResource{id: "i-2", name: "host-2", tags: map[string]string{"Env": "prod", "Role": "web"}},
+		&mockResource{id: "i-3", name: "host-3", tags: map[string]string{"Env": "dev", "Role": "bastion"}},
+	}
+
+	browser.handleTagFilterMsg(TagFilterMsg{Filter: "Env=prod"})
+	if got := browser.tagFilters; len(got) != 1 || got[0] != "Env=prod" {
+		t.Fatalf("after replace tagFilters = %#v, want [Env=prod]", got)
+	}
+	if len(browser.filtered) != 2 {
+		t.Fatalf("after replace filtered len = %d, want 2", len(browser.filtered))
+	}
+
+	browser.handleTagFilterMsg(TagFilterMsg{Filter: " Role=BASTION  ", Append: true})
+	if got := browser.tagFilters; len(got) != 2 || got[1] != "Role=BASTION" {
+		t.Fatalf("after append tagFilters = %#v, want [Env=prod Role=BASTION]", got)
+	}
+	if len(browser.filtered) != 1 || browser.filtered[0].GetID() != "i-1" {
+		t.Fatalf("after append filtered = %#v, want only i-1", browser.filtered)
+	}
+
+	browser.handleTagFilterMsg(TagFilterMsg{Filter: "role=bastion", Append: true})
+	if got := browser.tagFilters; len(got) != 2 {
+		t.Fatalf("after duplicate append tagFilters = %#v, want unchanged", got)
+	}
+	if len(browser.filtered) != 1 || browser.filtered[0].GetID() != "i-1" {
+		t.Fatalf("after duplicate append filtered = %#v, want only i-1", browser.filtered)
+	}
+
+	browser.handleTagFilterMsg(TagFilterMsg{Filter: ""})
+	if len(browser.tagFilters) != 0 {
+		t.Fatalf("after clear tagFilters = %#v, want empty", browser.tagFilters)
+	}
+}
+
 func TestResourceBrowserSetInitialTagFiltersDefensivelyCopies(t *testing.T) {
 	ctx := context.Background()
 	reg := registry.New()

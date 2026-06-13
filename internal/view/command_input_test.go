@@ -2,6 +2,8 @@ package view
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -213,6 +215,107 @@ func TestCommandInput_QuitCommand(t *testing.T) {
 			}
 			if nav != nil {
 				t.Error("Expected nil NavigateMsg for quit")
+			}
+		})
+	}
+}
+
+func TestCommandInput_TagCommands(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	tests := []struct {
+		name          string
+		input         string
+		wantMsg       func(tea.Msg) error
+		wantTagFilter string
+	}{
+		{
+			name:  "tag preserves spaces in suffix",
+			input: "tag Owner=Team A",
+			wantMsg: func(msg tea.Msg) error {
+				tagMsg, ok := msg.(TagFilterMsg)
+				if !ok {
+					return fmt.Errorf("msg type = %T, want TagFilterMsg", msg)
+				}
+				if tagMsg.Filter != "Owner=Team A" || tagMsg.Append {
+					return fmt.Errorf("msg = %#v, want replace with full suffix", tagMsg)
+				}
+				return nil
+			},
+		},
+		{
+			name:  "tagadd preserves suffix and appends",
+			input: "tagadd Role=bastion",
+			wantMsg: func(msg tea.Msg) error {
+				tagMsg, ok := msg.(TagFilterMsg)
+				if !ok {
+					return fmt.Errorf("msg type = %T, want TagFilterMsg", msg)
+				}
+				if tagMsg.Filter != "Role=bastion" || !tagMsg.Append {
+					return fmt.Errorf("msg = %#v, want append", tagMsg)
+				}
+				return nil
+			},
+		},
+		{
+			name:  "tagadd empty returns error",
+			input: "tagadd   ",
+			wantMsg: func(msg tea.Msg) error {
+				errMsg, ok := msg.(ErrorMsg)
+				if !ok {
+					return fmt.Errorf("msg type = %T, want ErrorMsg", msg)
+				}
+				if errMsg.Err == nil || !strings.Contains(errMsg.Err.Error(), "tagadd requires a non-empty tag filter") {
+					return fmt.Errorf("err = %v, want tagadd validation error", errMsg.Err)
+				}
+				return nil
+			},
+		},
+		{
+			name:          "tags navigation remains unchanged",
+			input:         "tags Env=prod",
+			wantTagFilter: "Env=prod",
+		},
+		{
+			name:          "tags navigation without suffix remains unchanged",
+			input:         "tags",
+			wantTagFilter: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ci := NewCommandInput(ctx, reg)
+			ci.Activate()
+			ci.textInput.SetValue(tt.input)
+
+			cmd, nav := ci.executeCommand()
+			if tt.wantTagFilter != "" || tt.input == "tags" {
+				if nav == nil {
+					t.Fatalf("nav = nil, want TagSearchView")
+				}
+				v, ok := nav.View.(*TagSearchView)
+				if !ok {
+					t.Fatalf("nav.View type = %T, want *TagSearchView", nav.View)
+				}
+				if v.tagFilter != tt.wantTagFilter {
+					t.Fatalf("tagFilter = %q, want %q", v.tagFilter, tt.wantTagFilter)
+				}
+				if cmd != nil {
+					t.Fatalf("cmd = %#v, want nil for navigation", cmd)
+				}
+				return
+			}
+
+			if cmd == nil {
+				t.Fatal("cmd = nil, want command")
+			}
+			if nav != nil {
+				t.Fatalf("nav = %#v, want nil", nav)
+			}
+			if err := tt.wantMsg(cmd()); err != nil {
+				t.Fatal(err)
 			}
 		})
 	}
