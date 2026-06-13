@@ -83,8 +83,8 @@ type ResourceBrowser struct {
 	filterActive bool
 	filterText   string
 
-	// Tag filter (from :tag command)
-	tagFilterText string // tag filter (e.g., "Env=prod")
+	// Tag filters (from startup flags and :tag command)
+	tagFilters []string // tag filters (e.g., "Env=prod")
 
 	// Field-based filter (for navigation)
 	fieldFilter      string // field name to filter by (e.g., "VpcId")
@@ -316,8 +316,8 @@ func (r *ResourceBrowser) ViewString() string {
 		if r.filterText != "" {
 			indicators = append(indicators, fmt.Sprintf("filter: %s", r.filterText))
 		}
-		if r.tagFilterText != "" {
-			indicators = append(indicators, fmt.Sprintf("tag: %s", r.tagFilterText))
+		if len(r.tagFilters) > 0 {
+			indicators = append(indicators, fmt.Sprintf("tag: %s", strings.Join(r.tagFilters, " AND ")))
 		}
 		if len(indicators) > 0 {
 			filterView = r.styles.filterActive.Render(strings.Join(indicators, " · ")) + "\n"

@@ -90,53 +90,64 @@ func TestResourceBrowserTagFilter(t *testing.T) {
 	}
 
 	tests := []struct {
-		name      string
-		tagFilter string
-		wantCount int
-		wantIDs   []string
+		name       string
+		tagFilters []string
+		wantCount  int
+		wantIDs    []string
 	}{
 		{
-			name:      "exact match",
-			tagFilter: "Environment=production",
-			wantCount: 2,
-			wantIDs:   []string{"i-1", "i-3"},
+			name:       "exact match",
+			tagFilters: []string{"Environment=production"},
+			wantCount:  2,
+			wantIDs:    []string{"i-1", "i-3"},
 		},
 		{
-			name:      "key exists",
-			tagFilter: "Team",
-			wantCount: 3,
-			wantIDs:   []string{"i-1", "i-2", "i-3"},
+			name:       "key exists",
+			tagFilters: []string{"Team"},
+			wantCount:  3,
+			wantIDs:    []string{"i-1", "i-2", "i-3"},
 		},
 		{
-			name:      "partial match",
-			tagFilter: "Environment~prod",
-			wantCount: 2,
-			wantIDs:   []string{"i-1", "i-3"},
+			name:       "partial match",
+			tagFilters: []string{"Environment~prod"},
+			wantCount:  2,
+			wantIDs:    []string{"i-1", "i-3"},
 		},
 		{
-			name:      "partial match case insensitive",
-			tagFilter: "Environment~PROD",
-			wantCount: 2,
-			wantIDs:   []string{"i-1", "i-3"},
+			name:       "partial match case insensitive",
+			tagFilters: []string{"Environment~PROD"},
+			wantCount:  2,
+			wantIDs:    []string{"i-1", "i-3"},
 		},
 		{
-			name:      "no match",
-			tagFilter: "Environment=staging",
-			wantCount: 0,
-			wantIDs:   []string{},
+			name:       "no match",
+			tagFilters: []string{"Environment=staging"},
+			wantCount:  0,
+			wantIDs:    []string{},
 		},
 		{
-			name:      "non-existent key",
-			tagFilter: "NonExistent",
-			wantCount: 0,
-			wantIDs:   []string{},
+			name:       "non-existent key",
+			tagFilters: []string{"NonExistent"},
+			wantCount:  0,
+			wantIDs:    []string{},
+		},
+		{
+			name:       "multiple filters all match",
+			tagFilters: []string{"Environment=production", "Team=web"},
+			wantCount:  1,
+			wantIDs:    []string{"i-1"},
+		},
+		{
+			name:       "multiple filters missing one",
+			tagFilters: []string{"Environment=production", "Team=missing"},
+			wantCount:  0,
+			wantIDs:    []string{},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Use tagFilterText (from :tag command) instead of filterText
-			browser.tagFilterText = tt.tagFilter
+			browser.SetInitialTagFilters(tt.tagFilters)
 			browser.filterText = "" // Clear text filter
 			browser.applyFilter()
 
@@ -151,7 +162,7 @@ func TestResourceBrowserTagFilter(t *testing.T) {
 			}
 
 			// Clean up for next test
-			browser.tagFilterText = ""
+			browser.tagFilters = nil
 		})
 	}
 }
@@ -199,6 +210,9 @@ func TestResourceBrowserSetInitialTagFilter(t *testing.T) {
 
 	browser := NewResourceBrowser(ctx, reg, "ec2")
 	browser.SetInitialTagFilter("Role=bastion")
+	if len(browser.tagFilters) != 1 || browser.tagFilters[0] != "Role=bastion" {
+		t.Fatalf("tagFilters = %#v, want one Role=bastion filter", browser.tagFilters)
+	}
 
 	browser.resources = []dao.Resource{
 		&mockResource{id: "i-1", name: "host-1", tags: map[string]string{"Role": "bastion"}},
@@ -217,6 +231,37 @@ func TestResourceBrowserSetInitialTagFilter(t *testing.T) {
 	}
 }
 
+func TestResourceBrowserSetInitialTagFiltersDefensivelyCopies(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	browser := NewResourceBrowser(ctx, reg, "ec2")
+	filters := []string{"Env=prod", "Role=bastion"}
+	browser.SetInitialTagFilters(filters)
+	filters[0] = "Env=dev"
+
+	if len(browser.tagFilters) != 2 {
+		t.Fatalf("tagFilters length = %d, want 2", len(browser.tagFilters))
+	}
+	if browser.tagFilters[0] != "Env=prod" {
+		t.Fatalf("tagFilters[0] = %q, want %q", browser.tagFilters[0], "Env=prod")
+	}
+
+	browser.resources = []dao.Resource{
+		&mockResource{id: "i-1", name: "host-1", tags: map[string]string{"Env": "prod", "Role": "bastion"}},
+		&mockResource{id: "i-2", name: "host-2", tags: map[string]string{"Env": "dev", "Role": "bastion"}},
+		&mockResource{id: "i-3", name: "host-3", tags: map[string]string{"Env": "prod", "Role": "web"}},
+	}
+	browser.applyFilter()
+
+	if len(browser.filtered) != 1 {
+		t.Fatalf("got %d resources, want 1", len(browser.filtered))
+	}
+	if browser.filtered[0].GetID() != "i-1" {
+		t.Errorf("filtered[0].GetID() = %q, want %q", browser.filtered[0].GetID(), "i-1")
+	}
+}
+
 func TestResourceBrowserFilterIndicators(t *testing.T) {
 	ctx := context.Background()
 	reg := registry.New()
@@ -224,7 +269,7 @@ func TestResourceBrowserFilterIndicators(t *testing.T) {
 	tests := []struct {
 		name        string
 		filterText  string
-		tagFilter   string
+		tagFilters  []string
 		wantContain []string
 		wantAbsent  []string
 	}{
@@ -240,15 +285,21 @@ func TestResourceBrowserFilterIndicators(t *testing.T) {
 		},
 		{
 			name:        "tag filter only",
-			tagFilter:   "Role=bastion",
+			tagFilters:  []string{"Role=bastion"},
 			wantContain: []string{"tag: Role=bastion"},
+			wantAbsent:  []string{"filter:"},
+		},
+		{
+			name:        "multiple tag filters only",
+			tagFilters:  []string{"Env=prod", "Role=bastion"},
+			wantContain: []string{"tag: Env=prod AND Role=bastion"},
 			wantAbsent:  []string{"filter:"},
 		},
 		{
 			name:        "both filters",
 			filterText:  "web",
-			tagFilter:   "Env=prod",
-			wantContain: []string{"filter: web", "tag: Env=prod", "·"},
+			tagFilters:  []string{"Env=prod", "Role=bastion"},
+			wantContain: []string{"filter: web", "tag: Env=prod AND Role=bastion", "·"},
 		},
 	}
 
@@ -261,7 +312,7 @@ func TestResourceBrowserFilterIndicators(t *testing.T) {
 				&mockResource{id: "i-1", name: "web-prod", tags: map[string]string{"Role": "bastion", "Env": "prod"}},
 			}
 			browser.filterText = tt.filterText
-			browser.tagFilterText = tt.tagFilter
+			browser.SetInitialTagFilters(tt.tagFilters)
 			browser.applyFilter()
 			browser.buildTable()
 
@@ -287,7 +338,7 @@ func TestResourceBrowserClearFilterClearsAll(t *testing.T) {
 	browser := NewResourceBrowser(ctx, reg, "ec2")
 	browser.filterText = "web"
 	browser.filterInput.SetValue("web")
-	browser.tagFilterText = "Role=bastion"
+	browser.SetInitialTagFilters([]string{"Role=bastion", "Env=prod"})
 	browser.fieldFilter = "VpcId"
 	browser.fieldFilterValue = "vpc-123"
 
@@ -299,8 +350,8 @@ func TestResourceBrowserClearFilterClearsAll(t *testing.T) {
 	if browser.filterInput.Value() != "" {
 		t.Errorf("filterInput.Value() = %q, want empty", browser.filterInput.Value())
 	}
-	if browser.tagFilterText != "" {
-		t.Errorf("tagFilterText = %q, want empty", browser.tagFilterText)
+	if len(browser.tagFilters) != 0 {
+		t.Errorf("tagFilters = %#v, want empty", browser.tagFilters)
 	}
 	if browser.fieldFilter != "" {
 		t.Errorf("fieldFilter = %q, want empty", browser.fieldFilter)

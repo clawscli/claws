@@ -106,11 +106,7 @@ func (r *ResourceBrowser) handleSortMsg(msg SortMsg) (tea.Model, tea.Cmd) {
 }
 
 func (r *ResourceBrowser) handleTagFilterMsg(msg TagFilterMsg) (tea.Model, tea.Cmd) {
-	if msg.Filter == "" {
-		r.tagFilterText = ""
-	} else {
-		r.tagFilterText = msg.Filter
-	}
+	r.SetInitialTagFilter(msg.Filter)
 	r.applyFilter()
 	r.buildTable()
 	return r, nil

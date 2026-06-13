@@ -198,7 +198,33 @@ func (r *ResourceBrowser) SetInitialFilter(filter string) {
 // SetInitialTagFilter seeds the tag filter before the first load so the list
 // opens pre-filtered (equivalent to the `:tag <filter>` command).
 func (r *ResourceBrowser) SetInitialTagFilter(tag string) {
-	r.tagFilterText = tag
+	r.setTagFilters([]string{tag})
+}
+
+// SetInitialTagFilters seeds multiple tag filters before the first load so the
+// list opens pre-filtered with AND semantics across all filters.
+func (r *ResourceBrowser) SetInitialTagFilters(tagFilters []string) {
+	r.setTagFilters(tagFilters)
+}
+
+func (r *ResourceBrowser) setTagFilters(tagFilters []string) {
+	if len(tagFilters) == 0 {
+		r.tagFilters = nil
+		return
+	}
+
+	filters := make([]string, 0, len(tagFilters))
+	for _, tagFilter := range tagFilters {
+		if tagFilter == "" {
+			continue
+		}
+		filters = append(filters, tagFilter)
+	}
+	if len(filters) == 0 {
+		r.tagFilters = nil
+		return
+	}
+	r.tagFilters = filters
 }
 
 func (r *ResourceBrowser) getNavigationShortcuts() string {

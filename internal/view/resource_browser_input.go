@@ -132,7 +132,7 @@ func (r *ResourceBrowser) handleClearFilter() (tea.Model, tea.Cmd) {
 	r.filterInput.SetValue("")
 	r.fieldFilter = ""
 	r.fieldFilterValue = ""
-	r.tagFilterText = ""
+	r.tagFilters = nil
 	r.markedResource = nil
 	r.loading = true
 	r.err = nil

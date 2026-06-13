@@ -27,11 +27,11 @@ func (r *ResourceBrowser) applyFilter() {
 		working = fieldFiltered
 	}
 
-	// Apply tag filter (from :tag command)
-	if r.tagFilterText != "" {
+	// Apply tag filters (from startup flags and :tag command)
+	if len(r.tagFilters) > 0 {
 		var tagFiltered []dao.Resource
 		for _, res := range working {
-			if r.matchesTagFilter(res, r.tagFilterText) {
+			if r.matchesTagFilters(res) {
 				tagFiltered = append(tagFiltered, res)
 			}
 		}
@@ -80,9 +80,9 @@ func (r *ResourceBrowser) applyFilter() {
 	}
 }
 
-// matchesTagFilter checks if a resource matches the tag filter.
-func (r *ResourceBrowser) matchesTagFilter(res dao.Resource, tagFilter string) bool {
-	return filter.MatchesTagFilter(res.GetTags(), tagFilter)
+// matchesTagFilters checks if a resource matches all active tag filters.
+func (r *ResourceBrowser) matchesTagFilters(res dao.Resource) bool {
+	return filter.MatchesTagFilters(res.GetTags(), r.tagFilters)
 }
 
 // matchesFieldFilter checks if a resource matches the field-based filter
