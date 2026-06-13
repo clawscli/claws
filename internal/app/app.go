@@ -34,7 +34,8 @@ type StartupPath struct {
 	ResourceType string
 	ResourceID   string
 	Filter       string // Fuzzy filter to apply on the startup resource list (equivalent to `/`)
-	Tag          string // Tag filter to apply on the startup resource list (equivalent to `:tag`)
+	Tag          string // Backward-compatible singular startup tag filter (equivalent to `:tag`)
+	Tags         []string
 }
 
 const flashDuration = 2 * time.Second
@@ -135,7 +136,8 @@ func New(ctx context.Context, reg *registry.Registry, startupPath *StartupPath) 
 func (a *App) Init() tea.Cmd {
 	a.awsInitializing = true
 
-	var startupFilter, startupTag string
+	var startupFilter string
+	var startupTags []string
 	if a.startupPath != nil {
 		// CLI `-s` option takes precedence
 		viewName := a.startupPath.Service
@@ -144,13 +146,17 @@ func (a *App) Init() tea.Cmd {
 		}
 		a.currentView = a.resolveStartupView(viewName)
 		startupFilter = a.startupPath.Filter
-		startupTag = a.startupPath.Tag
+		if len(a.startupPath.Tags) > 0 {
+			startupTags = a.startupPath.Tags
+		} else if strings.TrimSpace(a.startupPath.Tag) != "" {
+			startupTags = []string{strings.TrimSpace(a.startupPath.Tag)}
+		}
 	} else {
 		// Check config startup.view
 		startupView := config.File().GetStartupView()
 		a.currentView = a.resolveStartupView(startupView)
 		startupFilter = config.File().GetStartupFilter()
-		startupTag = config.File().GetStartupTag()
+		startupTags = config.File().GetStartupTags()
 	}
 
 	// Seed startup filters so the resource list opens pre-filtered. Only applies
@@ -159,8 +165,8 @@ func (a *App) Init() tea.Cmd {
 		if startupFilter != "" {
 			rb.SetInitialFilter(startupFilter)
 		}
-		if startupTag != "" {
-			rb.SetInitialTagFilter(startupTag)
+		if len(startupTags) > 0 {
+			rb.SetInitialTagFilters(startupTags)
 		}
 	}
 

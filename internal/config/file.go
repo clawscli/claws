@@ -128,7 +128,8 @@ type StartupConfig struct {
 	Profile  string   `yaml:"profile,omitempty"`  // Deprecated: for backward compat (read-only)
 	Profiles []string `yaml:"profiles,omitempty"` // New format: multiple profile IDs
 	Filter   string   `yaml:"filter,omitempty"`   // Fuzzy filter applied at startup (equivalent to `/` command)
-	Tag      string   `yaml:"tag,omitempty"`      // Tag filter applied at startup (equivalent to `:tag` command, e.g. "Env=prod")
+	Tag      string   `yaml:"tag,omitempty"`      // Backward-compatible singular startup tag filter (equivalent to `:tag` command, e.g. "Env=prod")
+	Tags     []string `yaml:"tags,omitempty"`
 }
 
 // GetProfiles returns profile IDs (new format preferred, fallback to old).
@@ -139,6 +140,35 @@ func (s StartupConfig) GetProfiles() []string {
 	}
 	if s.Profile != "" {
 		return []string{s.Profile}
+	}
+	return nil
+}
+
+// GetStartupTags returns startup tag filters (new format preferred, fallback to old).
+// Returns a copy to prevent race conditions with concurrent writes.
+func (s StartupConfig) GetStartupTags() []string {
+	if len(s.Tags) > 0 {
+		tags := make([]string, 0, len(s.Tags))
+		seen := make(map[string]struct{}, len(s.Tags))
+		for _, tag := range s.Tags {
+			trimmed := strings.TrimSpace(tag)
+			if trimmed == "" {
+				continue
+			}
+			key := strings.ToLower(trimmed)
+			if _, ok := seen[key]; ok {
+				continue
+			}
+			seen[key] = struct{}{}
+			tags = append(tags, trimmed)
+		}
+		if len(tags) > 0 {
+			return append([]string(nil), tags...)
+		}
+		return nil
+	}
+	if tag := strings.TrimSpace(s.Tag); tag != "" {
+		return []string{tag}
 	}
 	return nil
 }
@@ -453,6 +483,13 @@ func (c *FileConfig) GetStartupView() string {
 func (c *FileConfig) GetStartupFilter() string {
 	return withRLock(&c.mu, func() string {
 		return c.Startup.Filter
+	})
+}
+
+// GetStartupTags returns the configured startup tag filters.
+func (c *FileConfig) GetStartupTags() []string {
+	return withRLock(&c.mu, func() []string {
+		return c.Startup.GetStartupTags()
 	})
 }
 

@@ -635,6 +635,50 @@ func TestStartupConfig_GetProfiles(t *testing.T) {
 	}
 }
 
+func TestStartupConfig_GetStartupTags(t *testing.T) {
+	tests := []struct {
+		name   string
+		config StartupConfig
+		want   []string
+	}{
+		{"plural tags", StartupConfig{Tags: []string{"Role=bastion", "Env=prod"}}, []string{"Role=bastion", "Env=prod"}},
+		{"plural wins over singular", StartupConfig{Tag: "legacy", Tags: []string{"Env=prod"}}, []string{"Env=prod"}},
+		{"empty plural falls back to singular", StartupConfig{Tag: "  legacy  ", Tags: []string{}}, []string{"legacy"}},
+		{"missing plural falls back to singular", StartupConfig{Tag: "legacy"}, []string{"legacy"}},
+		{"trimming and dedupe", StartupConfig{Tags: []string{"  Role=bastion  ", "ROLE=BASTION", "", "Env=prod", " env=PROD "}}, []string{"Role=bastion", "Env=prod"}},
+		{"empty", StartupConfig{}, nil},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.config.GetStartupTags()
+			if len(got) != len(tt.want) {
+				t.Fatalf("GetStartupTags() = %v, want %v", got, tt.want)
+			}
+			for i := range got {
+				if got[i] != tt.want[i] {
+					t.Fatalf("GetStartupTags()[%d] = %q, want %q", i, got[i], tt.want[i])
+				}
+			}
+
+			if len(got) == 0 {
+				return
+			}
+
+			got[0] = "mutated"
+			again := tt.config.GetStartupTags()
+			if len(again) != len(tt.want) {
+				t.Fatalf("GetStartupTags() after mutation = %v, want %v", again, tt.want)
+			}
+			for i := range again {
+				if again[i] != tt.want[i] {
+					t.Fatalf("GetStartupTags() after mutation [%d] = %q, want %q", i, again[i], tt.want[i])
+				}
+			}
+		})
+	}
+}
+
 func TestConcurrentSaves(t *testing.T) {
 	tmpDir := t.TempDir()
 	origHome := os.Getenv("HOME")

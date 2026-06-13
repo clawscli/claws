@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -70,6 +71,67 @@ func newTestApp(t *testing.T) *App {
 	app.width = 100
 	app.height = 50
 	return app
+}
+
+func TestInit_SeedsStartupTagFiltersFromStartupPath(t *testing.T) {
+	tests := []struct {
+		name            string
+		startupPath     *StartupPath
+		wantContains    string
+		wantNotContains string
+	}{
+		{
+			name:            "plural tags override singular",
+			startupPath:     &StartupPath{Service: "ec2", ResourceType: "instances", Tag: "Role=bastion", Tags: []string{"Env=prod", "Team=web"}},
+			wantContains:    "Env=prod AND Team=web",
+			wantNotContains: "Role=bastion",
+		},
+		{
+			name:         "singular tag fallback",
+			startupPath:  &StartupPath{Service: "ec2", ResourceType: "instances", Tag: "Role=bastion"},
+			wantContains: "Role=bastion",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reg := registry.New()
+			reg.RegisterCustom("ec2", "instances", registry.Entry{})
+			app := New(context.Background(), reg, tt.startupPath)
+			app.width = 100
+			app.height = 50
+
+			app.Init()
+
+			rb, ok := app.currentView.(*view.ResourceBrowser)
+			if !ok {
+				t.Fatalf("currentView type = %T, want *view.ResourceBrowser", app.currentView)
+			}
+
+			tagFilters := reflect.ValueOf(rb).Elem().FieldByName("tagFilters")
+			if !tagFilters.IsValid() {
+				t.Fatal("tagFilters field not found")
+			}
+			if tagFilters.Len() == 0 {
+				t.Fatal("tagFilters should not be empty")
+			}
+
+			got := make([]string, tagFilters.Len())
+			for i := 0; i < tagFilters.Len(); i++ {
+				got[i] = tagFilters.Index(i).String()
+			}
+			if strings.Join(got, " AND ") != tt.wantContains {
+				t.Fatalf("tagFilters = %v, want %q", got, tt.wantContains)
+			}
+			if tt.wantNotContains != "" {
+				for _, tag := range got {
+					if tag == tt.wantNotContains {
+						t.Fatalf("tagFilters = %v, want not to contain %q", got, tt.wantNotContains)
+					}
+				}
+			}
+		})
+	}
 }
 
 func TestEscInDetailView(t *testing.T) {
