@@ -165,7 +165,6 @@ func (s StartupConfig) GetStartupTags() []string {
 		if len(tags) > 0 {
 			return append([]string(nil), tags...)
 		}
-		return nil
 	}
 	if tag := strings.TrimSpace(s.Tag); tag != "" {
 		return []string{tag}

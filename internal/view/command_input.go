@@ -331,7 +331,7 @@ func (c *CommandInput) resolveDestination(input string) string {
 	}
 
 	// Skip non-navigation commands
-	if strings.HasPrefix(input, "tag ") || strings.HasPrefix(input, "tags ") ||
+	if strings.HasPrefix(input, "tag ") || strings.HasPrefix(input, "tagadd ") || strings.HasPrefix(input, "tags ") ||
 		strings.HasPrefix(input, "diff ") || strings.HasPrefix(input, "sort ") ||
 		strings.HasPrefix(input, "theme ") || strings.HasPrefix(input, "autosave ") ||
 		strings.HasPrefix(input, "login ") {
@@ -640,6 +640,9 @@ func (c *CommandInput) GetSuggestions() []string {
 	if suffix, ok := strings.CutPrefix(input, "tag "); ok {
 		return c.getTagSuggestions("tag ", suffix)
 	}
+	if suffix, ok := strings.CutPrefix(input, "tagadd "); ok {
+		return c.getTagSuggestions("tagadd ", suffix)
+	}
 
 	// Handle :tags command completion (same as :tag)
 	if suffix, ok := strings.CutPrefix(input, "tags "); ok {
@@ -696,8 +699,13 @@ func (c *CommandInput) GetSuggestions() []string {
 		}
 
 		// Add "tag" command (current view filter)
-		if strings.HasPrefix("tag", input) && !strings.HasPrefix("tags", input) {
+		if strings.HasPrefix("tag", input) && !strings.HasPrefix(input, "tags") {
 			suggestions = append(suggestions, "tag")
+		}
+
+		// Add "tagadd" command (append current view filter)
+		if strings.HasPrefix("tagadd", input) {
+			suggestions = append(suggestions, "tagadd")
 		}
 
 		// Add "tags" command (cross-service browser)

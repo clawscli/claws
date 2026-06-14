@@ -81,19 +81,68 @@ func TestCommandInput_GetSuggestions(t *testing.T) {
 		t.Error("Expected suggestions for 'ec2/'")
 	}
 
-	// Test tags suggestion
+	// Test tag command suggestions
 	ci.textInput.SetValue("ta")
 	suggestions = ci.GetSuggestions()
+	foundTag := false
+	foundTagadd := false
 	foundTags := false
 	for _, s := range suggestions {
+		if s == "tag" {
+			foundTag = true
+		}
+		if s == "tagadd" {
+			foundTagadd = true
+		}
 		if s == "tags" {
 			foundTags = true
-			break
 		}
+	}
+	if !foundTag {
+		t.Error("Expected 'tag' in suggestions for 'ta'")
+	}
+	if !foundTagadd {
+		t.Error("Expected 'tagadd' in suggestions for 'ta'")
 	}
 	if !foundTags {
 		t.Error("Expected 'tags' in suggestions for 'ta'")
 	}
+}
+
+func TestCommandInput_GetSuggestions_TagaddCompletion(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+	ci := NewCommandInput(ctx, reg)
+	ci.SetTagProvider(mockTagCompletionProvider{
+		keys:   []string{"Env", "Role"},
+		values: map[string][]string{"Env": {"prod", "dev"}},
+	})
+	ci.Activate()
+
+	ci.textInput.SetValue("tagadd E")
+	suggestions := ci.GetSuggestions()
+	if len(suggestions) != 1 || suggestions[0] != "tagadd Env" {
+		t.Fatalf("suggestions = %v, want [tagadd Env]", suggestions)
+	}
+
+	ci.textInput.SetValue("tagadd Env=p")
+	suggestions = ci.GetSuggestions()
+	if len(suggestions) != 1 || suggestions[0] != "tagadd Env=prod" {
+		t.Fatalf("suggestions = %v, want [tagadd Env=prod]", suggestions)
+	}
+}
+
+type mockTagCompletionProvider struct {
+	keys   []string
+	values map[string][]string
+}
+
+func (m mockTagCompletionProvider) GetTagKeys() []string {
+	return m.keys
+}
+
+func (m mockTagCompletionProvider) GetTagValues(key string) []string {
+	return m.values[key]
 }
 
 func TestCommandInput_GetSuggestions_Aliases(t *testing.T) {
@@ -254,6 +303,20 @@ func TestCommandInput_TagCommands(t *testing.T) {
 				}
 				if tagMsg.Filter != "Role=bastion" || !tagMsg.Append {
 					return fmt.Errorf("msg = %#v, want append", tagMsg)
+				}
+				return nil
+			},
+		},
+		{
+			name:  "tagadd preserves spaces in suffix",
+			input: "tagadd Owner=Team A",
+			wantMsg: func(msg tea.Msg) error {
+				tagMsg, ok := msg.(TagFilterMsg)
+				if !ok {
+					return fmt.Errorf("msg type = %T, want TagFilterMsg", msg)
+				}
+				if tagMsg.Filter != "Owner=Team A" || !tagMsg.Append {
+					return fmt.Errorf("msg = %#v, want append with full suffix", tagMsg)
 				}
 				return nil
 			},

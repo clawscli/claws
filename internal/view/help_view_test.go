@@ -1,6 +1,7 @@
 package view
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -18,5 +19,16 @@ func TestHelpView_StatusLine(t *testing.T) {
 	status := hv.StatusLine()
 	if status == "" {
 		t.Error("StatusLine() should not be empty")
+	}
+}
+
+func TestHelpView_TagaddHelp(t *testing.T) {
+	hv := NewHelpView()
+	content := hv.renderContent()
+
+	for _, want := range []string{":tagadd key=val", "Append an AND tag filter", ":tagadd Role=web"} {
+		if !strings.Contains(content, want) {
+			t.Fatalf("help content should contain %q", want)
+		}
 	}
 }

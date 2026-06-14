@@ -214,11 +214,18 @@ func (r *ResourceBrowser) setTagFilters(tagFilters []string) {
 	}
 
 	filters := make([]string, 0, len(tagFilters))
+	seen := make(map[string]struct{}, len(tagFilters))
 	for _, tagFilter := range tagFilters {
-		if tagFilter == "" {
+		trimmed := strings.TrimSpace(tagFilter)
+		if trimmed == "" {
 			continue
 		}
-		filters = append(filters, tagFilter)
+		normalized := strings.ToLower(trimmed)
+		if _, ok := seen[normalized]; ok {
+			continue
+		}
+		seen[normalized] = struct{}{}
+		filters = append(filters, trimmed)
 	}
 	if len(filters) == 0 {
 		r.tagFilters = nil

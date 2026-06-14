@@ -114,10 +114,11 @@ func (h *HelpView) renderContent() string {
 
 	// Tag Commands
 	out += "\n" + s.section.Render("Tag Commands") + "\n"
-	out += s.key.Render(":tag key=val") + s.desc.Render("Filter current view by tag (exact)") + "\n"
+	out += s.key.Render(":tag key=val") + s.desc.Render("Replace current view tag filters (exact)") + "\n"
 	out += s.key.Render(":tag key") + s.desc.Render("Filter by tag key exists") + "\n"
 	out += s.key.Render(":tag key~val") + s.desc.Render("Filter by tag (partial match)") + "\n"
-	out += s.key.Render(":tag") + s.desc.Render("Clear tag filter") + "\n"
+	out += s.key.Render(":tagadd key=val") + s.desc.Render("Append an AND tag filter") + "\n"
+	out += s.key.Render(":tag") + s.desc.Render("Clear all tag filters") + "\n"
 	out += s.key.Render(":tags") + s.desc.Render("Browse all tagged resources") + "\n"
 	out += s.key.Render(":tags Env=prod") + s.desc.Render("Browse with tag filter") + "\n"
 
@@ -160,7 +161,8 @@ func (h *HelpView) renderContent() string {
 			"  :s3              → S3 buckets\n" +
 			"  :ec2/sec         → Auto-completes to ec2/security-groups\n" +
 			"  :sort Name       → Sort by Name column\n" +
-			"  :tag Env=prod    → Filter current view by tag\n" +
+			"  :tag Env=prod    → Replace current tag filters\n" +
+			"  :tagadd Role=web → Add an AND tag filter\n" +
 			"  :tags Env=prod   → Browse all resources with tag\n" +
 			"  :diff my-func    → Compare current row with my-func\n" +
 			"  :login           → AWS Console login\n" +

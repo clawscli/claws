@@ -303,6 +303,24 @@ func TestResourceBrowserSetInitialTagFiltersDefensivelyCopies(t *testing.T) {
 	}
 }
 
+func TestResourceBrowserSetInitialTagFiltersNormalizes(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	browser := NewResourceBrowser(ctx, reg, "ec2")
+	browser.SetInitialTagFilters([]string{" Env=prod ", "env=prod", "", "   ", "Role=bastion"})
+
+	want := []string{"Env=prod", "Role=bastion"}
+	if len(browser.tagFilters) != len(want) {
+		t.Fatalf("tagFilters = %#v, want %#v", browser.tagFilters, want)
+	}
+	for i := range want {
+		if browser.tagFilters[i] != want[i] {
+			t.Fatalf("tagFilters[%d] = %q, want %q", i, browser.tagFilters[i], want[i])
+		}
+	}
+}
+
 func TestResourceBrowserFilterIndicators(t *testing.T) {
 	ctx := context.Background()
 	reg := registry.New()

@@ -644,6 +644,7 @@ func TestStartupConfig_GetStartupTags(t *testing.T) {
 		{"plural tags", StartupConfig{Tags: []string{"Role=bastion", "Env=prod"}}, []string{"Role=bastion", "Env=prod"}},
 		{"plural wins over singular", StartupConfig{Tag: "legacy", Tags: []string{"Env=prod"}}, []string{"Env=prod"}},
 		{"empty plural falls back to singular", StartupConfig{Tag: "  legacy  ", Tags: []string{}}, []string{"legacy"}},
+		{"blank plural falls back to singular", StartupConfig{Tag: "legacy", Tags: []string{" ", ""}}, []string{"legacy"}},
 		{"missing plural falls back to singular", StartupConfig{Tag: "legacy"}, []string{"legacy"}},
 		{"trimming and dedupe", StartupConfig{Tags: []string{"  Role=bastion  ", "ROLE=BASTION", "", "Env=prod", " env=PROD "}}, []string{"Role=bastion", "Env=prod"}},
 		{"empty", StartupConfig{}, nil},
