@@ -56,7 +56,10 @@ compact_header: false     # 使用单行紧凑标题栏（默认：false）
 startup:                  # 启动时应用（如已配置）
   view: services          # 启动视图："dashboard"、"services" 或 "service/resource"（如 "ec2"、"rds/snapshots"）
   filter: bastion         # 启动时应用的模糊筛选（相当于按 `/`）；CLI -f/--filter 优先
-  tag: Role=bastion       # 启动时应用的标签筛选（相当于 `:tag`）；CLI --tag 优先
+  tags:                   # 启动时应用的多个标签筛选器（优先于单数 tag；CLI --tag 优先）
+    - Env=prod
+    - Role=bastion
+  tag: Role=bastion       # 用于向后兼容的旧版单数标签筛选器（tags 列表为空时使用）
   profiles:               # 支持多个配置文件
     - production
   regions:
@@ -87,6 +90,14 @@ theme: nord               # 预设主题：dark、light、nord、dracula、gruvb
 ```
 
 配置文件**不会自动创建**，如有需要请手动创建。
+
+### 启动标签筛选器
+
+配置文件支持两个键，用于使用预设标签筛选器启动 claws：
+- `startup.tags`：标签筛选器列表（例如 `Env=prod`）。当这个复数列表包含任何项时，它优先于旧版单数选项。
+- `startup.tag`：单个标签筛选器字符串。此选项保留用于向后兼容，仅在复数 `tags` 列表为空时使用。
+
+如果通过 CLI 使用 `--tag` 标志指定任何标签筛选器，它们会完全覆盖 `startup.tags` 和 `startup.tag` 配置设置。不支持逗号分隔的标签筛选器。
 
 CLI 标志（`-p`、`-r`、`-t`、`--compact`、`--no-compact`、`--autosave`、`--no-autosave`）会覆盖配置文件中的设置。
 支持多个值：`-p dev,prod` 或 `-p dev -p prod`。

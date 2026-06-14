@@ -56,7 +56,10 @@ compact_header: false     # 단일 행 컴팩트 헤더 사용 (기본값: false
 startup:                  # 시작 시 적용 (설정이 있는 경우)
   view: services          # 시작 뷰: "dashboard", "services" 또는 "service/resource" (예: "ec2", "rds/snapshots")
   filter: bastion         # 시작 시 적용할 퍼지 필터 (`/`와 동일). CLI -f/--filter가 우선
-  tag: Role=bastion       # 시작 시 적용할 태그 필터 (`:tag`와 동일). CLI --tag가 우선
+  tags:                   # 시작 시 적용할 여러 태그 필터 (단수 tag보다 우선. CLI --tag가 우선)
+    - Env=prod
+    - Role=bastion
+  tag: Role=bastion       # 이전 버전과의 호환성을 위한 기존 단수 태그 필터 (tags 목록이 비어 있을 때 사용)
   profiles:               # 다중 프로필 지원
     - production
   regions:
@@ -87,6 +90,14 @@ theme: nord               # 프리셋: dark, light, nord, dracula, gruvbox, catp
 ```
 
 설정 파일은 **자동으로 생성되지 않습니다**. 필요한 경우 수동으로 생성하십시오.
+
+### 시작 태그 필터
+
+구성 파일은 미리 설정된 태그 필터로 claws를 시작하기 위한 두 가지 키를 지원합니다:
+- `startup.tags`: 태그 필터 목록(예: `Env=prod`). 이 복수 목록에 항목이 있으면 기존 단수 옵션보다 우선합니다.
+- `startup.tag`: 단일 태그 필터 문자열. 이 옵션은 이전 버전과의 호환성을 위해 유지되며 복수 `tags` 목록이 비어 있을 때만 사용됩니다.
+
+CLI에서 `--tag` 플래그로 태그 필터를 지정하면 `startup.tags` 및 `startup.tag` 구성 설정을 모두 완전히 덮어씁니다. 쉼표로 구분된 태그 필터는 지원되지 않습니다.
 
 CLI 플래그(`-p`, `-r`, `-t`, `--compact`, `--no-compact`, `--autosave`, `--no-autosave`)는 설정 파일의 값을 덮어씁니다.
 여러 값을 지정할 수 있습니다: `-p dev,prod` 또는 `-p dev -p prod`.

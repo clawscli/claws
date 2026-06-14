@@ -58,7 +58,9 @@ claws의 모든 키보드 단축키에 대한 전체 참조입니다.
 | `:ec2/instances` | EC2 인스턴스로 이동 |
 | `:sort <col>` | 열 기준 정렬 (오름차순) |
 | `:sort desc <col>` | 열 기준 정렬 (내림차순) |
-| `:tag <filter>` | 태그로 필터 (예: `:tag Env=prod`) |
+| `:tag <filter>` | 활성 태그 필터 교체 (예: `:tag Env=prod`) |
+| `:tag` | 모든 태그 필터 지우기 |
+| `:tagadd <filter>` | 새 태그 필터 추가 (예: `:tagadd Role=bastion`) |
 | `:tags` | 모든 태그된 리소스 탐색 |
 | `:diff <name>` | 현재 행과 지정된 리소스 비교 |
 | `:diff <n1> <n2>` | 두 지정된 리소스 비교 |

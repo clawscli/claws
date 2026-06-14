@@ -58,7 +58,9 @@ claws 所有键盘快捷键的完整参考。
 | `:ec2/instances` | 导航到 EC2 实例 |
 | `:sort <col>` | 按列排序（升序） |
 | `:sort desc <col>` | 按列排序（降序） |
-| `:tag <filter>` | 按标签筛选（例如 `:tag Env=prod`） |
+| `:tag <filter>` | 替换当前活动的标签筛选器（例如 `:tag Env=prod`） |
+| `:tag` | 清除所有标签筛选器 |
+| `:tagadd <filter>` | 追加新的标签筛选器（例如 `:tagadd Role=bastion`） |
 | `:tags` | 浏览所有已标记的资源 |
 | `:diff <name>` | 将当前行与指定资源进行对比 |
 | `:diff <n1> <n2>` | 对比两个指定资源 |

@@ -56,7 +56,10 @@ compact_header: false     # 単一行のコンパクトヘッダーを使用（�
 startup:                  # 起動時に適用（設定がある場合）
   view: services          # 起動ビュー: "dashboard"、"services"、または "service/resource"（例: "ec2"、"rds/snapshots"）
   filter: bastion         # 起動時に適用するファジーフィルター（`/` と同等）。CLI の -f/--filter が優先
-  tag: Role=bastion       # 起動時に適用するタグフィルター（`:tag` と同等）。CLI の --tag が優先
+  tags:                   # 起動時に適用する複数のタグフィルター（単数形 tag より優先。CLI の --tag が優先）
+    - Env=prod
+    - Role=bastion
+  tag: Role=bastion       # 後方互換性のための従来の単数形タグフィルター（tags リストが空の場合に使用）
   profiles:               # 複数プロファイル対応
     - production
   regions:
@@ -87,6 +90,14 @@ theme: nord               # プリセット: dark, light, nord, dracula, gruvbox
 ```
 
 設定ファイルは**自動的に作成されません**。必要に応じて手動で作成してください。
+
+### 起動時のタグフィルター
+
+設定ファイルでは、事前設定したタグフィルターで claws を起動するために2つのキーをサポートしています:
+- `startup.tags`: タグフィルターのリスト（例: `Env=prod`）。この複数形リストに項目がある場合、従来の単数形オプションより優先されます。
+- `startup.tag`: 単一のタグフィルター文字列。このオプションは後方互換性のために保持されており、複数形の `tags` リストが空の場合にのみ使用されます。
+
+CLI の `--tag` フラグでタグフィルターを指定した場合、`startup.tags` と `startup.tag` の両方の設定を完全に上書きします。カンマ区切りのタグフィルターはサポートされません。
 
 CLIフラグ（`-p`、`-r`、`-t`、`--compact`、`--no-compact`、`--autosave`、`--no-autosave`）は設定ファイルの値を上書きします。
 複数の値を指定できます: `-p dev,prod` または `-p dev -p prod`。

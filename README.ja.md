@@ -91,7 +91,7 @@ claws -s rds/snapshots    # RDSスナップショット
 
 # 絞り込み済みの一覧を開く（-s が必要）
 claws -s ec2 -f bastion           # ファジーフィルター（`/` と同等）
-claws -s ec2 --tag Role=bastion   # タグフィルター（`:tag` と同等）
+claws -s ec2 --tag Env=prod --tag Role=bastion   # 繰り返し指定したタグは AND フィルターとして機能します。各タグフィルターは単一のリテラル値である必要があります（カンマ区切りの値はサポートされません）。
 
 # 複数のプロファイル/リージョン（カンマ区切りまたは繰り返し指定）
 claws -p dev,prod -r us-east-1,ap-northeast-1

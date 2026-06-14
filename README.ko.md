@@ -91,7 +91,7 @@ claws -s rds/snapshots    # RDS 스냅샷
 
 # 필터가 적용된 목록으로 시작 (-s 필요)
 claws -s ec2 -f bastion           # 퍼지 필터 (`/`와 동일)
-claws -s ec2 --tag Role=bastion   # 태그 필터 (`:tag`와 동일)
+claws -s ec2 --tag Env=prod --tag Role=bastion   # 반복된 태그는 AND 필터로 동작합니다. 각 태그 필터는 단일 리터럴 값이어야 합니다(쉼표로 구분된 값은 지원되지 않음).
 
 # 여러 프로필/리전 (쉼표 구분 또는 반복 지정)
 claws -p dev,prod -r us-east-1,ap-northeast-1
