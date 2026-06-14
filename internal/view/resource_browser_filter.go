@@ -42,6 +42,7 @@ func (r *ResourceBrowser) applyFilter() {
 	if r.filterText == "" {
 		r.filtered = working
 		r.applySorting()
+		r.clearMarkedResourceIfFilteredOut()
 		return
 	}
 
@@ -64,7 +65,10 @@ func (r *ResourceBrowser) applyFilter() {
 	}
 
 	r.applySorting()
+	r.clearMarkedResourceIfFilteredOut()
+}
 
+func (r *ResourceBrowser) clearMarkedResourceIfFilteredOut() {
 	// Clear mark if marked resource is no longer in filtered list
 	if r.markedResource != nil {
 		found := false

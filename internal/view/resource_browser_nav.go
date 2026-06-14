@@ -116,7 +116,8 @@ func (r *ResourceBrowser) StatusLine() string {
 		partialWarn = fmt.Sprintf(" ⚠%d region(s) failed", len(r.partialErrors))
 	}
 
-	if r.filterText != "" || filterInfo != "" {
+	filterApplied := r.filterText != "" || filterInfo != "" || len(r.tagFilters) > 0
+	if filterApplied {
 		base := fmt.Sprintf("%s/%s%s%s%s%s%s%s • %d/%d items • c:clear", r.service, r.resourceType, filterInfo, sortInfo, markInfo, toggleInfo, autoReloadInfo, partialWarn, shown, total)
 		if hasActions {
 			base += " a:actions"

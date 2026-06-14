@@ -662,6 +662,63 @@ func TestResourceBrowserMarkClearedOnFilter(t *testing.T) {
 	}
 }
 
+func TestResourceBrowserMarkClearedOnTagFilterAppend(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	browser := NewResourceBrowser(ctx, reg, "ec2")
+	browser.SetSize(100, 50)
+	browser.renderer = &mockRenderer{detail: "test"}
+
+	browser.resources = []dao.Resource{
+		&mockResource{id: "i-1", name: "host-1", tags: map[string]string{"Env": "prod", "Role": "bastion"}},
+		&mockResource{id: "i-2", name: "host-2", tags: map[string]string{"Env": "prod", "Role": "web"}},
+		&mockResource{id: "i-3", name: "host-3", tags: map[string]string{"Env": "dev", "Role": "bastion"}},
+	}
+	browser.applyFilter()
+	browser.buildTable()
+
+	browser.SetCursor(0)
+	browser.Update(tea.KeyPressMsg{Code: 'm'})
+	if browser.markedResource == nil {
+		t.Fatal("Expected resource to be marked")
+	}
+
+	browser.handleTagFilterMsg(TagFilterMsg{Filter: "Env=prod"})
+	if browser.markedResource == nil {
+		t.Fatal("Expected mark to remain while resource is still visible")
+	}
+
+	browser.handleTagFilterMsg(TagFilterMsg{Filter: "Role=web", Append: true})
+	if browser.markedResource != nil {
+		t.Error("Expected mark to be cleared when appended tag filter hides marked resource")
+	}
+}
+
+func TestResourceBrowserStatusLineTreatsTagFilterAsActive(t *testing.T) {
+	ctx := context.Background()
+	reg := registry.New()
+
+	browser := NewResourceBrowser(ctx, reg, "ec2")
+	browser.resources = []dao.Resource{
+		&mockResource{id: "i-1", name: "host-1", tags: map[string]string{"Env": "prod"}},
+		&mockResource{id: "i-2", name: "host-2", tags: map[string]string{"Env": "dev"}},
+	}
+	browser.SetInitialTagFilter("Env=prod")
+	browser.applyFilter()
+
+	status := browser.StatusLine()
+	if !strings.Contains(status, "1/2 items") {
+		t.Errorf("StatusLine() = %q, want filtered item count", status)
+	}
+	if !strings.Contains(status, "c:clear") {
+		t.Errorf("StatusLine() = %q, want clear hint", status)
+	}
+	if strings.Contains(status, "/:filter") {
+		t.Errorf("StatusLine() = %q, want no unfiltered filter hint", status)
+	}
+}
+
 func TestResourceBrowserDiffHintVisibility(t *testing.T) {
 	ctx := context.Background()
 	reg := registry.New()
