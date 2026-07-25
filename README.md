@@ -71,6 +71,14 @@ go install github.com/clawscli/claws/cmd/claws@latest
 docker run -it --rm -v ~/.aws:/home/claws/.aws:ro ghcr.io/clawscli/claws
 ```
 
+### Nix
+
+```bash
+nix profile add github:clawscli/claws
+# or run it without installing to a profile:
+nix run github:clawscli/claws -- ...
+```
+
 ## Quick Start
 
 ```bash

@@ -39,3 +39,19 @@ jobs:
 
       - name: Test
         run: go test ./...
+  nix:
+    runs-on: ubuntu-latest
+    env:
+      CGO_ENABLED: 0
+    steps:
+      - uses: actions/checkout@v7
+      - uses: cachix/install-nix-action@6b2916c41eac5735ac995c58c9e8561a78c42319 # v31
+      # Check that the flake is at least correct on all systems, does not run
+      # any builds
+      - name: Run nix flake check
+        run: |
+          nix flake check -vL --no-build --all-systems
+      # Checks get run during the nix build
+      - name: Nix build/test
+        run: |
+          nix build -vL .#clawscli --print-out-paths
