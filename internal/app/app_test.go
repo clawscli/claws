@@ -526,6 +526,35 @@ func TestCommandModeActivation(t *testing.T) {
 	}
 }
 
+func TestCommandModePaste(t *testing.T) {
+	app := newTestApp(t)
+	app.currentView = &MockView{name: "Dashboard"}
+
+	app.Update(tea.KeyPressMsg{Code: 0, Text: ":"})
+	if !app.commandMode {
+		t.Fatal("Expected commandMode=true after ':' key")
+	}
+
+	// Ctrl+V is intercepted by the command input, which replies with the
+	// clipboard-read command instead of bubbles' unexported paste message.
+	_, cmd := app.Update(tea.KeyPressMsg{Code: 'v', Mod: tea.ModCtrl})
+	if cmd == nil {
+		t.Fatal("Expected ctrl+v in command mode to return the clipboard-read command")
+	}
+
+	// On success that command yields a tea.PasteMsg with the clipboard
+	// content (covered by internal/clipboard tests); feed the result back
+	// through App.Update and verify it reaches the command input.
+	app.Update(tea.PasteMsg{Content: "ec2/instances"})
+
+	if got := app.commandInput.Value(); got != "ec2/instances" {
+		t.Errorf("Command input value = %q, want %q", got, "ec2/instances")
+	}
+	if !app.commandMode {
+		t.Error("Expected command mode to stay active after paste")
+	}
+}
+
 func TestUnhandledKeyDelegatesToCurrentView(t *testing.T) {
 	app := newTestApp(t)
 	dashboard := &MockView{name: "Dashboard"}

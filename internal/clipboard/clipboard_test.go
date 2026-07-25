@@ -4,7 +4,18 @@ import (
 	"errors"
 	"strings"
 	"testing"
+
+	tea "charm.land/bubbletea/v2"
 )
+
+func withClipboardReader(t *testing.T, nativeReader func() (string, error)) {
+	t.Helper()
+	originalNativeRead := nativeClipboardRead
+	nativeClipboardRead = nativeReader
+	t.Cleanup(func() {
+		nativeClipboardRead = originalNativeRead
+	})
+}
 
 type failingStringWriter struct{}
 
@@ -127,6 +138,33 @@ func TestCopyARN(t *testing.T) {
 	}
 	if copiedMsg.Value != arn {
 		t.Errorf("expected Value %q, got %q", arn, copiedMsg.Value)
+	}
+}
+
+func TestPasteReturnsPasteMsg(t *testing.T) {
+	withClipboardReader(t, func() (string, error) { return "i-1234567890abcdef0", nil })
+
+	cmd := Paste()
+	if cmd == nil {
+		t.Fatal("Paste should return a non-nil command")
+	}
+
+	msg := cmd()
+	pasteMsg, ok := msg.(tea.PasteMsg)
+	if !ok {
+		t.Fatalf("expected tea.PasteMsg, got %T", msg)
+	}
+	if pasteMsg.Content != "i-1234567890abcdef0" {
+		t.Errorf("expected Content 'i-1234567890abcdef0', got %q", pasteMsg.Content)
+	}
+}
+
+func TestPasteReturnsNilWhenClipboardUnavailable(t *testing.T) {
+	withClipboardReader(t, func() (string, error) { return "", errors.New("native clipboard unavailable") })
+
+	msg := Paste()()
+	if msg != nil {
+		t.Fatalf("expected nil msg when clipboard read fails, got %T", msg)
 	}
 }
 

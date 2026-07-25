@@ -210,6 +210,12 @@ func (s *ServiceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return s.selectCurrentService()
 			}
 		}
+
+	default:
+		// Route paste and other textinput-bound messages to the active filter.
+		if s.filterActive {
+			return s.updateFilterInput(msg)
+		}
 	}
 
 	return s, nil
@@ -263,13 +269,24 @@ func (s *ServiceBrowser) handleFilterInput(msg tea.KeyPressMsg) (tea.Model, tea.
 		return s, nil
 	}
 
+	return s.updateFilterInput(msg)
+}
+
+// updateFilterInput forwards msg to the filter text input and re-applies the
+// filter when the input value changed. Besides key presses this must receive
+// tea.PasteMsg (bracketed paste) and the textinput's internal clipboard-read
+// results, or pasting into the filter is silently dropped.
+func (s *ServiceBrowser) updateFilterInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	s.filterInput, cmd = s.filterInput.Update(msg)
-	s.filterText = s.filterInput.Value()
-	s.rebuildFlatItems()
-	s.cursor = 0
-	s.updateViewport()
-	return s, tea.Batch(cmd, tea.ClearScreen)
+	if value := s.filterInput.Value(); value != s.filterText {
+		s.filterText = value
+		s.rebuildFlatItems()
+		s.cursor = 0
+		s.updateViewport()
+		return s, tea.Batch(cmd, tea.ClearScreen)
+	}
+	return s, cmd
 }
 
 func (s *ServiceBrowser) handleNavigation(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {

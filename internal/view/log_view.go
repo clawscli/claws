@@ -382,6 +382,13 @@ func (v *LogView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return v, nil
 	}
 
+	// Route paste and other textinput-bound messages to the active filter.
+	// Mouse events skip the filter so the viewport keeps scrolling while
+	// the filter is open.
+	if _, isMouse := msg.(tea.MouseMsg); v.filterActive && !isMouse {
+		return v.updateFilterInput(msg)
+	}
+
 	if v.vp.Ready {
 		var cmd tea.Cmd
 		v.vp.Model, cmd = v.vp.Model.Update(msg)
@@ -438,17 +445,25 @@ func (v *LogView) handleFilterInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 		return v, nil
 	default:
-		var cmd tea.Cmd
-		v.filterInput, cmd = v.filterInput.Update(msg)
+		return v.updateFilterInput(msg)
+	}
+}
 
-		// Apply filter in real-time as user types
-		v.filterText = v.filterInput.Value()
+// updateFilterInput forwards msg to the filter text input and re-applies the
+// filter in real-time when the input value changed. Besides key presses this
+// must receive tea.PasteMsg (bracketed paste) and the textinput's internal
+// clipboard-read results, or pasting into the filter is silently dropped.
+func (v *LogView) updateFilterInput(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	v.filterInput, cmd = v.filterInput.Update(msg)
+	if value := v.filterInput.Value(); value != v.filterText {
+		v.filterText = value
 		if v.vp.Ready {
 			v.updateViewportContent()
 		}
-
 		return v, tea.Batch(cmd, tea.ClearScreen)
 	}
+	return v, cmd
 }
 
 func (v *LogView) ViewString() string {

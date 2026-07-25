@@ -55,3 +55,7 @@ claws.log
 node_modules/
 .claude
 .gtrconfig
+
+# Nix
+result
+result-*

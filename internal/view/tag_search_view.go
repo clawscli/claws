@@ -305,6 +305,12 @@ func (v *TagSearchView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return v.handleFilterKey(msg)
 		}
 		return v.handleKeyPress(msg)
+
+	default:
+		// Route paste and other textinput-bound messages to the active filter.
+		if v.filterActive {
+			return v.updateFilterInput(msg)
+		}
 	}
 
 	return v, nil
@@ -377,13 +383,23 @@ func (v *TagSearchView) handleFilterKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd
 		v.buildTable()
 		return v, nil
 	default:
-		var cmd tea.Cmd
-		v.filterInput, cmd = v.filterInput.Update(msg)
-		v.filterText = v.filterInput.Value()
+		return v.updateFilterInput(msg)
+	}
+}
+
+// updateFilterInput forwards msg to the filter text input and re-applies the
+// filter when the input value changed. Besides key presses this must receive
+// tea.PasteMsg (bracketed paste) and the textinput's internal clipboard-read
+// results, or pasting into the filter is silently dropped.
+func (v *TagSearchView) updateFilterInput(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	v.filterInput, cmd = v.filterInput.Update(msg)
+	if value := v.filterInput.Value(); value != v.filterText {
+		v.filterText = value
 		v.applyFilter()
 		v.buildTable()
-		return v, cmd
 	}
+	return v, cmd
 }
 
 func (v *TagSearchView) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {

@@ -35,7 +35,25 @@ type CopyFailedMsg struct {
 var (
 	terminalClipboardWriter io.StringWriter = os.Stdout
 	nativeClipboardWrite                    = clipboard.WriteAll
+	nativeClipboardRead                     = clipboard.ReadAll
 )
+
+// Paste reads the system clipboard and delivers its content as a tea.PasteMsg,
+// the same message bracketed paste produces, so it can be routed to any focused
+// text input. Bubbles' built-in ctrl+v returns the clipboard read as an
+// unexported message type that message routing outside the input's own view
+// cannot forward; this command exists so callers get a public type instead.
+// The returned command is a no-op when the clipboard is unavailable.
+func Paste() tea.Cmd {
+	return func() tea.Msg {
+		value, err := nativeClipboardRead()
+		if err != nil {
+			log.Debug("native clipboard read failed", "error", err)
+			return nil
+		}
+		return tea.PasteMsg{Content: value}
+	}
+}
 
 // Copy copies the given value to the clipboard and returns a tea.Cmd that sends a CopiedMsg.
 // It writes to both OSC52 (terminal clipboard) and native system clipboard for maximum compatibility.

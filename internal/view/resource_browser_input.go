@@ -108,13 +108,23 @@ func (r *ResourceBrowser) handleFilterInput(msg tea.KeyPressMsg) (tea.Model, tea
 		r.buildTable()
 		return r, nil
 	default:
-		var cmd tea.Cmd
-		r.filterInput, cmd = r.filterInput.Update(msg)
-		r.filterText = r.filterInput.Value()
+		return r.updateFilterInput(msg)
+	}
+}
+
+// updateFilterInput forwards msg to the filter text input and re-applies the
+// filter when the input value changed. Besides key presses this must receive
+// tea.PasteMsg (bracketed paste) and the textinput's internal clipboard-read
+// results, or pasting into the filter is silently dropped.
+func (r *ResourceBrowser) updateFilterInput(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	r.filterInput, cmd = r.filterInput.Update(msg)
+	if value := r.filterInput.Value(); value != r.filterText {
+		r.filterText = value
 		r.applyFilter()
 		r.buildTable()
-		return r, cmd
 	}
+	return r, cmd
 }
 
 func (r *ResourceBrowser) handleRefresh() (tea.Model, tea.Cmd) {

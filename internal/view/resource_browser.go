@@ -259,6 +259,12 @@ func (r *ResourceBrowser) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if model, cmd := r.handleMouseClickMsg(msg); cmd != nil {
 			return model, cmd
 		}
+
+	default:
+		// Route paste and other textinput-bound messages to the active filter.
+		if r.filterActive {
+			return r.updateFilterInput(msg)
+		}
 	}
 
 	// Check if we should load more pages (infinite scroll)

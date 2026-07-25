@@ -11,6 +11,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/clawscli/claws/internal/action"
+	"github.com/clawscli/claws/internal/clipboard"
 	"github.com/clawscli/claws/internal/config"
 	navmsg "github.com/clawscli/claws/internal/msg"
 	"github.com/clawscli/claws/internal/registry"
@@ -117,6 +118,11 @@ func (c *CommandInput) IsActive() bool {
 	return c.active
 }
 
+// Value returns the current input text.
+func (c *CommandInput) Value() string {
+	return c.textInput.Value()
+}
+
 // Update handles input updates
 func (c *CommandInput) Update(msg tea.Msg) (tea.Cmd, *NavigateMsg) {
 	switch msg := msg.(type) {
@@ -125,6 +131,13 @@ func (c *CommandInput) Update(msg tea.Msg) (tea.Cmd, *NavigateMsg) {
 		case "esc", "ctrl+c":
 			c.Deactivate()
 			return nil, nil
+
+		case "ctrl+v":
+			// Intercept before textInput.Update: its built-in paste replies
+			// with an unexported message type that command-mode routing in
+			// the app cannot forward back here. clipboard.Paste re-enters
+			// as a tea.PasteMsg, which routes to this input like any key.
+			return clipboard.Paste(), nil
 
 		case "enter":
 			cmd, nav := c.executeCommand()

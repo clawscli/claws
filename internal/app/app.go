@@ -288,11 +288,12 @@ func (a *App) handleCommandModeMsg(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
 	if !a.commandMode {
 		return nil, nil, false
 	}
-	keyMsg, ok := msg.(tea.KeyPressMsg)
-	if !ok {
+	switch msg.(type) {
+	case tea.KeyPressMsg, tea.PasteMsg:
+	default:
 		return nil, nil, false
 	}
-	cmd, nav := a.commandInput.Update(keyMsg)
+	cmd, nav := a.commandInput.Update(msg)
 	if !a.commandInput.IsActive() {
 		a.commandMode = false
 	}

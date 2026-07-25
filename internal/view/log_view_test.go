@@ -507,6 +507,31 @@ func TestLogViewFilterStatusLine(t *testing.T) {
 	}
 }
 
+func TestLogViewMouseWheelScrollsWhileFiltering(t *testing.T) {
+	ctx := context.Background()
+	lv := NewLogView(ctx, "/aws/test")
+	lv.SetSize(80, 10)
+	lv.loading = false
+	for i := range 100 {
+		lv.logs = append(lv.logs, logEntry{timestamp: time.Now(), message: fmt.Sprintf("log line %d", i)})
+	}
+	lv.updateViewportContent()
+
+	lv.filterActive = true
+	lv.filterInput.Focus()
+
+	before := lv.vp.Model.YOffset()
+	lv.Update(tea.MouseWheelMsg{Button: tea.MouseWheelDown})
+	after := lv.vp.Model.YOffset()
+
+	if after <= before {
+		t.Errorf("Expected viewport to scroll down while filter is active, YOffset %d -> %d", before, after)
+	}
+	if lv.filterInput.Value() != "" {
+		t.Errorf("Expected filter input unchanged after mouse wheel, got %q", lv.filterInput.Value())
+	}
+}
+
 func TestLogViewFilterUnicode(t *testing.T) {
 	ctx := context.Background()
 	lv := NewLogView(ctx, "/aws/test")

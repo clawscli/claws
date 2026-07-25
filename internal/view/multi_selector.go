@@ -229,6 +229,25 @@ func (m *MultiSelector[T]) HandleUpdate(msg tea.Msg) (tea.Cmd, SelectorKeyResult
 		}
 	}
 
+	// Route paste and other textinput-bound messages (tea.PasteMsg from
+	// bracketed paste, the textinput's internal clipboard-read results) to
+	// the active filter, or pasting into the filter is silently dropped.
+	if m.filterActive {
+		var cmd tea.Cmd
+		m.filterInput, cmd = m.filterInput.Update(msg)
+		if value := m.filterInput.Value(); value != m.filterText {
+			m.filterText = value
+			m.applyFilter()
+			m.clampCursor()
+			m.updateViewport()
+			return cmd, KeyHandled
+		}
+		if cmd != nil {
+			return cmd, KeyHandled
+		}
+		return nil, KeyNotHandled
+	}
+
 	var cmd tea.Cmd
 	m.vp.Model, cmd = m.vp.Model.Update(msg)
 	if cmd != nil {

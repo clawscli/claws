@@ -22,6 +22,7 @@ Complete reference for all keyboard shortcuts in claws.
 | `:pulse` | Go to dashboard |
 | `:services` | Go to service browser |
 | `/` | Filter mode (fuzzy search) |
+| `Ctrl+v` / terminal paste | Paste clipboard into filter/command input |
 | `A` | AI Chat (Bedrock) |
 | `Ctrl+E` | Toggle compact header |
 | `?` | Show help |
